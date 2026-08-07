@@ -12,7 +12,7 @@
 ```text
 当前阶段：Closing Phase（收尾补齐 4 项 → QUANTRADAR_V1_PASS）
   1) 完整 Snapshot/Audit          PASS  FULL_AUDIT_REPRO_PASS ✅
-  2) PostgreSQL + Worker          进行中（PERSIST_WORKER_PASS；本机 1Panel Postgres 已就绪，可建库验证）
+  2) PostgreSQL + Worker          进行中→PASS（PERSIST_WORKER_PASS ✅；本机 1Panel Postgres 专用库 quantradar 已建表并验证异步回测落库）
   3) 正式 React WebUI             待办（WEB_WORKBENCH_PASS；npm registry 现已可达，可 npm install 构建）
   4) Qlib 最小闭环                待办（QLIB_BULLETTRADE_LOOP_PASS）
 阶段标志：QUANTRADAR_STOCK_V1_PASS（主线达成）；QUANTRADAR_V1_PASS 待 4 项全部达成
@@ -59,6 +59,7 @@ QuantRadar Provider bootstrap IMPLEMENTED（Phase 2A：backend/quantradar/bootst
 Experiment 实验管理（Phase 9） PASS  （backend/quantradar/experiment；基于 Snapshot 指纹的本地 JSON 存证与对比；save/load/list round-trip、不同配置不同指纹、同配置可复现、从 BacktestEngine 构造；3 个测试通过）
 Make / Smoke（QUANTRADAR_SMOKE_PASS） PASS  （Makefile：setup/test/smoke/dev；scripts/smoke.py 全链路 数据→回测→快照→API→Web 入口 通过；无 mock）
 Qlib import                  PASS  （pyqlib 0.9.7 已装入 .venv）
+PostgreSQL + Worker          PASS  （PERSIST_WORKER_PASS：backend/quantradar/storage.py 5 表 Strategy/BacktestRun/Experiment/Snapshot/Metrics + SQLAlchemy CRUD；backend/quantradar/worker.py 异步 submit→run_id→后台线程 run_backtest(BulletTrade)→落库；API /api/backtest/async + /api/backtest/runs/{id} + /api/backtest/runs；复用 run_backtest，禁止重实现；集成测试连本机 1Panel 专用库 quantradar 跑通真实回测落库，4/4 通过）
 ```
 
 ---
@@ -73,7 +74,7 @@ ST 标记                      PARTIAL（bao_a_stock_eod_info.is_st ∈ {0,1}；
 Qlib 数据                     PARTIAL（import OK；QLIB_DATA_NOT_BUILT，全机无 qlib_data/cn_data）
 停牌(tradestatus) 鲁棒性      PARTIAL（bao.tradestatus 列存在，语义与覆盖待 Phase 2 确认；bao 源至 2023-06-09）
 InvestmentDataProvider       BASE IMPLEMENTED（Phase 2A）+ get_price PASS（Phase 2B）+ JQ 兼容核心 PASS（Phase 3）+ 真实 A 股回测 PASS（Phase 4）+ 真实复权 PASS（Phase 5）+ 公司行为/ST PASS（Phase 5 补全）
-FastAPI / PostgreSQL / Worker / WebUI   BLOCKED（Phase 7/8 前）
+FastAPI / PostgreSQL / Worker / WebUI   PARTIAL（PostgreSQL+Worker 已完成 PERSIST_WORKER_PASS；正式 React WebUI 待 Item 3）
 Qlib 模型                     BLOCKED（Phase 10 前）
 QMT / 实盘                    BLOCKED（未来实盘节点）
 ```
@@ -179,7 +180,7 @@ Phase 6（已完成）：Snapshot / 可复现 —— 回测环境快照 + 结果
 Phase 7（已完成）：FastAPI 服务基础 —— /api/price / /api/backtest / /api/snapshot 暴露真实能力 —— FASTAPI_CORE_PASS
 Phase 8（已完成）：中文 WebUI + 浏览器策略回测 + 实验 + Web 构建（offline SPA）—— QUANTRADAR_STOCK_V1_PASS
 主线闭环达成（QUANTRADAR_STOCK_V1_PASS）：investment_data → Provider → JoinQuant策略 → BulletTrade真实回测 → PIT → Snapshot → Deterministic → API → 中文Web → Experiment → 因子研究
-Phase 9（进行中）：无基础设施部分已完成（因子研究 / Experiment / Makefile / Smoke / 浏览器策略回测 / 实验API / Web构建，QUANTRADAR_SMOKE_PASS + QUANTRADAR_STOCK_V1_PASS）；PostgreSQL / Worker 待 Postgres 实例与凭证就绪（环境阻塞，不写未知库）
+Phase 9（进行中）：无基础设施部分已完成（因子研究 / Experiment / Makefile / Smoke / 浏览器策略回测 / 实验API / Web构建，QUANTRADAR_SMOKE_PASS + QUANTRADAR_STOCK_V1_PASS）；PostgreSQL + Worker 已完成（PERSIST_WORKER_PASS，连本机 1Panel 专用库 quantradar 验证异步回测落库）；正式 React WebUI 待 Item 3
 Phase 10（下一）：Qlib 高级研究（Alpha158 / LightGBM 等，需 QLIB_DATA 构建，本地可行）
 禁止提前开发：PostgreSQL / Qlib 模型 / ETF / QMT / 实盘（除非当前阶段需要）
 ```

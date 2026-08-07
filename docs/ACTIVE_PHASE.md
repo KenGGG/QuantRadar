@@ -12,10 +12,11 @@
        （dolt_commit, schema_hash, provider_version, bullettrade_commit, quantradar_commit）
      - backend/quantradar/audit.py 采集 Dolt HEAD 与数据表 schema 哈希
      - 确定性测试：NAV/Trades/Positions/Metrics 一致 + 审计指纹一致
-  2) PostgreSQL + Worker          进行中 PERSIST_WORKER_PASS
-     - 模型：Strategy / BacktestRun / Experiment / Snapshot / Metrics（SQLAlchemy）
-     - 异步：提交回测 → run_id → Worker 执行 → PostgreSQL 保存 → API 查状态/结果
-     - 本机 1Panel Postgres（127.0.0.1:5432）已就绪；建专用库 quantradar 验证（不触碰既有库）
+  2) PostgreSQL + Worker          PASS  PERSIST_WORKER_PASS ✅
+     - 模型：Strategy / BacktestRun / Experiment / Snapshot / Metrics（SQLAlchemy，storage.py）
+     - 异步：提交回测 → run_id → Worker 后台线程执行 run_backtest(BulletTrade) → PostgreSQL 保存 → API 查状态/结果
+     - 本机 1Panel Postgres 专用库 quantradar 已建表并验证真实回测落库（4/4 集成测试通过，不触碰既有库）
+     - API：POST /api/backtest/async + GET /api/backtest/runs/{id} + GET /api/backtest/runs
   3) 正式 React WebUI             待办 WEB_WORKBENCH_PASS
      - React+TS+Vite+AntD+Monaco+ECharts；策略编辑/回测提交/运行状态/收益NAV回撤图/Metrics/Positions/Trades/Logs/数据状态/Experiment比较
      - npm registry 现已可达，可 npm install 构建（取代手写 frontend/dist）

@@ -19,8 +19,10 @@ import pandas as pd
 from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
+from quantradar.backtest import run_backtest
 from quantradar.bootstrap import bootstrap_investment_data
 from quantradar.snapshot import build_snapshot, load_snapshot, save_snapshot
+from quantradar.worker import get_worker
 
 app = FastAPI(title="QuantRadar API", version="0.1.0")
 
@@ -92,53 +94,37 @@ def price(
     return {"security": security, "rows": rows}
 
 
+def _summary_from(engine, snapshot, *, security=None, strategy="builtin"):
+    return {
+        "strategy": strategy,
+        "security": security,
+        "start_date": snapshot["config"]["start_date"],
+        "end_date": snapshot["config"]["end_date"],
+        "initial_cash": snapshot["config"]["initial_cash"],
+        "frequency": snapshot["config"]["frequency"],
+        "records_count": snapshot["records_count"],
+        "trades_count": len(getattr(engine, "trades", []) or []),
+        "final_total_value": snapshot["metrics"].get("final_total_value"),
+    }
+
+
 @app.post("/api/backtest")
 def backtest(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
-    from bullet_trade.core.engine import BacktestEngine
-
     _ensure_provider()
     security = payload["security"]
-    start = payload.get("start_date")
-    end = payload.get("end_date")
-    initial_cash = float(payload.get("initial_cash", 500000))
-    frequency = payload.get("frequency", "day")
-    amount = int(payload.get("amount", 100))
-
-    state = {"bought": False}
-
-    def _init(context):  # noqa: ANN001
-        state["bought"] = False
-
-    def _handle(context, data):  # noqa: ANN001
-        df = get_price(security, count=5, fields=["close"])
-        if df is None or df.empty:
-            return
-        if not state["bought"]:
-            order_target(security, amount)
-            state["bought"] = True
-
-    engine = BacktestEngine(
-        initialize=_init,
-        handle_data=_handle,
-        start_date=start,
-        end_date=end,
-        frequency=frequency,
-        initial_cash=initial_cash,
+    engine, snap = run_backtest(
+        code=None,
+        security=security,
+        start_date=payload.get("start_date"),
+        end_date=payload.get("end_date"),
+        initial_cash=float(payload.get("initial_cash", 500000)),
+        frequency=payload.get("frequency", "day"),
+        amount=int(payload.get("amount", 100)),
+        extras=payload.get("extras"),
     )
-    engine.run()
     if not engine.daily_records:
         raise HTTPException(status_code=422, detail="回测未产出任何记录（检查区间/数据）")
-    snap = build_snapshot(engine, extras=payload.get("extras"))
-    summary = {
-        "security": security,
-        "start_date": start,
-        "end_date": end,
-        "initial_cash": initial_cash,
-        "frequency": frequency,
-        "records_count": len(engine.daily_records),
-        "final_total_value": engine.daily_records[-1].get("total_value"),
-    }
-    return {"summary": summary, "snapshot": snap}
+    return {"summary": _summary_from(engine, snap, security=security), "snapshot": snap}
 
 
 @app.post("/api/backtest/strategy")
@@ -152,49 +138,61 @@ def backtest_strategy(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
     code = payload.get("code")
     if not code or not isinstance(code, str):
         raise HTTPException(status_code=400, detail="缺少 strategy code")
-    start = payload.get("start_date")
-    end = payload.get("end_date")
-    initial_cash = float(payload.get("initial_cash", 500000))
-    frequency = payload.get("frequency", "day")
-
-    import tempfile
-
-    from bullet_trade.core.engine import BacktestEngine
-
-    tmp = tempfile.NamedTemporaryFile(
-        "w", suffix=".py", delete=False, prefix="qr_strategy_", encoding="utf-8"
+    engine, snap = run_backtest(
+        code=code,
+        start_date=payload.get("start_date"),
+        end_date=payload.get("end_date"),
+        initial_cash=float(payload.get("initial_cash", 500000)),
+        frequency=payload.get("frequency", "day"),
+        extras=payload.get("extras"),
     )
-    tmp.write(code)
-    tmp.close()
-    try:
-        engine = BacktestEngine(
-            strategy_file=tmp.name,
-            start_date=start,
-            end_date=end,
-            frequency=frequency,
-            initial_cash=initial_cash,
-        )
-        engine.run()
-    finally:
-        try:
-            os.unlink(tmp.name)
-        except OSError:
-            pass
-
     if not engine.daily_records:
         raise HTTPException(status_code=422, detail="回测未产出任何记录（检查区间/数据/策略）")
-    snap = build_snapshot(engine, extras=payload.get("extras"), strategy_source=code)
-    summary = {
-        "strategy": "user-submitted",
-        "start_date": start,
-        "end_date": end,
-        "initial_cash": initial_cash,
-        "frequency": frequency,
-        "records_count": len(engine.daily_records),
-        "trades_count": len(engine.trades),
-        "final_total_value": engine.daily_records[-1].get("total_value"),
-    }
-    return {"summary": summary, "snapshot": snap}
+    return {"summary": _summary_from(engine, snap, strategy="user-submitted"), "snapshot": snap}
+
+
+# ---------------------- 异步回测（Worker + PostgreSQL） ----------------------
+
+
+@app.post("/api/backtest/async")
+def backtest_async(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    """提交异步回测：立即返回 run_id + PENDING，后台 Worker 执行并落库 PostgreSQL。
+
+    复用 quantradar.worker.submit（内部复用 run_backtest -> BulletTrade）。
+    未配置 QUANT_RADAR_PG_URL 时返回 503（不硬编码凭证）。
+    """
+    try:
+        return get_worker().submit(
+            code=payload.get("code"),
+            security=payload.get("security"),
+            start_date=payload.get("start_date"),
+            end_date=payload.get("end_date"),
+            initial_cash=float(payload.get("initial_cash", 500000)),
+            frequency=payload.get("frequency", "day"),
+            amount=int(payload.get("amount", 100)),
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
+@app.get("/api/backtest/runs/{run_id}")
+def backtest_run_status(run_id: str) -> Dict[str, Any]:
+    """查询运行结果：PENDING/RUNNING/SUCCESS/FAILED + 落库快照/指标。"""
+    rec = get_worker().get_status(run_id)
+    if rec is None:
+        raise HTTPException(status_code=404, detail=f"运行不存在：{run_id}")
+    return rec
+
+
+@app.get("/api/backtest/runs")
+def backtest_runs_list(limit: int = Query(50, ge=1, le=500)) -> Dict[str, Any]:
+    """列出近期运行（按创建时间倒序）。"""
+    from quantradar.storage import list_runs
+
+    try:
+        return {"runs": list_runs(limit)}
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
 
 
 @app.get("/api/experiments")
