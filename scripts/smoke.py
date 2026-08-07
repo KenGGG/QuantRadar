@@ -107,16 +107,35 @@ def _check_chain():
     assert "summary" in body and "snapshot" in body, "API 回测未返回 summary/snapshot"
     print(f"        API 回测指纹={body['snapshot']['result_fingerprint'][:16]}...")
 
+    print("[smoke] 4.5) 浏览器策略回测（用户源码 → BulletTrade 真实回测）")
+    user_code = (
+        "def initialize(context):\n"
+        "    context.security = '600519.XSHG'\n"
+        "    context.amount = 100\n"
+        "def handle_data(context, data):\n"
+        "    if not context.portfolio.positions:\n"
+        "        order_target(context.security, context.amount)\n"
+    )
+    r = client.post(
+        "/api/backtest/strategy",
+        json={"code": user_code, "start_date": START, "end_date": END, "initial_cash": CASH},
+    )
+    assert r.status_code == 200, f"策略回测失败：{r.text}"
+    sbody = r.json()
+    assert sbody["summary"]["trades_count"] >= 1, "用户策略未产生任何成交"
+    assert "snapshot" in sbody and sbody["snapshot"].get("result_fingerprint"), "策略回测未返回快照指纹"
+    print(f"        用户策略成交数={sbody['summary']['trades_count']} 指纹={sbody['snapshot']['result_fingerprint'][:16]}...")
+
     print("[smoke] 5) Web 入口（GET / 中文单页）")
     r = client.get("/")
     assert r.status_code == 200 and "量子雷达" in r.text, "Web 入口未返回中文单页"
-    print("        Web 入口正常（中文单页）")
+    print("        Web 入口正常（中文单页，已托管 frontend/dist）")
 
     frontend = os.path.join(os.path.dirname(__file__), "..", "frontend")
     pkg = os.path.join(frontend, "package.json")
     dist = os.path.join(frontend, "dist", "index.html")
     if os.path.exists(dist):
-        print("[smoke] 6) WebUI：React+TS+Vite 已构建（dist 产物） PASS")
+        print("[smoke] 6) WebUI：构建产物 frontend/dist/index.html 已就位（离线自包含 SPA）PASS")
     elif os.path.exists(pkg):
         print("[smoke] 6) WebUI：React+TS+Vite 脚手架已就位（待 npm install && build，网络受限）PARTIAL")
     else:

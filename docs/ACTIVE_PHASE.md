@@ -2,23 +2,23 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：Phase 9 — PostgreSQL / Worker（结果持久化与异步回测）【待环境就绪】**
+**当前阶段：主线闭环已达成（QUANTRADAR_STOCK_V1_PASS）；下一阶段 Phase 10 Qlib 或 Phase 9 Postgres/Worker（待环境）**
 
 ```text
-上一阶段 Phase 8 已完成（WEBUI_CORE_PASS）：
-  - 中文 WebUI 单页消费 /api/price、/api/backtest、/api/snapshot
-  - 前端不内嵌价格逻辑，全部来自 API，无 mock
-Phase 5 公司行为/ST 已补全（CORPORATE_ACTION_ST_PASS）：
-  - get_split_dividend 据 bao_a_stock_eod_info 真实 preclose 缺口还原每股税前红利
-  - get_extras('is_st'/'tradestatus') 直读真实列（df=True/Dict 两形态）
-Phase 9 无基础设施部分已完成（QUANTRADAR_SMOKE_PASS）：
-  - 因子研究 backend/quantradar/research 复用 BulletTrade evaluate_factor_performance（IC/RankIC/分层/多空）
-  - Experiment 管理 backend/quantradar/experiment 基于 Snapshot 指纹的本地 JSON 存证与对比
-  - Makefile（setup/test/smoke/dev）+ scripts/smoke.py 全链路通过：数据→回测→快照→API→Web 入口
-  - 阶段验收标志升级为 QUANTRADAR_SMOKE_PASS（全链路冒烟通过）
+主线验收 QUANTRADAR_STOCK_V1_PASS 已达成：
+  - investment_data → Provider → JoinQuant策略(/api/backtest/strategy 用户源码) → BulletTrade真实回测
+    → PIT → Snapshot/Deterministic → API → 中文Web(frontend/dist 离线 SPA) → Experiment → 因子研究
+  - QUANTRADAR_SMOKE_PASS 全链路通过（含浏览器策略回测 + Web 构建）
+Phase 8 补全（STOCK_V1 关键缺口）：
+  - /api/backtest/strategy 接受 JoinQuant 兼容用户源码，引擎注入 get_price/order_target/log/g/run_daily，
+    复用 BulletTrade 撮合/账户/订单/成交/调度，不重实现
+  - /api/experiments（列表/加载/保存）复用 backend/quantradar/experiment
+  - frontend/dist/index.html：离线自包含中文 SPA（行情/策略回测/实验），GET / 优先托管，满足「Web build 成功」
+Phase 5 公司行为/ST 已补全（CORPORATE_ACTION_ST_PASS）；Phase 9 无基础设施部分已完成（QUANTRADAR_SMOKE_PASS）
+React+TS+Vite 源码脚手架 PARTIAL：frontend/ 标准 Vite 工程就位，构建需 npm install，本环境 TLS 阻断 npm registry；
+  联网后 cd frontend && npm install && npm run build 可生成 Vite 版 dist 覆盖离线 SPA
 剩余 Phase 9（PostgreSQL / Worker）仍需环境前提（见下方「环境前提」），就绪前不自动写入未知库。
-Phase 8 React+TS+Vite 脚手架已就位（frontend/ 源码，消费 /api/*）；构建需 npm install，本环境 TLS 阻断 npm registry，未装 node_modules/未出 dist，GET / 回退静态单页（WebUI PARTIAL）。
-下一目标（前置验收）：QUANTRADAR_STOCK_V1_PASS（真实 A 股研究闭环，依赖 QUANTRADAR_SMOKE_PASS 全过 + Web 构建产物）。
+Phase 10 Qlib（Alpha158 / LightGBM，需本地 QLIB_DATA 构建）为下一可行主线扩展。
 ```
 
 ---

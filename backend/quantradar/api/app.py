@@ -141,6 +141,100 @@ def backtest(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
     return {"summary": summary, "snapshot": snap}
 
 
+@app.post("/api/backtest/strategy")
+def backtest_strategy(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    """运行用户提交的策略源码（JoinQuant 兼容：get_price/order_target/log/g/run_daily 等由引擎注入）。
+
+    仅接受策略源码字符串；引擎以文件方式加载并注入 BulletTrade 全局命名空间，复用其撮合/账户/
+    订单/成交/调度/佣金/滑点等能力，禁止重新实现。本接口为本地可信研究工具，不在本环境做沙箱隔离。
+    """
+    _ensure_provider()
+    code = payload.get("code")
+    if not code or not isinstance(code, str):
+        raise HTTPException(status_code=400, detail="缺少 strategy code")
+    start = payload.get("start_date")
+    end = payload.get("end_date")
+    initial_cash = float(payload.get("initial_cash", 500000))
+    frequency = payload.get("frequency", "day")
+
+    import tempfile
+
+    from bullet_trade.core.engine import BacktestEngine
+
+    tmp = tempfile.NamedTemporaryFile(
+        "w", suffix=".py", delete=False, prefix="qr_strategy_", encoding="utf-8"
+    )
+    tmp.write(code)
+    tmp.close()
+    try:
+        engine = BacktestEngine(
+            strategy_file=tmp.name,
+            start_date=start,
+            end_date=end,
+            frequency=frequency,
+            initial_cash=initial_cash,
+        )
+        engine.run()
+    finally:
+        try:
+            os.unlink(tmp.name)
+        except OSError:
+            pass
+
+    if not engine.daily_records:
+        raise HTTPException(status_code=422, detail="回测未产出任何记录（检查区间/数据/策略）")
+    snap = build_snapshot(engine, extras=payload.get("extras"))
+    summary = {
+        "strategy": "user-submitted",
+        "start_date": start,
+        "end_date": end,
+        "initial_cash": initial_cash,
+        "frequency": frequency,
+        "records_count": len(engine.daily_records),
+        "trades_count": len(engine.trades),
+        "final_total_value": engine.daily_records[-1].get("total_value"),
+    }
+    return {"summary": summary, "snapshot": snap}
+
+
+@app.get("/api/experiments")
+def experiments_list() -> Dict[str, Any]:
+    from quantradar.experiment import list_experiments
+
+    return {"experiments": list_experiments()}
+
+
+@app.get("/api/experiments/{name}")
+def experiments_load(name: str) -> Dict[str, Any]:
+    from quantradar.experiment import load_experiment
+
+    try:
+        exp = load_experiment(name)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Experiment 不存在：{name}")
+    return exp.to_dict()
+
+
+@app.post("/api/experiments/save")
+def experiments_save(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    from quantradar.experiment import Experiment, save_experiment
+
+    name = payload.get("name")
+    if not name:
+        raise HTTPException(status_code=400, detail="缺少 name")
+    snap = payload.get("snapshot") or {}
+    exp = Experiment(
+        name=name,
+        kind=payload.get("kind", "backtest"),
+        config=payload.get("config", {}),
+        result_fingerprint=snap.get("result_fingerprint", "") or payload.get("result_fingerprint", ""),
+        metrics=payload.get("metrics", {}),
+        snapshot=snap or None,
+    )
+    path = save_experiment(exp)
+    return {"path": path, "name": name}
+
+
 @app.post("/api/snapshot/save")
 def snapshot_save(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
     snapshot = payload.get("snapshot")

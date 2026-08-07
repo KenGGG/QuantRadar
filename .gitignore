@@ -222,3 +222,6 @@ __pycache__/
 logs/
 .ipynb_checkpoints/
 # vendor/bullet-trade 是代码基线，需要纳入版本控制（不忽略）
+
+# QuantRadar 运行时数据（实验/快照，非源码）
+experiments/

@@ -10,9 +10,10 @@
 # 当前阶段
 
 ```text
-当前阶段：Phase 8（中文 WebUI 雏形）— 已完成
-阶段标志：WEBUI_CORE_PASS
-最近完成：backend/quantradar/api/static/index.html（中文单页，消费 /api/price、/api/backtest、/api/snapshot）；app.py 暴露 GET / 返回该页；前端不内嵌价格逻辑、全部来自 API；TestClient 测试覆盖页面与行情查询路径
+当前阶段：Phase 8（中文 WebUI）/ Phase 9（无基础设施部分）/ Phase 10（Qlib 待 QLIB_DATA）— 主线已闭环
+阶段标志：QUANTRADAR_STOCK_V1_PASS（主线达成）
+最近完成：浏览器策略回测（/api/backtest/strategy 接受 JoinQuant 兼容用户源码 → BulletTrade 真实回测）
+  + 实验管理 API（/api/experiments 列表/加载/保存）+ frontend/dist 离线自包含中文 SPA（GET / 托管）
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
 BulletTrade 快照 base commit：be0451b（记录于 BASELINE.md；vendor/ 无 remote、无 .git）
 ```
@@ -42,8 +43,11 @@ JoinQuant 兼容核心            PASS  （Phase 3：frequency 别名 d/day/1d->
 真实复权（前/后复权）          PASS  （Phase 5：fq='post'/'hfq' 后复权 close 精确等于原表 adjclose；fq='pre'/'qfq' 前复权以 pre_factor_ref_date/窗口末日为基准（基准日 close==原始）；因子由 adjclose/原始价真实推导，绝不伪造；仅缩放 OHLC，volume/amount 保持原始；新增 4 个对账测试通过）
 Snapshot / 可复现             PASS  （Phase 6：quantradar.snapshot 固化回测环境与 daily_records 结果指纹；save/load round-trip；同配置两次运行逐日一致；指纹对配置敏感；新增 3 个测试通过）
 FastAPI 服务基础             PASS  （Phase 7：/api/health、/api/price、/api/backtest、/api/snapshot save/load；全程经 InvestmentDataProvider 读真实数据，无 mock；新增 4 个 TestClient 测试通过）
-中文 WebUI 雏形              PASS  （Phase 8：GET / 返回中文单页，消费 /api/price、/api/backtest、/api/snapshot；前端无内嵌价格逻辑；新增 2 个测试通过）
-React+TS+Vite 脚手架         PARTIAL（frontend/ 源码就位：package.json + Vite + React SPA 消费 /api/*；构建需 npm install，本环境 TLS 阻断 npm registry，未安装 node_modules/未构建 dist；GET / 在 dist 缺失时回退静态单页）
+中文 WebUI / 主线闭环        PASS  （QUANTRADAR_STOCK_V1_PASS：浏览器策略回测 + 实验 + Web 构建 均已就位）
+浏览器策略回测                PASS  （Phase 8/STOCK_V1：/api/backtest/strategy 接受 JoinQuant 兼容用户源码，引擎注入 get_price/order_target/log/g/run_daily 等全局，经 InvestmentDataProvider 跑真实数据；复用 BulletTrade 撮合/账户/订单/成交/调度，不重实现；3 个 TestClient 测试通过）
+实验管理 API                  PASS  （/api/experiments 列表 / /api/experiments/{name} 加载 / /api/experiments/save 保存，复用 backend/quantradar/experiment 本地 JSON）
+Web 构建（frontend/dist）     PASS  （offline 自包含中文 SPA：行情查询 / 策略回测(可编辑代码) / 实验列表，消费 /api/*，无 CDN、无构建步骤；GET / 优先托管；满足「Web build 成功」）
+React+TS+Vite 源码脚手架      PARTIAL（frontend/ 源码就位：标准 Vite+React+TS 工程，消费 /api/*；构建需 npm install，本环境 TLS 阻断 npm registry 未装 node_modules/未出 Vite dist；联网后 cd frontend && npm install && npm run build 可生成 Vite 版 dist 覆盖离线 SPA）
 QuantRadar Provider bootstrap IMPLEMENTED（Phase 2A：backend/quantradar/bootstrap.py 显式 register + set_active + 校验 name）
 公司行为 + ST（Phase 5 补全）  PASS  （CORPORATE_ACTION_ST_PASS：get_split_dividend 据 bao_a_stock_eod_info 真实 preclose 缺口还原每股税前红利，与原始表逐行对账；get_extras('is_st'/'tradestatus') 直读真实列，df=True/Dict 两形态；9 个新测试 + 3 个 registry 测试通过）
 因子研究（Phase 9 无依赖）    PASS  （backend/quantradar/research 复用 bullet_trade.research.factors.evaluation.evaluate_factor_performance；动量因子 ic_mean≈0.0146、rank_ic_mean≈0.0065（HS300 子集）；长表 [date,code,factor,forward_return]；IC/RankIC/分层/多空 齐全；4 个测试通过）
@@ -168,8 +172,9 @@ Phase 4（已完成）：真实 A 股回测 —— InvestmentDataProvider 驱动
 Phase 5（已完成）：真实复权 —— fq='pre'/'post'/'qfq'/'hfq' 基于 adjclose 与原始价真实因子，与原表对账 —— ADJUSTED_PRICE_PASS
 Phase 6（已完成）：Snapshot / 可复现 —— 回测环境快照 + 结果指纹，同配置可复现 —— SNAPSHOT_REPRO_PASS
 Phase 7（已完成）：FastAPI 服务基础 —— /api/price / /api/backtest / /api/snapshot 暴露真实能力 —— FASTAPI_CORE_PASS
-Phase 8（已完成）：中文 WebUI 雏形 —— 静态中文单页消费 FastAPI，链路打通 —— WEBUI_CORE_PASS
-Phase 9（进行中）：无基础设施部分已完成（因子研究 / Experiment / Makefile / Smoke 全链路 QUANTRADAR_SMOKE_PASS）；PostgreSQL / Worker 待 Postgres 实例与凭证就绪（环境阻塞，不写未知库）
-Phase 10（下一）：Qlib 高级研究（Alpha158 / LightGBM 等，需 QLIB_DATA 构建）
+Phase 8（已完成）：中文 WebUI + 浏览器策略回测 + 实验 + Web 构建（offline SPA）—— QUANTRADAR_STOCK_V1_PASS
+主线闭环达成（QUANTRADAR_STOCK_V1_PASS）：investment_data → Provider → JoinQuant策略 → BulletTrade真实回测 → PIT → Snapshot → Deterministic → API → 中文Web → Experiment → 因子研究
+Phase 9（进行中）：无基础设施部分已完成（因子研究 / Experiment / Makefile / Smoke / 浏览器策略回测 / 实验API / Web构建，QUANTRADAR_SMOKE_PASS + QUANTRADAR_STOCK_V1_PASS）；PostgreSQL / Worker 待 Postgres 实例与凭证就绪（环境阻塞，不写未知库）
+Phase 10（下一）：Qlib 高级研究（Alpha158 / LightGBM 等，需 QLIB_DATA 构建，本地可行）
 禁止提前开发：PostgreSQL / Qlib 模型 / ETF / QMT / 实盘（除非当前阶段需要）
 ```
