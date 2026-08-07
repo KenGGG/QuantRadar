@@ -2,85 +2,81 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：Phase 8 — 中文 WebUI 雏形（消费 FastAPI）**
+**当前阶段：Phase 9 — PostgreSQL / Worker（结果持久化与异步回测）【待环境就绪】**
 
 ```text
-上一阶段 Phase 7 已完成（FASTAPI_CORE_PASS）：
-  - backend/quantradar/api/app.py 暴露 /api/health、/api/price、/api/backtest、/api/snapshot
-  - 全程经 InvestmentDataProvider 读真实数据，无 mock；TestClient 测试全过
-本阶段做 Phase 8（中文 WebUI 雏形）；完成后评估是否进入 Phase 9（PostgreSQL / Worker）。
+上一阶段 Phase 8 已完成（WEBUI_CORE_PASS）：
+  - 中文 WebUI 单页消费 /api/price、/api/backtest、/api/snapshot
+  - 前端不内嵌价格逻辑，全部来自 API，无 mock
+本阶段做 Phase 9（PostgreSQL / Worker）需先满足环境前提（见下方「环境前提」）。
 ```
 
 ---
 
 # 一、目标
 
-在 FastAPI 之上提供一个**最小但真实**的中文单页前端，消费已有接口：
-查询真实行情、触发真实回测、查看可复现快照指纹。验证「前端 + API + 真实数据」链路打通。
+把回测结果与快照**持久化到 PostgreSQL**，并引入**Worker** 做异步回测（提交即返回
+run_id，后台执行后写回结果）。与 Phase 6/7/8 的 API/WebUI 衔接，形成可审计的研究闭环。
 
 ```text
-数据正确性 > API > WebUI。前端仅消费 API，不直连数据库；禁止 mock。
+数据正确性 > 可复现性 > 持久化 > 异步。禁止向未知/未授权数据库写入（必须停止条件）。
 ```
 
 ---
 
-# 二、范围与边界（强制）
+# 二、环境前提（Phase 9 启动前必须就位）
+
+```text
+- PostgreSQL 实例可达（当前 127.0.0.1:5432 端口已开，但缺少已知凭证/库名）。
+- .venv 安装 Postgres 驱动（psycopg2-binary / psycopg）与连接串配置
+  （QUANT_RADAR_PG_URL，含库名/用户/密码）。
+- 凭证仅来自环境变量；禁止在代码或提交中硬编码密码。
+```
+
+> 注意：本阶段**不**自动连接或写入未知数据库（属「不可逆/未授权 DB 写」必须停止条件）。
+> 环境未就绪时，Phase 9 不得执行，应暂停等待凭证/库名就绪。
+
+---
+
+# 三、范围与边界（强制，环境就绪后）
 
 ```text
 允许：
-  - backend/quantradar/api/static/index.html（中文界面）：行情查询表单、回测触发、
-    快照结果展示；通过 fetch 调用 /api/price、/api/backtest、/api/snapshot。
-  - 在 app.py 增加 GET / 返回该静态页（StaticFiles 或 HTMLResponse）。
-  - 补齐 tests/unit/test_webui.py：GET / 返回 200 且含中文标题与 API 引用；
-    关键交互路径（行情查询）经 API 端到端验证（前端 fetch 由 API 测试间接覆盖）。
+  - quantradar/storage.py（SQLAlchemy）：建表（backtest_runs / snapshots）、
+    save_backtest_run / get_backtest_run / save_snapshot / get_snapshot。
+  - quantradar/worker.py：BacktestWorker.submit(payload) -> run_id，后台线程/进程执行
+    真实回测（复用 Phase 4/7 逻辑）并写回 Postgres；提供 get_status(run_id)。
+  - API 扩展：POST /api/backtest/async（返回 run_id）、GET /api/backtest/runs/{id}。
+  - 补齐 tests/unit/test_storage.py（用临时/测试库，或跳过若无可用 Postgres）。
 
 禁止：
   - 改动 BulletTrade 核心。
-  - 写入 investment_data。
-  - 引入前端构建工具链（React/Vite 等）；保持单静态 HTML（Phase 9 前不引入）。
-  - 提前进入 PostgreSQL / Worker / Qlib / ETF / QMT / 实盘（除非本阶段需要）。
-```
-
----
-
-# 三、兼容契约
-
-```text
-- 前端所有数据来自 /api/*；不在前端内嵌任何价格/复权逻辑。
-- 中文文案；字段名沿用 JoinQuant（open/high/low/close/volume/amount/money）。
+  - 向未知的 investment_data 或任意生产库写入。
+  - 提前进入 Qlib / ETF / QMT / 实盘。
 ```
 
 ---
 
 # 四、测试
 
-至少覆盖：
-
 ```text
-- GET / 返回 200，页面含中文标题与对 /api/price、/api/backtest 的引用。
-- 回测触发路径端到端：前端 fetch /api/backtest 返回可复现 fingerprint（复用 test_api 逻辑）。
-- QuantRadar 全量测试 + BulletTrade registry 回归保持全过。
-```
-
-运行：
-
-```text
-tests/unit （pytest）
-vendor/bullet-trade/tests/unit/test_provider_registry.py （回归）
+- 环境就绪时：回测结果写入 Postgres 后可按 run_id 取回，与 Snapshot 指纹一致。
+- Worker 异步提交 -> 轮询/等待 -> 结果持久化。
+- 无可用 Postgres 时：相关测试 skip（不阻塞套件），其余全量 + registry 回归保持全过。
 ```
 
 ---
 
-# 五、验收
+# 五、验收（环境就绪后）
 
-完成标志：`WEBUI_CORE_PASS`
+完成标志：`PERSIST_WORKER_PASS`
 
 ```text
-[PASS] GET / 返回中文单页（含行情查询 / 回测 / 快照展示）
-[PASS] 前端经 /api/backtest 触发真实回测并展示可复现指纹
-[PASS] 数据全部来自 API（无前端内嵌价格逻辑、无 mock）
-[PASS] 补充 tests/unit/test_webui.py 并全过；registry 回归 + 全量测试保持全过
-[PASS] 单一 commit 含 WEBUI_CORE_PASS
+[PASS] 回测结果与快照持久化到 PostgreSQL 并可按 id 取回
+[PASS] Worker 异步执行真实回测并写回结果
+[PASS] API 暴露异步提交/查询接口
+[PASS] 补充测试并全过（无 Postgres 时 skip）；registry 回归 + 全量测试保持全过
+[PASS] 单一 commit 含 PERSIST_WORKER_PASS
 ```
 
 ---
@@ -88,10 +84,10 @@ vendor/bullet-trade/tests/unit/test_provider_registry.py （回归）
 # 六、结束条件
 
 ```text
-1. 实现中文 WebUI 雏形（静态页 + GET /）+ 测试
-2. 更新 docs/CURRENT_STATE.md（WebUI PASS）
+1. 实现 PostgreSQL 持久化 + Worker + API 扩展 + 测试（环境就绪）
+2. 更新 docs/CURRENT_STATE.md（持久化 / Worker PASS）
 3. git diff --check 无遗留空白错误
-4. 单一 commit（WEBUI_CORE_PASS）
+4. 单一 commit（PERSIST_WORKER_PASS）
 5. push origin main
-6. 将 ACTIVE_PHASE 改为 Phase 9（PostgreSQL / Worker，按需）-> 自动进入 Phase 9
+6. 将 ACTIVE_PHASE 改为 Phase 10（Qlib 高级研究，按需）-> 自动进入 Phase 10
 ```
