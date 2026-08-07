@@ -17,11 +17,14 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 from fastapi import Body, FastAPI, HTTPException, Query
+from fastapi.responses import HTMLResponse
 
 from quantradar.bootstrap import bootstrap_investment_data
 from quantradar.snapshot import build_snapshot, load_snapshot, save_snapshot
 
 app = FastAPI(title="QuantRadar API", version="0.1.0")
+
+_HTML_PATH = os.path.join(os.path.dirname(__file__), "static", "index.html")
 
 _SNAPSHOT_DIR = os.environ.get(
     "QUANT_RADAR_SNAPSHOT_DIR",
@@ -53,6 +56,15 @@ def _row_to_record(idx, row, columns) -> Dict[str, Any]:
 def health() -> Dict[str, Any]:
     prov = _ensure_provider()
     return {"status": "ok", "provider": getattr(prov, "name", None)}
+
+
+@app.get("/", response_class=HTMLResponse)
+def index() -> str:
+    """中文 WebUI 单页（消费 /api/*，不直连数据库）。"""
+    if not os.path.exists(_HTML_PATH):
+        raise HTTPException(status_code=404, detail="前端页面缺失")
+    with open(_HTML_PATH, "r", encoding="utf-8") as f:
+        return f.read()
 
 
 @app.get("/api/price")

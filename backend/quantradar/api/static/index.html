@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>量子雷达 QuantRadar · 真实 A 股研究工作台</title>
+  <style>
+    body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
+    header { padding: 16px 24px; background: #1e293b; border-bottom: 1px solid #334155; }
+    h1 { margin: 0; font-size: 20px; }
+    .sub { color: #94a3b8; font-size: 13px; margin-top: 4px; }
+    main { padding: 24px; display: grid; gap: 24px; max-width: 960px; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; }
+    .card h2 { margin-top: 0; font-size: 16px; }
+    label { display: inline-block; margin: 6px 8px 6px 0; font-size: 13px; color: #cbd5e1; }
+    input { background: #0f172a; border: 1px solid #475569; color: #e2e8f0; padding: 6px 8px; border-radius: 4px; }
+    button { background: #2563eb; color: #fff; border: 0; padding: 8px 14px; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    pre { background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 12px; overflow: auto; max-height: 280px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid #334155; padding: 4px 8px; text-align: right; }
+    th { background: #334155; }
+    .ok { color: #4ade80; } .err { color: #f87171; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>量子雷达 QuantRadar</h1>
+    <div class="sub">真实 A 股研究工作台 · 数据来自 investment_data（Dolt 只读）· 无模拟数据</div>
+  </header>
+  <main>
+    <section class="card">
+      <h2>行情查询（/api/price）</h2>
+      <div>
+        <label>代码 <input id="p_sec" value="600519.XSHG" size="12" /></label>
+        <label>开始 <input id="p_start" value="2024-01-02" size="11" /></label>
+        <label>结束 <input id="p_end" value="2024-01-05" size="11" /></label>
+        <label>复权 <input id="p_fq" value="none" size="6" /></label>
+        <button onclick="queryPrice()">查询</button>
+      </div>
+      <div id="price_out"><pre>结果将显示在这里…</pre></div>
+    </section>
+
+    <section class="card">
+      <h2>真实回测（/api/backtest）</h2>
+      <div>
+        <label>代码 <input id="b_sec" value="600519.XSHG" size="12" /></label>
+        <label>开始 <input id="b_start" value="2023-01-03" size="11" /></label>
+        <label>结束 <input id="b_end" value="2023-03-31" size="11" /></label>
+        <label>资金 <input id="b_cash" value="500000" size="9" /></label>
+        <label>股数 <input id="b_amt" value="100" size="5" /></label>
+        <button onclick="runBacktest()">运行回测</button>
+      </div>
+      <div id="bt_out"><pre>结果将显示在这里…</pre></div>
+    </section>
+
+    <section class="card">
+      <h2>快照（/api/snapshot）</h2>
+      <div id="snap_out"><pre>回测后展示可复现指纹…</pre></div>
+    </section>
+  </main>
+
+  <script>
+    const API = "";
+    async function queryPrice() {
+      const out = document.getElementById("price_out");
+      const params = new URLSearchParams({
+        security: p_sec.value, start_date: p_start.value,
+        end_date: p_end.value, fq: p_fq.value,
+      });
+      out.innerHTML = "<pre>加载中…</pre>";
+      try {
+        const resp = await fetch(API + "/api/price?" + params.toString());
+        const data = await resp.json();
+        if (!data.rows.length) { out.innerHTML = "<pre>无数据</pre>"; return; }
+        const cols = Object.keys(data.rows[0]);
+        let html = "<table><thead><tr>" + cols.map(c => "<th>" + c + "</th>").join("") + "</tr></thead><tbody>";
+        data.rows.forEach(r => {
+          html += "<tr>" + cols.map(c => "<td>" + (r[c] === null ? "" : r[c]) + "</td>").join("") + "</tr>";
+        });
+        html += "</tbody></table>";
+        out.innerHTML = html;
+      } catch (e) {
+        out.innerHTML = "<pre class='err'>查询失败：" + e + "</pre>";
+      }
+    }
+
+    async function runBacktest() {
+      const out = document.getElementById("bt_out");
+      const snap = document.getElementById("snap_out");
+      out.innerHTML = "<pre>运行中…</pre>";
+      try {
+        const resp = await fetch(API + "/api/backtest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            security: b_sec.value, start_date: b_start.value,
+            end_date: b_end.value, initial_cash: Number(b_cash.value),
+            amount: Number(b_amt.value),
+          }),
+        });
+        const data = await resp.json();
+        out.innerHTML = "<pre class='ok'>" + JSON.stringify(data.summary, null, 2) + "</pre>";
+        snap.innerHTML = "<pre>结果指纹（可复现）：\n" + data.snapshot.result_fingerprint + "\n\n数据 as-of: " + data.snapshot.data_asof + "</pre>";
+      } catch (e) {
+        out.innerHTML = "<pre class='err'>回测失败：" + e + "</pre>";
+      }
+    }
+  </script>
+</body>
+</html>
