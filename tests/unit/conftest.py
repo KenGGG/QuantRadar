@@ -53,3 +53,16 @@ def registry_reset():
     data_api._PROVIDER_REGISTRY.update(saved_registry)
     data_api._provider_auth_attempted.clear()
     data_api._provider_auth_attempted.update(saved_auth)
+
+
+@pytest.fixture(autouse=True)
+def _clear_current_context():
+    """回测会写入 BulletTrade 全局 _current_context；每个测试后清空，避免跨测试污染。
+
+    仅限测试基础设施，不改 BulletTrade 核心。
+    """
+    yield
+    try:
+        data_api.set_current_context(None)
+    except Exception:
+        pass

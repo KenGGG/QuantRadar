@@ -10,9 +10,9 @@
 # 当前阶段
 
 ```text
-当前阶段：Phase 6（Snapshot / 可复现）— 已完成
-阶段标志：SNAPSHOT_REPRO_PASS
-最近完成：quantradar.snapshot 捕获回测环境（provider/initial_cash/区间/frequency/extras/seed）+ 数据 as-of + daily_records 确定性结果指纹；save/load round-trip；同配置两次运行逐日一致；指纹对配置变化敏感
+当前阶段：Phase 7（FastAPI 服务基础）— 已完成
+阶段标志：FASTAPI_CORE_PASS
+最近完成：backend/quantradar/api/app.py 暴露 /api/health、/api/price（透传真实行情）、/api/backtest（真实回测 + 可复现指纹）、/api/snapshot save/load；全部经 InvestmentDataProvider 读真实数据；TestClient 测试覆盖价格对账、回测可复现、快照 round-trip
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
 BulletTrade 快照 base commit：be0451b（记录于 BASELINE.md；vendor/ 无 remote、无 .git）
 ```
@@ -41,6 +41,7 @@ JoinQuant 兼容核心            PASS  （Phase 3：frequency 别名 d/day/1d->
 真实 A 股回测                PASS  （Phase 4：BacktestEngine 经 Provider 跑通 600519.XSHG 2023Q1，无异常；daily_records/持仓/资产曲线来自真实价，与原表对账一致；防未来数据生效；get_price 扩展 high_limit/low_limit（final_a_stock_limit）/paused（volume==0 派生）；新增 3 个回测 + 3 个字段测试通过）
 真实复权（前/后复权）          PASS  （Phase 5：fq='post'/'hfq' 后复权 close 精确等于原表 adjclose；fq='pre'/'qfq' 前复权以 pre_factor_ref_date/窗口末日为基准（基准日 close==原始）；因子由 adjclose/原始价真实推导，绝不伪造；仅缩放 OHLC，volume/amount 保持原始；新增 4 个对账测试通过）
 Snapshot / 可复现             PASS  （Phase 6：quantradar.snapshot 固化回测环境与 daily_records 结果指纹；save/load round-trip；同配置两次运行逐日一致；指纹对配置敏感；新增 3 个测试通过）
+FastAPI 服务基础             PASS  （Phase 7：/api/health、/api/price、/api/backtest、/api/snapshot save/load；全程经 InvestmentDataProvider 读真实数据，无 mock；新增 4 个 TestClient 测试通过）
 QuantRadar Provider bootstrap IMPLEMENTED（Phase 2A：backend/quantradar/bootstrap.py 显式 register + set_active + 校验 name）
 Qlib import                  PASS  （pyqlib 0.9.7 已装入 .venv）
 ```
@@ -159,6 +160,7 @@ Phase 3（已完成）：JoinQuant 兼容核心 —— frequency/fq 别名归一
 Phase 4（已完成）：真实 A 股回测 —— InvestmentDataProvider 驱动 BacktestEngine 跑通端到端，验证数据链路/防未来数据/真实价对账 —— REAL_A_SHARE_BACKTEST_PASS
 Phase 5（已完成）：真实复权 —— fq='pre'/'post'/'qfq'/'hfq' 基于 adjclose 与原始价真实因子，与原表对账 —— ADJUSTED_PRICE_PASS
 Phase 6（已完成）：Snapshot / 可复现 —— 回测环境快照 + 结果指纹，同配置可复现 —— SNAPSHOT_REPRO_PASS
-Phase 7（下一阶段）：FastAPI 服务基础（暴露 provider / backtest / snapshot 接口，中文 WebUI 雏形）
+Phase 7（已完成）：FastAPI 服务基础 —— /api/price / /api/backtest / /api/snapshot 暴露真实能力 —— FASTAPI_CORE_PASS
+Phase 7.5（下一阶段，按需）：中文 WebUI 雏形（消费 FastAPI，前端展示行情/回测/快照）
 禁止提前开发：复权价 / FastAPI / React / PostgreSQL / Qlib / ETF / QMT / 实盘（除非当前阶段需要）
 ```
