@@ -17,7 +17,8 @@ Phase 9 无基础设施部分已完成（QUANTRADAR_SMOKE_PASS）：
   - Makefile（setup/test/smoke/dev）+ scripts/smoke.py 全链路通过：数据→回测→快照→API→Web 入口
   - 阶段验收标志升级为 QUANTRADAR_SMOKE_PASS（全链路冒烟通过）
 剩余 Phase 9（PostgreSQL / Worker）仍需环境前提（见下方「环境前提」），就绪前不自动写入未知库。
-下一目标（前置验收）：QUANTRADAR_STOCK_V1_PASS（真实 A 股研究闭环，依赖 QUANTRADAR_SMOKE_PASS 全过）。
+Phase 8 React+TS+Vite 脚手架已就位（frontend/ 源码，消费 /api/*）；构建需 npm install，本环境 TLS 阻断 npm registry，未装 node_modules/未出 dist，GET / 回退静态单页（WebUI PARTIAL）。
+下一目标（前置验收）：QUANTRADAR_STOCK_V1_PASS（真实 A 股研究闭环，依赖 QUANTRADAR_SMOKE_PASS 全过 + Web 构建产物）。
 ```
 
 ---

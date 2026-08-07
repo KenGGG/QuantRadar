@@ -25,6 +25,10 @@ from quantradar.snapshot import build_snapshot, load_snapshot, save_snapshot
 app = FastAPI(title="QuantRadar API", version="0.1.0")
 
 _HTML_PATH = os.path.join(os.path.dirname(__file__), "static", "index.html")
+# 生产构建产物优先：若 frontend/dist/index.html 存在则托管之（React+TS+Vite）。
+_DIST_PATH = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend", "dist", "index.html")
+)
 
 _SNAPSHOT_DIR = os.environ.get(
     "QUANT_RADAR_SNAPSHOT_DIR",
@@ -60,10 +64,11 @@ def health() -> Dict[str, Any]:
 
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
-    """中文 WebUI 单页（消费 /api/*，不直连数据库）。"""
-    if not os.path.exists(_HTML_PATH):
+    """中文 WebUI 单页（消费 /api/*，不直连数据库）。优先托管构建产物 dist，回退到静态页。"""
+    target = _DIST_PATH if os.path.exists(_DIST_PATH) else _HTML_PATH
+    if not os.path.exists(target):
         raise HTTPException(status_code=404, detail="前端页面缺失")
-    with open(_HTML_PATH, "r", encoding="utf-8") as f:
+    with open(target, "r", encoding="utf-8") as f:
         return f.read()
 
 

@@ -43,6 +43,7 @@ JoinQuant 兼容核心            PASS  （Phase 3：frequency 别名 d/day/1d->
 Snapshot / 可复现             PASS  （Phase 6：quantradar.snapshot 固化回测环境与 daily_records 结果指纹；save/load round-trip；同配置两次运行逐日一致；指纹对配置敏感；新增 3 个测试通过）
 FastAPI 服务基础             PASS  （Phase 7：/api/health、/api/price、/api/backtest、/api/snapshot save/load；全程经 InvestmentDataProvider 读真实数据，无 mock；新增 4 个 TestClient 测试通过）
 中文 WebUI 雏形              PASS  （Phase 8：GET / 返回中文单页，消费 /api/price、/api/backtest、/api/snapshot；前端无内嵌价格逻辑；新增 2 个测试通过）
+React+TS+Vite 脚手架         PARTIAL（frontend/ 源码就位：package.json + Vite + React SPA 消费 /api/*；构建需 npm install，本环境 TLS 阻断 npm registry，未安装 node_modules/未构建 dist；GET / 在 dist 缺失时回退静态单页）
 QuantRadar Provider bootstrap IMPLEMENTED（Phase 2A：backend/quantradar/bootstrap.py 显式 register + set_active + 校验 name）
 公司行为 + ST（Phase 5 补全）  PASS  （CORPORATE_ACTION_ST_PASS：get_split_dividend 据 bao_a_stock_eod_info 真实 preclose 缺口还原每股税前红利，与原始表逐行对账；get_extras('is_st'/'tradestatus') 直读真实列，df=True/Dict 两形态；9 个新测试 + 3 个 registry 测试通过）
 因子研究（Phase 9 无依赖）    PASS  （backend/quantradar/research 复用 bullet_trade.research.factors.evaluation.evaluate_factor_performance；动量因子 ic_mean≈0.0146、rank_ic_mean≈0.0065（HS300 子集）；长表 [date,code,factor,forward_return]；IC/RankIC/分层/多空 齐全；4 个测试通过）
