@@ -45,6 +45,9 @@ FastAPI 服务基础             PASS  （Phase 7：/api/health、/api/price、/
 中文 WebUI 雏形              PASS  （Phase 8：GET / 返回中文单页，消费 /api/price、/api/backtest、/api/snapshot；前端无内嵌价格逻辑；新增 2 个测试通过）
 QuantRadar Provider bootstrap IMPLEMENTED（Phase 2A：backend/quantradar/bootstrap.py 显式 register + set_active + 校验 name）
 公司行为 + ST（Phase 5 补全）  PASS  （CORPORATE_ACTION_ST_PASS：get_split_dividend 据 bao_a_stock_eod_info 真实 preclose 缺口还原每股税前红利，与原始表逐行对账；get_extras('is_st'/'tradestatus') 直读真实列，df=True/Dict 两形态；9 个新测试 + 3 个 registry 测试通过）
+因子研究（Phase 9 无依赖）    PASS  （backend/quantradar/research 复用 bullet_trade.research.factors.evaluation.evaluate_factor_performance；动量因子 ic_mean≈0.0146、rank_ic_mean≈0.0065（HS300 子集）；长表 [date,code,factor,forward_return]；IC/RankIC/分层/多空 齐全；4 个测试通过）
+Experiment 实验管理（Phase 9） PASS  （backend/quantradar/experiment；基于 Snapshot 指纹的本地 JSON 存证与对比；save/load/list round-trip、不同配置不同指纹、同配置可复现、从 BacktestEngine 构造；3 个测试通过）
+Make / Smoke（QUANTRADAR_SMOKE_PASS） PASS  （Makefile：setup/test/smoke/dev；scripts/smoke.py 全链路 数据→回测→快照→API→Web 入口 通过；无 mock）
 Qlib import                  PASS  （pyqlib 0.9.7 已装入 .venv）
 ```
 
@@ -165,6 +168,7 @@ Phase 5（已完成）：真实复权 —— fq='pre'/'post'/'qfq'/'hfq' 基于 
 Phase 6（已完成）：Snapshot / 可复现 —— 回测环境快照 + 结果指纹，同配置可复现 —— SNAPSHOT_REPRO_PASS
 Phase 7（已完成）：FastAPI 服务基础 —— /api/price / /api/backtest / /api/snapshot 暴露真实能力 —— FASTAPI_CORE_PASS
 Phase 8（已完成）：中文 WebUI 雏形 —— 静态中文单页消费 FastAPI，链路打通 —— WEBUI_CORE_PASS
-Phase 9（下一阶段，按需）：PostgreSQL / Worker（结果持久化与异步回测；需 Postgres 实例，待环境就绪）
-禁止提前开发：复权价 / FastAPI / React / PostgreSQL / Qlib / ETF / QMT / 实盘（除非当前阶段需要）
+Phase 9（进行中）：无基础设施部分已完成（因子研究 / Experiment / Makefile / Smoke 全链路 QUANTRADAR_SMOKE_PASS）；PostgreSQL / Worker 待 Postgres 实例与凭证就绪（环境阻塞，不写未知库）
+Phase 10（下一）：Qlib 高级研究（Alpha158 / LightGBM 等，需 QLIB_DATA 构建）
+禁止提前开发：PostgreSQL / Qlib 模型 / ETF / QMT / 实盘（除非当前阶段需要）
 ```

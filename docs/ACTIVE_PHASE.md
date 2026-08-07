@@ -8,12 +8,16 @@
 上一阶段 Phase 8 已完成（WEBUI_CORE_PASS）：
   - 中文 WebUI 单页消费 /api/price、/api/backtest、/api/snapshot
   - 前端不内嵌价格逻辑，全部来自 API，无 mock
-本阶段做 Phase 9（PostgreSQL / Worker）需先满足环境前提（见下方「环境前提」）。
-补充（本会话，无需外部基础设施）：Phase 5 公司行为/ST 已补全（CORPORATE_ACTION_ST_PASS）：
+Phase 5 公司行为/ST 已补全（CORPORATE_ACTION_ST_PASS）：
   - get_split_dividend 据 bao_a_stock_eod_info 真实 preclose 缺口还原每股税前红利
   - get_extras('is_st'/'tradestatus') 直读真实列（df=True/Dict 两形态）
-下一步（无需外部基础设施，可立即推进）：因子研究（复用 BulletTrade IC/RankIC/layer/long-short）
-  + Experiment 管理（save/compare，复用 Snapshot）+ make setup/test/smoke/dev + smoke 链。
+Phase 9 无基础设施部分已完成（QUANTRADAR_SMOKE_PASS）：
+  - 因子研究 backend/quantradar/research 复用 BulletTrade evaluate_factor_performance（IC/RankIC/分层/多空）
+  - Experiment 管理 backend/quantradar/experiment 基于 Snapshot 指纹的本地 JSON 存证与对比
+  - Makefile（setup/test/smoke/dev）+ scripts/smoke.py 全链路通过：数据→回测→快照→API→Web 入口
+  - 阶段验收标志升级为 QUANTRADAR_SMOKE_PASS（全链路冒烟通过）
+剩余 Phase 9（PostgreSQL / Worker）仍需环境前提（见下方「环境前提」），就绪前不自动写入未知库。
+下一目标（前置验收）：QUANTRADAR_STOCK_V1_PASS（真实 A 股研究闭环，依赖 QUANTRADAR_SMOKE_PASS 全过）。
 ```
 
 ---
