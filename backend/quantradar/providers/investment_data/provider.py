@@ -43,8 +43,20 @@ _PRICE_TABLE = "final_a_stock_eod_price"
 _PRICE_FIELDS = ["open", "high", "low", "close", "volume", "amount"]
 _PRICE_DATE_COL = "tradedate"
 
-# JoinQuant 字段/频率别名 -> investment_data 内部表达（Phase 3 JQ 兼容核心）
-_FIELD_ALIASES = {"money": "amount"}  # JQ 的成交额字段名为 money -> amount
+# 涨跌停来源表（final_a_stock_limit；真实数据，绝不伪造）
+_LIMIT_TABLE = "final_a_stock_limit"
+_LIMIT_FIELDS = ["up_limit", "down_limit"]
+
+# 用户字段名（JoinQuant 约定）-> investment_data 内部列名（价格表 / 涨跌停表）
+_FIELD_TO_COLUMN = {
+    "money": "amount",
+    "high_limit": "up_limit",
+    "low_limit": "down_limit",
+}
+# 计算字段（无独立存储列，由其他字段派生；绝不伪造）
+_COMPUTED_FIELDS = {"paused"}
+
+# JoinQuant 频率别名 -> investment_data 内部表达（Phase 3 JQ 兼容核心）
 _FREQUENCY_ALIASES = {"d": "daily", "day": "daily", "1d": "daily"}
 # 复权在 Phase 5；本阶段 fq='pre'/'post' 仅作为「未调整（LIMIT）」等价 raw 透传，
 # 绝不伪造复权因子；其余未知 fq 仍 NotImplementedError。
@@ -355,16 +367,38 @@ class InvestmentDataProvider(DataProvider):
             internal = normalize_stock_symbol(s)
             jq_to_internal[to_joinquant_symbol(internal)] = internal
 
-        # 字段别名归一（JoinQuant -> investment_data）
-        base_fields = list(_PRICE_FIELDS)
-        requested_raw = list(fields) if fields else base_fields
-        requested = [_FIELD_ALIASES.get(f, f) for f in requested_raw]
-        unknown = [f for f in requested if f not in base_fields]
-        if unknown:
-            raise ValueError(
-                f"get_price: 不支持的字段 {unknown}（原始别名 {requested_raw}）；"
-                f"可用字段={base_fields}"
-            )
+        # 字段解析（JoinQuant -> investment_data 内部列；区分价格表 / 涨跌停表 / 计算字段）
+        price_cols: List[str] = []
+        limit_cols: List[str] = []
+        need_paused = False
+        rename_back: Dict[str, str] = {}  # 内部列名 -> 对外字段名
+        requested_raw = list(fields) if fields else list(_PRICE_FIELDS)
+        available = set(_PRICE_FIELDS) | set(_LIMIT_FIELDS) | _COMPUTED_FIELDS | set(_FIELD_TO_COLUMN.keys())
+        for f in requested_raw:
+            if f in _COMPUTED_FIELDS:
+                need_paused = True
+                continue
+            internal = _FIELD_TO_COLUMN.get(f, f)
+            if internal in _PRICE_FIELDS:
+                price_cols.append(internal)
+                if internal != f:
+                    rename_back[internal] = f
+            elif internal in _LIMIT_FIELDS:
+                limit_cols.append(internal)
+                rename_back[internal] = f
+            else:
+                raise ValueError(
+                    f"get_price: 不支持的字段 {f!r}；"
+                    f"可用字段={_PRICE_FIELDS} + high_limit/low_limit/paused（money->amount）"
+                )
+        # paused 由 volume 派生；若未显式请求 volume 仍内部取用，最后按需剔除
+        volume_requested = "volume" in requested_raw
+        # 价格表必须至少有一列作为日期锚点（即便只请求了涨跌停 / paused）
+        if not price_cols:
+            price_cols.append("volume")
+        if need_paused and "volume" not in price_cols:
+            price_cols.append("volume")
+        drop_volume = (not volume_requested) and ("volume" in price_cols)
 
         # 边界守卫：避免无约束的全表扫描
         if start_date is None and end_date is None and count is None:
@@ -375,19 +409,15 @@ class InvestmentDataProvider(DataProvider):
         ordered_jq = list(jq_to_internal.keys())
         per_security: Dict[str, pd.DataFrame] = {}
         for jq, internal in jq_to_internal.items():
-            per_security[jq] = self._fetch_raw_price(
-                internal, requested, start_date, end_date, count, fill_paused
+            df = self._fetch_raw_price(
+                internal, price_cols, limit_cols, need_paused,
+                start_date, end_date, count, fill_paused,
             )
-
-        # 列名回写为请求时的 JoinQuant 字段名（别名透明：内部 amount -> 对外 money）
-        rename_map = {
-            internal_f: orig_f
-            for orig_f, internal_f in zip(requested_raw, requested)
-            if orig_f != internal_f
-        }
-        if rename_map:
-            for jq in per_security:
-                per_security[jq] = per_security[jq].rename(columns=rename_map)
+            if drop_volume and "volume" in df.columns:
+                df = df.drop(columns=["volume"])
+            if rename_back:
+                df = df.rename(columns=rename_back)
+            per_security[jq] = df
 
         # 单证券：扁平 columns
         if len(ordered_jq) == 1:
@@ -402,26 +432,28 @@ class InvestmentDataProvider(DataProvider):
         combined = combined.swaplevel(0, 1, axis=1).sort_index(axis=1)
         return combined
 
-    def _fetch_raw_price(
+    def _fetch_table_cols(
         self,
+        table: str,
+        cols: List[str],
         internal_symbol: str,
-        fields: List[str],
-        start_date: Optional[Union[str, datetime]],
-        end_date: Optional[Union[str, datetime]],
+        start: Optional[str],
+        end: Optional[str],
         count: Optional[int],
         fill_paused: bool,
+        symbol_col: str = "symbol",
     ) -> pd.DataFrame:
-        """从 final_a_stock_eod_price 拉取单证券原始日频，返回 index=日期的 DataFrame。
+        """从给定表拉取单证券指定列的原始日频，返回 index=日期的 DataFrame。
 
         不做任何复权 / 数值伪造；缺行即缺（NaN 或空行），由上层识别 PARTIAL。
         """
-        start = _fmt_date(start_date)
-        end = _fmt_date(end_date)
+        if not cols:
+            return pd.DataFrame(index=pd.DatetimeIndex([]))
 
-        col_sql = ", ".join(fields)
+        col_sql = ", ".join(cols)
         sql = (
-            f"SELECT tradedate, {col_sql} FROM {_PRICE_TABLE} "
-            f"WHERE symbol = %s"
+            f"SELECT tradedate, {col_sql} FROM {table} "
+            f"WHERE {symbol_col} = %s"
         )
         args: List[Any] = [internal_symbol]
         if start:
@@ -451,12 +483,14 @@ class InvestmentDataProvider(DataProvider):
             # 显式空（上市前 / 退市后 / 无数据窗口）—— 不伪造
             empty_idx = pd.DatetimeIndex([])
             return pd.DataFrame(
-                {f: pd.Series(dtype="float64") for f in fields}, index=empty_idx
+                {c: pd.Series(dtype="float64") for c in cols}, index=empty_idx
             )
 
         dates = pd.to_datetime([r["tradedate"] for r in rows])
-        data = {f: [float(r[f]) if r[f] is not None else float("nan") for r in rows]
-                for f in fields}
+        data = {
+            c: [float(r[c]) if r[c] is not None else float("nan") for r in rows]
+            for c in cols
+        }
         df = pd.DataFrame(data, index=pd.DatetimeIndex(dates))
 
         if fill_paused and start and end:
@@ -467,3 +501,46 @@ class InvestmentDataProvider(DataProvider):
                 cal_idx = pd.DatetimeIndex([pd.Timestamp(d).normalize() for d in cal])
                 df = df.reindex(cal_idx)
         return df
+
+    def _fetch_raw_price(
+        self,
+        internal_symbol: str,
+        price_cols: List[str],
+        limit_cols: List[str],
+        need_paused: bool,
+        start_date: Optional[Union[str, datetime]],
+        end_date: Optional[Union[str, datetime]],
+        count: Optional[int],
+        fill_paused: bool,
+    ) -> pd.DataFrame:
+        """从 final_a_stock_eod_price（价格）+ final_a_stock_limit（涨跌停）拉取单证券日频，
+        并可选派生 paused。返回 index=日期、列为请求字段（含 limit/paused）的 DataFrame。
+
+        涨跌停来自真实表（final_a_stock_limit）；paused 由 volume==0 派生；
+        缺数据显式 NaN（PARTIAL），绝不伪造。
+        """
+        start = _fmt_date(start_date)
+        end = _fmt_date(end_date)
+
+        # 价格表（主表，决定返回日期索引）
+        price_df = self._fetch_table_cols(
+            _PRICE_TABLE, price_cols, internal_symbol, start, end, count, fill_paused
+        )
+
+        result = price_df
+        if limit_cols:
+            # 涨跌停表按相同窗口取全量（忽略 count），再对齐到价格表日期索引
+            limit_df = self._fetch_table_cols(
+                _LIMIT_TABLE, limit_cols, internal_symbol, start, end, None, False
+            )
+            limit_df = limit_df.reindex(price_df.index)
+            result = price_df.join(limit_df, how="left")
+
+        if need_paused:
+            vol = result["volume"] if "volume" in result.columns else pd.Series(
+                0.0, index=result.index
+            )
+            # volume 缺失或为 0 视为停牌（真实信号）；有成交价的交易日视为未停牌
+            result["paused"] = (vol.fillna(0) == 0)
+
+        return result

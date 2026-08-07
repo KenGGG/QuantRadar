@@ -203,3 +203,47 @@ class TestGetPriceReconciliation:
         for f in _PRICE_FIELDS:
             val = mp.loc[d, (f, sym)] if isinstance(mp.columns, pd.MultiIndex) else mp.loc[d, f]
             assert val == pytest.approx(float(raw[0][f]), rel=1e-9)
+
+
+@pytest.mark.unit
+class TestGetPriceLimitAndPaused:
+    """涨跌停（high_limit/low_limit）与 paused 派生字段（真实数据，不伪造）。"""
+
+    def test_high_limit_low_limit_from_limit_table(self, live_provider):
+        sym = "600519.XSHG"
+        internal = normalize_stock_symbol(sym)
+        start, end = "2023-01-03", "2023-01-04"
+        df = live_provider.get_price(sym, start, end, fields=["high_limit", "low_limit"])
+        assert list(df.columns) == ["high_limit", "low_limit"]
+        # 与原表 final_a_stock_limit 对账（up_limit / down_limit）
+        raw = live_provider._connection.query(
+            "SELECT tradedate, up_limit, down_limit FROM final_a_stock_limit "
+            "WHERE symbol = %s AND tradedate >= %s AND tradedate <= %s "
+            "ORDER BY tradedate ASC",
+            (internal, start, end),
+        )
+        assert len(df) == len(raw)
+        for r in raw:
+            d = pd.Timestamp(
+                datetime.datetime.combine(r["tradedate"], datetime.time(0, 0))
+            )
+            assert df.loc[d, "high_limit"] == pytest.approx(float(r["up_limit"]), rel=1e-9)
+            assert df.loc[d, "low_limit"] == pytest.approx(float(r["down_limit"]), rel=1e-9)
+
+    def test_paused_derived_from_volume(self, live_provider):
+        sym = "600519.XSHG"
+        start, end = "2023-01-03", "2023-01-04"
+        df = live_provider.get_price(sym, start, end, fields=["close", "paused"])
+        assert "paused" in df.columns
+        # 有成交（volume>0）的交易日 -> paused == False（不伪造停牌）
+        assert df["paused"].dtype == bool
+        assert (df["paused"] == False).all()  # noqa: E712
+
+    def test_mixed_fields_price_and_limit(self, live_provider):
+        sym = "600519.XSHG"
+        start, end = "2023-01-03", "2023-01-03"
+        df = live_provider.get_price(
+            sym, start, end, fields=["open", "close", "high_limit", "low_limit", "paused"]
+        )
+        assert list(df.columns) == ["open", "close", "high_limit", "low_limit", "paused"]
+        assert df.loc[df.index[0], "high_limit"] > df.loc[df.index[0], "close"] > 0
