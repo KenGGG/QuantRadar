@@ -10,10 +10,11 @@
 # 当前阶段
 
 ```text
-当前阶段：Phase -1 + Phase 0（基础环境 + 现状审计）— 已完成
-阶段标志：BOOTSTRAP_AND_AUDIT_PASS
-最近完成：BulletTrade 基线落地 + investment_data / Qlib / Provider 机制审计
-QuantRadar 代码 commit：本仓库首个 commit（见 git log；upstream base = be0451b）
+当前阶段：Phase 1（控制文档校准 + Provider Registry）— 已完成
+阶段标志：CUSTOM_PROVIDER_REGISTRATION_PASS
+最近完成：文档架构校准（vendor/bullet-trade 布局）+ Generic Provider Registry 实现
+QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
+BulletTrade 快照 base commit：be0451b（记录于 BASELINE.md；vendor/ 无 remote、无 .git）
 ```
 
 ---
@@ -31,7 +32,8 @@ A 股日线                     PASS  （final_a_stock_eod_price，1990-12-19..2
 指数成分                     PASS  （由 ts_index_weight 按 index_code 派生 stock_code）
 涨跌停                       PASS  （final_a_stock_limit，pre_close/up_limit/down_limit）
 ST 标记                      PARTIAL（bao_a_stock_eod_info.is_st ∈ {0,1}；bao 源仅至 2023-06-09）
-Provider 注册机制            PASS  （providers 包 + _create_provider 工厂，可扩展，见下）
+Provider 源码审计             PASS  （7 问已回答，见下「Provider 机制」）
+Generic Provider Registry    PASS  （Phase 1 实现：register_data_provider / unregister_data_provider，经 _create_provider 统一入口，见下）
 Qlib import                  PASS  （pyqlib 0.9.7 已装入 .venv）
 ```
 
@@ -45,7 +47,7 @@ alpha factor                 BLOCKED（investment_data 无因子表）
 公司行为(分红/拆股)显式数据   LIMIT  （无独立表；仅 bao.adjfactor/adjclose 隐含，get_split_dividend 待建设）
 Qlib 数据                     PARTIAL（import OK；QLIB_DATA_NOT_BUILT，全机无 qlib_data/cn_data）
 停牌(tradestatus) 鲁棒性      PARTIAL（bao.tradestatus 列存在，语义与覆盖待 Phase 2 确认；bao 源至 2023-06-09）
-InvestmentDataProvider       BLOCKED（本轮为审计，未开发；Phase 1/2 建设）
+InvestmentDataProvider       NOT IMPLEMENTED（Phase 1 仅实现 Generic Registry；实际 Provider 落地于 Phase 2）
 FastAPI / PostgreSQL / Worker / WebUI   BLOCKED（Phase 7/8 前）
 Qlib 模型                     BLOCKED（Phase 10 前）
 QMT / 实盘                    BLOCKED（未来实盘节点）
@@ -93,7 +95,11 @@ investment_data (Dolt 3307)
 ### Provider 机制（源码审计，回答 7 问）
 1. **DataProvider ABC 接口**：`bullet_trade/data/providers/base.py`。抽象方法：`get_price`（含 `fq='pre'` 与 `pre_factor_ref_date`）、`get_trade_days`、`get_all_securities`、`get_index_stocks`、`get_split_dividend`；可选（默认抛 `NotImplementedError`）：`get_bars`、`get_ticks`、`get_index_weights`、`get_fundamentals`、`get_industry_stocks` 等。
 2. **Provider 如何创建**：`bullet_trade/data/api.py:_create_provider(provider_name, overrides)` 工厂，按名称 import 并实例化具体类并注入配置；也可直接 `new` 实例传入 `set_data_provider`。
-3. **是否已有外部注册机制**：**是**。`providers/` 已有 jqdata/tushare/miniqmt/remote_qmt/rqdata/easy_tdx 实现；`_create_provider` 为硬编码 if 链。新增 `InvestmentDataProvider` = 在 `providers/` 加模块 + 在工厂加一个 `investment_data` 分支（最小改动）。
+3. **是否已有外部注册机制**：**Phase 1 起为「是（通用注册表）」**。`providers/` 已有 jqdata/tushare/miniqmt/remote_qmt/rqdata/easy_tdx 实现；`_create_provider` 为硬编码 if 链（内置 Provider）。Phase 1 **新增 Generic Provider Registry**：`register_data_provider(name, factory, *, overwrite=False)` / `unregister_data_provider(name)`。注册后，`_create_provider` 会先查注册表，命中则用 `factory(merged_config)` 创建（统一入口、不复制逻辑）；未命中才走内置 if 链；未知名称仍 `ValueError`。
+   - **不再**需要为外部 Provider（如未来的 `InvestmentDataProvider`）往 `_create_provider` 里加硬编码 `if target == "investment_data"` 分支；改为在 QuantRadar 侧用 `register_data_provider` 注册工厂，再 `set_data_provider(name)` 使用。
+   - factory 契约：`factory(config: dict) -> DataProvider`（config = `get_data_provider_config()` 与 overrides 的合并）。
+   - 内置 Provider 名称受保护，默认禁止外部覆盖（需显式 `overwrite=True`）。
+   - 暴露位置：`bullet_trade.data.register_data_provider` / `unregister_data_provider`。
 4. **set_data_provider 如何工作**：`api.set_data_provider(provider)` 接受实例或名称；实例直接存为全局 `_provider`，名称走 `_create_provider`；随后 `auth()`、绑定 sdk fallback、缓存、按需关闭 live 缓存。
 5. **外层 get_price/history 如何调用 Provider**：`bullet_trade/data/api.py` 顶层 `get_price/history/get_trade_days` 直接调用全局 `_provider` 对应方法。
 6. **BacktestEngine 如何取得 Provider**：`core/engine.py` import `get_data_provider`，回测中经 `get_data_provider()` 取全局 provider；并把 wrapped `set/get_data_provider` 注入策略命名空间，故策略内 `set_data_provider(...)` 即设置全局 provider。
@@ -120,7 +126,7 @@ bao_a_stock_eod_info         → is_st / tradestatus(停牌) / adjfactor(复权�
 ## 风险
 
 ```text
-R1  Python 3.11 目标未满足（仅 3.12.3）。bullet_trade 在 3.12.3 安装/导入通过，需持续观察兼容性。
+R1  Python 支持范围 >=3.11,<3.13（本机仅 3.12.3 可用，已验证安装/导入通过）。3.11 不可用、3.13 未验证；后续升级需复测。
 R2  symbol 多格式：Provider 必须做归一化，否则指数/日线对不齐。
 R3  investment_data 多源湖（final/c/ts/w/yahoo），final_* 似主源；Phase 2 需定主源与去重。
 R4  复权：final 仅 adjclose，原始 factor 只在 bao(adjfactor)；引擎已有 dynamic pre-factor 逻辑，Provider 需供给 raw price + factor。
@@ -135,7 +141,8 @@ R8  vendor 为快照，无 upstream 完整 git 历史；禁止向 upstream 推�
 ## 下一任务
 
 ```text
-Phase 1：Provider 注册机制 —— 在 _create_provider 增加 'investment_data' 分支 + 新建 providers/investment_data.py 骨架
-Phase 2：InvestmentDataProvider 核心 —— 证券代码 / 交易日历 / 原始日线 / 证券主数据 / 指数成分 / 指数权重
+Phase 1（已完成）：控制文档校准 + Generic Provider Registry —— 注册表/注销/统一入口/内置兼容/测试，验收 CUSTOM_PROVIDER_REGISTRATION_PASS
+Phase 2：InvestmentDataProvider 核心 —— 通过 register_data_provider 注册，实现 证券代码 / 交易日历 / 原始日线 / 证券主数据 / 指数成分 / 指数权重
 禁止提前开发：React / WebUI / FastAPI / Worker / PostgreSQL / Qlib 模型 / ETF / QMT / 实盘
+等待下一阶段（Phase 2）授权后才开始
 ```

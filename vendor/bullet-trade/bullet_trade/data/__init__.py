@@ -4,7 +4,9 @@ JQData 数据模块
 from .api import (
     get_price, attribute_history, get_current_data,
     get_trade_days, get_all_securities, get_index_stocks,
-    set_data_provider, get_data_provider
+    set_data_provider, get_data_provider,
+    register_data_provider, unregister_data_provider,
+    reload_data_provider_from_env,
 )
 
 # 提供兼容的 auth 接口，委托给当前数据提供者
@@ -22,5 +24,8 @@ __all__ = [
     'get_index_stocks',
     'set_data_provider',
     'get_data_provider',
+    'register_data_provider',
+    'unregister_data_provider',
+    'reload_data_provider_from_env',
 ]
 

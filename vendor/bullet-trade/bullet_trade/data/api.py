@@ -37,6 +37,11 @@ _cache_forced_off_warned = False
 _provider_cache: Dict[str, DataProvider] = {}
 _provider_auth_attempted: Dict[str, bool] = {}
 
+# 外部通用 Provider 注册表（Phase 1：Generic Provider Registry）
+_PROVIDER_REGISTRY: Dict[str, Callable] = {}
+# 受保护的内置 Provider 名称（规范化后），默认禁止被外部注册覆盖
+_BUILTIN_PROVIDER_NAMES = {"jqdata", "tushare", "miniqmt", "remote_qmt", "rqdata", "easy_tdx"}
+
 
 def _normalize_provider_name(name: Optional[str]) -> str:
     """
@@ -58,6 +63,50 @@ def _normalize_provider_name(name: Optional[str]) -> str:
     return lowered
 
 
+# ============================================================
+# Generic Provider Registry（Phase 1）
+# ============================================================
+# 允许在不修改 BulletTrade 内置 provider 创建逻辑的前提下，通过名称注册外部
+# 数据提供者工厂。_create_provider 仍是统一的创建入口：先查外部注册表，命中则用
+# factory 创建；否则走内置 factory；未知则 ValueError。set_data_provider /
+# get_data_provider / reload_data_provider_from_env 均经 _create_provider，不复制逻辑。
+def register_data_provider(
+    name: str,
+    factory: Callable,
+    *,
+    overwrite: bool = False,
+) -> None:
+    """
+    注册一个通用外部数据提供者工厂。
+
+    注册后可通过 set_data_provider(name) / get_data_provider(name) /
+    reload_data_provider_from_env(name) 以名称创建该 Provider。
+
+    factory 契约：factory(config: dict) -> DataProvider
+        config 为完整数据提供者配置（get_data_provider_config()）与 overrides 的合并。
+
+    默认禁止覆盖内置 Provider 或已注册 Provider；需显式 overwrite=True。
+    """
+    normalized = _normalize_provider_name(name)
+    if not overwrite:
+        if normalized in _BUILTIN_PROVIDER_NAMES or normalized in _PROVIDER_REGISTRY:
+            raise ValueError(
+                f"Provider 名称 '{name}' 已被占用（内置或已注册），"
+                f"如需覆盖请使用 overwrite=True。"
+            )
+    _PROVIDER_REGISTRY[normalized] = factory
+
+
+def unregister_data_provider(name: str) -> None:
+    """
+    注销一个已注册的外部数据提供者（主要用于测试清理），不影响内置 Provider。
+    """
+    normalized = _normalize_provider_name(name)
+    _PROVIDER_REGISTRY.pop(normalized, None)
+    _provider_cache.pop(normalized, None)
+    _provider_auth_attempted.pop(normalized, None)
+
+
 def _create_provider(
     provider_name: Optional[str] = None, overrides: Optional[Dict[str, Any]] = None
 ) -> DataProvider:
@@ -67,6 +116,13 @@ def _create_provider(
     config = get_data_provider_config()
     target = _normalize_provider_name(provider_name or config.get("default") or "jqdata")
     overrides = overrides or {}
+
+    # 外部注册的通用 Provider 优先（Generic Provider Registry）
+    registry_factory = _PROVIDER_REGISTRY.get(target)
+    if registry_factory is not None:
+        merged_config = dict(config)
+        merged_config.update(overrides)
+        return registry_factory(merged_config)
 
     if target == "jqdata":
         from .providers.jqdata import JQDataProvider

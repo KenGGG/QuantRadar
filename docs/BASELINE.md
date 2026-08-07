@@ -12,11 +12,12 @@
 
 ```text
 OS:                  Linux (Ubuntu)；平台架构 x86_64
-Python:              3.12.3   ⚠ 目标 3.11 在本机不可用（见风险）
+Python:              3.12.3   （支持范围 >=3.11,<3.13；本机仅 3.12.3 可用，已验证）
 Node:                v22.23.1
 BulletTrade version: 0.9.2（tag v0.9.2）
 BulletTrade base commit: be0451be09b1de3516d3959e70008031824103cb
-Git remotes:         upstream = https://github.com/BulletTrade/bullet-trade.git（fetch + push）
+Git remotes:         origin = https://github.com/KenGGG/QuantRadar.git（QuantRadar 自有仓库）
+                      vendor/bullet-trade 不配置 remote（upstream URL 仅记于此；base commit = be0451b）
 investment_data path:/data/investment_data
 investment_data 类型:  Dolt 数据库（.dolt / .doltcfg），SQL server 监听 127.0.0.1:3307
 Dolt commit:         vg0ic1rpm6ilssoljq3ruv8pavr1blb1（committer: bruce_h_z_sun）
@@ -43,8 +44,8 @@ dolt CLI 可用：/usr/local/bin/dolt（版本 1.86.0；注意比官方新版本
 
 ```text
 虚拟环境：/data/Projects/a-stock-research/QuantRadar/.venv（项目内，已 gitignore）
-安装方式：pip install -e .（bullet-trade 0.9.2 可编辑，指向当前源码）
-验证：import bullet_trade → /data/Projects/a-stock-research/QuantRadar/bullet_trade/__init__.py
+安装方式：pip install -e ./vendor/bullet-trade（bullet-trade 0.9.2 可编辑，指向 vendored 当前源码）
+验证：import bullet_trade → /data/Projects/a-stock-research/QuantRadar/vendor/bullet-trade/bullet_trade/__init__.py
 附加安装：pyqlib 0.9.7（Phase 10 前仅验证 import）
 ```
 
@@ -53,7 +54,7 @@ dolt CLI 可用：/usr/local/bin/dolt（版本 1.86.0；注意比官方新版本
 # 验收结论（ACTIVE_PHASE §十）
 
 ```text
-[PASS] QuantRadar Git 基线（fork upstream 完成，remote 已 rename upstream）
+[PASS] QuantRadar Git 基线（根目录自有仓库 origin=KenGGG/QuantRadar；vendor/bullet-trade 为受控快照无 remote）
 [PASS] 项目内 Python .venv（python3.12.3；目标 3.11 缺失，见风险）
 [PASS] BulletTrade Ubuntu Core（bullet-trade --version=0.9.2；BacktestEngine import OK；lab --diagnose OK）
 [PASS] investment_data 可访问（Dolt 3307 SELECT 正常）
