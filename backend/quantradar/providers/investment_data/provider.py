@@ -8,7 +8,8 @@ Phase 2A 范围（仅基础能力与历史时点查询，禁止伪造 / 禁止�
     - get_security_info
     - get_index_stocks（Point-in-Time）
     - get_index_weights（Point-in-Time）
-    - get_split_dividend / get_price：本阶段显式 NotImplementedError（分别在 Phase 5 / 2B）
+    - get_price（fq='none' 日频原始价；Phase 2B）
+    - get_split_dividend：本阶段显式 NotImplementedError（Phase 5）
 
 数据正确性优先：所有历史查询按 date 截断到「当时可得」，避免未来函数与幸存者偏差。
 缺数据（如证券 display_name）明确标记 PARTIAL/LIMIT，绝不默认填充正常值。
@@ -16,6 +17,7 @@ Phase 2A 范围（仅基础能力与历史时点查询，禁止伪造 / 禁止�
 
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import datetime, time
 from typing import Any, Dict, List, Optional, Union
 
@@ -31,9 +33,15 @@ from .connection import (
 from .symbols import (
     SymbolError,
     normalize_index_symbol,
+    normalize_stock_symbol,
     to_joinquant_symbol,
     to_ts_symbol,
 )
+
+# final_a_stock_eod_price 原表字段（fq='none' 直接用这些；adjclose 绝不用于原始价）
+_PRICE_TABLE = "final_a_stock_eod_price"
+_PRICE_FIELDS = ["open", "high", "low", "close", "volume", "amount"]
+_PRICE_DATE_COL = "tradedate"
 
 # 交易日历统一采用 SSE（A 股沪市日历；investment_data 仅 SSE 行，已被审计为可接受）
 _CALENDAR_EXCHANGE = "SSE"
@@ -286,14 +294,150 @@ class InvestmentDataProvider(DataProvider):
         frequency: str = "daily",
         fields: Optional[List[str]] = None,
         skip_paused: bool = False,
-        fq: str = "pre",
+        fq: str = "none",
         count: Optional[int] = None,
         panel: bool = True,
         fill_paused: bool = True,
         pre_factor_ref_date: Optional[Union[str, datetime]] = None,
         prefer_engine: bool = False,
         force_no_engine: bool = False,
-    ):
-        raise NotImplementedError(
-            "InvestmentDataProvider: get_price 待 Phase 2B 实现（基于 final_a_stock_eod_price 的日频原始价）"
+    ) -> pd.DataFrame:
+        """日频原始行情（fq='none'）。
+
+        数据源：final_a_stock_eod_price（列 tradedate / symbol / open / high / low /
+        close / volume / amount）。严禁读取 adjclose（那是复权价，属 Phase 5）。
+
+        约定：
+            - frequency 仅支持 'daily'；其余抛 NotImplementedError（分钟级 UNSUPPORTED）。
+            - fq 仅支持 'none'；复权（'pre' / 'post' 等）抛 NotImplementedError（Phase 5）。
+            - security 支持 str 或 List[str]，经 normalize_stock_symbol 转 SH600519 查表。
+            - 单证券：返回 DataFrame，index=日期，columns=字段（扁平）。
+            - 多证券 panel=True：返回 DataFrame，index=日期，columns=MultiIndex(字段, 证券)。
+            - count 与 start/end 组合：无边界（start/end/count 全 None）明确抛 ValueError，
+              避免全表扫描；count 优先按交易日历截断（见 get_trade_days）。
+            - 缺行（停牌 / 退市 / 上市前）不做任何回填或伪造；对应位置为 NaN/空，
+              调用方应据此识别 PARTIAL，禁止假装完整。
+        """
+        if frequency != "daily":
+            raise NotImplementedError(
+                "InvestmentDataProvider: 仅支持日频（frequency='daily'）；"
+                "分钟级 UNSUPPORTED"
+            )
+        if fq != "none":
+            raise NotImplementedError(
+                f"InvestmentDataProvider: 复权价（fq={fq!r}）待 Phase 5 建设；"
+                "本阶段仅支持 fq='none' 原始价"
+            )
+
+        # 归一化 securities -> 有序映射 {jq_code: internal_symbol}
+        if isinstance(security, str):
+            securities = [security]
+        else:
+            securities = list(security)
+        if not securities:
+            raise SymbolError("get_price: security 不能为空列表")
+
+        jq_to_internal: "dict[str, str]" = {}
+        for s in securities:
+            internal = normalize_stock_symbol(s)
+            jq_to_internal[to_joinquant_symbol(internal)] = internal
+
+        # 字段裁剪
+        requested = list(fields) if fields else list(_PRICE_FIELDS)
+        unknown = [f for f in requested if f not in _PRICE_FIELDS]
+        if unknown:
+            raise ValueError(
+                f"get_price: 不支持的字段 {unknown}；可用字段={_PRICE_FIELDS}"
+            )
+
+        # 边界守卫：避免无约束的全表扫描
+        if start_date is None and end_date is None and count is None:
+            raise ValueError(
+                "get_price: 必须指定 start_date / end_date 或 count 之一"
+            )
+
+        ordered_jq = list(jq_to_internal.keys())
+        per_security: Dict[str, pd.DataFrame] = {}
+        for jq, internal in jq_to_internal.items():
+            per_security[jq] = self._fetch_raw_price(
+                internal, requested, start_date, end_date, count, fill_paused
+            )
+
+        # 单证券：扁平 columns
+        if len(ordered_jq) == 1:
+            return per_security[ordered_jq[0]]
+
+        # 多证券：columns = MultiIndex(字段, 证券)
+        frames = [per_security[jq] for jq in ordered_jq]
+        # 先按证券拼接（level0=证券），再交换到 (字段, 证券)
+        combined = pd.concat(
+            frames, axis=1, keys=ordered_jq, names=["security", "field"]
         )
+        combined = combined.swaplevel(0, 1, axis=1).sort_index(axis=1)
+        return combined
+
+    def _fetch_raw_price(
+        self,
+        internal_symbol: str,
+        fields: List[str],
+        start_date: Optional[Union[str, datetime]],
+        end_date: Optional[Union[str, datetime]],
+        count: Optional[int],
+        fill_paused: bool,
+    ) -> pd.DataFrame:
+        """从 final_a_stock_eod_price 拉取单证券原始日频，返回 index=日期的 DataFrame。
+
+        不做任何复权 / 数值伪造；缺行即缺（NaN 或空行），由上层识别 PARTIAL。
+        """
+        start = _fmt_date(start_date)
+        end = _fmt_date(end_date)
+
+        col_sql = ", ".join(fields)
+        sql = (
+            f"SELECT tradedate, {col_sql} FROM {_PRICE_TABLE} "
+            f"WHERE symbol = %s"
+        )
+        args: List[Any] = [internal_symbol]
+        if start:
+            sql += " AND tradedate >= %s"
+            args.append(start)
+        if end:
+            sql += " AND tradedate <= %s"
+            args.append(end)
+
+        # count 优先：未给定 start 时取窗口内「最近 N 日」（DESC+LIMIT 再翻转）；
+        # 给定 start 时取「自 start 起前 N 日」（ASC+LIMIT）——与 JoinQuant 语义一致。
+        if count is not None:
+            count = int(count)
+            if start:
+                sql += " ORDER BY tradedate ASC LIMIT %s"
+            else:
+                sql += " ORDER BY tradedate DESC LIMIT %s"
+            args.append(count)
+            rows = self._connection.query(sql, args)
+            if not start:
+                rows.reverse()  # 回到升序
+        else:
+            sql += " ORDER BY tradedate ASC"
+            rows = self._connection.query(sql, args)
+
+        if not rows:
+            # 显式空（上市前 / 退市后 / 无数据窗口）—— 不伪造
+            empty_idx = pd.DatetimeIndex([])
+            return pd.DataFrame(
+                {f: pd.Series(dtype="float64") for f in fields}, index=empty_idx
+            )
+
+        dates = pd.to_datetime([r["tradedate"] for r in rows])
+        data = {f: [float(r[f]) if r[f] is not None else float("nan") for r in rows]
+                for f in fields}
+        df = pd.DataFrame(data, index=pd.DatetimeIndex(dates))
+
+        if fill_paused and start and end:
+            # 仅当显式给定闭合窗口时，才对齐到交易日历并将停牌/缺行日置为 NaN
+            # （显式 PARTIAL，绝不向前填充制造价格）。无边界时不扩展，避免全历史扫描。
+            cal = self.get_trade_days(start, end)
+            if cal:
+                cal_idx = pd.DatetimeIndex([pd.Timestamp(d).normalize() for d in cal])
+                df = df.reindex(cal_idx)
+        return df

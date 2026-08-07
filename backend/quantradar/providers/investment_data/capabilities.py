@@ -47,8 +47,9 @@ CAPABILITIES: Dict[str, Dict[str, str]] = {
         "note": "ts_index_weight，按指定 date 取最近交易日快照（PIT）",
     },
     "get_price": {
-        "status": "UNSUPPORTED",
-        "note": "日频原始价见 Phase 2B（final_a_stock_eod_price）",
+        "status": "PASS",
+        "note": "final_a_stock_eod_price 日频原始价（fq='none'）；open/high/low/close/volume/"
+        "amount 直读，绝不使用 adjclose；仅 daily；复权待 Phase 5；缺行显式 NaN（PARTIAL）",
     },
     "get_split_dividend": {
         "status": "UNSUPPORTED",

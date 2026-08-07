@@ -105,10 +105,6 @@ class TestIndex:
 
 @pytest.mark.unit
 class TestNotImplemented:
-    def test_get_price_not_implemented(self, live_provider):
-        with pytest.raises(NotImplementedError):
-            live_provider.get_price("600519.XSHG")
-
     def test_get_split_dividend_not_implemented(self, live_provider):
         with pytest.raises(NotImplementedError):
             live_provider.get_split_dividend("600519.XSHG")

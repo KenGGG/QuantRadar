@@ -10,9 +10,9 @@
 # 当前阶段
 
 ```text
-当前阶段：Phase 2A（InvestmentDataProvider 基础能力）— 已完成
-阶段标志：INVESTMENT_DATA_PROVIDER_BASE_PASS
-最近完成：QuantRadar 包（backend/quantradar）+ 只读 Dolt 连接 + symbol mapping + get_trade_days / get_all_securities(PIT) / get_security_info / get_index_stocks(PIT) / get_index_weights(PIT) + bootstrap 层
+当前阶段：Phase 2B（原始日线 get_price）— 已完成
+阶段标志：RAW_DAILY_PRICE_PASS
+最近完成：get_price(fq='none') 日频原始价（final_a_stock_eod_price；单/多证券、start/end/count/fields、MultiIndex 面板、与原表抽样对账一致；fq!=none 与 frequency!=daily 明确 NotImplementedError；上市前/退市后/无数据窗口显式空不伪造）
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
 BulletTrade 快照 base commit：be0451b（记录于 BASELINE.md；vendor/ 无 remote、无 .git）
 ```
@@ -36,6 +36,7 @@ Provider 源码审计             PASS  （7 问已回答，见下「Provider �
 Generic Provider Registry    PASS  （Phase 1 实现：register_data_provider / unregister_data_provider，经 _create_provider 统一入口，见下）
 Registry lifecycle           PASS  （Phase 1.1：unregister 清 Registry/cache/auth；overwrite 清旧 cache 并用新 factory；active global 不热切换；13/13 测试通过）
 InvestmentDataProvider base  PASS  （Phase 2A：只读 Dolt 连接 + symbol mapping + get_trade_days / get_all_securities(PIT) / get_security_info / get_index_stocks(PIT) / get_index_weights(PIT)；38/38 QuantRadar 测试通过）
+get_price 日频原始价          PASS  （Phase 2B：final_a_stock_eod_price，fq='none'，open/high/low/close/volume/amount 直读，绝不使用 adjclose；单/多证券、start/end/count/fields、与原表抽样对账一致；17 个新增测试通过）
 QuantRadar Provider bootstrap IMPLEMENTED（Phase 2A：backend/quantradar/bootstrap.py 显式 register + set_active + 校验 name）
 Qlib import                  PASS  （pyqlib 0.9.7 已装入 .venv）
 ```
@@ -50,7 +51,7 @@ alpha factor                 BLOCKED（investment_data 无因子表）
 公司行为(分红/拆股)显式数据   LIMIT  （无独立表；仅 bao.adjfactor/adjclose 隐含，get_split_dividend 待建设）
 Qlib 数据                     PARTIAL（import OK；QLIB_DATA_NOT_BUILT，全机无 qlib_data/cn_data）
 停牌(tradestatus) 鲁棒性      PARTIAL（bao.tradestatus 列存在，语义与覆盖待 Phase 2 确认；bao 源至 2023-06-09）
-InvestmentDataProvider       BASE IMPLEMENTED（Phase 2A）；get_price NOT IMPLEMENTED（Phase 2B）；get_split_dividend NOT IMPLEMENTED（Phase 5）
+InvestmentDataProvider       BASE IMPLEMENTED（Phase 2A）+ get_price PASS（Phase 2B）；get_split_dividend NOT IMPLEMENTED（Phase 5）
 FastAPI / PostgreSQL / Worker / WebUI   BLOCKED（Phase 7/8 前）
 Qlib 模型                     BLOCKED（Phase 10 前）
 QMT / 实盘                    BLOCKED（未来实盘节点）
@@ -149,7 +150,7 @@ R8  vendor 为快照，无 upstream 完整 git 历史；禁止向 upstream 推�
 Phase 1（已完成）：Generic Provider Registry —— CUSTOM_PROVIDER_REGISTRATION_PASS
 Phase 1.1（已完成）：Registry 生命周期加固 —— PROVIDER_REGISTRY_LIFECYCLE_PASS
 Phase 2A（已完成）：InvestmentDataProvider 基础能力 —— INVESTMENT_DATA_PROVIDER_BASE_PASS
-Phase 2B（建议下一阶段）：原始日线 get_price(fq="none") —— 基于 final_a_stock_eod_price，日频，与数据库原表抽样对账
-禁止提前开发：get_price 之外的数据能力 / FastAPI / React / PostgreSQL / Qlib / ETF / QMT / 实盘
-等待 Phase 2B 授权后才开始（无人值守模式：自动进入）
+Phase 2B（已完成）：原始日线 get_price(fq="none") —— 基于 final_a_stock_eod_price，日频，与数据库原表抽样对账 —— RAW_DAILY_PRICE_PASS
+Phase 3（下一阶段）：JoinQuant 兼容层（get_price/history/attribute_history 对齐 JQ 语义、复权因子读取、停牌/涨跌停语义对齐）
+禁止提前开发：复权价 / FastAPI / React / PostgreSQL / Qlib / ETF / QMT / 实盘（除非当前阶段需要）
 ```

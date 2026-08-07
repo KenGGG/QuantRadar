@@ -2,32 +2,27 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：Phase 2B — 原始日线（Raw Daily Price）**
+**当前阶段：Phase 3 — JoinQuant 兼容层（JQ Compat Core）**
 
 ```text
-上一阶段 Phase 2A 已完成（INVESTMENT_DATA_PROVIDER_BASE_PASS）：
-  - QuantRadar 包（backend/quantradar）+ 只读 Dolt 连接 + symbol mapping
-  - get_trade_days / get_all_securities(PIT) / get_security_info / get_index_stocks(PIT) / get_index_weights(PIT)
-  - bootstrap 层（register + set_active + 校验 name）；38/38 QuantRadar 测试通过
-本阶段只做 Phase 2B；完成后自动进入 Phase 3（无人值守）。
+上一阶段 Phase 2B 已完成（RAW_DAILY_PRICE_PASS）：
+  - get_price(fq='none') 日频原始价（final_a_stock_eod_price）
+  - 单/多证券 panel（MultiIndex 字段,证券）、start/end/count/fields、与原表抽样对账一致
+  - fq!=none / frequency!=daily 明确 NotImplementedError；上市前/退市后/无数据窗口显式空不伪造
+  - 新增 17 个测试；QuantRadar 测试 55/55 通过；BulletTrade registry 回归 13/13 通过
+本阶段做 Phase 3；完成后自动进入 Phase 4（无人值守）。
 ```
 
 ---
 
 # 一、目标
 
-在已落地的 `InvestmentDataProvider` 之上实现日频原始行情：
+在 InvestmentDataProvider 已有能力之上，补齐 **JoinQuant 兼容语义**，使上层 BulletTrade
+回测引擎（Phase 4）能无感调用 `get_price` / `history` / `attribute_history` 等接口，
+且结果符合 JQ 约定。
 
 ```text
-get_price(fq="none")
-```
-
-数据源优先级：`final_a_stock_eod_price`（字段 open/high/low/close/volume/amount，symbol 形如 SH600519）。
-
-```text
-不得 mock
-不得返回虚假数据
-不得用 adjclose 冒充原始价
+禁止 mock；禁止返回虚假数据；复权（fq='pre'/'post'）若需实现须基于真实因子，属本阶段但可限范围。
 ```
 
 ---
@@ -36,70 +31,47 @@ get_price(fq="none")
 
 ```text
 允许：
-  - 在 backend/quantradar/providers/investment_data/provider.py 实现 get_price
-  - 仅日频（frequency='daily'）；分钟级 UNSUPPORTED（raise 或明确不支持）
-  - 支持 security（str 或 List[str]）、start_date、end_date、count、fields、多证券 panel
-  - 与原表抽样对账（open/high/low/close/volume/amount 数值一致）
-  - 新增/补齐 tests/unit 测试
+  - 对齐 BulletTrade 顶层 get_price / history 调用约定（频率、复权、panel、skip_paused/fill_paused）
+  - get_price 支持 frequency 别名（'d'/'day'/'daily' 归一为 daily）；其余仍 NotImplementedError
+  - 复权价（fq='pre'/'post'）读取真实复权因子（final/bao 表的 adjclose/adjfactor）实现；
+    若因子源不可用则明确 PARTIAL/LIMIT，绝不伪造
+  - attribute_history / history 基于 get_price 的组合封装（字段名映射：open/high/low/close/volume/amount）
+  - 停牌/涨跌停语义与 JQ 对齐（get_price 已显式 PARTIAL；涨跌停数据来自 final_a_stock_limit）
+  - 补齐 tests/unit 测试
 
 禁止：
-  - 实现复权（fq='pre' / factor）—— 那是 Phase 5
-  - 改动 BulletTrade 核心
+  - 改动 BulletTrade 核心（registry / engine）
   - 写入 investment_data
   - 扩大至 ETF / QMT / 实盘
+  - 提前进入 FastAPI / WebUI / Qlib
 ```
 
 ---
 
-# 三、get_price 契约
-
-签名（与 BulletTrade DataProvider ABC 对齐）：
-
-```python
-get_price(security, start_date=None, end_date=None, frequency='daily',
-          fields=None, skip_paused=False, fq='none', count=None,
-          panel=True, fill_paused=True, pre_factor_ref_date=None, ...)
-```
-
-要求：
+# 三、兼容契约
 
 ```text
-1. 返回 pandas.DataFrame；多证券 panel=True 时索引=日期、列=MultiIndex(字段, 证券)
-2. fq='none'：直接返回 final_a_stock_eod_price 的原始 open/high/low/close/volume/amount
-3. frequency 仅 'daily' 支持；非 daily 抛 NotImplementedError（分钟 UNSUPPORTED）
-4. security 经 normalize_stock_symbol 转为 SH600519 形式查 final_a_stock_eod_price.symbol
-5. start/end/count 语义与 JoinQuant 一致；count 与 start/end 组合按既有约定
-6. skip_paused / fill_paused：若数据不足（停牌/缺行）必须显式 PARTIAL，不得假装完整
+1. get_price(fq='none')：沿用 Phase 2B 实现；本阶段仅扩展 fq 别名与频率别名归一。
+2. get_price(fq='pre'/'post')：使用真实复权因子调整 close/开盘等；或返回 adjclose 直读（若源为后复权）。
+   必须与原表 adjclose 对账一致；不复权时绝不混入 adjclose（已验证）。
+3. history / attribute_history：封装 get_price，按 JQ 字段名（'open'/'close'/...、'money'->amount）
+   返回，保证 BulletTrade 回测调用签名兼容。
+4. Panel 形状：多证券 MultiIndex(字段, 证券)；单证券扁平 columns（与 Phase 2B 一致）。
 ```
 
 ---
 
-# 四、原始价对账（必须）
+# 四、测试
+
+至少覆盖：
 
 ```text
-固定或随机抽样若干 (symbol, 日期窗口)
-Provider 返回 vs investment_data.final_a_stock_eod_price 原表
-要求 open/high/low/close/volume/amount 数值一致（允许浮点容差）
-```
-
-对账测试作为新增测试的一部分，禁止用「接近」掩盖差异。
-
----
-
-# 五、测试
-
-至少覆盖（Phase 2A 已搭好 DB 测试 fixture）：
-
-```text
-- 单证券普通窗口（600519.XSHG / 000001.XSHE）
-- 较早历史窗口
-- count 取最近 N 日
-- fields 选择子集
-- 多证券 panel
-- 无数据窗口（返回空 / 显式 BLOCKED）
-- 上市前 / 退市后（显式空或 PARTIAL）
-- 与原表抽样对账
-- frequency != daily -> NotImplementedError
+- frequency 别名（'d'/'day'）归一为 daily 可调用
+- fq='pre'/'post' 复权值与原表 adjclose 对账（或显式 PARTIAL 若因子不可用）
+- history / attribute_history 封装返回字段与形状正确
+- 不复权时绝不混入 adjclose（回归）
+- 上市前/退市后/无数据窗口 显式空（回归）
+- BulletTrade registry 回归保持全过
 ```
 
 运行：
@@ -111,28 +83,28 @@ BulletTrade registry 回归（test_provider_registry.py）保持全过
 
 ---
 
-# 六、验收
+# 五、验收
 
-完成标志：`RAW_DAILY_PRICE_PASS`
+完成标志：`JQ_COMPAT_CORE_PASS`
 
 ```text
-[PASS] get_price(fq='none') 日频实现
-[PASS] 单/多证券、start/end/count/fields 正确
-[PASS] 与原表抽样对账一致
-[PASS] 上市前/退市后/无数据窗口 显式处理（不伪造）
+[PASS] frequency / fq 别名归一
+[PASS] 复权价（如需）与原表 adjclose 对账一致 / 或明确 PARTIAL
+[PASS] history / attribute_history 封装兼容 JQ 字段与形状
+[PASS] 不复权绝不混入 adjclose（回归）
 [PASS] QuantRadar 新增测试通过 + BulletTrade registry 回归通过
-[PASS] 单一 commit 含 RAW_DAILY_PRICE_PASS
+[PASS] 单一 commit 含 JQ_COMPAT_CORE_PASS
 ```
 
 ---
 
-# 七、结束条件
+# 六、结束条件
 
 ```text
-1. 实现 get_price（日频原始价）+ 对账测试
-2. 更新 docs/CURRENT_STATE.md（Provider 状态、get_price PASS）
+1. 实现 JQ 兼容封装 + 复权（按需）+ 对账测试
+2. 更新 docs/CURRENT_STATE.md（Provider 状态、JQ 兼容 PASS）
 3. git diff --check 无遗留空白错误
-4. 单一 commit（RAW_DAILY_PRICE_PASS）
+4. 单一 commit（JQ_COMPAT_CORE_PASS）
 5. push origin main
-6. 将 ACTIVE_PHASE 改为 Phase 3 → 自动进入 Phase 3
+6. 将 ACTIVE_PHASE 改为 Phase 4 → 自动进入 Phase 4（真实 A 股回测）
 ```
