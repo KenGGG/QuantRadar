@@ -1,0 +1,186 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bullet-trade"
+# 版本号从 bullet_trade/__version__.py 动态读取，升级时只需修改那一个文件
+dynamic = ["version"]
+description = "BulletTrade - 专业的量化交易系统，兼容聚宽策略，支持多数据源和实盘交易"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "BulletTrade Team", email = "bullettrade.cn@gmail.com"}
+]
+keywords = [
+    "量化交易", "quantitative trading", "backtest", "聚宽",
+    "joinquant", "algotrading", "stock trading", "live trading"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "pandas>=1.3.0,<3.0",
+    "numpy>=1.21.0",
+    "matplotlib>=3.4.0",
+    "jqdatasdk>=1.8.0",
+    "plotly>=5.15.0",
+    "python-dotenv>=0.19.0",
+    "filelock>=3.0.0",
+    "pyecharts>=1.9.0",
+    "tabulate>=0.9.0",
+    "jupyterlab>=4.1.0",
+    "ipykernel>=6.29.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=3.0.0",
+    "pytest-mock>=3.6.0",
+    "pytest-asyncio>=0.21.0",
+    "pyyaml>=6.0",
+    "black>=22.0.0",
+    "flake8>=4.0.0",
+    "mypy>=0.950",
+    "isort>=5.10.0",
+]
+tushare = [
+    "tushare>=1.2.0",
+]
+qmt = [
+    "xtquant>=1.0.0",
+]
+qmtserver = [
+    "pywin32>=305; platform_system == 'Windows'",
+]
+rqdata = [
+    "rqdatac",
+]
+tdx = [
+    "easy-tdx>=0.1.0; python_version >= '3.10'",
+]
+report = [
+    "snapshot-selenium>=0.0.3",
+    "selenium>=4.10.0",
+    "chromedriver-autoinstaller>=0.6.0",
+    "snapshot-phantomjs>=0.0.3",
+]
+all = [
+    "bullet-trade[dev,tushare,qmt,qmtserver,rqdata,tdx,report]",
+]
+
+[project.urls]
+Homepage = "https://github.com/BulletTrade/bullet-trade"
+Documentation = "https://bullettrade.readthedocs.io"
+Repository = "https://github.com/BulletTrade/bullet-trade"
+Changelog = "https://github.com/BulletTrade/bullet-trade/blob/main/CHANGELOG.md"
+
+[project.scripts]
+bullet-trade = "bullet_trade.cli.main:main"
+
+[tool.setuptools.packages.find]
+include = ["bullet_trade*", "helpers*"]
+exclude = ["tests*", "docs*", "examples*"]
+
+[tool.setuptools]
+py-modules = ["jqdata"]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+# 从 bullet_trade/__version__.py 的 __version__ 变量读取版本号
+version = {attr = "bullet_trade.__version__.__version__"}
+
+[tool.setuptools.package-data]
+"bullet_trade.reporting" = ["templates/*.html"]
+"bullet_trade" = ["notebook/**/*.ipynb", "notebook/**/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--cov=bullet_trade",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+markers = [
+    "unit: 单元测试",
+    "integration: 集成测试",
+    "e2e: 端到端测试",
+    "slow: 运行缓慢的测试",
+    "requires_jqdata: 需要聚宽数据源的测试",
+    "requires_network: 需要网络连接的测试",
+    "requires_qmt: 需要QMT数据源的测试",
+    "requires_rqdata: 需要RQData账号或SDK的测试",
+    "requires_tdx: 需要easy_tdx在线行情的测试",
+    "asyncio: 异步测试标记",
+]
+
+[tool.coverage.run]
+source = ["bullet_trade"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # 默认排除
+  \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true

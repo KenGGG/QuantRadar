@@ -1,0 +1,169 @@
+{
+  "_doc": {
+    "功能说明": "证券分类配置，用于确定三个关键属性",
+    "功能1-价格精度": "由 category 决定：stock=2位小数(0.01步长)，fund/money_market_fund=3位小数(0.001步长)",
+    "功能2-T+0交易": "由 tplus 决定：tplus=0 当日可卖(跨境ETF/黄金ETF等)，tplus=1 次日才能卖(普通A股ETF)",
+    "功能3-交易费用": "由 category 决定：money_market_fund=无佣金无滑点，fund=无印花税，stock=有印花税",
+    "优先级": "by_code > by_prefix > by_category，代码级覆盖优先级最高",
+    "功能4-最小下单": "lot_rules 控制最小手数与步进规则，支持市场/前缀/代码级覆盖"
+  },
+
+  "lot_rules": {
+    "_doc": "最小下单/步进规则：min_lot=最小手数，step=步进",
+    "default": { "min_lot": 100, "step": 100 },
+    "by_market": {
+      "BJ": { "min_lot": 100, "step": 1 }
+    },
+    "by_prefix": {
+      "68": { "min_lot": 200, "step": 1 },
+      "110": { "min_lot": 10, "step": 10 },
+      "113": { "min_lot": 10, "step": 10 },
+      "118": { "min_lot": 10, "step": 10 },
+      "123": { "min_lot": 10, "step": 10 },
+      "127": { "min_lot": 10, "step": 10 },
+      "128": { "min_lot": 10, "step": 10 }
+    },
+    "by_code": {}
+  },
+
+  "limit_rules": {
+    "_doc": "涨跌停比例规则：当数据源未返回 high_limit/low_limit 时用于兜底。ratio=涨跌停幅度（例如0.1表示±10%）",
+    "default": { "ratio": 0.1 },
+    "by_category": {
+      "stock": { "ratio": 0.1 },
+      "fund": { "ratio": 0.1 },
+      "money_market_fund": { "ratio": 0.1 }
+    },
+    "by_prefix": {
+      "300": { "ratio": 0.2 },
+      "301": { "ratio": 0.2 },
+      "688": { "ratio": 0.2 },
+      "689": { "ratio": 0.2 }
+    },
+    "by_code": {}
+  },
+
+  "by_category": {
+    "money_market_fund": { "tplus": 0, "slippage": 0.0, "tick_decimals": 3 },
+    "fund":              { "tplus": 0, "slippage": 0.00246, "tick_decimals": 3 },
+    "stock":             { "tplus": 1, "slippage": 0.00246, "tick_decimals": 2 }
+  },
+
+  "by_prefix": {
+    "_comment": "代码前缀 -> 分类映射，用于自动识别证券类型",
+    
+    "511": "money_market_fund",
+    
+    "159": "fund",
+    "160": "fund",
+    "161": "fund",
+    "162": "fund",
+    "163": "fund",
+    "164": "fund",
+    "165": "fund",
+    "166": "fund",
+    "167": "fund",
+    "168": "fund",
+    "169": "fund",
+    
+    "500": "fund",
+    "501": "fund",
+    "502": "fund",
+    "503": "fund",
+    "504": "fund",
+    "505": "fund",
+    "506": "fund",
+    "507": "fund",
+    "508": "fund",
+    "509": "fund",
+    "510": "fund",
+    "512": "fund",
+    "513": "fund",
+    "515": "fund",
+    "516": "fund",
+    "517": "fund",
+    "518": "fund",
+    "519": "fund",
+    
+    "560": "fund",
+    "561": "fund",
+    "562": "fund",
+    "563": "fund",
+    
+    "588": "fund"
+  },
+
+  "by_code": {
+    "_comment": "具体代码级覆盖，优先级最高。主要用于：1.货币基金 2.跨境ETF的T+0 3.黄金ETF的T+0",
+    
+    "511880.XSHG": { "name": "银华日利ETF", "category": "money_market_fund", "tplus": 0, "slippage": 0.0 },
+    
+    "513030.XSHG": { "name": "德国DAX30ETF", "category": "fund", "tplus": 0 },
+    "513050.XSHG": { "name": "中概互联网ETF", "category": "fund", "tplus": 0 },
+    "510900.XSHG": { "name": "H股ETF", "category": "fund", "tplus": 0 },
+    "513660.XSHG": { "name": "恒生医疗保健ETF", "category": "fund", "tplus": 0 },
+    "159960.XSHE": { "name": "恒生中国企业ETF", "category": "fund", "tplus": 0 },
+    "513230.XSHG": { "name": "港股消费ETF", "category": "fund", "tplus": 0 },
+    "513070.XSHG": { "name": "港股消费ETF易方达", "category": "fund", "tplus": 0 },
+    "513960.XSHG": { "name": "嘉实快钱ETF", "category": "fund", "tplus": 0 },
+    "159735.XSHE": { "name": "港股消费ETF", "category": "fund", "tplus": 0 },
+    "513080.XSHG": { "name": "法国CAC40ETF", "category": "fund", "tplus": 0 },
+    "513590.XSHG": { "name": "香港消费ETF", "category": "fund", "tplus": 0 },
+    "513600.XSHG": { "name": "恒生金融业ETF", "category": "fund", "tplus": 0 },
+    "513160.XSHG": { "name": "港股科技30ETF", "category": "fund", "tplus": 0 },
+    "513100.XSHG": { "name": "国泰纳斯达克100ETF", "category": "fund", "tplus": 0 },
+    "513150.XSHG": { "name": "港股通科技ETF华泰柏瑞", "category": "fund", "tplus": 0 },
+    "513020.XSHG": { "name": "港股科技ETF", "category": "fund", "tplus": 0 },
+    "513860.XSHG": { "name": "港股通科技ETF", "category": "fund", "tplus": 0 },
+    "159751.XSHE": { "name": "港股科技ETF", "category": "fund", "tplus": 0 },
+    "513980.XSHG": { "name": "港股科技50ETF", "category": "fund", "tplus": 0 },
+    "513560.XSHG": { "name": "香港科技ETF", "category": "fund", "tplus": 0 },
+    "159792.XSHE": { "name": "港股通互联网ETF", "category": "fund", "tplus": 0 },
+    "161116.XSHE": { "name": "易方达黄金ETF联接A", "category": "fund", "tplus": 0 },
+    "164906.XSHE": { "name": "易方达中概互联ETF联接A", "category": "fund", "tplus": 0 },
+    "513040.XSHG": { "name": "港股通互联网ETF", "category": "fund", "tplus": 0 },
+    "513770.XSHG": { "name": "港股互联网ETF", "category": "fund", "tplus": 0 },
+    "159636.XSHE": { "name": "港股通科技30ETF", "category": "fund", "tplus": 0 },
+    "513200.XSHG": { "name": "港股通医药ETF", "category": "fund", "tplus": 0 },
+    "513500.XSHG": { "name": "标普500ETF", "category": "fund", "tplus": 0 },
+    "159718.XSHE": { "name": "港股医药ETF", "category": "fund", "tplus": 0 },
+    "513700.XSHG": { "name": "香港医药ETF", "category": "fund", "tplus": 0 },
+    "159776.XSHE": { "name": "港股通医药ETF", "category": "fund", "tplus": 0 },
+    "159506.XSHE": { "name": "港股通医疗ETF富国", "category": "fund", "tplus": 0 },
+    "513090.XSHG": { "name": "香港证券ETF", "category": "fund", "tplus": 0 },
+    "159726.XSHE": { "name": "恒生红利ETF", "category": "fund", "tplus": 0 },
+    "159691.XSHE": { "name": "港股红利ETF", "category": "fund", "tplus": 0 },
+    "159920.XSHE": { "name": "恒生ETF", "category": "fund", "tplus": 0 },
+    "160322.XSHE": { "name": "华夏恒生ETF联接A", "category": "fund", "tplus": 0 },
+    "513690.XSHG": { "name": "港股红利ETF博时", "category": "fund", "tplus": 0 },
+    "513680.XSHG": { "name": "恒生科技ETF", "category": "fund", "tplus": 0 },
+    "513990.XSHG": { "name": "港股通ETF", "category": "fund", "tplus": 0 },
+    "159711.XSHE": { "name": "港股通ETF", "category": "fund", "tplus": 0 },
+    "513550.XSHG": { "name": "恒生消费品制造业ETF", "category": "fund", "tplus": 0 },
+    "159712.XSHE": { "name": "港股通50ETF", "category": "fund", "tplus": 0 },
+    "159788.XSHE": { "name": "港股通100ETF", "category": "fund", "tplus": 0 },
+    "513900.XSHG": { "name": "恒生互联网科技业ETF", "category": "fund", "tplus": 0 },
+    "513320.XSHG": { "name": "恒生新经济ETF", "category": "fund", "tplus": 0 },
+    "513330.XSHG": { "name": "恒生互联网ETF", "category": "fund", "tplus": 0 },
+    
+    "518680.XSHG": { "name": "华安黄金ETF", "category": "fund", "tplus": 0 },
+    "159834.XSHE": { "name": "金ETF", "category": "fund", "tplus": 0 },
+    "159831.XSHE": { "name": "上海金ETF嘉实", "category": "fund", "tplus": 0 },
+    "518600.XSHG": { "name": "上海金ETF", "category": "fund", "tplus": 0 },
+    "518860.XSHG": { "name": "黄金ETFAU", "category": "fund", "tplus": 0 },
+    "518890.XSHG": { "name": "中银上海金ETF", "category": "fund", "tplus": 0 },
+    "159830.XSHE": { "name": "上海金ETF", "category": "fund", "tplus": 0 },
+    
+    "159937.XSHE": { "name": "博时黄金ETF联接A", "category": "fund", "tplus": 0 },
+    "518880.XSHG": { "name": "黄金ETF", "category": "fund", "tplus": 0 },
+    "518800.XSHG": { "name": "博时黄金ETF", "category": "fund", "tplus": 0 },
+    "159934.XSHE": { "name": "易方达黄金ETF", "category": "fund", "tplus": 0 },
+    "159941.XSHE": { "name": "广发纳斯达克100ETF", "category": "fund", "tplus": 0 },
+    "518660.XSHG": { "name": "国泰黄金ETF", "category": "fund", "tplus": 0 },
+    "518850.XSHG": { "name": "黄金ETF华夏", "category": "fund", "tplus": 0 },
+    "159812.XSHE": { "name": "黄金基金ETF", "category": "fund", "tplus": 0 },
+    "159985.XSHE": { "name": "豆粕ETF", "category": "fund", "tplus": 0 },
+    "159981.XSHE": { "name": "能源化工ETF", "category": "fund", "tplus": 0 },
+    "159980.XSHE": { "name": "有色ETF", "category": "fund", "tplus": 0 }
+  }
+}

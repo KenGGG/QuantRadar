@@ -1,0 +1,30 @@
+# BulletTrade 开发依赖
+
+# 包含核心依赖
+-r requirements.txt
+
+# 测试工具
+pytest>=7.0.0
+pytest-cov>=3.0.0
+pytest-mock>=3.6.0
+pytest-xdist>=2.5.0
+
+# 代码质量
+black>=22.0.0
+flake8>=4.0.0
+mypy>=0.950
+isort>=5.10.0
+pylint>=2.13.0
+
+# 文档工具
+sphinx>=4.5.0
+sphinx-rtd-theme>=1.0.0
+
+# 打包工具
+build>=0.7.0
+twine>=4.0.0
+wheel>=0.37.0
+
+# 可选数据源（开发测试用）
+tushare>=1.2.0
+

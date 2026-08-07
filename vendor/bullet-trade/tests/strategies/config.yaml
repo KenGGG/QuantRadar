@@ -1,0 +1,96 @@
+# 策略回测配置文件
+# 
+# 格式说明：
+# strategy_name:  # 策略文件名（不含.py后缀）
+#   start_date: '2023-01-01'  # 回测开始日期
+#   end_date: '2023-12-31'    # 回测结束日期
+#   capital_base: 100000      # 初始资金
+#   frequency: 'daily'        # 运行频率: daily/minute/tick
+#   benchmark: '000300.XSHG'  # 基准指数
+#   expected:                 # 可选：期望结果约束
+#     total_returns:
+#       min: 0.0              # 最小总收益率
+#     max_drawdown:
+#       max: -0.5             # 最大回撤限制
+
+# 默认配置（所有未单独配置的策略使用此配置）
+default:
+  start_date: '2023-01-01'
+  end_date: '2023-12-31'
+  capital_base: 100000
+  frequency: 'daily'
+  benchmark: '000300.XSHG'
+
+
+# 简单均线策略配置
+simple_ma_strategy:
+  start_date: '2023-01-01'
+  end_date: '2023-01-10'
+  capital_base: 1000000
+  frequency: 'daily'
+  benchmark: '000300.XSHG'
+
+# 买入持有策略配置
+buy_and_hold:
+  start_date: '2023-01-01'
+  end_date: '2023-12-31'
+  capital_base: 100000
+  frequency: 'daily'
+  benchmark: '000300.XSHG'
+
+# 用户自定义策略a配置
+a:
+  start_date: '2023-06-01'
+  end_date: '2023-09-30'
+  capital_base: 100000
+  frequency: 'daily'
+  benchmark: '000300.XSHG'
+
+# 分红验证策略配置
+dividend_buy_and_hold:
+  start_date: '2025-01-01'
+  end_date: '2025-05-01'
+  capital_base: 1000000
+  frequency: 'daily'
+  benchmark: '000300.XSHG'
+
+data_api_temporal_guards:
+  start_date: '2025-12-08'
+  end_date: '2025-12-08'
+  capital_base: 100000
+  frequency: 'daily'
+  benchmark: '000300.XSHG'
+
+demo-avoid-future:
+  start_date: '2025-01-02'
+  end_date: '2025-01-02'
+  frequency: 'daily'
+  benchmark: '000300.XSHG'
+
+live_order_showcase:                                                                                                                                                                                                                                                                      
+  start_date: '2025-01-01'                                                                                                                                                                                                                                                                
+  end_date: '2025-01-11'                                                                                                                                                                                                                                                                  
+  capital_base: 100000                                                                                                                                                                                                                                                                    
+  frequency: 'daily'                                                                                                                                                                                                                                                                      
+  benchmark: '000300.XSHG' 
+
+strategy_small_cap_direct_provider_access:
+  start_date: '2025-11-25'
+  end_date: '2025-11-25'
+  capital_base: 100000
+  frequency: 'daily'
+  benchmark: '000300.XSHG'
+
+price_precision_compare:
+  start_date: '2024-06-03'
+  end_date: '2024-06-03'
+  capital_base: 100000
+  frequency: 'daily'
+  benchmark: '000300.XSHG'
+
+current_data_limit_probe:
+  start_date: '2025-12-30'
+  end_date: '2025-12-30'
+  capital_base: 100000
+  frequency: 'daily'
+  benchmark: '000300.XSHG'

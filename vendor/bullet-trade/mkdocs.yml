@@ -1,0 +1,80 @@
+site_name: BulletTrade Docs
+site_url: https://bullettrade.cn/docs/
+repo_url: https://github.com/BulletTrade/bullet-trade
+site_dir: ../bullettrade.cn/site/docs
+docs_dir: docs
+use_directory_urls: false
+nav:
+  - 官方首页: /
+  - 文档首页: index.md
+  - 新手入门:
+      - 环境准备：安装 Python: python-setup.md
+      - 总览与选型: beginner-guide.md
+      - 方案 A：独立运行: beginner-route-a.md
+      - 方案 B：聚宽侧模拟盘运行:
+          - 方案 B 总流程: beginner-route-b.md
+          - 策略修改方案对比: joinquant-integration-options.md
+          - 策略修改方案 1：显式调用 helper: joinquant-helper-explicit.md
+          - 策略修改方案 2：接管聚宽函数: joinquant-live-takeover-usage.md
+          - 模拟盘完全接管设计说明: joinquant-live-takeover.md
+  - 快速上手: quickstart.md
+  - 研究环境: research.md
+  - 配置总览: config.md
+  - 回测引擎: backtest.md
+  - 回测数据会话优化: backtest-data-session.md
+  - 参数优化: optimize.md
+  - 实盘引擎: live.md
+  - Tick 行情指南: tick.md
+  - 交易支撑: trade-support.md
+  - QMT 服务配置: qmt-server.md
+  - 大 QMT 服务向导: big-qmt-server.md
+  - API 文档: api.md
+  - 数据源:
+      - 数据源指南: data/DATA_PROVIDER_GUIDE.md
+      - 数据源能力矩阵: data/DATA_PROVIDER_MATRIX.md
+      - 数据源接入验收框架: data/DATA_PROVIDER_ACCEPTANCE.md
+      - 聚宽数据: data/DATA_PROVIDER_JQDATA.md
+      - MiniQMT 数据: data/DATA_PROVIDER_MINIQMT.md
+      - Tushare 数据: data/DATA_PROVIDER_TUSHARE.md
+      - RQData 数据 Beta: data/DATA_PROVIDER_RQDATA.md
+      - easy_tdx 通达信数据 Beta: data/DATA_PROVIDER_EASY_TDX.md
+  - 邀请贡献: contributing.md
+theme:
+  name: material
+  language: zh
+  palette:
+    - scheme: slate
+      primary: aa
+      accent: aa
+  features:
+    - navigation.tabs
+    - navigation.tracking
+    - search.suggest
+    - toc.integrate
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+plugins:
+  - search
+  - mike:
+      alias_type: redirect
+      redirect_template: null
+extra:
+  version:
+    provider: mike
+    default: latest
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/BulletTrade/bullet-trade
+extra_css:
+  - css/custom.css
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js
+  - js/mermaid-init.js

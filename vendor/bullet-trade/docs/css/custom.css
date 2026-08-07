@@ -1,0 +1,20 @@
+:root {
+  --md-primary-fg-color: #f06666;
+  --md-primary-fg-color--light: #ff7a7a;
+  --md-primary-fg-color--dark: #b92d2d;
+  --md-primary-bg-color: #ffffff;           /* 顶部品牌/图标文字颜色 */
+  --md-primary-bg-color--light: #f4f4f4;
+  --md-primary-bg-color--dark: #e6e6e6;
+  --md-default-fg-color: #ffffff;
+  --md-default-fg-color--light: #e6e6e6;
+}
+
+/* 顶部导航与 GitHub 图标文字统一为白色 */
+.md-header,
+.md-header__button,
+.md-header__title .md-ellipsis,
+.md-tabs,
+.md-tabs__link {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}

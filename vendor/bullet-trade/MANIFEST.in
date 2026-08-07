@@ -1,0 +1,23 @@
+# 包含额外文件到源代码分发包
+
+include README.md
+include LICENSE
+include requirements.txt
+include requirements-dev.txt
+include pytest.ini
+include env.example
+include env.backtest.example
+include env.live.example
+recursive-include bullet_trade/notebook *.ipynb
+recursive-include bullet_trade/notebook *.md
+recursive-include helpers *.py
+
+# 排除文件
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude tests *
+recursive-exclude docs *
+recursive-exclude examples *
+recursive-exclude scripts *
+exclude .env
+exclude .gitignore
