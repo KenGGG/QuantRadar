@@ -82,6 +82,59 @@ Provider 通过公开注册入口挂入，不 monkey-patch 核心
 若 BulletTrade 无注册机制，最小改动补充，并写回归测试证明
 ```
 
+BulletTrade 已在 Phase 1 提供 **Generic Provider Registry**：
+
+```python
+from bullet_trade.data import register_data_provider, set_data_provider, get_data_provider
+
+register_data_provider(name, factory, *, overwrite=False)  # factory(config: dict) -> DataProvider
+unregister_data_provider(name)
+```
+
+注册后通过 `set_data_provider(name)` / `get_data_provider(name)` 按名使用；`_create_provider` 是唯一创建入口（先查注册表，再走内置 if 链）。内置 Provider 名称受保护，默认禁止静默覆盖。生命周期语义（Phase 1.1）见 `CURRENT_STATE` 与 `ACTIVE_PHASE`：注册/注销只影响「按名创建」的 Registry/cache/auth，不偷偷替换当前已激活的全局 `_provider`。
+
+---
+
+# 三（附）、QuantRadar 外部 Provider Bootstrap 契约
+
+BulletTrade 在 `bullet_trade.data.api` 模块 **import 阶段** 即执行：
+
+```python
+_provider = _create_provider()   # 此时外部 Registry 为空，按 DEFAULT_DATA_PROVIDER 走内置 if 链
+```
+
+因此 Generic Registry **不保证**「全新 Python 进程 + `DEFAULT_DATA_PROVIDER=investment_data`」能在 QuantRadar 注册前自动成功初始化（若未先 `register_data_provider`，import 阶段会因找不到注册表项而失败）。
+
+**结论**：QuantRadar 不依赖 `DEFAULT_DATA_PROVIDER=investment_data` 在 BulletTrade import 阶段完成自动注册。QuantRadar 必须拥有自己的 bootstrap 层（Phase 2 创建），显式完成注册与激活：
+
+```text
+启动 QuantRadar
+→ import BulletTrade
+→ register_data_provider("investment_data", factory)
+→ set_data_provider("investment_data")
+→ 验证 get_data_provider().name == "investment_data"
+→ 才允许开始数据查询 / 回测
+```
+
+切换当前激活 Provider 必须显式调用 `set_data_provider(...)`；`unregister` / `register(overwrite=True)` 不会热切换已激活的全局 `_provider`。
+
+---
+
+# 三（附之二）、Provider 配置边界
+
+```text
+BulletTrade 当前 get_data_provider_config() 只定义内置 Provider 配置（jqdata/tushare/qmt/...）
+Phase 2 的 InvestmentDataProvider 配置不得硬编码进 vendor/bullet-trade/bullet_trade/utils/env_loader.py
+QuantRadar 自己管理：
+  INVESTMENT_DATA_HOST / INVESTMENT_DATA_PORT
+  INVESTMENT_DATA_USER / INVESTMENT_DATA_PASSWORD
+  INVESTMENT_DATA_DATABASE
+  （或等价 DSN）
+Provider factory 从 QuantRadar 自身配置对象构造：InvestmentDataProvider(config)
+Generic Provider Registry 只负责：名称 → factory
+BulletTrade 不负责理解 investment_data 专属配置
+```
+
 ---
 
 # 四、核心数据接口

@@ -10,9 +10,9 @@
 # 当前阶段
 
 ```text
-当前阶段：Phase 1（控制文档校准 + Provider Registry）— 已完成
-阶段标志：CUSTOM_PROVIDER_REGISTRATION_PASS
-最近完成：文档架构校准（vendor/bullet-trade 布局）+ Generic Provider Registry 实现
+当前阶段：Phase 1.1（Provider Registry 生命周期加固）— 已完成
+阶段标志：PROVIDER_REGISTRY_LIFECYCLE_PASS
+最近完成：unregister 测试补齐 + overwrite cache 一致性修复 + 明确 active global 最小原则 + 明确 bootstrap 契约
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
 BulletTrade 快照 base commit：be0451b（记录于 BASELINE.md；vendor/ 无 remote、无 .git）
 ```
@@ -34,6 +34,7 @@ A 股日线                     PASS  （final_a_stock_eod_price，1990-12-19..2
 ST 标记                      PARTIAL（bao_a_stock_eod_info.is_st ∈ {0,1}；bao 源仅至 2023-06-09）
 Provider 源码审计             PASS  （7 问已回答，见下「Provider 机制」）
 Generic Provider Registry    PASS  （Phase 1 实现：register_data_provider / unregister_data_provider，经 _create_provider 统一入口，见下）
+Registry lifecycle           PASS  （Phase 1.1：unregister 清 Registry/cache/auth；overwrite 清旧 cache 并用新 factory；active global 不热切换；13/13 测试通过）
 Qlib import                  PASS  （pyqlib 0.9.7 已装入 .venv）
 ```
 
@@ -47,7 +48,8 @@ alpha factor                 BLOCKED（investment_data 无因子表）
 公司行为(分红/拆股)显式数据   LIMIT  （无独立表；仅 bao.adjfactor/adjclose 隐含，get_split_dividend 待建设）
 Qlib 数据                     PARTIAL（import OK；QLIB_DATA_NOT_BUILT，全机无 qlib_data/cn_data）
 停牌(tradestatus) 鲁棒性      PARTIAL（bao.tradestatus 列存在，语义与覆盖待 Phase 2 确认；bao 源至 2023-06-09）
-InvestmentDataProvider       NOT IMPLEMENTED（Phase 1 仅实现 Generic Registry；实际 Provider 落地于 Phase 2）
+InvestmentDataProvider       NOT IMPLEMENTED（Phase 1.1 仅加固 Registry 生命周期；实际 Provider 落地于 Phase 2A）
+QuantRadar Provider bootstrap DESIGN READY / NOT IMPLEMENTED（bootstrap 顺序与配置边界已写入 03；实现层 Phase 2 创建）
 FastAPI / PostgreSQL / Worker / WebUI   BLOCKED（Phase 7/8 前）
 Qlib 模型                     BLOCKED（Phase 10 前）
 QMT / 实盘                    BLOCKED（未来实盘节点）
@@ -100,6 +102,8 @@ investment_data (Dolt 3307)
    - factory 契约：`factory(config: dict) -> DataProvider`（config = `get_data_provider_config()` 与 overrides 的合并）。
    - 内置 Provider 名称受保护，默认禁止外部覆盖（需显式 `overwrite=True`）。
    - 暴露位置：`bullet_trade.data.register_data_provider` / `unregister_data_provider`。
+   - **生命周期（Phase 1.1）**：`register`（含 `overwrite=True`）会清除该名称既有 instance cache + auth state，使后续按名获取用（新）factory；`unregister` 清除 Registry/cache/auth 三者，但**不替换已激活的全局 `_provider`**；切换当前全局 Provider 必须显式 `set_data_provider(...)`。Registry 测试 13/13 通过。
+   - **import 阶段初始化**：`bullet_trade.data.api` 在模块 import 时执行 `_provider = _create_provider()`（此时 Registry 为空，按 `DEFAULT_DATA_PROVIDER` 走内置 if 链）。因此 QuantRadar 必须在 import 之后、查询之前显式 `register_data_provider` + `set_data_provider`，不能依赖 `DEFAULT_DATA_PROVIDER=investment_data` 在 import 阶段自动注册（详见 03 的 Bootstrap 契约与配置边界）。
 4. **set_data_provider 如何工作**：`api.set_data_provider(provider)` 接受实例或名称；实例直接存为全局 `_provider`，名称走 `_create_provider`；随后 `auth()`、绑定 sdk fallback、缓存、按需关闭 live 缓存。
 5. **外层 get_price/history 如何调用 Provider**：`bullet_trade/data/api.py` 顶层 `get_price/history/get_trade_days` 直接调用全局 `_provider` 对应方法。
 6. **BacktestEngine 如何取得 Provider**：`core/engine.py` import `get_data_provider`，回测中经 `get_data_provider()` 取全局 provider；并把 wrapped `set/get_data_provider` 注入策略命名空间，故策略内 `set_data_provider(...)` 即设置全局 provider。
@@ -141,8 +145,10 @@ R8  vendor 为快照，无 upstream 完整 git 历史；禁止向 upstream 推�
 ## 下一任务
 
 ```text
-Phase 1（已完成）：控制文档校准 + Generic Provider Registry —— 注册表/注销/统一入口/内置兼容/测试，验收 CUSTOM_PROVIDER_REGISTRATION_PASS
-Phase 2：InvestmentDataProvider 核心 —— 通过 register_data_provider 注册，实现 证券代码 / 交易日历 / 原始日线 / 证券主数据 / 指数成分 / 指数权重
-禁止提前开发：React / WebUI / FastAPI / Worker / PostgreSQL / Qlib 模型 / ETF / QMT / 实盘
-等待下一阶段（Phase 2）授权后才开始
+Phase 1（已完成）：控制文档校准 + Generic Provider Registry —— 验收 CUSTOM_PROVIDER_REGISTRATION_PASS
+Phase 1.1（已完成）：Registry 生命周期加固（unregister/overwrite/active global/bootstrap 契约）—— 验收 PROVIDER_REGISTRY_LIFECYCLE_PASS
+Phase 2A（建议下一阶段）：InvestmentDataProvider 基础能力 —— 在 QuantRadar bootstrap 层用 register_data_provider 注册，
+           实现 证券代码 / 交易日历 / 原始日线 / 证券主数据 / 指数成分 / 指数权重（不扩大至 Dolt 连接之外的禁止项）
+禁止提前开发：Dolt Connection 之外的 get_price 全量逻辑 / symbol mapper / FastAPI / React / PostgreSQL / Qlib / ETF / QMT / 实盘
+等待下一阶段（Phase 2A）授权后才开始
 ```

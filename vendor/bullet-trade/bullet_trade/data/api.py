@@ -86,6 +86,12 @@ def register_data_provider(
         config 为完整数据提供者配置（get_data_provider_config()）与 overrides 的合并。
 
     默认禁止覆盖内置 Provider 或已注册 Provider；需显式 overwrite=True。
+
+    生命周期语义（Phase 1.1）：
+    - 注册（含 overwrite）会清除该名称下已缓存的 Provider 实例与认证态，
+      使后续 get_data_provider(name) 用（新）factory 创建新实例。
+    - 仅影响「按名称创建」的缓存；不替换当前已激活的全局 _provider。
+      若要切换当前全局 Provider，必须显式调用 set_data_provider(...)。
     """
     normalized = _normalize_provider_name(name)
     if not overwrite:
@@ -95,11 +101,20 @@ def register_data_provider(
                 f"如需覆盖请使用 overwrite=True。"
             )
     _PROVIDER_REGISTRY[normalized] = factory
+    # 清除该名称既有缓存与认证态，保证下次按名获取使用新 factory（Phase 1.1）
+    _provider_cache.pop(normalized, None)
+    _provider_auth_attempted.pop(normalized, None)
 
 
 def unregister_data_provider(name: str) -> None:
     """
     注销一个已注册的外部数据提供者（主要用于测试清理），不影响内置 Provider。
+
+    生命周期语义（Phase 1.1）：
+    - 清除该名称在 Registry / instance cache / auth state 中的全部痕迹。
+    - 不替换 / 不触碰当前已激活的全局 _provider：若全局 Provider 恰好是该名称，
+      它仍保持激活，直到显式调用 set_data_provider(...) 切换。
+    - 注销后按名称 get_data_provider(name) 将因 Registry 缺失而抛 ValueError。
     """
     normalized = _normalize_provider_name(name)
     _PROVIDER_REGISTRY.pop(normalized, None)

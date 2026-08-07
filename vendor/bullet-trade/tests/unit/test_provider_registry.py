@@ -128,3 +128,81 @@ def test_builtin_provider_still_creatable(registry_cleanup):
 def test_builtin_name_protected(registry_cleanup):
     with pytest.raises(ValueError):
         register_data_provider("jqdata", lambda cfg: RegistryDummyProvider())
+
+
+# ---------------------------------------------------------------------------
+# Phase 1.1：Provider Registry 生命周期加固
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+def test_unregister_clears_registry_cache_and_auth(registry_cleanup):
+    """T10：unregister 必须清除 Registry / instance cache / auth state（显式断言）。"""
+    register_data_provider("dummy", lambda cfg: RegistryDummyProvider())
+    p = get_data_provider("dummy")  # 触发缓存 + 认证态写入
+
+    # 注册并获取后，三个结构都应包含 dummy
+    assert "dummy" in data_api._PROVIDER_REGISTRY
+    assert "dummy" in data_api._provider_cache
+    assert "dummy" in data_api._provider_auth_attempted
+
+    unregister_data_provider("dummy")
+
+    # unregister 后，三者都必须移除 dummy
+    assert "dummy" not in data_api._PROVIDER_REGISTRY
+    assert "dummy" not in data_api._provider_cache
+    assert "dummy" not in data_api._provider_auth_attempted
+
+
+@pytest.mark.unit
+def test_overwrite_clears_cache_and_uses_new_factory(registry_cleanup):
+    """T11：overwrite=True 后，按名获取必须用新 factory 创建新实例。"""
+    created = []
+
+    def factory_v1(cfg):
+        p = RegistryDummyProvider()
+        created.append(("v1", p))
+        return p
+
+    def factory_v2(cfg):
+        p = RegistryDummyProvider()
+        created.append(("v2", p))
+        return p
+
+    register_data_provider("dummy", factory_v1)
+    p1 = get_data_provider("dummy")
+    assert created[-1][0] == "v1"
+    assert p1 is created[-1][1]
+
+    register_data_provider("dummy", factory_v2, overwrite=True)
+    p2 = get_data_provider("dummy")
+    assert created[-1][0] == "v2"
+    assert p2 is created[-1][1]
+    # 旧缓存被清除，必须使用新 factory 的新实例
+    assert p2 is not p1
+
+
+@pytest.mark.unit
+def test_unregister_cached_provider_then_get_by_name_fails(registry_cleanup):
+    """T12：注销当前已缓存 Provider 后，按名重新获取必须明确失败。"""
+    register_data_provider("dummy", lambda cfg: RegistryDummyProvider())
+    p = get_data_provider("dummy")
+    assert "dummy" in data_api._PROVIDER_REGISTRY and "dummy" in data_api._provider_cache
+
+    unregister_data_provider("dummy")
+    with pytest.raises(ValueError):
+        get_data_provider("dummy")
+
+
+@pytest.mark.unit
+def test_unregister_does_not_switch_active_global_provider(registry_cleanup):
+    """T13：unregister 当前全局 Provider 时，不偷偷切换已激活的全局 _provider。"""
+    register_data_provider("dummy", lambda cfg: RegistryDummyProvider())
+    set_data_provider("dummy")  # 把 dummy 设为全局 active provider
+    assert isinstance(get_data_provider(), RegistryDummyProvider)
+
+    # unregister 只清 Registry/cache/auth，不改变全局 _provider
+    unregister_data_provider("dummy")
+    assert isinstance(get_data_provider(), RegistryDummyProvider)  # 全局仍为 dummy
+    # 但按名获取已因 Registry 缺失而失败（与全局是两个层面）
+    with pytest.raises(ValueError):
+        get_data_provider("dummy")
