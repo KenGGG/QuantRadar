@@ -15,9 +15,12 @@ import datetime
 import hashlib
 import json
 import os
+import uuid
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
+
+from .audit import collect_audit_env, config_hash, strategy_hash
 
 
 def _to_native(value: Any, ndigits: int = 6) -> Any:
@@ -51,6 +54,67 @@ def daily_records_fingerprint(records: List[Dict[str, Any]], ndigits: int = 6) -
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def _fingerprint_obj(obj: Any, ndigits: int = 6) -> str:
+    """任意可序列化对象的确定性 sha256 指纹。"""
+    payload = json.dumps(_to_native(obj, ndigits), sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def trades_fingerprint(engine: Any, ndigits: int = 6) -> str:
+    """成交记录指纹：仅取可复现字段（标的/方向/数量/价格/金额/时间）。"""
+    trades = getattr(engine, "trades", []) or []
+    simplified = []
+    for t in trades:
+        simplified.append(
+            {
+                "security": getattr(t, "security", None),
+                "action": getattr(t, "action", None),
+                "amount": getattr(t, "amount", None),
+                "price": getattr(t, "price", None),
+                "value": getattr(t, "value", None),
+                "datetime": _fmt_ts(getattr(t, "datetime", None)),
+            }
+        )
+    return _fingerprint_obj(simplified, ndigits)
+
+
+def positions_fingerprint(engine: Any, ndigits: int = 6) -> str:
+    """持仓指纹：标的 -> 数量/成本/现价。"""
+    port = getattr(getattr(engine, "context", None), "portfolio", None)
+    positions = getattr(port, "positions", {}) or {}
+    simplified = {}
+    for sec, p in positions.items():
+        simplified[sec] = {
+            "amount": getattr(p, "amount", None),
+            "avg_cost": getattr(p, "avg_cost", None),
+            "price": getattr(p, "price", None),
+        }
+    return _fingerprint_obj(simplified, ndigits)
+
+
+def compute_metrics(records: List[Dict[str, Any]], ndigits: int = 6) -> Dict[str, Any]:
+    """从 daily_records 计算确定性指标（收益/回撤/天数），用于 Metrics 一致性校验。"""
+    nav = [r.get("total_value") for r in (records or []) if r.get("total_value") is not None]
+    if not nav:
+        return {}
+    start = float(nav[0])
+    end = float(nav[-1])
+    total_return = (end - start) / start if start else 0.0
+    peak = start
+    max_drawdown = 0.0
+    for v in nav:
+        v = float(v)
+        peak = max(peak, v)
+        if peak:
+            max_drawdown = min(max_drawdown, (v - peak) / peak)
+    return {
+        "final_total_value": round(end, ndigits),
+        "total_return": round(total_return, ndigits),
+        "max_drawdown": round(max_drawdown, ndigits),
+        "days": len(nav),
+    }
+
+
 def _fmt_ts(value: Any) -> Optional[str]:
     if value is None:
         return None
@@ -63,17 +127,24 @@ def build_snapshot(
     extras: Optional[Dict[str, Any]] = None,
     seed: Optional[int] = None,
     data_asof: Optional[str] = None,
+    audit_env: Optional[Dict[str, Any]] = None,
+    strategy_source: Optional[str] = None,
+    connection: Optional[Any] = None,
 ) -> Dict[str, Any]:
-    """从一次「已运行」的 BacktestEngine 构建快照 manifest。
+    """从一次「已运行」的 BacktestEngine 构建快照 manifest（含完整审计字段）。
 
     Args:
         engine: 已 run() 完成的 BacktestEngine 实例。
         extras: 策略参数（g.extras），可空。
         seed: 随机种子（若有），可空。
         data_asof: 数据 as-of；缺省从 daily_records 最大日期推断（所用数据边界）。
+        audit_env: 审计环境字段（dolt_commit/schema_hash/...）；缺省自动采集。
+        strategy_source: 策略源码（用户提交）；内置策略传 None 由配置推导规范串。
+        connection: 只读连接（用于采集 dolt_commit/schema_hash）；缺省用 active provider。
 
     Returns:
-        manifest dict（可 JSON 序列化）。
+        manifest dict（可 JSON 序列化），含 snapshot_id / config_hash / strategy_hash /
+        environment / result_hash / metrics，支撑可复现与审计验证。
     """
     records = getattr(engine, "daily_records", []) or []
     asof = data_asof
@@ -95,13 +166,34 @@ def build_snapshot(
         "frequency": getattr(engine, "frequency", None),
         "seed": seed,
     }
+    metrics = compute_metrics(records)
+    env = audit_env if audit_env is not None else collect_audit_env(connection)
+    c_hash = config_hash(config)
+    s_hash = strategy_hash(strategy_source, config)
+    daily_fp = daily_records_fingerprint(records)
+    result_hash = hashlib.sha256(
+        "|".join(
+            [
+                daily_fp,
+                trades_fingerprint(engine),
+                positions_fingerprint(engine),
+                _fingerprint_obj(metrics),
+            ]
+        ).encode("utf-8")
+    ).hexdigest()
     return {
+        "snapshot_id": uuid.uuid4().hex,
         "created_at": datetime.datetime.now().isoformat(timespec="seconds"),
         "config": config,
+        "config_hash": c_hash,
+        "strategy_hash": s_hash,
         "extras": extras,
         "data_asof": asof,
         "records_count": len(records),
-        "result_fingerprint": daily_records_fingerprint(records),
+        "result_fingerprint": daily_fp,
+        "result_hash": result_hash,
+        "metrics": metrics,
+        "environment": env,
     }
 
 

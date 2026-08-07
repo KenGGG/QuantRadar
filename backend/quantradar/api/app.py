@@ -183,7 +183,7 @@ def backtest_strategy(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
 
     if not engine.daily_records:
         raise HTTPException(status_code=422, detail="回测未产出任何记录（检查区间/数据/策略）")
-    snap = build_snapshot(engine, extras=payload.get("extras"))
+    snap = build_snapshot(engine, extras=payload.get("extras"), strategy_source=code)
     summary = {
         "strategy": "user-submitted",
         "start_date": start,

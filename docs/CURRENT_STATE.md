@@ -10,10 +10,14 @@
 # 当前阶段
 
 ```text
-当前阶段：Phase 8（中文 WebUI）/ Phase 9（无基础设施部分）/ Phase 10（Qlib 待 QLIB_DATA）— 主线已闭环
-阶段标志：QUANTRADAR_STOCK_V1_PASS（主线达成）
-最近完成：浏览器策略回测（/api/backtest/strategy 接受 JoinQuant 兼容用户源码 → BulletTrade 真实回测）
-  + 实验管理 API（/api/experiments 列表/加载/保存）+ frontend/dist 离线自包含中文 SPA（GET / 托管）
+当前阶段：Closing Phase（收尾补齐 4 项 → QUANTRADAR_V1_PASS）
+  1) 完整 Snapshot/Audit          PASS  FULL_AUDIT_REPRO_PASS ✅
+  2) PostgreSQL + Worker          进行中（PERSIST_WORKER_PASS；本机 1Panel Postgres 已就绪，可建库验证）
+  3) 正式 React WebUI             待办（WEB_WORKBENCH_PASS；npm registry 现已可达，可 npm install 构建）
+  4) Qlib 最小闭环                待办（QLIB_BULLETTRADE_LOOP_PASS）
+阶段标志：QUANTRADAR_STOCK_V1_PASS（主线达成）；QUANTRADAR_V1_PASS 待 4 项全部达成
+最近完成（Closing 1）：build_snapshot 补齐审计字段 + backend/quantradar/audit.py（Dolt HEAD / schema 哈希 / commit）
+  + 确定性测试（NAV/Trades/Positions/Metrics 一致 + 审计指纹一致）
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
 BulletTrade 快照 base commit：be0451b（记录于 BASELINE.md；vendor/ 无 remote、无 .git）
 ```
@@ -42,6 +46,7 @@ JoinQuant 兼容核心            PASS  （Phase 3：frequency 别名 d/day/1d->
 真实 A 股回测                PASS  （Phase 4：BacktestEngine 经 Provider 跑通 600519.XSHG 2023Q1，无异常；daily_records/持仓/资产曲线来自真实价，与原表对账一致；防未来数据生效；get_price 扩展 high_limit/low_limit（final_a_stock_limit）/paused（volume==0 派生）；新增 3 个回测 + 3 个字段测试通过）
 真实复权（前/后复权）          PASS  （Phase 5：fq='post'/'hfq' 后复权 close 精确等于原表 adjclose；fq='pre'/'qfq' 前复权以 pre_factor_ref_date/窗口末日为基准（基准日 close==原始）；因子由 adjclose/原始价真实推导，绝不伪造；仅缩放 OHLC，volume/amount 保持原始；新增 4 个对账测试通过）
 Snapshot / 可复现             PASS  （Phase 6：quantradar.snapshot 固化回测环境与 daily_records 结果指纹；save/load round-trip；同配置两次运行逐日一致；指纹对配置敏感；新增 3 个测试通过）
+完整 Snapshot / Audit          PASS  （Closing Phase 1：FULL_AUDIT_REPRO_PASS；build_snapshot 补齐 snapshot_id / config_hash / strategy_hash / result_hash / metrics / environment(dolt_commit, schema_hash, provider_version, bullettrade_commit, quantradar_commit)；确定性测试验证 NAV/Trades/Positions/Metrics 一致 + 审计指纹一致；backend/quantradar/audit.py 采集 Dolt HEAD 与数据表 schema 哈希；3 个测试通过）
 FastAPI 服务基础             PASS  （Phase 7：/api/health、/api/price、/api/backtest、/api/snapshot save/load；全程经 InvestmentDataProvider 读真实数据，无 mock；新增 4 个 TestClient 测试通过）
 中文 WebUI / 主线闭环        PASS  （QUANTRADAR_STOCK_V1_PASS：浏览器策略回测 + 实验 + Web 构建 均已就位）
 浏览器策略回测                PASS  （Phase 8/STOCK_V1：/api/backtest/strategy 接受 JoinQuant 兼容用户源码，引擎注入 get_price/order_target/log/g/run_daily 等全局，经 InvestmentDataProvider 跑真实数据；复用 BulletTrade 撮合/账户/订单/成交/调度，不重实现；3 个 TestClient 测试通过）

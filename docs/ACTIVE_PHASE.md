@@ -2,23 +2,27 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：主线闭环已达成（QUANTRADAR_STOCK_V1_PASS）；下一阶段 Phase 10 Qlib 或 Phase 9 Postgres/Worker（待环境）**
+**当前阶段：Closing Phase — 收尾补齐 4 项（Audit → PostgreSQL/Worker → React WebUI → Qlib）→ QUANTRADAR_V1_PASS**
 
 ```text
-主线验收 QUANTRADAR_STOCK_V1_PASS 已达成：
-  - investment_data → Provider → JoinQuant策略(/api/backtest/strategy 用户源码) → BulletTrade真实回测
-    → PIT → Snapshot/Deterministic → API → 中文Web(frontend/dist 离线 SPA) → Experiment → 因子研究
-  - QUANTRADAR_SMOKE_PASS 全链路通过（含浏览器策略回测 + Web 构建）
-Phase 8 补全（STOCK_V1 关键缺口）：
-  - /api/backtest/strategy 接受 JoinQuant 兼容用户源码，引擎注入 get_price/order_target/log/g/run_daily，
-    复用 BulletTrade 撮合/账户/订单/成交/调度，不重实现
-  - /api/experiments（列表/加载/保存）复用 backend/quantradar/experiment
-  - frontend/dist/index.html：离线自包含中文 SPA（行情/策略回测/实验），GET / 优先托管，满足「Web build 成功」
-Phase 5 公司行为/ST 已补全（CORPORATE_ACTION_ST_PASS）；Phase 9 无基础设施部分已完成（QUANTRADAR_SMOKE_PASS）
-React+TS+Vite 源码脚手架 PARTIAL：frontend/ 标准 Vite 工程就位，构建需 npm install，本环境 TLS 阻断 npm registry；
-  联网后 cd frontend && npm install && npm run build 可生成 Vite 版 dist 覆盖离线 SPA
-剩余 Phase 9（PostgreSQL / Worker）仍需环境前提（见下方「环境前提」），就绪前不自动写入未知库。
-Phase 10 Qlib（Alpha158 / LightGBM，需本地 QLIB_DATA 构建）为下一可行主线扩展。
+目标：在已达成 QUANTRADAR_STOCK_V1_PASS 的主线之上，补齐 4 项并标记 QUANTRADAR_V1_PASS。
+执行顺序（每项：开发→测试→修复→更新 CURRENT_STATE→commit→push→下一项）：
+  1) 完整 Snapshot/Audit          PASS  FULL_AUDIT_REPRO_PASS ✅
+     - build_snapshot 补齐 snapshot_id/config_hash/strategy_hash/result_hash/metrics/environment
+       （dolt_commit, schema_hash, provider_version, bullettrade_commit, quantradar_commit）
+     - backend/quantradar/audit.py 采集 Dolt HEAD 与数据表 schema 哈希
+     - 确定性测试：NAV/Trades/Positions/Metrics 一致 + 审计指纹一致
+  2) PostgreSQL + Worker          进行中 PERSIST_WORKER_PASS
+     - 模型：Strategy / BacktestRun / Experiment / Snapshot / Metrics（SQLAlchemy）
+     - 异步：提交回测 → run_id → Worker 执行 → PostgreSQL 保存 → API 查状态/结果
+     - 本机 1Panel Postgres（127.0.0.1:5432）已就绪；建专用库 quantradar 验证（不触碰既有库）
+  3) 正式 React WebUI             待办 WEB_WORKBENCH_PASS
+     - React+TS+Vite+AntD+Monaco+ECharts；策略编辑/回测提交/运行状态/收益NAV回撤图/Metrics/Positions/Trades/Logs/数据状态/Experiment比较
+     - npm registry 现已可达，可 npm install 构建（取代手写 frontend/dist）
+  4) Qlib 最小闭环                待办 QLIB_BULLETTRADE_LOOP_PASS
+     - Alpha158 + LightGBM：Train/Valid/Test/Prediction/IC/RankIC/TopK/Target Weight
+     - investment_data → Qlib → Prediction → Target Weight → BulletTrade → Account Backtest
+终验：FULL_AUDIT_REPRO_PASS + PERSIST_WORKER_PASS + WEB_WORKBENCH_PASS + QLIB_BULLETTRADE_LOOP_PASS + QUANTRADAR_SMOKE_PASS 全绿 → QUANTRADAR_V1_PASS
 ```
 
 ---
