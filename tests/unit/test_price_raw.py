@@ -87,10 +87,16 @@ class TestGetPriceSingle:
                 "600519.XSHG", "2024-01-02", "2024-01-03", frequency="minute"
             )
 
-    def test_fq_not_none_raises(self, live_provider):
+    def test_fq_pre_returns_raw_limit(self, live_provider):
+        # fq='pre'/'post' 当前等价原始价（复权 LIMIT，Phase 5 补齐），不抛异常
+        df = live_provider.get_price("600519.XSHG", "2024-01-02", "2024-01-03", fq="pre")
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 2
+
+    def test_unknown_fq_raises(self, live_provider):
         with pytest.raises(NotImplementedError):
             live_provider.get_price(
-                "600519.XSHG", "2024-01-02", "2024-01-03", fq="pre"
+                "600519.XSHG", "2024-01-02", "2024-01-03", fq="bogus"
             )
 
 

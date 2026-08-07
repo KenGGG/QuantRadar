@@ -43,6 +43,13 @@ _PRICE_TABLE = "final_a_stock_eod_price"
 _PRICE_FIELDS = ["open", "high", "low", "close", "volume", "amount"]
 _PRICE_DATE_COL = "tradedate"
 
+# JoinQuant 字段/频率别名 -> investment_data 内部表达（Phase 3 JQ 兼容核心）
+_FIELD_ALIASES = {"money": "amount"}  # JQ 的成交额字段名为 money -> amount
+_FREQUENCY_ALIASES = {"d": "daily", "day": "daily", "1d": "daily"}
+# 复权在 Phase 5；本阶段 fq='pre'/'post' 仅作为「未调整（LIMIT）」等价 raw 透传，
+# 绝不伪造复权因子；其余未知 fq 仍 NotImplementedError。
+_FQ_RAW_ALIASES = {"pre", "post", "qfq", "hfq", "pre-forward", "post-forward"}
+
 # 交易日历统一采用 SSE（A 股沪市日历；investment_data 仅 SSE 行，已被审计为可接受）
 _CALENDAR_EXCHANGE = "SSE"
 
@@ -302,14 +309,16 @@ class InvestmentDataProvider(DataProvider):
         prefer_engine: bool = False,
         force_no_engine: bool = False,
     ) -> pd.DataFrame:
-        """日频原始行情（fq='none'）。
+        """日频原始行情（JoinQuant 兼容核心，Phase 3）。
 
         数据源：final_a_stock_eod_price（列 tradedate / symbol / open / high / low /
-        close / volume / amount）。严禁读取 adjclose（那是复权价，属 Phase 5）。
+        close / volume / amount）。严禁读取 adjclose 冒充原始价。
 
         约定：
-            - frequency 仅支持 'daily'；其余抛 NotImplementedError（分钟级 UNSUPPORTED）。
-            - fq 仅支持 'none'；复权（'pre' / 'post' 等）抛 NotImplementedError（Phase 5）。
+            - frequency 别名归一：'d'/'day'/'1d' -> 'daily'；其余抛 NotImplementedError（分钟级 UNSUPPORTED）。
+            - fq 别名：'none'/None -> 原始价（PASS）；'pre'/'post'/'qfq'/'hfq' 等 ->
+              当前等价原始价（LIMIT，复权因子实现在 Phase 5，绝不伪造）；其余未知 fq 抛 NotImplementedError。
+            - 字段别名（JoinQuant -> investment_data）：'money' -> 'amount'。
             - security 支持 str 或 List[str]，经 normalize_stock_symbol 转 SH600519 查表。
             - 单证券：返回 DataFrame，index=日期，columns=字段（扁平）。
             - 多证券 panel=True：返回 DataFrame，index=日期，columns=MultiIndex(字段, 证券)。
@@ -318,15 +327,19 @@ class InvestmentDataProvider(DataProvider):
             - 缺行（停牌 / 退市 / 上市前）不做任何回填或伪造；对应位置为 NaN/空，
               调用方应据此识别 PARTIAL，禁止假装完整。
         """
+        # 频率别名归一
+        frequency = _FREQUENCY_ALIASES.get(frequency, frequency)
         if frequency != "daily":
             raise NotImplementedError(
                 "InvestmentDataProvider: 仅支持日频（frequency='daily'）；"
                 "分钟级 UNSUPPORTED"
             )
-        if fq != "none":
+        # fq 归一：None 视为 'none'；pre/post 等视为未调整（LIMIT，Phase 5 复权）
+        fq = (fq or "none").lower()
+        if fq != "none" and fq not in _FQ_RAW_ALIASES:
             raise NotImplementedError(
-                f"InvestmentDataProvider: 复权价（fq={fq!r}）待 Phase 5 建设；"
-                "本阶段仅支持 fq='none' 原始价"
+                f"InvestmentDataProvider: 未知复权方式（fq={fq!r}）；"
+                "本阶段仅支持 fq='none'（及 pre/post 等价原始价的 LIMIT 透传），复权待 Phase 5"
             )
 
         # 归一化 securities -> 有序映射 {jq_code: internal_symbol}
@@ -342,12 +355,15 @@ class InvestmentDataProvider(DataProvider):
             internal = normalize_stock_symbol(s)
             jq_to_internal[to_joinquant_symbol(internal)] = internal
 
-        # 字段裁剪
-        requested = list(fields) if fields else list(_PRICE_FIELDS)
-        unknown = [f for f in requested if f not in _PRICE_FIELDS]
+        # 字段别名归一（JoinQuant -> investment_data）
+        base_fields = list(_PRICE_FIELDS)
+        requested_raw = list(fields) if fields else base_fields
+        requested = [_FIELD_ALIASES.get(f, f) for f in requested_raw]
+        unknown = [f for f in requested if f not in base_fields]
         if unknown:
             raise ValueError(
-                f"get_price: 不支持的字段 {unknown}；可用字段={_PRICE_FIELDS}"
+                f"get_price: 不支持的字段 {unknown}（原始别名 {requested_raw}）；"
+                f"可用字段={base_fields}"
             )
 
         # 边界守卫：避免无约束的全表扫描
@@ -362,6 +378,16 @@ class InvestmentDataProvider(DataProvider):
             per_security[jq] = self._fetch_raw_price(
                 internal, requested, start_date, end_date, count, fill_paused
             )
+
+        # 列名回写为请求时的 JoinQuant 字段名（别名透明：内部 amount -> 对外 money）
+        rename_map = {
+            internal_f: orig_f
+            for orig_f, internal_f in zip(requested_raw, requested)
+            if orig_f != internal_f
+        }
+        if rename_map:
+            for jq in per_security:
+                per_security[jq] = per_security[jq].rename(columns=rename_map)
 
         # 单证券：扁平 columns
         if len(ordered_jq) == 1:
