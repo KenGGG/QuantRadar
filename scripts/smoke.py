@@ -135,7 +135,7 @@ def _check_chain():
     pkg = os.path.join(frontend, "package.json")
     dist = os.path.join(frontend, "dist", "index.html")
     if os.path.exists(dist):
-        print("[smoke] 6) WebUI：构建产物 frontend/dist/index.html 已就位（离线自包含 SPA）PASS")
+        print("[smoke] 6) WebUI：React+TS+Vite 构建产物 frontend/dist/index.html 已就位（AntD+Monaco+ECharts 工作台）PASS")
     elif os.path.exists(pkg):
         print("[smoke] 6) WebUI：React+TS+Vite 脚手架已就位（待 npm install && build，网络受限）PARTIAL")
     else:

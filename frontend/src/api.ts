@@ -3,6 +3,7 @@
 export interface HealthResp {
   status: string;
   provider: string | null;
+  environment?: Environment;
 }
 
 export interface PriceRow {
@@ -15,20 +16,77 @@ export interface PriceResp {
   rows: PriceRow[];
 }
 
+export interface Metric {
+  final_total_value?: number | null;
+  total_return?: number | null;
+  max_drawdown?: number | null;
+  days?: number | null;
+  [k: string]: unknown;
+}
+
+export interface DailyRecord {
+  date: string;
+  total_value: number | null;
+  cash?: number | null;
+  positions_value?: number | null;
+  returns?: number | null;
+  returns_pct?: number | null;
+}
+
+export interface Trade {
+  security: string | null;
+  action: string | null;
+  amount: number | null;
+  price: number | null;
+  value: number | null;
+  commission?: number | null;
+  time?: string | null;
+}
+
+export interface Position {
+  security: string | null;
+  amount: number | null;
+  avg_cost?: number | null;
+  price?: number | null;
+  value?: number | null;
+}
+
+export interface Environment {
+  provider: string;
+  provider_version: string;
+  dolt_commit: string | null;
+  schema_hash: string | null;
+  bullettrade_commit: string;
+  quantradar_commit: string;
+}
+
+export interface Snapshot {
+  snapshot_id?: string;
+  config_hash?: string;
+  strategy_hash?: string;
+  result_fingerprint?: string;
+  result_hash?: string;
+  metrics?: Metric;
+  environment?: Environment;
+  config?: Record<string, unknown>;
+  data_asof?: string | null;
+  records_count?: number;
+  daily_records?: DailyRecord[];
+  trades?: Trade[];
+  positions?: Position[];
+  [k: string]: unknown;
+}
+
 export interface BacktestSummary {
-  security: string;
+  strategy: string;
+  security: string | null;
   start_date: string | null;
   end_date: string | null;
   initial_cash: number;
   frequency: string;
   records_count: number;
+  trades_count: number;
   final_total_value: number | null;
-}
-
-export interface Snapshot {
-  result_fingerprint: string;
-  asof: string;
-  [key: string]: unknown;
 }
 
 export interface BacktestResp {
@@ -37,12 +95,45 @@ export interface BacktestResp {
 }
 
 export interface BacktestPayload {
-  security: string;
+  security?: string;
   start_date?: string | null;
   end_date?: string | null;
   initial_cash?: number;
   frequency?: string;
   amount?: number;
+  code?: string;
+  extras?: Record<string, unknown> | null;
+}
+
+export interface RunRecord {
+  run_id: string;
+  strategy_id?: number | null;
+  config?: Record<string, unknown> | null;
+  status: string;
+  error?: string | null;
+  created_at?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  result_hash?: string | null;
+  snapshot?: Snapshot | null;
+  metrics?: Metric | null;
+}
+
+export interface RunSubmitResp {
+  run_id: string;
+  status: string;
+  config?: Record<string, unknown>;
+}
+
+export interface ExperimentResp {
+  name: string;
+  kind?: string;
+  config?: Record<string, unknown>;
+  result_fingerprint?: string;
+  metrics?: Metric;
+  snapshot?: Snapshot;
+  created_at?: string | null;
+  [k: string]: unknown;
 }
 
 async function httpJson<T>(input: string, init?: RequestInit): Promise<T> {
@@ -86,12 +177,38 @@ export function runBacktest(payload: BacktestPayload): Promise<BacktestResp> {
   });
 }
 
-export function saveSnapshot(payload: {
-  snapshot: Snapshot;
-  name?: string;
-}): Promise<{ path: string }> {
-  return httpJson<{ path: string }>("/api/snapshot/save", {
+export function runStrategy(payload: BacktestPayload): Promise<BacktestResp> {
+  return httpJson<BacktestResp>("/api/backtest/strategy", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export function submitAsync(payload: BacktestPayload): Promise<RunSubmitResp> {
+  return httpJson<RunSubmitResp>("/api/backtest/async", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getRun(runId: string): Promise<RunRecord> {
+  return httpJson<RunRecord>(`/api/backtest/runs/${encodeURIComponent(runId)}`);
+}
+
+export function listRuns(limit = 50): Promise<{ runs: RunRecord[] }> {
+  return httpJson<{ runs: RunRecord[] }>(`/api/backtest/runs?limit=${limit}`);
+}
+
+export function listExperiments(): Promise<{ experiments: string[] }> {
+  return httpJson<{ experiments: string[] }>("/api/experiments");
+}
+
+export function getExperiment(name: string): Promise<ExperimentResp> {
+  return httpJson<ExperimentResp>(`/api/experiments/${encodeURIComponent(name)}`);
+}
+
+export function getSnapshotLoad(path: string): Promise<Snapshot> {
+  const qs = new URLSearchParams();
+  qs.set("path", path);
+  return httpJson<Snapshot>(`/api/snapshot/load?${qs.toString()}`);
 }

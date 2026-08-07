@@ -13,7 +13,7 @@
 当前阶段：Closing Phase（收尾补齐 4 项 → QUANTRADAR_V1_PASS）
   1) 完整 Snapshot/Audit          PASS  FULL_AUDIT_REPRO_PASS ✅
   2) PostgreSQL + Worker          进行中→PASS（PERSIST_WORKER_PASS ✅；本机 1Panel Postgres 专用库 quantradar 已建表并验证异步回测落库）
-  3) 正式 React WebUI             待办（WEB_WORKBENCH_PASS；npm registry 现已可达，可 npm install 构建）
+  3) 正式 React WebUI             进行中→PASS（WEB_WORKBENCH_PASS ✅；React+TS+Vite+AntD+Monaco+ECharts 工作台已构建并托管）
   4) Qlib 最小闭环                待办（QLIB_BULLETTRADE_LOOP_PASS）
 阶段标志：QUANTRADAR_STOCK_V1_PASS（主线达成）；QUANTRADAR_V1_PASS 待 4 项全部达成
 最近完成（Closing 1）：build_snapshot 补齐审计字段 + backend/quantradar/audit.py（Dolt HEAD / schema 哈希 / commit）
@@ -52,7 +52,7 @@ FastAPI 服务基础             PASS  （Phase 7：/api/health、/api/price、/
 浏览器策略回测                PASS  （Phase 8/STOCK_V1：/api/backtest/strategy 接受 JoinQuant 兼容用户源码，引擎注入 get_price/order_target/log/g/run_daily 等全局，经 InvestmentDataProvider 跑真实数据；复用 BulletTrade 撮合/账户/订单/成交/调度，不重实现；3 个 TestClient 测试通过）
 实验管理 API                  PASS  （/api/experiments 列表 / /api/experiments/{name} 加载 / /api/experiments/save 保存，复用 backend/quantradar/experiment 本地 JSON）
 Web 构建（frontend/dist）     PASS  （offline 自包含中文 SPA：行情查询 / 策略回测(可编辑代码) / 实验列表，消费 /api/*，无 CDN、无构建步骤；GET / 优先托管；满足「Web build 成功」）
-React+TS+Vite 源码脚手架      PARTIAL（frontend/ 源码就位：标准 Vite+React+TS 工程，消费 /api/*；构建需 npm install，本环境 TLS 阻断 npm registry 未装 node_modules/未出 Vite dist；联网后 cd frontend && npm install && npm run build 可生成 Vite 版 dist 覆盖离线 SPA）
+React+TS+Vite 源码脚手架      PASS（frontend/ 已是完整工作台：AntD 布局 + Monaco 策略编辑器 + ECharts 净值/收益/回撤图 + 数据状态/策略回测/运行记录/实验对比；npm install && npm run build 已生成 dist 并由 GET / 托管）
 QuantRadar Provider bootstrap IMPLEMENTED（Phase 2A：backend/quantradar/bootstrap.py 显式 register + set_active + 校验 name）
 公司行为 + ST（Phase 5 补全）  PASS  （CORPORATE_ACTION_ST_PASS：get_split_dividend 据 bao_a_stock_eod_info 真实 preclose 缺口还原每股税前红利，与原始表逐行对账；get_extras('is_st'/'tradestatus') 直读真实列，df=True/Dict 两形态；9 个新测试 + 3 个 registry 测试通过）
 因子研究（Phase 9 无依赖）    PASS  （backend/quantradar/research 复用 bullet_trade.research.factors.evaluation.evaluate_factor_performance；动量因子 ic_mean≈0.0146、rank_ic_mean≈0.0065（HS300 子集）；长表 [date,code,factor,forward_return]；IC/RankIC/分层/多空 齐全；4 个测试通过）
@@ -60,6 +60,7 @@ Experiment 实验管理（Phase 9） PASS  （backend/quantradar/experiment；�
 Make / Smoke（QUANTRADAR_SMOKE_PASS） PASS  （Makefile：setup/test/smoke/dev；scripts/smoke.py 全链路 数据→回测→快照→API→Web 入口 通过；无 mock）
 Qlib import                  PASS  （pyqlib 0.9.7 已装入 .venv）
 PostgreSQL + Worker          PASS  （PERSIST_WORKER_PASS：backend/quantradar/storage.py 5 表 Strategy/BacktestRun/Experiment/Snapshot/Metrics + SQLAlchemy CRUD；backend/quantradar/worker.py 异步 submit→run_id→后台线程 run_backtest(BulletTrade)→落库；API /api/backtest/async + /api/backtest/runs/{id} + /api/backtest/runs；复用 run_backtest，禁止重实现；集成测试连本机 1Panel 专用库 quantradar 跑通真实回测落库，4/4 通过）
+React WebUI（工作台）         PASS  （WEB_WORKBENCH_PASS：frontend/ React+TS+Vite+AntD+Monaco+ECharts；数据状态/策略编辑器(回测提交)/运行记录(异步状态轮询)/实验对比；净值·累计收益·回撤 ECharts 图 + Metrics + 持仓 + 成交 + 运行流水 + 审计环境；GET / 托管构建产物；test_web_workbench 5/5 通过）
 ```
 
 ---

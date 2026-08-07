@@ -1,0 +1,2 @@
+# 前端构建产物（frontend/dist）：minified 第三方 bundle，跳过空白检查
+frontend/dist/** -whitespace

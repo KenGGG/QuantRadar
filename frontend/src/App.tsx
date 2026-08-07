@@ -1,37 +1,76 @@
 import { useEffect, useState } from "react";
+import { Layout, Menu, Spin, Typography } from "antd";
+import {
+  ApiOutlined,
+  ExperimentOutlined,
+  FileSearchOutlined,
+  CodeOutlined,
+} from "@ant-design/icons";
 import { getHealth, type HealthResp } from "./api";
-import { PriceQuery } from "./components/PriceQuery";
-import { BacktestPanel } from "./components/BacktestPanel";
+import { DataStatus } from "./components/DataStatus";
+import { StrategyWorkbench } from "./components/StrategyWorkbench";
+import { RunExplorer } from "./components/RunExplorer";
+import { ExperimentCompare } from "./components/ExperimentCompare";
+
+const { Sider, Content, Header } = Layout;
+const { Title, Text } = Typography;
+
+type TabKey = "data" | "strategy" | "runs" | "experiments";
 
 export function App() {
   const [health, setHealth] = useState<HealthResp | null>(null);
-  const [tab, setTab] = useState<"price" | "backtest">("price");
+  const [tab, setTab] = useState<TabKey>("data");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getHealth()
       .then(setHealth)
-      .catch(() => setHealth(null));
+      .catch(() => setHealth(null))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
-    <div className="app">
-      <header>
-        <h1>量子雷达 · QuantRadar</h1>
-        <p className="subtitle">
-          基于本地真实数据、可审计、可复现的 A 股量化研究平台
-          {health ? `（数据源：${health.provider}）` : "（数据源未连接）"}
-        </p>
-      </header>
-      <nav>
-        <button className={tab === "price" ? "active" : ""} onClick={() => setTab("price")}>
-          行情
-        </button>
-        <button className={tab === "backtest" ? "active" : ""} onClick={() => setTab("backtest")}>
-          回测
-        </button>
-      </nav>
-      <main>{tab === "price" ? <PriceQuery /> : <BacktestPanel />}</main>
-      <footer>数据全部来自后端 /api/* 真实接口，前端不含任何价格或复权逻辑。</footer>
-    </div>
+    <Layout style={{ minHeight: "100vh" }}>
+      <Sider theme="dark" width={220} breakpoint="lg" collapsedWidth={0}>
+        <div className="app-logo">量子雷达 · QuantRadar</div>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[tab]}
+          onClick={(e) => setTab(e.key as TabKey)}
+          items={[
+            { key: "data", icon: <ApiOutlined />, label: "数据状态" },
+            { key: "strategy", icon: <CodeOutlined />, label: "策略回测" },
+            { key: "runs", icon: <FileSearchOutlined />, label: "运行记录" },
+            { key: "experiments", icon: <ExperimentOutlined />, label: "实验对比" },
+          ]}
+        />
+      </Sider>
+      <Layout>
+        <Header style={{ background: "#fff", paddingInline: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Title level={4} style={{ margin: 0 }}>
+            本地真实数据 · 可审计 · 可复现 的 A 股量化研究平台
+          </Title>
+          <Text type="secondary">
+            数据源：{health ? health.provider : "未连接"}
+            {health?.environment?.quantradar_commit ? ` · commit ${health.environment.quantradar_commit.slice(0, 8)}` : ""}
+          </Text>
+        </Header>
+        <Content className="content-pad">
+          {loading ? (
+            <div style={{ textAlign: "center", marginTop: 80 }}>
+              <Spin tip="连接后端中..." />
+            </div>
+          ) : (
+            <>
+              {tab === "data" && <DataStatus />}
+              {tab === "strategy" && <StrategyWorkbench />}
+              {tab === "runs" && <RunExplorer />}
+              {tab === "experiments" && <ExperimentCompare />}
+            </>
+          )}
+        </Content>
+      </Layout>
+    </Layout>
   );
 }

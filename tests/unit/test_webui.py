@@ -28,10 +28,8 @@ class TestWebUI:
         resp = client.get("/")
         assert resp.status_code == 200
         body = resp.text
-        # 中文标题与 API 引用均存在（前端消费 API，不内嵌价格逻辑）
+        # 构建产物（Vite）托管：HTML 含中文标题；API 路径在 JS bundle 中，不要求出现在 HTML
         assert "量子雷达" in body
-        assert "/api/price" in body
-        assert "/api/backtest" in body
 
     def test_price_query_via_api(self, client):
         # 模拟前端 fetch /api/price 的端到端路径

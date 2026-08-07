@@ -60,8 +60,14 @@ def _row_to_record(idx, row, columns) -> Dict[str, Any]:
 
 @app.get("/api/health")
 def health() -> Dict[str, Any]:
+    from quantradar.audit import collect_audit_env
+
     prov = _ensure_provider()
-    return {"status": "ok", "provider": getattr(prov, "name", None)}
+    return {
+        "status": "ok",
+        "provider": getattr(prov, "name", None),
+        "environment": collect_audit_env(),
+    }
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -163,13 +169,15 @@ def backtest_async(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
     """
     try:
         return get_worker().submit(
-            code=payload.get("code"),
-            security=payload.get("security"),
-            start_date=payload.get("start_date"),
-            end_date=payload.get("end_date"),
-            initial_cash=float(payload.get("initial_cash", 500000)),
-            frequency=payload.get("frequency", "day"),
-            amount=int(payload.get("amount", 100)),
+            payload={
+                "code": payload.get("code"),
+                "security": payload.get("security"),
+                "start_date": payload.get("start_date"),
+                "end_date": payload.get("end_date"),
+                "initial_cash": float(payload.get("initial_cash", 500000)),
+                "frequency": payload.get("frequency", "day"),
+                "amount": int(payload.get("amount", 100)),
+            }
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))

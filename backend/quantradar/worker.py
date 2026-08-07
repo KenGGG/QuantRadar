@@ -67,7 +67,7 @@ class BacktestWorker:
         with self._lock:
             self._threads[run_id] = t
         t.start()
-        return run_id
+        return {"run_id": run_id, "status": "PENDING", "config": config}
 
     def _run(self, run_id: str, payload: Dict[str, Any]) -> None:
         try:

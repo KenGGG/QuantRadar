@@ -17,9 +17,11 @@
      - 异步：提交回测 → run_id → Worker 后台线程执行 run_backtest(BulletTrade) → PostgreSQL 保存 → API 查状态/结果
      - 本机 1Panel Postgres 专用库 quantradar 已建表并验证真实回测落库（4/4 集成测试通过，不触碰既有库）
      - API：POST /api/backtest/async + GET /api/backtest/runs/{id} + GET /api/backtest/runs
-  3) 正式 React WebUI             待办 WEB_WORKBENCH_PASS
-     - React+TS+Vite+AntD+Monaco+ECharts；策略编辑/回测提交/运行状态/收益NAV回撤图/Metrics/Positions/Trades/Logs/数据状态/Experiment比较
-     - npm registry 现已可达，可 npm install 构建（取代手写 frontend/dist）
+  3) 正式 React WebUI             PASS  WEB_WORKBENCH_PASS ✅
+     - React+TS+Vite+AntD+Monaco+ECharts 工作台已构建并托管（GET / 返回 dist）
+     - 数据状态（审计环境）/ 策略编辑器(Monaco, 内置 Buy&Hold + 用户源码) / 运行记录(异步提交+状态轮询) / 实验对比
+     - 净值·累计收益·回撤 ECharts 图 + Metrics + 持仓 + 成交 + 运行流水 + 审计环境
+     - 后端 /api/backtest 等返回 daily_records/trades/positions 明细供画图；test_web_workbench 5/5 通过
   4) Qlib 最小闭环                待办 QLIB_BULLETTRADE_LOOP_PASS
      - Alpha158 + LightGBM：Train/Valid/Test/Prediction/IC/RankIC/TopK/Target Weight
      - investment_data → Qlib → Prediction → Target Weight → BulletTrade → Account Backtest

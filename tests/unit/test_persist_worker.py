@@ -89,7 +89,7 @@ def test_worker_async_backtest_persists(pg):
             "end_date": "2023-03-31",
             "initial_cash": 500000.0,
         }
-    )
+    )["run_id"]
     assert run_id.startswith("run_")
 
     # 等待后台线程完成（超时 240s）
@@ -125,7 +125,7 @@ def test_worker_user_strategy_persists(pg):
             "end_date": "2023-03-31",
             "initial_cash": 500000.0,
         }
-    )
+    )["run_id"]
     w.wait(run_id, timeout=240)
 
     from quantradar.storage import get_run
