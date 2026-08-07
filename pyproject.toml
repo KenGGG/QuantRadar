@@ -4,14 +4,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quantradar"
-version = "0.0.1"
+version = "0.0.2"
 description = "QuantRadar: 本地 A 股量化研究平台，基于 BulletTrade 代码基线继续开发"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 # 注意：BulletTrade 基线通过 vendor/bullet-trade 以 editable 方式单独安装：
 #     pip install -e ./vendor/bullet-trade
 # 不要通过 PyPI 安装另一份 bullet-trade，避免与源码版并存（见 docs/00 与 02）。
 # 本项目（quantradar）自身的依赖在后续阶段（backend/ 服务等）追加。
 
 [tool.setuptools]
-# backend/ 当前为空，后续阶段在此声明包（如 backend/quantradar）。
-packages = []
+# QuantRadar 自身业务代码位于 backend/ 下（如 backend/quantradar）。
+# BulletTrade 基线仍通过 vendor/bullet-trade 单独 editable 安装。
+[tool.setuptools.packages.find]
+where = ["backend"]
+
+[tool.pytest.ini_options]
+markers = [
+    "unit: 单元测试",
+]
+testpaths = ["tests"]

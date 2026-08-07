@@ -2,33 +2,33 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：Phase 1.1 — Provider Registry 生命周期加固（已完成 / 等待下一阶段授权）**
-
-阶段标志：`PROVIDER_REGISTRY_LIFECYCLE_PASS`
+**当前阶段：Phase 2B — 原始日线（Raw Daily Price）**
 
 ```text
-本阶段已完成：
-  1. 补齐 unregister_data_provider 显式测试（T10）
-  2. 修复 overwrite=True 的 cache 一致性（注册即清该名称 instance cache + auth state）
-  3. 明确 active global provider 最小原则（unregister/overwrite 不热切换全局 _provider）
-  4. 确认并文档化 bootstrap 契约（import 阶段 _create_provider；QuantRadar 需自有 bootstrap 层）
-  5. 测试 13/13 通过；相关 data/provider/auth 回归无新增失败
-禁止自动进入 Phase 2 / 2A。下一阶段需显式授权。
+上一阶段 Phase 2A 已完成（INVESTMENT_DATA_PROVIDER_BASE_PASS）：
+  - QuantRadar 包（backend/quantradar）+ 只读 Dolt 连接 + symbol mapping
+  - get_trade_days / get_all_securities(PIT) / get_security_info / get_index_stocks(PIT) / get_index_weights(PIT)
+  - bootstrap 层（register + set_active + 校验 name）；38/38 QuantRadar 测试通过
+本阶段只做 Phase 2B；完成后自动进入 Phase 3（无人值守）。
 ```
 
 ---
 
 # 一、目标
 
-Phase 1 的 Generic Provider Registry 已成立。本阶段只解决三个生命周期问题：
+在已落地的 `InvestmentDataProvider` 之上实现日频原始行情：
 
 ```text
-1. unregister 行为缺少完整测试
-2. overwrite 后 Provider cache 一致性
-3. 明确 QuantRadar 外部 Provider 的启动 / bootstrap 契约
+get_price(fq="none")
 ```
 
-不得实现 InvestmentDataProvider。
+数据源优先级：`final_a_stock_eod_price`（字段 open/high/low/close/volume/amount，symbol 形如 SH600519）。
+
+```text
+不得 mock
+不得返回虚假数据
+不得用 adjclose 冒充原始价
+```
 
 ---
 
@@ -36,140 +36,103 @@ Phase 1 的 Generic Provider Registry 已成立。本阶段只解决三个生命
 
 ```text
 允许：
-  - 修改 vendor/bullet-trade/bullet_trade/data/api.py（register/unregister 的 cache/auth 清理 + docstring）
-  - 新增/补齐 vendor/bullet-trade/tests/unit/test_provider_registry.py（T10–T13）
-  - 更新 docs/03_数据与Provider规范.md（bootstrap 契约 + 配置边界）
-  - 更新 docs/CURRENT_STATE.md（生命周期状态 + bootstrap DESIGN READY）
+  - 在 backend/quantradar/providers/investment_data/provider.py 实现 get_price
+  - 仅日频（frequency='daily'）；分钟级 UNSUPPORTED（raise 或明确不支持）
+  - 支持 security（str 或 List[str]）、start_date、end_date、count、fields、多证券 panel
+  - 与原表抽样对账（open/high/low/close/volume/amount 数值一致）
+  - 新增/补齐 tests/unit 测试
 
 禁止：
-  - 实现 InvestmentDataProvider / Dolt Connection / symbol mapper / get_price 等数据能力
-  - 重构 BulletTrade 全局 Provider 初始化机制（_provider = _create_provider() 保持原样）
-  - 实现 lazy provider / entry-point plugin discovery
-  - 在 vendor/bullet-trade/bullet_trade/utils/env_loader.py 硬编码 investment_data 专属配置
-  - 自动进入 Phase 2 / 2A
+  - 实现复权（fq='pre' / factor）—— 那是 Phase 5
+  - 改动 BulletTrade 核心
+  - 写入 investment_data
+  - 扩大至 ETF / QMT / 实盘
 ```
 
 ---
 
-# 三、unregister 测试（T10）
+# 三、get_price 契约
+
+签名（与 BulletTrade DataProvider ABC 对齐）：
 
 ```python
-register_data_provider("dummy", factory)
-p = get_data_provider("dummy")
-# 断言：dummy in _PROVIDER_REGISTRY / _provider_cache / _provider_auth_attempted
-unregister_data_provider("dummy")
-# 断言：三者均 not in
+get_price(security, start_date=None, end_date=None, frequency='daily',
+          fields=None, skip_paused=False, fq='none', count=None,
+          panel=True, fill_paused=True, pre_factor_ref_date=None, ...)
 ```
 
-不得仅经 fixture 间接调用 unregister 而无断言。
-
----
-
-# 四、overwrite cache 一致性（T11）
+要求：
 
 ```text
-register(name, factory_v1)  → get_data_provider → provider_v1
-register(name, factory_v2, overwrite=True)
-get_data_provider → provider_v2  （新 factory 新实例）
-要求：provider_v2 is not provider_v1
-```
-
-实现：注册（含 overwrite）时清除该名称既有 `_provider_cache` 与 `_provider_auth_attempted`。
-
----
-
-# 五、active global provider 最小原则
-
-```text
-unregister / overwrite 的对象恰好是当前全局 _provider 时：
-  - Registry / cache 负责「未来按名创建」
-  - 当前已激活的全局 _provider 不自动替换
-  - 切换当前 Provider 必须显式 set_data_provider(...)
-  - 不在 unregister 内隐藏切换行为
-```
-
-（由 T13 验证；docstring 与文档写明。）
-
----
-
-# 六、bootstrap 契约（已确认 + 文档化）
-
-```text
-_provider = _create_provider() 发生在 bullet_trade.data.api 模块 import 阶段
-→ 此时 Registry 为空，按 DEFAULT_DATA_PROVIDER 走内置 if 链
-→ 不保证 DEFAULT_DATA_PROVIDER=investment_data 在注册前自动成功
-```
-
-不重构 BulletTrade 初始化机制、不实现 lazy / entry-point。
-
-QuantRadar 正式 bootstrap 顺序（写入 03）：
-
-```text
-启动 QuantRadar
-→ import BulletTrade
-→ register_data_provider("investment_data", factory)
-→ set_data_provider("investment_data")
-→ 验证 get_data_provider().name == "investment_data"
-→ 才允许数据查询 / 回测
-```
-
-QuantRadar 不依赖 `DEFAULT_DATA_PROVIDER=investment_data` 在 import 阶段自动注册。该 bootstrap 层在 Phase 2 创建。
-
----
-
-# 七、配置边界（已写入 03）
-
-```text
-get_data_provider_config() 只定义内置 Provider 配置
-InvestmentDataProvider 配置不得硬编码进 env_loader.py
-QuantRadar 自己管理 INVESTMENT_DATA_HOST/PORT/USER/PASSWORD/DATABASE（或等价 DSN）
-factory(InvestmentDataProvider(config)) 从 QuantRadar 配置构造
-Registry 只负责 名称 → factory；BulletTrade 不负责理解 investment_data 专属配置
+1. 返回 pandas.DataFrame；多证券 panel=True 时索引=日期、列=MultiIndex(字段, 证券)
+2. fq='none'：直接返回 final_a_stock_eod_price 的原始 open/high/low/close/volume/amount
+3. frequency 仅 'daily' 支持；非 daily 抛 NotImplementedError（分钟 UNSUPPORTED）
+4. security 经 normalize_stock_symbol 转为 SH600519 形式查 final_a_stock_eod_price.symbol
+5. start/end/count 语义与 JoinQuant 一致；count 与 start/end 组合按既有约定
+6. skip_paused / fill_paused：若数据不足（停牌/缺行）必须显式 PARTIAL，不得假装完整
 ```
 
 ---
 
-# 八、测试
+# 四、原始价对账（必须）
 
 ```text
-T10 unregister 清 Registry/cache/auth（显式断言）
-T11 overwrite 清旧 cache，使用新 factory（provider_v2 is not provider_v1）
-T12 unregister 当前缓存 Provider 后按名重新获取明确失败
-T13 当前 active global provider 不因 unregister 自动偷偷切换
-原 Phase 1 Registry 测试（T1–T9）继续全部通过
+固定或随机抽样若干 (symbol, 日期窗口)
+Provider 返回 vs investment_data.final_a_stock_eod_price 原表
+要求 open/high/low/close/volume/amount 数值一致（允许浮点容差）
+```
+
+对账测试作为新增测试的一部分，禁止用「接近」掩盖差异。
+
+---
+
+# 五、测试
+
+至少覆盖（Phase 2A 已搭好 DB 测试 fixture）：
+
+```text
+- 单证券普通窗口（600519.XSHG / 000001.XSHE）
+- 较早历史窗口
+- count 取最近 N 日
+- fields 选择子集
+- 多证券 panel
+- 无数据窗口（返回空 / 显式 BLOCKED）
+- 上市前 / 退市后（显式空或 PARTIAL）
+- 与原表抽样对账
+- frequency != daily -> NotImplementedError
 ```
 
 运行：
 
 ```text
-test_provider_registry.py（13/13）
-data/provider/auth 相关回归（无新增失败）
+tests/unit （pytest）
+BulletTrade registry 回归（test_provider_registry.py）保持全过
 ```
 
 ---
 
-# 九、验收
+# 六、验收
 
-完成标志：`PROVIDER_REGISTRY_LIFECYCLE_PASS`
+完成标志：`RAW_DAILY_PRICE_PASS`
 
 ```text
-[PASS] unregister 显式测试（T10）
-[PASS] overwrite cache 一致性（T11）
-[PASS] active global 不热切换（T13）+ bootstrap 契约文档化（03/CURRENT_STATE）
-[PASS] 原 Phase 1 测试继续全过（T1–T9）
-[PASS] 未实现 InvestmentDataProvider；内置 Provider 创建/认证不变
-[PASS] 单一 commit，message 含 PROVIDER_REGISTRY_LIFECYCLE_PASS
+[PASS] get_price(fq='none') 日频实现
+[PASS] 单/多证券、start/end/count/fields 正确
+[PASS] 与原表抽样对账一致
+[PASS] 上市前/退市后/无数据窗口 显式处理（不伪造）
+[PASS] QuantRadar 新增测试通过 + BulletTrade registry 回归通过
+[PASS] 单一 commit 含 RAW_DAILY_PRICE_PASS
 ```
 
 ---
 
-# 十、结束条件
+# 七、结束条件
 
 ```text
-1. 生命周期修复 + 测试（T10–T13）
-2. docs/03 + CURRENT_STATE 更新（bootstrap 契约 / 配置边界 / 状态）
+1. 实现 get_price（日频原始价）+ 对账测试
+2. 更新 docs/CURRENT_STATE.md（Provider 状态、get_price PASS）
 3. git diff --check 无遗留空白错误
-4. 单一 commit（含 PROVIDER_REGISTRY_LIFECYCLE_PASS）
-5. 更新 CURRENT_STATE / ACTIVE_PHASE 标记 Phase 1.1 已完成、等待下一阶段授权
-6. 停止。不自动进入 Phase 2 / 2A。
+4. 单一 commit（RAW_DAILY_PRICE_PASS）
+5. push origin main
+6. 将 ACTIVE_PHASE 改为 Phase 3 → 自动进入 Phase 3
 ```
