@@ -55,8 +55,14 @@ CAPABILITIES: Dict[str, Dict[str, str]] = {
         "high_limit/low_limit 来自 final_a_stock_limit，paused 由 volume==0 派生；缺行显式 NaN（PARTIAL）",
     },
     "get_split_dividend": {
-        "status": "UNSUPPORTED",
-        "note": "公司行为红利/拆股见 Phase 5",
+        "status": "PARTIAL",
+        "note": "bao_a_stock_eod_info 真实 preclose/close；按除权缺口还原每股税前红利"
+        "（引擎按 20% 预提税，NAV 与不复权口径一致）。送转/派息无法从本表分离 -> PARTIAL",
+    },
+    "get_extras": {
+        "status": "PASS",
+        "note": "is_st / tradestatus（别名 pause/paused）来自 bao_a_stock_eod_info 真实列；"
+        "支持 df=True(DataFrame)/df=False(dict)，缺数据显式 NaN",
     },
     "etf": {
         "status": "BLOCKED",

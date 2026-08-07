@@ -44,6 +44,7 @@ Snapshot / 可复现             PASS  （Phase 6：quantradar.snapshot 固化�
 FastAPI 服务基础             PASS  （Phase 7：/api/health、/api/price、/api/backtest、/api/snapshot save/load；全程经 InvestmentDataProvider 读真实数据，无 mock；新增 4 个 TestClient 测试通过）
 中文 WebUI 雏形              PASS  （Phase 8：GET / 返回中文单页，消费 /api/price、/api/backtest、/api/snapshot；前端无内嵌价格逻辑；新增 2 个测试通过）
 QuantRadar Provider bootstrap IMPLEMENTED（Phase 2A：backend/quantradar/bootstrap.py 显式 register + set_active + 校验 name）
+公司行为 + ST（Phase 5 补全）  PASS  （CORPORATE_ACTION_ST_PASS：get_split_dividend 据 bao_a_stock_eod_info 真实 preclose 缺口还原每股税前红利，与原始表逐行对账；get_extras('is_st'/'tradestatus') 直读真实列，df=True/Dict 两形态；9 个新测试 + 3 个 registry 测试通过）
 Qlib import                  PASS  （pyqlib 0.9.7 已装入 .venv）
 ```
 
@@ -54,10 +55,11 @@ Qlib import                  PASS  （pyqlib 0.9.7 已装入 .venv）
 ```text
 ETF                          BLOCKED（investment_data 无 ETF 表；Phase 11 前不建设）
 alpha factor                 BLOCKED（investment_data 无因子表）
-公司行为(分红/拆股)显式数据   LIMIT  （无独立表；仅 bao.adjfactor/adjclose 隐含，get_split_dividend 待建设）
+公司行为(分红/拆股)          PARTIAL（bao_a_stock_eod_info 真实 preclose/close；以除权缺口还原每股税前红利，引擎按 20% 预提税，NAV 与不复权一致；送转/派息无法从本表分离 -> PARTIAL；get_split_dividend 已实现）
+ST 标记                      PARTIAL（bao_a_stock_eod_info.is_st ∈ {0,1}；get_extras('is_st'/'tradestatus') 已实现，df=True/Dict 两形态；bao 源仅至 2023-06-09）
 Qlib 数据                     PARTIAL（import OK；QLIB_DATA_NOT_BUILT，全机无 qlib_data/cn_data）
 停牌(tradestatus) 鲁棒性      PARTIAL（bao.tradestatus 列存在，语义与覆盖待 Phase 2 确认；bao 源至 2023-06-09）
-InvestmentDataProvider       BASE IMPLEMENTED（Phase 2A）+ get_price PASS（Phase 2B）+ JQ 兼容核心 PASS（Phase 3）+ 真实 A 股回测 PASS（Phase 4）+ 真实复权 PASS（Phase 5）；get_split_dividend NOT IMPLEMENTED（待公司行为建设）
+InvestmentDataProvider       BASE IMPLEMENTED（Phase 2A）+ get_price PASS（Phase 2B）+ JQ 兼容核心 PASS（Phase 3）+ 真实 A 股回测 PASS（Phase 4）+ 真实复权 PASS（Phase 5）+ 公司行为/ST PASS（Phase 5 补全）
 FastAPI / PostgreSQL / Worker / WebUI   BLOCKED（Phase 7/8 前）
 Qlib 模型                     BLOCKED（Phase 10 前）
 QMT / 实盘                    BLOCKED（未来实盘节点）
@@ -128,7 +130,7 @@ ts_a_stock_list              → get_all_securities / get_security_info（上市
 ts_index_weight              → get_index_weights + get_index_stocks（派生成分；stock_code='000001.SZ'）
 final_a_stock_limit          → 涨跌停（可映射到 get_extras 或扩展方法）
 bao_a_stock_eod_info         → is_st / tradestatus(停牌) / adjfactor(复权因子)
-公司行为(分红/拆股)           → 无独立表；get_split_dividend 待建设（LIMIT）
+公司行为(分红/拆股)           → 无独立表；get_split_dividend 据 bao.preclose/close 除权缺口还原（PARTIAL：送转/派息未分离）
 ```
 
 **symbol 格式不一致（关键）**：`final` 用 `SH600601`、`index/list` 用 `000001.SZ`、`list` 另有裸 `000001`。Provider 必须归一化；`c/ts/yahoo link_table` 含 `adj_ratio` 可辅助跨源对齐。

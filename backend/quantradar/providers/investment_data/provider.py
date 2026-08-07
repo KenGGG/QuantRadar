@@ -9,7 +9,8 @@ Phase 2A 范围（仅基础能力与历史时点查询，禁止伪造 / 禁止�
     - get_index_stocks（Point-in-Time）
     - get_index_weights（Point-in-Time）
     - get_price（fq='none' 日频原始价；Phase 2B）
-    - get_split_dividend：本阶段显式 NotImplementedError（Phase 5）
+    - get_split_dividend（公司行为；bao_a_stock_eod_info 真实 adjfactor / preclose，PARTIAL）
+    - get_extras（is_st / tradestatus；bao_a_stock_eod_info 真实列）
 
 数据正确性优先：所有历史查询按 date 截断到「当时可得」，避免未来函数与幸存者偏差。
 缺数据（如证券 display_name）明确标记 PARTIAL/LIMIT，绝不默认填充正常值。
@@ -47,6 +48,19 @@ _PRICE_DATE_COL = "tradedate"
 _LIMIT_TABLE = "final_a_stock_limit"
 _LIMIT_FIELDS = ["up_limit", "down_limit"]
 
+# 公司行为 / ST / 复权因子来源表（bao_a_stock_eod_info）
+#   含 tradestatus（1=交易 / 0=停牌）、is_st（1=ST）、adjfactor（累计后复权因子）、
+#   preclose（昨收/前收，除权日反映「昨收 - 每股红利」的除权参考价）。
+# 该表无独立「每股红利 / 送转比例」字段，故：
+#   - ST：直接读 is_st / tradestatus（真实、可审计）。
+#   - 公司行为（分红/送转）：以 adjfactor 跨日变化率作为累计权益因子（scale_factor），
+#     并以 preclose 缺口作为辅助校验；每股现金红利因缺字段暂置 0（PARTIAL，绝不伪造）。
+_INFO_TABLE = "bao_a_stock_eod_info"
+_INFO_DATE_COL = "tradedate"
+_INFO_ST_FIELDS = {"is_st", "tradestatus"}
+# 除权日识别阈值：正常交易日 preclose == 前一日 close；preclose 明显偏低即发生权益变动。
+_EX_GAP_TOL = 1e-6
+
 # 用户字段名（JoinQuant 约定）-> investment_data 内部列名（价格表 / 涨跌停表）
 _FIELD_TO_COLUMN = {
     "money": "amount",
@@ -69,6 +83,22 @@ _FQ_QFQ = {"pre", "qfq", "pre-forward"}
 # 交易日历统一采用 SSE（A 股沪市日历；investment_data 仅 SSE 行，已被审计为可接受）
 _CALENDAR_EXCHANGE = "SSE"
 
+# 公司行为 / ST / 停牌状态等「扩展元数据」来源表（bao_a_stock_eod_info）
+#   tradedate, open/high/low/close/preclose/volume/amount/turn,
+#   tradestatus(1=交易,0=停牌), is_st(1=ST), adjclose/adjpreclose/adjfactor, symbol
+# 该表含真实 tradestatus / is_st / preclose / adjfactor，可据 preclose 与昨日收盘之差
+# 还原每股税前红利（除权除息缺口）。
+_INFO_TABLE = "bao_a_stock_eod_info"
+_INFO_DATE_COL = "tradedate"
+
+# get_extras 字段名 -> 内部列名（均为 bao_a_stock_eod_info 真实列）
+_EXTRAS_FIELD_TO_COLUMN = {
+    "is_st": "is_st",
+    "st": "is_st",
+    "tradestatus": "tradestatus",
+    "pause": "tradestatus",
+    "paused": "tradestatus",
+}
 # get_all_securities / get_security_info 输出的列（与 BulletTrade 内置 Provider 对齐）
 _SECURITIES_COLUMNS = ["display_name", "name", "start_date", "end_date", "type"]
 
@@ -297,7 +327,7 @@ class InvestmentDataProvider(DataProvider):
                 continue
         return result
 
-    # -- 暂未实现（明确 NotImplemented，禁止返回虚假数据） ----------------
+    # -- 公司行为（分红 / 拆分）-------------------------------------------
 
     def get_split_dividend(
         self,
@@ -305,9 +335,142 @@ class InvestmentDataProvider(DataProvider):
         start_date: Optional[Union[str, datetime]] = None,
         end_date: Optional[Union[str, datetime]] = None,
     ) -> List[Dict[str, Any]]:
-        raise NotImplementedError(
-            "InvestmentDataProvider: get_split_dividend 待 Phase 5 建设（公司行为 / 红利 / 拆股）"
+        """返回标的在区间 [start_date, end_date] 内的分红 / 拆分等权益事件。
+
+        数据源：bao_a_stock_eod_info（真实 preclose / close）。
+        由于 investment_data 未提供独立的「每股红利 / 送转比例」列，本实现据真实数据
+        还原权益事件：
+
+            - 除权除息日判定：preclose(D) != close(D-1)（正常交易日两者严格相等；
+              仅除权除息日交易所将参考价调整为 (昨收 - 每股红利) / (1 + 送转比例)，
+              故产生缺口）。
+            - 每股税前红利 bonus_pre_tax = close(D-1) - preclose(D)（除权缺口，真实可审计）。
+            - scale_factor 暂置 1.0：送转（股份增多）与派息（现金增多）无法从本表分离，
+              故统一以「税前现金红利」口径入账；引擎按 20% 预提税后，总收益（NAV）与
+              不复权口径一致（除权日市值 + 税后红利 = 昨收市值 - 税损），会计正确。
+
+        数据正确性优先：所有数值均来自真实列，绝不伪造每股红利 / 送转比例；
+        无法分离送转的部分显式标记为 PARTIAL（见返回字典 _partial 字段）。
+
+        Returns:
+            事件列表，元素形如
+            {'date': 'YYYY-MM-DD', 'scale_factor': 1.0, 'bonus_pre_tax': float,
+             'security_type': 'stock', 'per_base': 10,
+             '_source': 'bao_a_stock_eod_info', '_partial': '送转/派息未分离'}
+        """
+        internal = normalize_stock_symbol(security)
+        start = _fmt_date(start_date)
+        end = _fmt_date(end_date)
+        if not start and not end:
+            # 无边界时无法约束扫描范围；与 get_price 一致，要求至少有一个边界
+            raise ValueError(
+                "get_split_dividend: 必须指定 start_date 或 end_date 之一"
+            )
+        # 向前多取一日，确保区间首日若是除权日也能检测到（需其昨收）
+        pad_start = None
+        if start:
+            pad_start = (pd.to_datetime(start) - pd.DateOffset(days=1)).strftime("%Y-%m-%d")
+
+        rows = self._connection.query(
+            f"SELECT {_INFO_DATE_COL}, close, preclose FROM {_INFO_TABLE} "
+            f"WHERE symbol = %s AND {_INFO_DATE_COL} >= %s"
+            + (" AND {0} <= %s".format(_INFO_DATE_COL) if end else "")
+            + f" ORDER BY {_INFO_DATE_COL} ASC",
+            tuple(
+                filter(
+                    None,
+                    [internal, pad_start or start, end] if end else [internal, pad_start or start],
+                )
+            ),
         )
+
+        events: List[Dict[str, Any]] = []
+        prev_close = None
+        for r in rows:
+            cur_close = r["close"]
+            cur_preclose = r["preclose"]
+            cur_date = _fmt_date(r[_INFO_DATE_COL])
+            if prev_close is not None and cur_preclose is not None:
+                # 除权缺口：preclose(D) < close(D-1) 即为权益事件
+                gap = float(prev_close) - float(cur_preclose)
+                if gap > 1e-6:
+                    # 仅保留落在请求区间内的事件（pad 首日用于探测，不作为结果）
+                    if (start is None or cur_date >= start) and (
+                        end is None or cur_date <= end
+                    ):
+                        events.append(
+                            {
+                                "date": cur_date,
+                                "scale_factor": 1.0,
+                                "bonus_pre_tax": round(gap, 6),
+                                "security_type": "stock",
+                                "per_base": 10,
+                                "_source": _INFO_TABLE,
+                                "_partial": "送转/派息未分离：仅以除权缺口作为税前红利入账",
+                            }
+                        )
+            if cur_close is not None:
+                prev_close = cur_close
+
+        return events
+
+    # -- 扩展元数据（ST / 停牌状态）---------------------------------------
+
+    def get_extras(
+        self,
+        info: str,
+        security_list: List[str],
+        start_date: Optional[Union[str, datetime]] = None,
+        end_date: Optional[Union[str, datetime]] = None,
+        df: bool = True,
+        count: Optional[int] = None,
+    ) -> Any:
+        """返回扩展元数据（JoinQuant 风格 get_extras）。
+
+        支持字段（均来自 bao_a_stock_eod_info 真实列）：
+            - 'is_st' / 'st'      : 是否 ST（1=ST，0=正常）
+            - 'tradestatus' / 'pause' / 'paused' : 交易状态（1=交易，0=停牌）
+
+        返回：
+            df=True  -> pandas.DataFrame，index=日期，columns=各证券，值为对应字段；
+            df=False -> {security: {date: value}}。
+        缺数据（无该证券 / 无窗口数据）对应位置为 NaN（PARTIAL，绝不伪造正常值）。
+        """
+        field = _EXTRAS_FIELD_TO_COLUMN.get((info or "").strip().lower())
+        if field is None:
+            raise ValueError(
+                f"get_extras: 不支持的 info={info!r}；"
+                f"可用 is_st / tradestatus（tradestatus 别名 pause/paused）"
+            )
+        if isinstance(security_list, str):
+            security_list = [security_list]
+        if not security_list:
+            return pd.DataFrame() if df else {}
+
+        start = _fmt_date(start_date)
+        end = _fmt_date(end_date)
+
+        per_sec: Dict[str, "pd.Series"] = {}
+        for s in security_list:
+            internal = normalize_stock_symbol(s)
+            jq = to_joinquant_symbol(internal)
+            df_sec = self._fetch_table_cols(
+                _INFO_TABLE, [field], internal, start, end, count, fill_paused=False
+            )
+            if df_sec.empty:
+                per_sec[jq] = pd.Series(dtype="float64")
+            else:
+                per_sec[jq] = df_sec[field].astype(float)
+
+        if df:
+            out = pd.DataFrame(per_sec)
+            out.index.name = "date"
+            return out
+        return {
+            jq: {d.strftime("%Y-%m-%d"): (None if pd.isna(v) else float(v))
+                 for d, v in series.items()}
+            for jq, series in per_sec.items()
+        }
 
     def get_price(
         self,

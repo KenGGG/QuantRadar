@@ -104,7 +104,8 @@ class TestIndex:
 
 
 @pytest.mark.unit
-class TestNotImplemented:
-    def test_get_split_dividend_not_implemented(self, live_provider):
-        with pytest.raises(NotImplementedError):
+class TestCorporateActionImplemented:
+    def test_get_split_dividend_requires_boundary(self, live_provider):
+        # 已实现：无边界时明确抛 ValueError（避免全表扫描），不再 NotImplementedError
+        with pytest.raises(ValueError):
             live_provider.get_split_dividend("600519.XSHG")

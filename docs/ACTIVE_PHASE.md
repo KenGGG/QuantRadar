@@ -9,6 +9,11 @@
   - 中文 WebUI 单页消费 /api/price、/api/backtest、/api/snapshot
   - 前端不内嵌价格逻辑，全部来自 API，无 mock
 本阶段做 Phase 9（PostgreSQL / Worker）需先满足环境前提（见下方「环境前提」）。
+补充（本会话，无需外部基础设施）：Phase 5 公司行为/ST 已补全（CORPORATE_ACTION_ST_PASS）：
+  - get_split_dividend 据 bao_a_stock_eod_info 真实 preclose 缺口还原每股税前红利
+  - get_extras('is_st'/'tradestatus') 直读真实列（df=True/Dict 两形态）
+下一步（无需外部基础设施，可立即推进）：因子研究（复用 BulletTrade IC/RankIC/layer/long-short）
+  + Experiment 管理（save/compare，复用 Snapshot）+ make setup/test/smoke/dev + smoke 链。
 ```
 
 ---
