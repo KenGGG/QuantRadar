@@ -48,10 +48,11 @@ CAPABILITIES: Dict[str, Dict[str, str]] = {
     },
     "get_price": {
         "status": "PASS",
-        "note": "final_a_stock_eod_price 日频原始价（fq='none'）；open/high/low/close/volume/"
-        "amount 直读，绝不使用 adjclose；frequency 别名 d/day/1d -> daily；字段别名 money -> "
-        "amount；high_limit/low_limit 来自 final_a_stock_limit（真实涨跌停），paused 由 "
-        "volume==0 派生；fq='pre'/'post' 当前等价原始价（复权 LIMIT，Phase 5）；缺行显式 NaN（PARTIAL）",
+        "note": "final_a_stock_eod_price 日频；fq='none' 原始价（绝不使用 adjclose）；"
+        "fq='post'/'hfq' 后复权（close 精确等于 adjclose）；fq='pre'/'qfq' 前复权"
+        "（基准日=pre_factor_ref_date 或窗口末日，基准日 close==原始）；因子由 adjclose/"
+        "原始价真实推导，绝不伪造；frequency 别名 d/day/1d->daily；字段别名 money->amount；"
+        "high_limit/low_limit 来自 final_a_stock_limit，paused 由 volume==0 派生；缺行显式 NaN（PARTIAL）",
     },
     "get_split_dividend": {
         "status": "UNSUPPORTED",

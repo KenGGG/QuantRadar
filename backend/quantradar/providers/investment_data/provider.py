@@ -58,9 +58,13 @@ _COMPUTED_FIELDS = {"paused"}
 
 # JoinQuant 频率别名 -> investment_data 内部表达（Phase 3 JQ 兼容核心）
 _FREQUENCY_ALIASES = {"d": "daily", "day": "daily", "1d": "daily"}
-# 复权在 Phase 5；本阶段 fq='pre'/'post' 仅作为「未调整（LIMIT）」等价 raw 透传，
-# 绝不伪造复权因子；其余未知 fq 仍 NotImplementedError。
-_FQ_RAW_ALIASES = {"pre", "post", "qfq", "hfq", "pre-forward", "post-forward"}
+# 复权分组（Phase 5：基于真实因子，绝不伪造）
+#   none  : 原始价（直读，绝不使用 adjclose）
+#   hfq   : 后复权（close 精确等于 final_a_stock_eod_price.adjclose）
+#   qfq   : 前复权（以 pre_factor_ref_date 为基准日；缺省取窗口末日）
+_FQ_NONE = {"none"}
+_FQ_HFQ = {"post", "hfq", "post-forward"}
+_FQ_QFQ = {"pre", "qfq", "pre-forward"}
 
 # 交易日历统一采用 SSE（A 股沪市日历；investment_data 仅 SSE 行，已被审计为可接受）
 _CALENDAR_EXCHANGE = "SSE"
@@ -346,12 +350,18 @@ class InvestmentDataProvider(DataProvider):
                 "InvestmentDataProvider: 仅支持日频（frequency='daily'）；"
                 "分钟级 UNSUPPORTED"
             )
-        # fq 归一：None 视为 'none'；pre/post 等视为未调整（LIMIT，Phase 5 复权）
+        # fq 归一：None 视为 'none'；pre/post/qfq/hfq 走真实复权（绝不伪造因子）
         fq = (fq or "none").lower()
-        if fq != "none" and fq not in _FQ_RAW_ALIASES:
+        if fq in _FQ_NONE:
+            adj_mode = None
+        elif fq in _FQ_HFQ:
+            adj_mode = "hfq"
+        elif fq in _FQ_QFQ:
+            adj_mode = "qfq"
+        else:
             raise NotImplementedError(
                 f"InvestmentDataProvider: 未知复权方式（fq={fq!r}）；"
-                "本阶段仅支持 fq='none'（及 pre/post 等价原始价的 LIMIT 透传），复权待 Phase 5"
+                "支持 fq='none'/'pre'/'post'/'qfq'/'hfq'（及 pre-forward/post-forward）"
             )
 
         # 归一化 securities -> 有序映射 {jq_code: internal_symbol}
@@ -412,6 +422,7 @@ class InvestmentDataProvider(DataProvider):
             df = self._fetch_raw_price(
                 internal, price_cols, limit_cols, need_paused,
                 start_date, end_date, count, fill_paused,
+                adj_mode=adj_mode, pre_factor_ref_date=pre_factor_ref_date,
             )
             if drop_volume and "volume" in df.columns:
                 df = df.drop(columns=["volume"])
@@ -512,19 +523,34 @@ class InvestmentDataProvider(DataProvider):
         end_date: Optional[Union[str, datetime]],
         count: Optional[int],
         fill_paused: bool,
+        adj_mode: Optional[str] = None,
+        pre_factor_ref_date: Optional[Union[str, datetime]] = None,
     ) -> pd.DataFrame:
         """从 final_a_stock_eod_price（价格）+ final_a_stock_limit（涨跌停）拉取单证券日频，
-        并可选派生 paused。返回 index=日期、列为请求字段（含 limit/paused）的 DataFrame。
+        并可选派生 paused、可选应用真实复权（hfq/qfq）。返回 index=日期、列为请求字段的 DataFrame。
 
         涨跌停来自真实表（final_a_stock_limit）；paused 由 volume==0 派生；
-        缺数据显式 NaN（PARTIAL），绝不伪造。
+        复权因子由 adjclose 与原始 close 真实推导，绝不伪造；缺数据显式 NaN（PARTIAL）。
         """
         start = _fmt_date(start_date)
         end = _fmt_date(end_date)
 
+        # 复权需要 adjclose 与原始 close 作为因子源；内部取用，最后剔除（若非用户显式请求）
+        fetch_price_cols = list(price_cols)
+        drop_adjclose = False
+        drop_close = False
+        if adj_mode:
+            if "adjclose" not in fetch_price_cols:
+                fetch_price_cols.append("adjclose")
+                drop_adjclose = True
+            if "close" not in fetch_price_cols:
+                # close 是复权因子的基准，必须内部取用
+                fetch_price_cols.append("close")
+                drop_close = True
+
         # 价格表（主表，决定返回日期索引）
         price_df = self._fetch_table_cols(
-            _PRICE_TABLE, price_cols, internal_symbol, start, end, count, fill_paused
+            _PRICE_TABLE, fetch_price_cols, internal_symbol, start, end, count, fill_paused
         )
 
         result = price_df
@@ -543,4 +569,52 @@ class InvestmentDataProvider(DataProvider):
             # volume 缺失或为 0 视为停牌（真实信号）；有成交价的交易日视为未停牌
             result["paused"] = (vol.fillna(0) == 0)
 
+        if adj_mode and "adjclose" in result.columns:
+            self._apply_adjustment(result, adj_mode, pre_factor_ref_date)
+            if drop_adjclose:
+                result = result.drop(columns=["adjclose"])
+            if drop_close:
+                result = result.drop(columns=["close"])
+
         return result
+
+    @staticmethod
+    def _resolve_ref_date(df: pd.DataFrame, pre_factor_ref_date) -> Optional[object]:
+        """返回用于前复权基准日的索引标签（精确匹配 pre_factor_ref_date）；未提供或不匹配则 None。"""
+        if pre_factor_ref_date is None:
+            return None
+        rd = _fmt_date(pre_factor_ref_date)
+        for idx in df.index:
+            if pd.Timestamp(idx).strftime("%Y-%m-%d") == rd:
+                return idx
+        return None
+
+    @staticmethod
+    def _apply_adjustment(
+        df: pd.DataFrame,
+        adj_mode: str,
+        pre_factor_ref_date=None,
+    ) -> None:
+        """就地对 OHLC 应用真实复权（hfq / qfq），仅缩放 open/high/low/close。
+
+        因子 F_t = adjclose_t / raw_close_t（raw_close_t==0 -> 1.0，避免除零）。
+          hfq_t(field) = raw_t(field) * F_t          （close 须精确等于 adjclose_t）
+          qfq_t(field) = raw_t(field) * (F_t / F_R)   （F_R 为基准日因子；基准日 t=R 时 qfq==raw）
+        volume/amount 不参与缩放（与 JoinQuant 约定一致，不伪造成交额）。
+        """
+        adj = df["adjclose"].astype(float)
+        close_raw = df["close"].astype(float)
+        # 因子 F_t；raw_close==0 时退化为 1.0
+        f = adj / close_raw.replace(0, float("nan"))
+        f = f.fillna(1.0)
+
+        if adj_mode == "hfq":
+            scale = f
+        else:  # qfq：基准日 R
+            ref_idx = InvestmentDataProvider._resolve_ref_date(df, pre_factor_ref_date)
+            f_r = float(f.loc[ref_idx]) if ref_idx is not None and ref_idx in f.index else float(f.iloc[-1])
+            scale = f / f_r if f_r else f
+
+        for col in ("open", "high", "low", "close"):
+            if col in df.columns:
+                df[col] = df[col].astype(float) * scale

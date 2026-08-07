@@ -10,9 +10,9 @@
 # 当前阶段
 
 ```text
-当前阶段：Phase 4（真实 A 股回测）— 已完成
-阶段标志：REAL_A_SHARE_BACKTEST_PASS
-最近完成：InvestmentDataProvider 驱动 BulletTrade BacktestEngine 跑通真实 A 股回测（600519.XSHG，2023Q1）；引擎经 Generic Provider Registry 读真实行情；get_trade_days/get_security_info/get_price/current_data 全部被 Provider 承接；防未来数据（handle_data 内 get_price 最大返回日 <= current_dt）生效；回测资产曲线来自真实价且与原表对账一致；get_price 扩展 high_limit/low_limit（final_a_stock_limit 真实涨跌停）与 paused（volume==0 派生，不伪造）
+当前阶段：Phase 5（复权）— 已完成
+阶段标志：ADJUSTED_PRICE_PASS
+最近完成：get_price 真实复权（基于 final_a_stock_eod_price.adjclose 与原始价的因子，绝不伪造）；fq='post'/'hfq' 后复权 close 精确等于 adjclose；fq='pre'/'qfq' 前复权以 pre_factor_ref_date/窗口末日为基准日（基准日 close==原始）；仅缩放 OHLC，volume/amount 保持原始；Phase 4 真实回测在 fq='pre' 下行为保持不变（current_data 基准日=当日 -> 等价原始）
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
 BulletTrade 快照 base commit：be0451b（记录于 BASELINE.md；vendor/ 无 remote、无 .git）
 ```
@@ -39,6 +39,7 @@ InvestmentDataProvider base  PASS  （Phase 2A：只读 Dolt 连接 + symbol map
 get_price 日频原始价          PASS  （Phase 2B：final_a_stock_eod_price，fq='none'，open/high/low/close/volume/amount 直读，绝不使用 adjclose；单/多证券、start/end/count/fields、与原表抽样对账一致；17 个新增测试通过）
 JoinQuant 兼容核心            PASS  （Phase 3：frequency 别名 d/day/1d->daily；字段别名 money->amount；fq='none' 原始价 + fq='pre'/'post' 等价原始价 LIMIT 透传，绝不伪造复权；get_price/history/attribute_history 经 Generic Provider Registry 接入 BulletTrade 引擎；与原表抽样对账一致，close≠adjclose 已验证；13 个新增 JQ 兼容测试通过）
 真实 A 股回测                PASS  （Phase 4：BacktestEngine 经 Provider 跑通 600519.XSHG 2023Q1，无异常；daily_records/持仓/资产曲线来自真实价，与原表对账一致；防未来数据生效；get_price 扩展 high_limit/low_limit（final_a_stock_limit）/paused（volume==0 派生）；新增 3 个回测 + 3 个字段测试通过）
+真实复权（前/后复权）          PASS  （Phase 5：fq='post'/'hfq' 后复权 close 精确等于原表 adjclose；fq='pre'/'qfq' 前复权以 pre_factor_ref_date/窗口末日为基准（基准日 close==原始）；因子由 adjclose/原始价真实推导，绝不伪造；仅缩放 OHLC，volume/amount 保持原始；新增 4 个对账测试通过）
 QuantRadar Provider bootstrap IMPLEMENTED（Phase 2A：backend/quantradar/bootstrap.py 显式 register + set_active + 校验 name）
 Qlib import                  PASS  （pyqlib 0.9.7 已装入 .venv）
 ```
@@ -53,7 +54,7 @@ alpha factor                 BLOCKED（investment_data 无因子表）
 公司行为(分红/拆股)显式数据   LIMIT  （无独立表；仅 bao.adjfactor/adjclose 隐含，get_split_dividend 待建设）
 Qlib 数据                     PARTIAL（import OK；QLIB_DATA_NOT_BUILT，全机无 qlib_data/cn_data）
 停牌(tradestatus) 鲁棒性      PARTIAL（bao.tradestatus 列存在，语义与覆盖待 Phase 2 确认；bao 源至 2023-06-09）
-InvestmentDataProvider       BASE IMPLEMENTED（Phase 2A）+ get_price PASS（Phase 2B）+ JQ 兼容核心 PASS（Phase 3）+ 真实 A 股回测 PASS（Phase 4）；get_split_dividend NOT IMPLEMENTED（Phase 5）
+InvestmentDataProvider       BASE IMPLEMENTED（Phase 2A）+ get_price PASS（Phase 2B）+ JQ 兼容核心 PASS（Phase 3）+ 真实 A 股回测 PASS（Phase 4）+ 真实复权 PASS（Phase 5）；get_split_dividend NOT IMPLEMENTED（待公司行为建设）
 FastAPI / PostgreSQL / Worker / WebUI   BLOCKED（Phase 7/8 前）
 Qlib 模型                     BLOCKED（Phase 10 前）
 QMT / 实盘                    BLOCKED（未来实盘节点）
@@ -155,6 +156,7 @@ Phase 2A（已完成）：InvestmentDataProvider 基础能力 —— INVESTMENT_
 Phase 2B（已完成）：原始日线 get_price(fq="none") —— 基于 final_a_stock_eod_price，日频，与数据库原表抽样对账 —— RAW_DAILY_PRICE_PASS
 Phase 3（已完成）：JoinQuant 兼容核心 —— frequency/fq 别名归一、字段别名、history/attribute_history 经 Generic Provider Registry 接入 BulletTrade 引擎，与原表对账 —— JQ_COMPAT_CORE_PASS
 Phase 4（已完成）：真实 A 股回测 —— InvestmentDataProvider 驱动 BacktestEngine 跑通端到端，验证数据链路/防未来数据/真实价对账 —— REAL_A_SHARE_BACKTEST_PASS
-Phase 5（下一阶段）：复权（fq='pre'/'post' 基于真实因子实现，与原表 adjclose 对账；或明确 PARTIAL）
+Phase 5（已完成）：真实复权 —— fq='pre'/'post'/'qfq'/'hfq' 基于 adjclose 与原始价真实因子，与原表对账 —— ADJUSTED_PRICE_PASS
+Phase 6（下一阶段）：Snapshot / 可复现（回测环境快照、随机种子、配置固化，确保结果可复现）
 禁止提前开发：复权价 / FastAPI / React / PostgreSQL / Qlib / ETF / QMT / 实盘（除非当前阶段需要）
 ```
