@@ -14,7 +14,7 @@
 #
 # 环境变量（可选覆盖）:
 #   QUANTRADAR_HOST  默认 127.0.0.1
-#   QUANTRADAR_PORT  默认 8000
+#   QUANTRADAR_PORT  默认 7231
 
 set -euo pipefail
 
@@ -29,7 +29,7 @@ UVICORN="$VENV/bin/uvicorn"
 APP_MODULE="quantradar.api.app:app"
 
 HOST="${QUANTRADAR_HOST:-127.0.0.1}"
-PORT="${QUANTRADAR_PORT:-8000}"
+PORT="${QUANTRADAR_PORT:-7231}"
 
 LOG_DIR="$ROOT_DIR/logs"
 PID_FILE="$LOG_DIR/quantradar.pid"

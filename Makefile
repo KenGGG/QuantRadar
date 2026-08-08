@@ -22,7 +22,7 @@ help:
 	@echo "  make setup   安装依赖"
 	@echo "  make test    运行单元测试"
 	@echo "  make smoke   端到端冒烟测试"
-	@echo "  make dev     启动开发服务器 (http://127.0.0.1:8000)"
+	@echo "  make dev     启动开发服务器 (http://127.0.0.1:7231)"
 
 setup:
 	python3 -m venv $(VENV) || true
@@ -38,4 +38,4 @@ smoke:
 	$(PYTHON) scripts/smoke.py
 
 dev:
-	$(PYTHON) -m uvicorn quantradar.api.app:app --host 127.0.0.1 --port 8000 --reload
+	$(PYTHON) -m uvicorn quantradar.api.app:app --host 127.0.0.1 --port 7231 --reload

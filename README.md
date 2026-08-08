@@ -63,7 +63,7 @@ chmod +x quantradar.sh        # 首次需赋可执行权限（已默认提交）
 ./quantradar.sh status        # 查看运行状态与访问地址
 ```
 
-- 默认监听 `127.0.0.1:8000`。可用环境变量覆盖：
+- 默认监听 `127.0.0.1:7231`。可用环境变量覆盖：
   ```bash
   QUANTRADAR_HOST=0.0.0.0 QUANTRADAR_PORT=8010 ./quantradar.sh start
   ```
@@ -72,8 +72,8 @@ chmod +x quantradar.sh        # 首次需赋可执行权限（已默认提交）
 
 启动后访问：
 
-- Web 工作台：<http://127.0.0.1:8000/>
-- 健康检查：<http://127.0.0.1:8000/api/health>
+- Web 工作台：<http://127.0.0.1:7231/>
+- 健康检查：<http://127.0.0.1:7231/api/health>
 
 ---
 
