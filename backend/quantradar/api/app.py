@@ -284,3 +284,24 @@ def spa_fallback(full_path: str) -> Any:
     if os.path.splitext(full_path)[1]:
         raise HTTPException(status_code=404, detail="not found")
     return FileResponse(_DIST_PATH)
+
+
+# ---------------------------------------------------------------------------
+# 启动事件：幂等建表（避免首次访问 /api/backtest/runs 时表尚不存在而 500）
+# ---------------------------------------------------------------------------
+@app.on_event("startup")
+def _startup_init_pg() -> None:
+    """应用启动时确保 PostgreSQL 表就绪；未配置 QUANT_RADAR_PG_URL 时跳过（相关接口仍 503）。"""
+    import sys
+
+    if os.environ.get("QUANT_RADAR_PG_URL"):
+        try:
+            from quantradar.storage import init_db
+
+            init_db()
+            print("[QuantRadar] PostgreSQL 表已就绪（异步回测可用）")
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"[QuantRadar] 警告：PostgreSQL 初始化失败，异步回测将不可用：{exc}",
+                file=sys.stderr,
+            )

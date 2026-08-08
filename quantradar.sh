@@ -58,6 +58,19 @@ preflight() {
   fi
 }
 
+# 加载 .env（若存在），导出其中变量供 uvicorn 进程读取（如 QUANT_RADAR_PG_URL）。
+# 不读取则异步回测(Worker+PostgreSQL)会因缺少连接串返回 503。
+load_env() {
+  local envf="$ROOT_DIR/.env"
+  if [[ -f "$envf" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$envf"
+    set +a
+    echo "[$APP_NAME] 已加载 .env"
+  fi
+}
+
 # ---- 启动 ----
 do_start() {
   if is_running; then
@@ -66,6 +79,7 @@ do_start() {
   fi
   mkdir -p "$LOG_DIR"
   preflight
+  load_env
   echo "[$APP_NAME] 正在启动 uvicorn ($APP_MODULE) ..."
   # nohup 在输出已重定向时直接 exec 目标进程，故 $! 即 uvicorn 的 PID；日志全量写入 LOG_FILE
   nohup "$UVICORN" "$APP_MODULE" \

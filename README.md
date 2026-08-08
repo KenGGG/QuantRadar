@@ -44,7 +44,7 @@ investment_data (Dolt SQL server, 127.0.0.1:3307, 只读事实源)
 |------|------|----------|
 | Python 3 虚拟环境 `.venv` | 项目依赖（BulletTrade、qlib、fastapi、lightgbm 等） | `make setup` |
 | **investment_data (Dolt 3307)** | 只读行情事实源，**必须本机可达** | 用户本地启动 Dolt |
-| **PostgreSQL** | 异步回测落库（本机专用库，如 `quantradar`） | 用户本地数据库 |
+| **PostgreSQL** | 异步回测落库（本机专用库，如 `quantradar`）；**必须**在 `.env` 设置 `QUANT_RADAR_PG_URL`（格式见 `.env.example`），否则 `/api/backtest/async` 等返回 503。`quantradar.sh` 启动会自动加载 `.env` 并导出该变量 | 用户本地数据库 |
 
 > 本仓库**不**管理 Dolt / PostgreSQL 的启停，只在使用时读取。`.env`（复制自 `.env.example`）配置 Dolt 连接；PostgreSQL 连接串见 `backend/quantradar/storage.py`。
 
