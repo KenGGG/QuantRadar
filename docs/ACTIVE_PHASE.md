@@ -2,7 +2,7 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：Hardening & Research Correctness —— 已完成（降级为 FUNCTIONAL_V1_PASS）**
+**当前阶段：Hardening 完成（FUNCTIONAL_V1_PASS）→ 严谨研究型 V1 进行中（RESEARCH_V1_WIP，T1 已完成）**
 
 ```text
 目标：在「功能型 V1」达成的基础上，补齐工程与研究正确性加固，使系统达到可审计、可复现、
@@ -97,17 +97,63 @@ make smoke 本机全量通过；GitHub Actions CI 已建）
 ```text
 - 数据层 PARTIAL：investment_data 的 bao 源（ST/停牌/复权因子）仅至 2023-06-09；
   2023 后数据（指数权重至 2026-06-30，日线至 2026-08-04）部分残缺，严谨研究需补齐。
-- 回测腿使用原始价（get_price fq='none'），与 Qlib 训练用的后复权价口径不完全一致；
-  严格净值归因需统一复权口径。
+- 回测腿与 Qlib 训练复权口径【实测已统一，旧认知纠正】：final_a_stock_eod_price.close 本身已是
+  连续复权价（除权缺口已消除），故回测腿（读 final.close，fq='none'）与 Qlib 训练（读 final.adjclose
+  后复权）天生同源，日收益率完全一致、无除权假跳变。T1 已把 fq 配置化（run_backtest/
+  run_target_weight_backtest 支持 none/pre/qfq/post/hfq）+ 审计记录 fq；默认 fq='none' 保持兼容。
 - Qlib 仅最小闭环（Alpha158+LightGBM）；多模型/参数寻优/更严谨的样本外评估属后续研究。
 - 单 uvicorn 进程模型；多进程水平扩展（分布式锁 FOR UPDATE SKIP LOCKED）不在本地工具范围。
 ```
 
 ---
 
-# 五、下一阶段（未启动，需另行确认）
+# 五、下一阶段（已启动：严谨研究型 V1）
 
 ```text
 「严谨研究型 V1」：在 FUNCTIONAL_V1 之上，补齐数据层完整性、统一复权口径、扩展 Qlib 研究，
-并对关键结论做样本外稳健性验证。启动前需明确范围与数据补齐方案，不自动进入。
+并对关键结论做样本外稳健性验证。已据用户决策启动（AskUserQuestion：下一步=启动严谨研究型 V1；
+数据缺口=标记待用户侧补齐，不阻塞、不伪造；研究范围=复权统一+列表补全、Qlib多模型+寻优、样本外稳健性验证）。
+范围排除：选股+ST/停牌过滤（依赖待定数据，未选）、数据补齐本身（用户侧）。
+```
+
+---
+
+# 六、严谨研究型 V1 子项（进行中）
+
+## T1) 复权口径统一 + 同源验证 + 审计记录 fq —— RESEARCH_T1_FQ_PASS ✅
+- `snapshot.py`：`build_snapshot` 增 `fq` 参数，写入 config（位于 benchmark 之后、seed 之前）。
+- `backtest.py`：`run_backtest` 增 `fq: str = "none"`（可选 none/pre/qfq/post/hfq）；`_FQ_LOCK`
+  线程安全切换 BulletTrade `use_real_price`（`_use_real_price = _fq != "none"`），整个回测体包在
+  `with _FQ_LOCK: set_option("use_real_price", _use_real_price) ... finally: 还原`；两路径均透传 `fq`。
+- `qml/bridge.py`：`run_target_weight_backtest` 默认 `fq="pre"` 并透传 `run_backtest(..., fq=fq)`
+  （pre 与 Qlib 的 hfq 在同一窗口收益率等价，仅净值绝对水平缩放常数因子）。
+- 实测纠正：final.close 已是连续复权价，回测腿与 Qlib 训练同源，无除权假跳变（旧认知不实）。
+- 测试：`tests/unit/test_backtest_fq.py` 3 passed（fq 透传 config / 净值连续 <0.30 / none 与 pre 日收益率
+  相关>0.999 且期末对齐<1%）。
+
+## T2) 股票列表补全（Point-in-Time 宇宙近似）—— #61 待做
+- `provider.py` 增 `_extended_universe`：从 final 聚合首/末现日补全 `ts_a_stock_list`（至 2022-07-18）
+  之后的上市股，标注 `source='final_approx'` PARTIAL（非权威列表）。
+- `qml/dump.py` `select_universe` 增 `use_extended` 开关。
+- `tests/unit/test_universe_extended.py`：验证补全标的入宇宙、标注来源、不破坏既有 PIT 守卫。
+
+## T3) Qlib 多模型 + 参数寻优 + walk-forward —— #60 待做
+- 多模型探测可用性：lgb / xgb / mlp，任一不可用抛 `NotImplementedError`（不伪造）。
+- `grid_search_qlib`：轻量网格寻优（模型超参），固定随机种子，结果可复现。
+- `walk_forward_qlib`：滚动窗口训练/验证/测试，输出各窗口指标，杜绝单一切分的乐观偏差。
+- 测试：`test_qlib_models.py` / `test_grid_search.py` / `test_walk_forward.py`。
+
+## T4) 样本外稳健性验证 + 可复现报告 —— #62 待做
+- `scripts/research_oos.py`：端到端跑 T3 的 walk-forward，输出样本外指标 + 可复现报告（JSON+MD）。
+- `tests/unit/test_research_oos.py`：验证报告字段齐全、可复现（同输入同输出）。
+
+## T5) 测试隔离 / CI / smoke 扩展 + 文档 —— #63 待做
+- `conftest` 确保新增测试带 `requires_dolt`；`make smoke` 扩展覆盖研究链路。
+- 文档：`ACTIVE_PHASE.md` / `CURRENT_STATE.md` 升 `QUANTRADAR_RESEARCH_V1_WIP`；更新 `06_Qlib研究规范.md`。
+- 最终 `make test` + 模拟 CI 验收。
+
+```text
+外部待定（用户侧，不阻塞）：数据补齐方案（ST/停牌/列表，来自只读 Dolt，本仓库无法补齐）。
+元信息缺口：bao_a_stock_eod_info→2023-06-09；final_a_stock_limit→2023-06-12；ts_a_stock_list→2022-07-18。
+价格+adjclose→2026-08-04；指数权重→2026-06-30（完整）。
 ```

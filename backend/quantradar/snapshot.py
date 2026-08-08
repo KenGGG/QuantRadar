@@ -133,6 +133,7 @@ def build_snapshot(
     security: Optional[str] = None,
     amount: Optional[int] = None,
     benchmark: Optional[str] = None,
+    fq: Optional[str] = None,
 ) -> Dict[str, Any]:
     """从一次「已运行」的 BacktestEngine 构建快照 manifest（含完整审计字段）。
 
@@ -179,6 +180,7 @@ def build_snapshot(
         "frequency": getattr(engine, "frequency", None),
         "amount": amount if amount is not None else getattr(engine, "amount", None),
         "benchmark": benchmark if benchmark is not None else getattr(engine, "benchmark", None),
+        "fq": fq if fq is not None else getattr(engine, "fq", None),
         "seed": seed,
     }
     metrics = compute_metrics(records)

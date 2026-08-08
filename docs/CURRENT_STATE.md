@@ -10,7 +10,7 @@
 # 当前阶段
 
 ```text
-当前阶段：Hardening & Research Correctness 完成 → QUANTRADAR_FUNCTIONAL_V1_PASS ✅（功能型 V1）
+当前阶段：Hardening 完成 → FUNCTIONAL_V1_PASS ✅（功能型 V1）→ 严谨研究型 V1 进行中 QUANTRADAR_RESEARCH_V1_WIP（T1 复权口径统一已完成）
   1) 依赖可重建            PASS  HARDENING_DEPS_PASS ✅（pyproject 补依赖 / 干净 requirements.txt / Makefile setup 装前端 / 前端依赖补全）
   2) 测试库隔离+localhost  PASS  HARDENING_TEST_ISOLATION_PASS ✅（TEST 库隔离 + drop_all 拒绝非 _test 库 + 0.0.0.0 强警告）
   3) 审计链                PASS  HARDENING_AUDIT_CHAIN_PASS ✅（config 完整 + 策略源码落库 + run_id/snapshot_hash/result_hash 语义分明）
@@ -18,7 +18,13 @@
   5) Worker 稳定性 + CI    PASS  HARDENING_WORKER_CI_PASS ✅（固定线程池 + 重启恢复 + GitHub Actions CI）
 阶段标志：QUANTRADAR_FUNCTIONAL_V1_PASS ✅ 已达成（5 项 Hardening 标志全绿；make test / make smoke 本机全量通过；CI 已建）
 降级说明：原 QUANTRADAR_V1_PASS 更名为 FUNCTIONAL_V1_PASS——功能闭环已可用，但尚非「严谨研究型 V1」
-  （数据层 2023 后残缺、回测腿原始价 vs Qlib 复权价口径未统一、多模型/参数寻优未做）。严谨研究型 V1 为下一阶段，未启动。
+  （数据层 2023 后残缺、多模型/参数寻优未做）。严谨研究型 V1 已启动：T1 复权口径统一已完成。
+  【实测纠正旧认知】final_a_stock_eod_price.close/open/high/low 本身已是连续复权价（除权缺口已消除），
+  600519 在 2023-2024 区间 fq='none' 与 fq='pre' 日收益率完全一致（none_min=pre_min=-0.0742，
+  期末对齐 0.0000%，除权日候选 0）→ 回测腿（读 final.close）与 Qlib 训练（读 final.adjclose 后复权）
+  天生同源连续复权，旧 summary「回测腿原始价 vs Qlib 复权价口径未统一」不实。两者已统一，无除权假跳变。
+  故 T1 交付定位为：复权口径 fq 配置化（run_backtest/run_target_weight_backtest 支持 none/pre/qfq/post/hfq）
+  + 审计 config 记录 fq + 线程安全切换 use_real_price（_FQ_LOCK），而非「修复假跳变」。
 最近完成（Hardening）：pyproject/requirements/Makefile/frontend 依赖可重建；storage 测试隔离；snapshot config+策略落库+hash 语义；
   qml bridge/loop/dump 防未来函数；worker 固定池+重启恢复；tests requires_dolt 跳过；GitHub Actions CI。
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
@@ -71,6 +77,7 @@ Qlib 最小闭环                  PASS  （QLIB_BULLETTRADE_LOOP_PASS：Alpha15
 审计链                        PASS  （HARDENING_AUDIT_CHAIN_PASS：snapshot config 含 security/amount/benchmark/extras；新增确定性 snapshot_hash；用户策略源码落库 strategies 并绑定 backtest_runs.strategy_id）
 Qlib 防未来函数               PASS  （HARDENING_QLIB_NOFUTURE_PASS：bridge 同日前视修复 index<day；loop segment 不重叠守卫；dump 用 adjclose 后复权训练避免除权跳变）
 Worker 稳定性 + CI            PASS  （HARDENING_WORKER_CI_PASS：worker 固定 ThreadPoolExecutor + 重启恢复 RUNNING→PENDING 重入队；tests requires_dolt 自动 skip；GitHub Actions CI 后端测试+前端构建）
+复权口径配置化 + 同源验证       PASS  （RESEARCH_T1_FQ_PASS：run_backtest/run_target_weight_backtest 支持 fq∈{none,pre,qfq,post,hfq}，审计 config 记录 fq，_FQ_LOCK 线程安全切换 use_real_price；实测 final.close 已连续复权，回测腿与 Qlib 训练同源，无除权假跳变；test_backtest_fq.py 3 passed）
 ```
 
 ---
@@ -194,5 +201,12 @@ Phase 8（已完成）：中文 WebUI + 浏览器策略回测 + 实验 + Web 构
 主线闭环达成（QUANTRADAR_STOCK_V1_PASS）：investment_data → Provider → JoinQuant策略 → BulletTrade真实回测 → PIT → Snapshot → Deterministic → API → 中文Web → Experiment → 因子研究
 Phase 9（进行中）：无基础设施部分已完成（因子研究 / Experiment / Makefile / Smoke / 浏览器策略回测 / 实验API / Web构建，QUANTRADAR_SMOKE_PASS + QUANTRADAR_STOCK_V1_PASS）；PostgreSQL + Worker 已完成（PERSIST_WORKER_PASS，连本机 1Panel 专用库 quantradar 验证异步回测落库）；正式 React WebUI 待 Item 3
 Phase 10（下一）：Qlib 高级研究（Alpha158 / LightGBM 等，需 QLIB_DATA 构建，本地可行）
-禁止提前开发：PostgreSQL / Qlib 模型 / ETF / QMT / 实盘（除非当前阶段需要）
+严谨研究型 V1 进行中（QUANTRADAR_RESEARCH_V1_WIP）：
+  T1（已完成）：复权口径统一 + 同源验证 + 审计记录 fq（RESEARCH_T1_FQ_PASS；test_backtest_fq.py 3 passed）
+  T2（#61 待做）：股票列表补全 —— 从 final 聚合首/末现日补全 2022-07-18 后上市股，标注 source='final_approx' PARTIAL；dump.select_universe 增 use_extended；test_universe_extended.py
+  T3（#60 待做）：Qlib 多模型（lgb/xgb/mlp 探测可用性）+ grid_search_qlib + walk_forward_qlib；test_qlib_models/grid_search/walk_forward.py
+  T4（#62 待做）：scripts/research_oos.py 端到端样本外稳健性验证 + 可复现报告（JSON+MD）；test_research_oos.py
+  T5（#63 待做）：conftest 确保新增测试带 requires_dolt；make smoke 扩展；文档（ACTIVE_PHASE/CURRENT_STATE 升 RESEARCH_V1_WIP / 06_Qlib研究规范）；最终 make test + 模拟 CI 验收
+  外部待定（用户侧，不阻塞）：数据补齐方案（ST/停牌/列表，来自只读 Dolt，本仓库无法补齐）
+禁止提前开发：PostgreSQL / ETF / QMT / 实盘（除非当前阶段需要）
 ```

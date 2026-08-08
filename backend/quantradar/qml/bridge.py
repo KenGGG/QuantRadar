@@ -75,6 +75,7 @@ def run_target_weight_backtest(
     start_date: str,
     end_date: str,
     initial_cash: float = 1_000_000.0,
+    fq: str = "pre",
 ) -> Tuple[Any, Dict[str, Any]]:
     """用 Target Weight 在 BulletTrade 上跑账户回测，返回 (engine, snapshot)。
 
@@ -82,9 +83,16 @@ def run_target_weight_backtest(
         weights: Target Weight DataFrame（index=交易日, columns=JQ代码, values=权重）。
         start_date/end_date: 回测区间（应为权重覆盖的测试期）。
         initial_cash: 初始资金。
+        fq: 复权口径。默认 'pre'（连续前复权），与 Qlib 训练所用的后复权(hfq)在同一窗口内
+            收益率等价（仅净值绝对水平缩放常数因子），使模型预测收益与账户实现收益口径一致、
+            除权日无假跳变。若需真实现金流水归因可显式传 'none'。
     """
     if weights is None or weights.empty:
         raise ValueError("Target Weight 为空，无法回测")
+    if (fq or "none").lower() not in ("none", "pre", "qfq", "post", "hfq"):
+        raise ValueError(
+            f"run_target_weight_backtest: 不支持的复权方式 fq={fq!r}"
+        )
 
     tmp_dir = tempfile.mkdtemp(prefix="qr_tw_")
     weights_csv = os.path.join(tmp_dir, "target_weights.csv")
@@ -98,5 +106,6 @@ def run_target_weight_backtest(
         end_date=end_date,
         initial_cash=initial_cash,
         frequency="day",
+        fq=fq,
     )
     return engine, snapshot

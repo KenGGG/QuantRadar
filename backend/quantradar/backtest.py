@@ -11,9 +11,16 @@ from __future__ import annotations
 
 import os
 import tempfile
+import threading
 from typing import Any, Dict, List, Optional, Tuple
 
+from bullet_trade.core.settings import get_settings, set_option
+
 from quantradar.snapshot import _to_native, build_snapshot
+
+# 保护 bullet_trade 全局 use_real_price 设置在「设置 → 回测 → 还原」临界区内的线程安全。
+# 单进程内回测本就基本串行；此锁避免 Worker 多线程并发提交时复权口径互相串扰。
+_FQ_LOCK = threading.Lock()
 
 
 def _serialize_trades(engine: Any) -> List[Dict[str, Any]]:
@@ -77,67 +84,93 @@ def run_backtest(
     amount: int = 100,
     extras: Optional[Dict[str, Any]] = None,
     benchmark: Optional[str] = None,
+    fq: str = "none",
 ) -> Tuple[Any, Dict[str, Any]]:
     """运行一次真实回测，返回 (engine, snapshot)。
 
     - code 非空：用户策略源码（JoinQuant 兼容），写入临时 .py 经 BacktestEngine(strategy_file=) 执行。
     - code 为空：内置 Buy&Hold（对 security 建仓并持有）。
     benchmark 仅作为审计/配置字段记录（不参与撮合，撮合由 BulletTrade 负责）。
+
+    复权口径（fq）：
+      - 'none'（默认）：真实现金流水，撮合用原始价，含除权除息跳变（适合真实现金归因）。
+      - 'pre'/'qfq'/'post'/'hfq'：连续复权撮合（启用 bullet_trade use_real_price），净值连续、
+        除权日无假跳变。注意 bullet_trade 撮合统一以「前复权(pre)」执行；后复权(hfq/post)与前
+        复权(qfq/pre) 在同一回测窗口内收益率严格等价（仅净值绝对水平缩放常数因子），故与 Qlib
+        训练所用的后复权(hfq)收益率一致——严谨研究型回测默认用连续复权口径。
     """
     from bullet_trade.core.engine import BacktestEngine
 
     from quantradar.bootstrap import bootstrap_investment_data
 
-    bootstrap_investment_data(set_active=True, overwrite=True)
-
-    if code:
-        tmp = tempfile.NamedTemporaryFile(
-            "w", suffix=".py", delete=False, prefix="qr_strategy_", encoding="utf-8"
+    _fq = (fq or "none").lower()
+    if _fq not in ("none", "pre", "qfq", "post", "hfq"):
+        raise ValueError(
+            f"run_backtest: 不支持的复权方式 fq={fq!r}；"
+            f"支持 none（真实现金流水，含除权跳变）/ pre / qfq / post / hfq（连续复权）"
         )
-        tmp.write(code)
-        tmp.close()
+    # bullet_trade 撮合仅区分「原始价(none)」与「连续前复权(pre)」；后复权(hfq/post)与前复权
+    # (qfq/pre) 在同一回测窗口内收益率严格等价（仅净值绝对水平缩放常数因子）。无论请求何种
+    # 连续复权，撮合统一启用 use_real_price（pre），使账户净值连续、除权日无假跳变，与 Qlib
+    # 训练所用的后复权(hfq)收益率一致（严谨研究型口径）。
+    _use_real_price = _fq != "none"
+
+    with _FQ_LOCK:
+        _prev_real_price = get_settings().options.get("use_real_price", False)
+        set_option("use_real_price", _use_real_price)
         try:
+            bootstrap_investment_data(set_active=True, overwrite=True)
+
+            if code:
+                tmp = tempfile.NamedTemporaryFile(
+                    "w", suffix=".py", delete=False, prefix="qr_strategy_", encoding="utf-8"
+                )
+                tmp.write(code)
+                tmp.close()
+                try:
+                    engine = BacktestEngine(
+                        strategy_file=tmp.name,
+                        start_date=start_date,
+                        end_date=end_date,
+                        frequency=frequency,
+                        initial_cash=initial_cash,
+                    )
+                    engine.run()
+                finally:
+                    try:
+                        os.unlink(tmp.name)
+                    except OSError:
+                        pass
+                snapshot = build_snapshot(
+                    engine, extras=extras, strategy_source=code,
+                    security=security, amount=amount, benchmark=benchmark, fq=_fq,
+                )
+                return engine, _attach_details(snapshot, engine)
+
+            # 内置 Buy&Hold
+            sec = security or "600519.XSHG"
+
+            def _init(context):  # noqa: ANN001
+                context._qr_security = sec
+                context._qr_amount = amount
+
+            def _handle(context, data):  # noqa: ANN001
+                if not context.portfolio.positions:
+                    order_target(context._qr_security, context._qr_amount)
+
             engine = BacktestEngine(
-                strategy_file=tmp.name,
+                initialize=_init,
+                handle_data=_handle,
                 start_date=start_date,
                 end_date=end_date,
                 frequency=frequency,
                 initial_cash=initial_cash,
             )
             engine.run()
+            snapshot = build_snapshot(
+                engine, extras=extras, strategy_source=None,
+                security=sec, amount=amount, benchmark=benchmark, fq=_fq,
+            )
+            return engine, _attach_details(snapshot, engine)
         finally:
-            try:
-                os.unlink(tmp.name)
-            except OSError:
-                pass
-        snapshot = build_snapshot(
-            engine, extras=extras, strategy_source=code,
-            security=security, amount=amount, benchmark=benchmark,
-        )
-        return engine, _attach_details(snapshot, engine)
-
-    # 内置 Buy&Hold
-    sec = security or "600519.XSHG"
-
-    def _init(context):  # noqa: ANN001
-        context._qr_security = sec
-        context._qr_amount = amount
-
-    def _handle(context, data):  # noqa: ANN001
-        if not context.portfolio.positions:
-            order_target(context._qr_security, context._qr_amount)
-
-    engine = BacktestEngine(
-        initialize=_init,
-        handle_data=_handle,
-        start_date=start_date,
-        end_date=end_date,
-        frequency=frequency,
-        initial_cash=initial_cash,
-    )
-    engine.run()
-    snapshot = build_snapshot(
-        engine, extras=extras, strategy_source=None,
-        security=sec, amount=amount, benchmark=benchmark,
-    )
-    return engine, _attach_details(snapshot, engine)
+            set_option("use_real_price", _prev_real_price)
