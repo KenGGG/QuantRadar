@@ -26,7 +26,7 @@ import pytest
 # 1) qlib / lightgbm 可用才运行（否则整文件 skip）
 try:
     import qlib  # noqa: F401
-    from quantradar.qml import run_qml_pipeline  # noqa: F401
+    from quantradar.qml import run_qlib_loop  # noqa: F401
 
     _HAVE_QLIB = True
 except Exception:  # pragma: no cover - 依赖可选依赖
@@ -52,41 +52,50 @@ def _dolt_reachable() -> bool:
         return False
 
 
-# 2) Dolt 可达才运行（否则 skip）
+# 2) Dolt 可达才运行（否则 skip）；统一用 requires_dolt 标记，与 conftest 自动 skip 一致
 pytestmark = [
+    pytest.mark.requires_dolt,
     pytestmark,
     pytest.mark.skipif(not _dolt_reachable(), reason="investment_data(Dolt) 不可达：跳过 Qlib 闭环测试"),
 ]
 
 
 def test_qml_closed_loop_small():
-    """小配置跑通 dump→loop→bridge，并断言无未来函数与无仓库污染。"""
+    """小配置跑通 loop→bridge 闭环，并断言无未来函数与无仓库污染。
+
+    复用共享 qlib 目录（单目录/进程，与真实用法一致）。关键：共享目录只构建一次、只读取，
+    任何测试都**不重建**它——qlib 的 InstrumentProvider/CalendarProvider 缓存不随 provider_uri
+    重定向失效，同进程内切换/重建 qlib_data_dir 会读到陈旧 instruments，破坏数据正确性。
+    dump 的正确性由 test_dump_qlib_data（只读校验目录结构）覆盖。
+    """
+    from quantradar.qml import run_qlib_loop, run_target_weight_backtest
+    from tests.unit._qml_helpers import build_shared_qlib_dir
+
+    qlib_dir = build_shared_qlib_dir()
     cwd_before = os.getcwd()
     try:
-        out = run_qml_pipeline(
-            start="2020-01-01",
-            end="2021-12-31",
-            max_instruments=12,
-            topk=4,
-            num_boost_round=30,
-            early_stopping_rounds=8,
-            initial_cash=1_000_000.0,
+        loop_result = run_qlib_loop(
+            qlib_dir, start="2020-01-01", end="2021-12-31",
+            topk=4, num_boost_round=30, early_stopping_rounds=8, model="lgb",
+        )
+        weights = loop_result["weights"]
+        engine, snap = run_target_weight_backtest(
+            weights, start_date="2021-07-01", end_date="2021-12-31", initial_cash=1_000_000.0,
         )
     finally:
-        # 断言：仓库根（cwd）未生成 ./mlruns（防污染）
+        # 断言：仓库根（cwd）未生成 ./mlruns（防污染，exp_manager 已重定向临时目录）
         assert not os.path.exists(os.path.join(cwd_before, "mlruns")), "仓库根出现 ./mlruns 污染"
 
-    dump = out["dump"]
-    loop = out["loop"]
-    snap = out["backtest"]
+    loop = {
+        "feature_dim": loop_result["feature_dim"],
+        "ic_mean": loop_result["ic_mean"],
+        "rankic_mean": loop_result["rankic_mean"],
+        "weights_rows": int(weights.shape[0]) if not weights.empty else 0,
+        "weights_cols": int(weights.shape[1]) if not weights.empty else 0,
+    }
+    dump_instruments = _shared_instrument_count(qlib_dir)
 
-    # 1) dump 阶段：真实数据、字段正确、宇宙合理（Point-in-Time 取前 N 只，部分可能无行情被剔除）
-    assert dump["calendar_days"] > 0
-    assert 0 < dump["instruments"] <= 12
-    assert set(dump["fields"]) >= {"open", "high", "low", "close", "volume", "vwap"}
-    assert dump["written_feature_files"] == dump["instruments"] * len(dump["fields"])
-
-    # 2) loop 阶段：IC/RankIC 为有限数；Target Weight 形状合理
+    # 1) loop 阶段：IC/RankIC 为有限数；Alpha158 特征维度；Target Weight 形状合理
     assert loop["feature_dim"] == 158, "Alpha158 特征维度应为 158"
     import math
 
@@ -95,19 +104,59 @@ def test_qml_closed_loop_small():
     assert abs(loop["ic_mean"]) < 1.0, "IC 应在 [-1,1]"
     assert abs(loop["rankic_mean"]) < 1.0, "RankIC 应在 [-1,1]"
     assert loop["weights_rows"] > 0
-    # 列数 = 各测试日 Top-K 出现过的证券并集（可大于 topk），但不超过宇宙上限
-    assert 0 < loop["weights_cols"] <= dump["instruments"]
+    # 列数 = 各测试日 Top-K 出现过的证券并集，不超过宇宙上限
+    assert 0 < loop["weights_cols"] <= dump_instruments, (
+        f"weights_cols={loop['weights_cols']} 应 <= 宇宙 {dump_instruments}"
+    )
 
-    # 3) bridge 阶段：BulletTrade 真实账户回测产出 NAV/Trades/Positions
+    # 2) bridge 阶段：BulletTrade 真实账户回测产出 NAV/Trades/Positions
     records = snap.get("daily_records") or []
     assert records, "回测未产出 daily_records（NAV）"
     assert snap.get("trades"), "回测未产生任何成交"
     last_value = records[-1].get("total_value")
     assert last_value not in (None, 0), "期末账户总值应为正数"
 
-    # 4) 防未来函数（结构性校验）：测试窗口严格晚于训练+验证
-    assert out["test_start"] >= "2021-07-01", "测试窗口应处于时间轴最末（防泄漏）"
-    assert out["test_end"] <= "2021-12-31"
+    # 3) 防未来函数（结构性校验）：测试窗口严格晚于训练+验证
+    assert loop_result["test_start"] >= "2021-07-01", "测试窗口应处于时间轴最末（防泄漏）"
+    assert loop_result["test_end"] <= "2021-12-31"
+
+
+def _shared_instrument_count(qlib_dir: str) -> int:
+    """读共享目录 instruments/all.txt 的证券数（只读，不重建）。"""
+    path = os.path.join(qlib_dir, "instruments", "all.txt")
+    n = 0
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                n += 1
+    return n
+
+
+def test_dump_qlib_data():
+    """（只读）校验共享 qlib 目录的 dump 产出结构正确：calendar / instruments / features。"""
+    from tests.unit._qml_helpers import build_shared_qlib_dir
+
+    qlib_dir = build_shared_qlib_dir()
+    # calendar
+    cal_path = os.path.join(qlib_dir, "calendars", "day.txt")
+    assert os.path.isfile(cal_path), "缺 calendars/day.txt"
+    with open(cal_path, encoding="utf-8") as f:
+        cal_days = sum(1 for ln in f if ln.strip())
+    assert cal_days > 0, "交易日历为空"
+
+    # instruments
+    inst_count = _shared_instrument_count(qlib_dir)
+    assert 0 < inst_count <= 20, f"证券数异常：{inst_count}"
+
+    # features：每个证券 7 个字段（见 dump._QLIB_FIELDS）
+    feat_dir = os.path.join(qlib_dir, "features")
+    assert os.path.isdir(feat_dir), "缺 features 目录"
+    bin_files = []
+    for _root, _dirs, _files in os.walk(feat_dir):
+        bin_files.extend(_files)
+    assert len(bin_files) == inst_count * 7, (
+        f"特征文件数 {len(bin_files)} 应 = 证券数 {inst_count} × 7 字段"
+    )
 
 
 def test_topk_target_weights_unit():

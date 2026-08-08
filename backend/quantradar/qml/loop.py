@@ -55,6 +55,7 @@ _MODEL_REGISTRY: Dict[str, Dict[str, str]] = {
 # qlib 不允许在同一进程重复 init（RecorderInitializationError，recorder 位置首次已定）。
 # 因此每个进程仅 init 一次；后续若请求不同的 qlib_data_dir，仅重定向 provider_uri（数据目录），
 # 不再重新 init，从而规避 qlib 进程级状态污染，同时支持跨目录复用（网格/walk-forward 多折）。
+# 初始化状态以 qlib 自身的 C.registered 为准（build_qlib_data 与 loop 共享同一判定，避免重复 init）。
 _QLIB_INITED: bool = False
 _QLIB_INITED_DIR: Optional[str] = None
 
@@ -62,28 +63,44 @@ _QLIB_INITED_DIR: Optional[str] = None
 def _ensure_qlib_init(qlib_data_dir: str) -> None:
     """同一进程内仅初始化 qlib 一次；后续不同目录请求仅重定向 provider_uri（不重复 init）。
 
+    这是 qlib 初始化的**唯一入口**：build_qlib_data 与 run_qlib_loop 都经由此函数，避免任一处
+    直接 qlib.init 导致进程内重复 init（RecorderInitializationError）或全局 C 配置被重置/锁定。
     exp_manager 指向临时 file store（MLFLOW_ALLOW_FILE_STORE），避免污染仓库根 ./mlruns。
+    每次（init 或重定向后）都把 joblib_backend 强制置为 'threading'：重定向 provider_uri 会把它
+    重置回默认 'multiprocessing'，导致 inst_calculator 在 loky 子进程里因缺已注册的 C 而崩溃。
     """
     global _QLIB_INITED, _QLIB_INITED_DIR
-    if not _QLIB_INITED:
-        qlib, _, _, _, _ = _lazy_qlib()
-        exp_manager = {
-            "class": "MLflowExpManager",
-            "module_path": "qlib.workflow.expm",
-            "kwargs": {"uri": MLFLOW_URI, "default_exp_name": "qr_qml"},
-        }
-        qlib.init(provider_uri={"day": qlib_data_dir}, region="cn", exp_manager=exp_manager)
-        _QLIB_INITED = True
-        _QLIB_INITED_DIR = qlib_data_dir
-    elif qlib_data_dir != _QLIB_INITED_DIR:
-        # 仅重定向数据目录，避免 qlib 不可重复 init 的限制（recorder 等进程级状态保持不变）。
-        # 注意：重定向 provider_uri 会把 joblib_backend 重置回默认 'multiprocessing'，
-        # 需在 _fit_predict 内（_ensure_qlib_init 之后）重新置为 'threading'，否则
-        # inst_calculator 在 loky 子进程里会因缺已注册的 C 而崩溃。
+    from qlib.config import C
+
+    if getattr(C, "registered", False):
+        # 已初始化（可能由 build_qlib_data 或先前 loop 调用）。目录不同则仅重定向 provider_uri。
+        cur = (C.get("provider_uri") or {}).get("day")
+        if cur != qlib_data_dir:
+            C["provider_uri"] = {"day": qlib_data_dir}
+            _QLIB_INITED_DIR = qlib_data_dir
+        _set_threading_backend()
+        return
+
+    qlib, _, _, _, _ = _lazy_qlib()
+    exp_manager = {
+        "class": "MLflowExpManager",
+        "module_path": "qlib.workflow.expm",
+        "kwargs": {"uri": MLFLOW_URI, "default_exp_name": "qr_qml"},
+    }
+    qlib.init(provider_uri={"day": qlib_data_dir}, region="cn", exp_manager=exp_manager)
+    _QLIB_INITED = True
+    _QLIB_INITED_DIR = qlib_data_dir
+    _set_threading_backend()
+
+
+def _set_threading_backend() -> None:
+    """强制 joblib 用 threading 后端，使 inst_calculator 在主线程序享已注册 C（规避 loky 崩溃）。"""
+    try:
         from qlib.config import C
 
-        C["provider_uri"] = {"day": qlib_data_dir}
-        _QLIB_INITED_DIR = qlib_data_dir
+        C["joblib_backend"] = "threading"
+    except Exception:
+        pass
 
 
 def available_models() -> List[str]:
@@ -280,10 +297,15 @@ def _fit_predict(
 
 
 def _default_model_params(model: str, num_boost_round: int, early_stopping_rounds: int) -> Dict[str, Any]:
-    """按模型给出合理默认超参（仅对已知模型；xgb/mlp 交由调用方显式传入）。"""
+    """按模型给出合理默认超参（仅对已知模型；xgb/mlp 交由调用方显式传入）。
+
+    注意：lgb 强制 num_threads=1，确保固定 seed 下训练逐位可复现（OpenMP 多线程调度在负载下
+    可能引入非确定性，破坏「同输入同输出」的可复现报告保证）。
+    """
     if model == "lgb":
         return {
             "loss": "mse",
+            "num_threads": 1,
             "num_boost_round": num_boost_round,
             "early_stopping_rounds": early_stopping_rounds,
         }

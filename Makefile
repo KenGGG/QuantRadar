@@ -4,6 +4,7 @@
 #   make setup    安装依赖（BulletTrade 基线 editable + 本项目 + 测试依赖）
 #   make test     运行全部单元测试（pytest tests/unit）
 #   make smoke    端到端冒烟（数据→回测→快照→API→Web 入口；脚本 scripts/smoke.py）
+#   make research 研究链路端到端（Qlib 构建→grid 选优+walk-forward OOS→可复现报告；脚本 scripts/research_oos.py）
 #   make dev      启动 FastAPI 开发服务器（uvicorn）
 #
 # 说明：
@@ -16,14 +17,15 @@ PIP    ?= .venv/bin/pip
 NPM    ?= npm
 VENV   ?= .venv
 
-.PHONY: setup test smoke dev install-hooks help
+.PHONY: setup test smoke research dev install-hooks help
 
 help:
 	@echo "QuantRadar 可用目标："
-	@echo "  make setup   安装依赖（BulletTrade editable + 本项目 + 运行时/测试依赖 + 前端构建）"
-	@echo "  make test    运行单元测试"
-	@echo "  make smoke   端到端冒烟测试"
-	@echo "  make dev     启动开发服务器 (http://127.0.0.1:7231)"
+	@echo "  make setup      安装依赖（BulletTrade editable + 本项目 + 运行时/测试依赖 + 前端构建）"
+	@echo "  make test       运行单元测试"
+	@echo "  make smoke      端到端核心冒烟测试（数据→回测→快照→API→Web）"
+	@echo "  make research   研究链路端到端（Qlib 构建→网格+OOS 可复现报告，需 Dolt+qlib）"
+	@echo "  make dev        启动开发服务器 (http://127.0.0.1:7231)"
 
 setup:
 	python3 -m venv $(VENV) || true
@@ -43,14 +45,12 @@ test:
 smoke:
 	$(PYTHON) scripts/smoke.py
 
-dev:
-	$(PYTHON) -m uvicorn quantradar.api.app:app --host 127.0.0.1 --port 7231 --reload
-
-test:
-	$(PYTHON) -m pytest tests/unit -q
-
-smoke:
-	$(PYTHON) scripts/smoke.py
+research:
+	$(PYTHON) scripts/research_oos.py --build \
+		--start 2020-01-01 --end 2022-12-31 --max-instruments 50 \
+		--train-years 2 --valid-months 6 --test-months 6 --step-months 6 \
+		--num-boost-round 50 --early-stopping-rounds 10 \
+		--out reports/oos
 
 dev:
 	$(PYTHON) -m uvicorn quantradar.api.app:app --host 127.0.0.1 --port 7231 --reload

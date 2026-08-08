@@ -173,15 +173,24 @@ def build_qlib_data(
 
     FileCalendarStorage, FileInstrumentStorage, FileFeatureStorage = _init_qlib_storage_module()
 
-    # File*Storage 构造会读 C["region"]，必须先 qlib.init 设置全局配置
-    import qlib
+    # File*Storage 构造会读 C["region"]，必须先 qlib.init 设置全局配置。
+    # 统一经 loop._ensure_qlib_init 初始化（带 exp_manager，mlruns 重定向临时目录不污染仓库），
+    # 它是 qlib 初始化的唯一入口，避免与 run_qlib_loop 各自 qlib.init 造成进程内重复 init
+    # （会把全局 C 配置重置/锁定，引发 inst_calculator 在 loky 子进程里 `No such 'registered'` 崩溃）。
+    # 文件写出由 File*Storage 的 provider_uri 参数控制，不依赖全局 init 的目录。
+    from .loop import _ensure_qlib_init
 
-    try:
-        qlib.init(provider_uri={"day": target_dir}, region="cn")
-    except Exception:
-        pass
+    _ensure_qlib_init(target_dir)
 
     os.makedirs(target_dir, exist_ok=True)
+    # 重建前清空既有 qlib 子目录：qlib 的 FileFeatureStorage.write 在目标已存在特征文件时会走
+    # 「合并旧数据」路径，触发 numpy.float32 索引的 TypeError；rebuild 本就应全量重写，先清理避免该坑。
+    import shutil
+
+    for _sub in ("calendars", "instruments", "features"):
+        _p = os.path.join(target_dir, _sub)
+        if os.path.isdir(_p):
+            shutil.rmtree(_p)
     os.makedirs(os.path.join(target_dir, "calendars"), exist_ok=True)
     os.makedirs(os.path.join(target_dir, "instruments"), exist_ok=True)
     os.makedirs(os.path.join(target_dir, "features"), exist_ok=True)

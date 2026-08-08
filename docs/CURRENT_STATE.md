@@ -10,7 +10,7 @@
 # 当前阶段
 
 ```text
-当前阶段：Hardening 完成 → FUNCTIONAL_V1_PASS ✅（功能型 V1）→ 严谨研究型 V1 进行中 QUANTRADAR_RESEARCH_V1_WIP（T1 复权口径统一 / T2 列表补全 / T3 多模型+网格+walk-forward / T4 样本外稳健性+可复现报告 均已完成）
+当前阶段：Hardening 完成 → FUNCTIONAL_V1_PASS ✅（功能型 V1）→ 严谨研究型 V1 完成 QUANTRADAR_RESEARCH_V1_PASS ✅（T1/T2/T3/T4/T5 已完成）
   1) 依赖可重建            PASS  HARDENING_DEPS_PASS ✅（pyproject 补依赖 / 干净 requirements.txt / Makefile setup 装前端 / 前端依赖补全）
   2) 测试库隔离+localhost  PASS  HARDENING_TEST_ISOLATION_PASS ✅（TEST 库隔离 + drop_all 拒绝非 _test 库 + 0.0.0.0 强警告）
   3) 审计链                PASS  HARDENING_AUDIT_CHAIN_PASS ✅（config 完整 + 策略源码落库 + run_id/snapshot_hash/result_hash 语义分明）
@@ -82,8 +82,11 @@ Worker 稳定性 + CI            PASS  （HARDENING_WORKER_CI_PASS：worker 固�
 Qlib 多模型探测                PASS  （RESEARCH_T3_MULTIMODEL_PASS：available_models 按真实 import 探测 lgb/xgb/mlp；本环境仅 LGBModel 可用（xgb 缺 xgboost、mlp 缺 torch 则 _get_model_class 抛 NotImplementedError，绝不伪造）；run_qlib_loop(model='lgb') 跑通产出有限 IC/RankIC + 158 维特征 + Target Weight；test_qlib_models.py 4 passed）
 Qlib 网格寻优                  PASS  （RESEARCH_T3_GRID_PASS：grid_search_qlib 固定 seed 遍历超参组合、按 IC 选优、结果可复现（同输入同输出）；2x2 网格 4 组；test_grid_search.py 2 passed）
 Qlib walk-forward 滚动窗口     PASS  （RESEARCH_T3_WALKFORWARD_PASS：walk_forward_qlib 逐折 Train/Valid/Test 不重叠（assert_segments_disjoint 防泄漏）、固定 seed 可复现、各折样本外 IC 有限；test_walk_forward.py 2 passed）
-Qlib 进程初始化隔离            PASS  （RESEARCH_T3_INIT_PASS：每个进程仅 qlib.init 一次（RecorderInitializationError 守卫），跨目录重定向仅改 C['provider_uri'] 且不重 init；joblib_backend 强制 'threading' 置于 _ensure_qlib_init 之后以规避重定向重置 multiprocessing 触发 loky 子进程缺 C 崩溃；同进程跨目录实测 dirA→dirB 切成功且 train_samples 指向 B）
+Qlib 进程初始化隔离            PASS  （RESEARCH_T3_INIT_PASS：qlib 初始化唯一入口 _ensure_qlib_init（build_qlib_data 与 run_qlib_loop 都经它，杜绝重复 init 把全局 C 重置/锁定→loky 子进程 No such 'registered' 崩溃）；joblib_backend 强制 'threading' 规避重定向重置 multiprocessing；lgb 强制 num_threads=1 保证固定 seed 逐位可复现；build_qlib_data 重建前清空 calendars/instruments/features 子目录避免 qlib 合并旧数据的 float32 TypeError；实测跨目录重定向因 InstrumentProvider/CalendarProvider 缓存不随 provider_uri 失效会读到陈旧 instruments——故测试统一单目录/进程（与真实用法一致），彻底规避）
 样本外稳健性验证              PASS  （RESEARCH_T4_OOS_PASS：run_research_oos 端到端（grid 选优 + walk_forward 多折 OOS）→ 结构化可复现报告（JSON+MD），含 config/grid/folds/oos(均值/标准差/正IC占比)/environment(git commit+版本)；固定 seed 同输入同输出；scripts/research_oos.py 复用/自动构建 qlib_data 产出双报告；test_research_oos.py 2 passed）
+研究测试隔离纪律              PASS  （RESEARCH_TEST_ISOLATION_PASS：所有依赖 investment_data 的研究测试均带 @pytest.mark.requires_dolt；conftest autouse _skip_without_dolt 在 Dolt 不可达时自动 skip；QUANTRADAR_FORCE_NO_DOLT=1 可模拟无 Dolt CI 环境整体绿；测试共享 qlib 目录避免跨进程重定向）
+研究链路 make 目标           PASS  （RESEARCH_MAKE_RESEARCH_PASS：Makefile 增 research 目标，端到端跑 scripts/research_oos.py --build 产出 reports/oos.json+md；修 Makefile 重复 target）
+Qlib 研究规范(06) 更新         PASS  （RESEARCH_SPEC_06_PASS：docs/06_Qlib研究规范.md 第八节落地研究正确性规则——不伪造/多模型探测/网格寻优/walk-forward防泄漏/可复现报告/进程初始化隔离/复权同源/测试隔离纪律；研究范围标注 T1-T4 已实现）
 ```
 
 ---
@@ -212,7 +215,7 @@ Phase 10（下一）：Qlib 高级研究（Alpha158 / LightGBM 等，需 QLIB_DA
   T2（已完成）：股票列表补全（RESEARCH_T2_UNIVERSE_PASS；extended_universe 从 final 补全 ts_a_stock_list 缺口 + 排除指数 + source='final_approx' PARTIAL；select_universe/run_qml_pipeline 增 use_extended；read_timeout 120s + query 断连重试；test_universe_extended.py 3 passed）
   T3（#60 已完成）：Qlib 多模型（lgb/xgb/mlp 探测可用性，本环境仅 lgb 可用、xgb/mlp 缺依赖抛 NotImplementedError 不伪造）+ grid_search_qlib（固定 seed 按 IC 选优、可复现）+ walk_forward_qlib（逐折不重叠防泄漏、可复现）；RESEARCH_T3_MULTIMODEL/GRID/WALKFORWARD/INIT_PASS；test_qlib_models/grid_search/walk_forward.py 共 8 passed
   T4（#62 已完成）：样本外稳健性验证 + 可复现报告；run_research_oos（grid 选优 + walk-forward 多折 OOS）→ 结构化报告（config/grid/folds/oos/environment），固定 seed 可复现；scripts/research_oos.py 端到端 CLI（复用/自动构建 qlib_data，产出 JSON+MD）；test_research_oos.py 2 passed（RESEARCH_T4_OOS_PASS）
-  T5（#63 待做）：conftest 确保新增测试带 requires_dolt；make smoke 扩展；文档（ACTIVE_PHASE/CURRENT_STATE 升 RESEARCH_V1_WIP / 06_Qlib研究规范）；最终 make test + 模拟 CI 验收
+  T5（#63 已完成）：conftest 确保研究测试带 requires_dolt（test_qlib_loop 补标记）+ QUANTRADAR_FORCE_NO_DOLT 模拟 CI；make research 端到端研究链路（reports/oos.json+md）；06_Qlib研究规范 第八节研究正确性规则；最终 make test 全量 + 模拟 CI 验收绿（RESEARCH_TEST_ISOLATION/MAKE_RESEARCH/SPEC_06_PASS）
   外部待定（用户侧，不阻塞）：数据补齐方案（ST/停牌/列表，来自只读 Dolt，本仓库无法补齐）
 禁止提前开发：PostgreSQL / ETF / QMT / 实盘（除非当前阶段需要）
 ```

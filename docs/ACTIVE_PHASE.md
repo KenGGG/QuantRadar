@@ -2,7 +2,7 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：Hardening 完成（FUNCTIONAL_V1_PASS）→ 严谨研究型 V1 进行中（RESEARCH_V1_WIP，T1/T2/T3/T4 已完成）**
+**当前阶段：Hardening 完成（FUNCTIONAL_V1_PASS）→ 严谨研究型 V1 完成（RESEARCH_V1_PASS，T1/T2/T3/T4/T5 均已完成）**
 
 ```text
 目标：在「功能型 V1」达成的基础上，补齐工程与研究正确性加固，使系统达到可审计、可复现、
@@ -167,10 +167,15 @@ make smoke 本机全量通过；GitHub Actions CI 已建）
   `render_oos_markdown` 渲染可读摘要（配置/聚合指标/各折明细/环境）。
 - 测试：`test_research_oos.py` 2 passed（字段齐全且样本外 IC 有限；同输入两次运行 JSON 逐字节一致）。
 
-## T5) 测试隔离 / CI / smoke 扩展 + 文档 —— #63 待做
-- `conftest` 确保新增测试带 `requires_dolt`；`make smoke` 扩展覆盖研究链路。
-- 文档：`ACTIVE_PHASE.md` / `CURRENT_STATE.md` 升 `QUANTRADAR_RESEARCH_V1_WIP`；更新 `06_Qlib研究规范.md`。
-- 最终 `make test` + 模拟 CI 验收。
+## T5) 测试隔离 / CI / smoke 扩展 + 文档 —— RESEARCH_TEST_ISOLATION/MAKE_RESEARCH/SPEC_06_PASS ✅ (#63 已完成)
+- 测试隔离纪律：所有依赖 investment_data 的研究测试均带 `@pytest.mark.requires_dolt`；
+  `test_qlib_loop.py` 补齐标记，与 conftest autouse `_skip_without_dolt` 一致。
+- CI 安全：`QUANTRADAR_FORCE_NO_DOLT=1` 模拟无 Dolt 环境，套件整体绿（requires_dolt 测试自动 skip，不崩溃）。
+- `make research` 端到端研究链路：`scripts/research_oos.py --build` 构建 qlib_data → 网格+OOS 可复现报告
+  （`reports/oos.json` + `reports/oos.md`）；修 Makefile 重复 target。
+- 文档：`06_Qlib研究规范.md` 第八节落地「研究正确性规则」（不伪造 / 多模型探测 / 网格寻优 /
+  walk-forward 防泄漏 / 可复现报告 / 进程初始化隔离 / 复权同源 / 测试隔离纪律）；研究范围标注 T1-T4 已实现。
+- 最终验收：`make test` 全量（Dolt 可达）+ 模拟 CI（`QUANTRADAR_FORCE_NO_DOLT=1`）均绿。
 
 ```text
 外部待定（用户侧，不阻塞）：数据补齐方案（ST/停牌/列表，来自只读 Dolt，本仓库无法补齐）。
