@@ -28,6 +28,7 @@ def run_qml_pipeline(
     initial_cash: float = 1_000_000.0,
     qlib_data_dir: Optional[str] = None,
     segments: Optional[Dict[str, Any]] = None,
+    use_extended: bool = False,
 ) -> Dict[str, Any]:
     """运行完整 Qlib 最小闭环，返回各阶段结果字典。
 
@@ -39,6 +40,7 @@ def run_qml_pipeline(
         initial_cash: BulletTrade 账户初始资金。
         qlib_data_dir: qlib_data 输出目录；None 时用临时目录。
         segments: 自定义 train/valid/test 切分；None 时按 6:2:2 时间切分。
+        use_extended: 是否纳入从 final 价格表补全的 ts_a_stock_list 缺口上市股（PARTIAL）。
 
     Returns:
         {
@@ -54,6 +56,7 @@ def run_qml_pipeline(
         start=start,
         end=end,
         max_instruments=max_instruments,
+        use_extended=use_extended,
     )
 
     loop_result = run_qlib_loop(

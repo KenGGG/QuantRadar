@@ -131,11 +131,15 @@ make smoke 本机全量通过；GitHub Actions CI 已建）
 - 测试：`tests/unit/test_backtest_fq.py` 3 passed（fq 透传 config / 净值连续 <0.30 / none 与 pre 日收益率
   相关>0.999 且期末对齐<1%）。
 
-## T2) 股票列表补全（Point-in-Time 宇宙近似）—— #61 待做
-- `provider.py` 增 `_extended_universe`：从 final 聚合首/末现日补全 `ts_a_stock_list`（至 2022-07-18）
-  之后的上市股，标注 `source='final_approx'` PARTIAL（非权威列表）。
-- `qml/dump.py` `select_universe` 增 `use_extended` 开关。
-- `tests/unit/test_universe_extended.py`：验证补全标的入宇宙、标注来源、不破坏既有 PIT 守卫。
+## T2) 股票列表补全（Point-in-Time 宇宙近似）—— RESEARCH_T2_UNIVERSE_PASS ✅
+- `provider.py` 增 `extended_universe`：从 final 聚合首/末现日补全 `ts_a_stock_list`（至 2022-07-18）
+  之后的上市股，标注 `source='final_approx'` PARTIAL（非权威列表）；显式排除 `ts_index_weight`
+  中的指数代码（final 表含指数行情，避免把指数当股票）；扫描区间限定在 [缺口起点, start] 缩小 GROUP BY。
+- `qml/dump.py` `select_universe` 增 `use_extended`：将基础宇宙与补全标的**合并**为完整 PIT 宇宙后
+  确定性排序取前 N 只（合并而非追加，保证 cap 内也能含补全标的）；`build_qlib_data`/`run_qml_pipeline` 透传。
+- 连接加固：`config.read_timeout` 30s→120s；`connection.query` 对执行中断连自动重建并重试一次（只读安全）。
+- 测试：`tests/unit/test_universe_extended.py` 3 passed（来源标注/PIT、合并宇宙含补全标的且非指数/非 ts 列表、
+  确定性）。
 
 ## T3) Qlib 多模型 + 参数寻优 + walk-forward —— #60 待做
 - 多模型探测可用性：lgb / xgb / mlp，任一不可用抛 `NotImplementedError`（不伪造）。

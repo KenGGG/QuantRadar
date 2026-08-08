@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 
 from quantradar.providers.investment_data.connection import InvestmentDataConnection
+from quantradar.providers.investment_data.provider import extended_universe
 from quantradar.providers.investment_data.symbols import (
     normalize_stock_symbol,
     to_joinquant_symbol,
@@ -62,18 +63,23 @@ def select_universe(
     start: str,
     end: str,
     max_instruments: int = 300,
+    use_extended: bool = False,
 ) -> List[str]:
-    """Point-in-Time 宇宙：已上市且未退市，按 ts_code 确定性取前 N 只。
+    """Point-in-Time 宇宙：已上市且未退市，确定性取前 N 只。
 
     返回 JQ 代码列表（如 600519.XSHG），既作 Qlib 标的名，也直接供 BulletTrade 使用。
+
+    use_extended=True 时，将 ts_a_stock_list（仅至 2022-07-18）与从 final 价格表补全的缺口上市股
+    （source='final_approx'，PARTIAL）合并为「完整 PIT 宇宙」后，再按 JQ 代码确定性排序取前 N 只。
+    补全标的仅纳入窗口起点已上市者（MIN(tradedate) <= start），保持 PIT 正确；不破坏 ts 列表的
+    PIT 守卫。合并而非追加，保证 max_instruments 上限内也能包含补全标的（追加式会被基础宇宙占满而截断）。
     """
     rows = conn.query(
         "SELECT ts_code FROM ts_a_stock_list "
-        "WHERE list_date <= %s AND (delist_date IS NULL OR delist_date >= %s) "
-        "ORDER BY ts_code ASC LIMIT %s",
-        (start, start, int(max_instruments)),
+        "WHERE list_date <= %s AND (delist_date IS NULL OR delist_date >= %s) ",
+        (start, start),
     )
-    jq_list: List[str] = []
+    base_set: set = set()
     for r in rows:
         ts_code = r["ts_code"]
         try:
@@ -81,8 +87,12 @@ def select_universe(
             jq = to_joinquant_symbol(internal)
         except Exception:  # 解析失败跳过，绝不静默接受非法代码
             continue
-        jq_list.append(jq)
-    return jq_list
+        base_set.add(jq)
+    if use_extended:
+        for rec in extended_universe(conn, start, end, max_instruments=10_000):
+            base_set.add(rec["jq"])
+    # 确定性排序后截断到 max_instruments（合并宇宙，补全标的与基础标的按代码有序共存）
+    return sorted(base_set)[: int(max_instruments)]
 
 
 def fetch_ohlcv(
@@ -141,6 +151,7 @@ def build_qlib_data(
     end: str = "2024-12-31",
     max_instruments: int = 300,
     calendar_exchange: str = "SSE",
+    use_extended: bool = False,
 ) -> Dict[str, Any]:
     """从 investment_data 构建 qlib_data 目录。
 
@@ -150,6 +161,7 @@ def build_qlib_data(
         start/end: 回测/训练窗口（含）。
         max_instruments: 宇宙上限（Point-in-Time 取前 N 只）。
         calendar_exchange: 交易日历交易所（SSE）。
+        use_extended: 是否纳入从 final 价格表补全的 ts_a_stock_list 缺口上市股（PARTIAL）。
 
     Returns:
         包含路径、交易日数、证券数、字段等的元信息字典（供审计）。
@@ -185,7 +197,9 @@ def build_qlib_data(
         raise RuntimeError(f"交易日历为空（exchange={calendar_exchange}, {start}~{end}）")
 
     # 2) 宇宙 + OHLCV
-    universe = select_universe(conn, start, end, max_instruments=max_instruments)
+    universe = select_universe(
+        conn, start, end, max_instruments=max_instruments, use_extended=use_extended
+    )
     if not universe:
         raise RuntimeError("宇宙为空：无可交易证券（检查 start/end 与 ts_a_stock_list）")
     data = fetch_ohlcv(conn, universe, start, end)

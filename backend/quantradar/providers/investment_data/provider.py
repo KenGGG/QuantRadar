@@ -60,6 +60,69 @@ _INFO_DATE_COL = "tradedate"
 _INFO_ST_FIELDS = {"is_st", "tradestatus"}
 # 除权日识别阈值：正常交易日 preclose == 前一日 close；preclose 明显偏低即发生权益变动。
 _EX_GAP_TOL = 1e-6
+# ts_a_stock_list 数据缺口起点（该表仅至 2022-07-18）；其后上市股需从 final 价格表补全。
+_TS_LIST_CUTOFF = "2022-07-15"
+
+
+def extended_universe(
+    conn: "InvestmentDataConnection",
+    start: str,
+    end: str,
+    max_instruments: int = 300,
+) -> List[dict]:
+    """从 final 价格表补全 ts_a_stock_list（仅至 2022-07-18）之后的上市股。
+
+    返回 Point-in-Time 近似宇宙（source='final_approx' PARTIAL）：
+    - 以 final_a_stock_eod_price 中每只证券的 MIN(tradedate) 作为近似 list_date、
+      MAX(tradedate) 作为近似 delist_date（仅统计 [ts 列表缺口起点, end] 区间数据）。
+    - 仅纳入 MIN(tradedate) <= start 的证券（窗口起点已上市，PIT 正确），
+      且不在 ts_a_stock_list 中（即 ts 列表缺口部分）。
+    - 每条记录：{jq, ts_code, list_date, delist_date, source}。
+    绝不伪造：来源明确标注 final_approx；若 final 首现日并非真实 IPO（数据缺口导致），
+    以 PARTIAL 提示，由研究层谨慎使用。
+
+    性能：扫描下界限定在 ts 列表缺口起点（_TS_LIST_CUTOFF）之后，避免对全量 18M 行做
+    GROUP BY；该区间恰好是待补全的上市股范围，不影响语义。
+    """
+    known = {r["ts_code"] for r in conn.query("SELECT ts_code FROM ts_a_stock_list")}
+    # final_a_stock_eod_price 同时含指数行情（如 000300.SH）；补全宇宙只收股票，
+    # 因此排除 ts_index_weight 中的指数代码（index_code），避免把指数当股票纳入。
+    index_codes = {
+        r["index_code"] for r in conn.query("SELECT DISTINCT index_code FROM ts_index_weight")
+    }
+    # 扫描区间限定在 [ts 列表缺口起点, start]：仅该区间内首现的证券才是待补全的近期上市股；
+    # 既缩小 GROUP BY 扫描量，又天然满足 PIT（首现日 <= start）。delist_date 取该区间内末现日作代理。
+    rows = conn.query(
+        "SELECT symbol, MIN(tradedate) AS list_date, MAX(tradedate) AS delist_date "
+        "FROM final_a_stock_eod_price "
+        "WHERE tradedate >= %s AND tradedate <= %s "
+        "GROUP BY symbol HAVING MIN(tradedate) <= %s",
+        (_TS_LIST_CUTOFF, start, start),
+    )
+    out: List[dict] = []
+    for r in rows:
+        sym = r["symbol"]
+        try:
+            jq = to_joinquant_symbol(sym)
+            ts_code = to_ts_symbol(sym)
+        except SymbolError:
+            continue
+        if ts_code in known or ts_code in index_codes:
+            continue
+        out.append(
+            {
+                "jq": jq,
+                "ts_code": ts_code,
+                "list_date": str(r["list_date"]),
+                "delist_date": str(r["delist_date"]),
+                "source": "final_approx",
+            }
+        )
+    # 确定性排序（按 jq）后再截断，避免随机抽样不确定性
+    out.sort(key=lambda d: d["jq"])
+    return out[: int(max_instruments)]
+
+_EX_GAP_TOL = 1e-6
 
 # 用户字段名（JoinQuant 约定）-> investment_data 内部列名（价格表 / 涨跌停表）
 _FIELD_TO_COLUMN = {

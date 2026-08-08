@@ -129,13 +129,26 @@ class InvestmentDataConnection:
     # -- 查询（只读） ----------------------------------------------------
 
     def query(self, sql: str, args: Optional[Sequence[Any]] = None) -> List[Dict[str, Any]]:
-        """执行只读 SELECT，返回字典行列表。"""
+        """执行只读 SELECT，返回字典行列表。
+
+        对连接在执行中失效（如长分析查询触发服务端超时/断连）的情形，自动重建连接
+        并重试一次，避免偶发断连导致的研究查询整体失败（只读语义，安全）。
+        """
         try:
             with self._ensure_connection().cursor() as cur:
                 cur.execute(sql, args or ())
                 return list(cur.fetchall())
-        except pymysql.MySQLError as exc:  # pragma: no cover - 依赖真实 DB
-            raise InvestmentDataConnectionError(f"查询失败：{exc}\nSQL={sql}") from exc
+        except pymysql.MySQLError as first_exc:  # pragma: no cover - 依赖真实 DB
+            # 连接可能在中途失效：强制重建后重试一次
+            try:
+                self.close()
+                with self._ensure_connection().cursor() as cur:
+                    cur.execute(sql, args or ())
+                    return list(cur.fetchall())
+            except pymysql.MySQLError as exc:
+                raise InvestmentDataConnectionError(
+                    f"查询失败：{exc}\n(首次错误：{first_exc})\nSQL={sql}"
+                ) from exc
 
     def query_one(self, sql: str, args: Optional[Sequence[Any]] = None) -> Optional[Dict[str, Any]]:
         rows = self.query(sql, args)

@@ -27,7 +27,7 @@ class InvestmentDataConfig:
     password: str = ""
     database: str = "investment_data"
     connect_timeout: float = 5.0
-    read_timeout: float = 30.0
+    read_timeout: float = 120.0
 
     def as_pymysql_kwargs(self) -> dict:
         """构造 pymysql.connect 所需的关键字参数（不含写操作相关项）。"""
@@ -75,5 +75,5 @@ def load_investment_data_config() -> InvestmentDataConfig:
         password=os.environ.get("INVESTMENT_DATA_PASSWORD", ""),
         database=os.environ.get("INVESTMENT_DATA_DATABASE", "investment_data"),
         connect_timeout=_float("INVESTMENT_DATA_CONNECT_TIMEOUT", 5.0),
-        read_timeout=_float("INVESTMENT_DATA_READ_TIMEOUT", 30.0),
+        read_timeout=_float("INVESTMENT_DATA_READ_TIMEOUT", 120.0),
     )
