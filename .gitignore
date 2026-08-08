@@ -226,6 +226,9 @@ logs/
 # QuantRadar 运行时数据（实验/快照，非源码）
 experiments/
 
+# qlib 训练产生的 mlflow 文件存储（已通过 qml/loop.py 重定向到临时目录，兜底忽略）
+mlruns/
+
 # 前端构建产物 frontend/dist 需随仓库提交，由 FastAPI GET / 直接托管
 # （dist/ 通用忽略规则不作用于此前端构建目录）
 !frontend/dist/

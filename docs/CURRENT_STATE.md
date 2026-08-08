@@ -12,10 +12,10 @@
 ```text
 当前阶段：Closing Phase（收尾补齐 4 项 → QUANTRADAR_V1_PASS）
   1) 完整 Snapshot/Audit          PASS  FULL_AUDIT_REPRO_PASS ✅
-  2) PostgreSQL + Worker          进行中→PASS（PERSIST_WORKER_PASS ✅；本机 1Panel Postgres 专用库 quantradar 已建表并验证异步回测落库）
-  3) 正式 React WebUI             进行中→PASS（WEB_WORKBENCH_PASS ✅；React+TS+Vite+AntD+Monaco+ECharts 工作台已构建并托管）
-  4) Qlib 最小闭环                待办（QLIB_BULLETTRADE_LOOP_PASS）
-阶段标志：QUANTRADAR_STOCK_V1_PASS（主线达成）；QUANTRADAR_V1_PASS 待 4 项全部达成
+  2) PostgreSQL + Worker          PASS  PERSIST_WORKER_PASS ✅（本机 1Panel Postgres 专用库 quantradar 已建表并验证异步回测落库）
+  3) 正式 React WebUI             PASS  WEB_WORKBENCH_PASS ✅（React+TS+Vite+AntD+Monaco+ECharts 工作台已构建并托管）
+  4) Qlib 最小闭环                 PASS  QLIB_BULLETTRADE_LOOP_PASS ✅（Alpha158+LightGBM 最小闭环；investment_data→Qlib→预测→IC/RankIC→TopK Target Weight→BulletTrade 账户回测；无未来数据）
+阶段标志：Closing 4 项全绿；QUANTRADAR_V1_PASS 待全链路冒烟(make smoke) 重跑确认
 最近完成（Closing 1）：build_snapshot 补齐审计字段 + backend/quantradar/audit.py（Dolt HEAD / schema 哈希 / commit）
   + 确定性测试（NAV/Trades/Positions/Metrics 一致 + 审计指纹一致）
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
@@ -61,6 +61,8 @@ Make / Smoke（QUANTRADAR_SMOKE_PASS） PASS  （Makefile：setup/test/smoke/dev
 Qlib import                  PASS  （pyqlib 0.9.7 已装入 .venv）
 PostgreSQL + Worker          PASS  （PERSIST_WORKER_PASS：backend/quantradar/storage.py 5 表 Strategy/BacktestRun/Experiment/Snapshot/Metrics + SQLAlchemy CRUD；backend/quantradar/worker.py 异步 submit→run_id→后台线程 run_backtest(BulletTrade)→落库；API /api/backtest/async + /api/backtest/runs/{id} + /api/backtest/runs；复用 run_backtest，禁止重实现；集成测试连本机 1Panel 专用库 quantradar 跑通真实回测落库，4/4 通过）
 React WebUI（工作台）         PASS  （WEB_WORKBENCH_PASS：frontend/ React+TS+Vite+AntD+Monaco+ECharts；数据状态/策略编辑器(回测提交)/运行记录(异步状态轮询)/实验对比；净值·累计收益·回撤 ECharts 图 + Metrics + 持仓 + 成交 + 运行流水 + 审计环境；GET / 托管构建产物；test_web_workbench 5/5 通过）
+Qlib 数据构建                  PASS  （build_qlib_data：由 investment_data(Dolt) 真实导出 qlib_data；字段 open/high/low/close/volume/amount/vwap，VWAP=amount*10/volume（与官方 investment_data 一致）；FileCalendar/FileInstrument/FileFeature Storage 写二进制；Point-in-Time 宇宙防幸存者偏差；tests/unit/test_qlib_loop.py 验证）
+Qlib 最小闭环                  PASS  （QLIB_BULLETTRADE_LOOP_PASS：Alpha158 + LightGBM → Train/Valid/Test 时间切分 → Prediction → calc_ic IC/RankIC → TopK 等权 Target Weight → 月度再平衡策略 → BulletTrade 账户回测；无未来数据（标签为 Alpha158 Ref($close,-2)/Ref($close,-1)-1，按点对齐）；mlflow 经 exp_manager 重定向临时目录不污染仓库；tests/unit/test_qlib_loop.py 2/2 通过）
 ```
 
 ---
@@ -72,11 +74,11 @@ ETF                          BLOCKED（investment_data 无 ETF 表；Phase 11 �
 alpha factor                 BLOCKED（investment_data 无因子表）
 公司行为(分红/拆股)          PARTIAL（bao_a_stock_eod_info 真实 preclose/close；以除权缺口还原每股税前红利，引擎按 20% 预提税，NAV 与不复权一致；送转/派息无法从本表分离 -> PARTIAL；get_split_dividend 已实现）
 ST 标记                      PARTIAL（bao_a_stock_eod_info.is_st ∈ {0,1}；get_extras('is_st'/'tradestatus') 已实现，df=True/Dict 两形态；bao 源仅至 2023-06-09）
-Qlib 数据                     PARTIAL（import OK；QLIB_DATA_NOT_BUILT，全机无 qlib_data/cn_data）
+Qlib 数据                     PASS（build_qlib_data 由 investment_data 真实导出；字段/复权口径与官方 investment_data 一致；mlruns 由 exp_manager 重定向临时目录不污染仓库）
 停牌(tradestatus) 鲁棒性      PARTIAL（bao.tradestatus 列存在，语义与覆盖待 Phase 2 确认；bao 源至 2023-06-09）
 InvestmentDataProvider       BASE IMPLEMENTED（Phase 2A）+ get_price PASS（Phase 2B）+ JQ 兼容核心 PASS（Phase 3）+ 真实 A 股回测 PASS（Phase 4）+ 真实复权 PASS（Phase 5）+ 公司行为/ST PASS（Phase 5 补全）
-FastAPI / PostgreSQL / Worker / WebUI   PARTIAL（PostgreSQL+Worker 已完成 PERSIST_WORKER_PASS；正式 React WebUI 待 Item 3）
-Qlib 模型                     BLOCKED（Phase 10 前）
+FastAPI / PostgreSQL / Worker / WebUI   PASS（PERSIST_WORKER_PASS + WEB_WORKBENCH_PASS 均已达成）
+Qlib 最小闭环                 PASS（QLIB_BULLETTRADE_LOOP_PASS：Alpha158+LightGBM 端到端跑通并落地 BulletTrade 账户回测；高级研究/多模型/参数寻优属 Phase 10）
 QMT / 实盘                    BLOCKED（未来实盘节点）
 ```
 
@@ -90,7 +92,8 @@ investment_data (Dolt 3307)
 → BulletTrade 回测 (Phase 4)
 → Snapshot / 可复现 (Phase 6)
 → Web 工作台 (Phase 7/8)
-→ Qlib 高级研究 (Phase 10)
+→ Qlib 最小闭环 (Closing 4)：investment_data → qlib_data → Alpha158+LGBModel → TopK Target Weight → BulletTrade 账户回测
+→ Qlib 高级研究 (Phase 10，待办)
 ```
 
 ---

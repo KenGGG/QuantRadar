@@ -22,10 +22,11 @@
      - 数据状态（审计环境）/ 策略编辑器(Monaco, 内置 Buy&Hold + 用户源码) / 运行记录(异步提交+状态轮询) / 实验对比
      - 净值·累计收益·回撤 ECharts 图 + Metrics + 持仓 + 成交 + 运行流水 + 审计环境
      - 后端 /api/backtest 等返回 daily_records/trades/positions 明细供画图；test_web_workbench 5/5 通过
-  4) Qlib 最小闭环                待办 QLIB_BULLETTRADE_LOOP_PASS
+  4) Qlib 最小闭环                PASS  QLIB_BULLETTRADE_LOOP_PASS ✅
      - Alpha158 + LightGBM：Train/Valid/Test/Prediction/IC/RankIC/TopK/Target Weight
-     - investment_data → Qlib → Prediction → Target Weight → BulletTrade → Account Backtest
-终验：FULL_AUDIT_REPRO_PASS + PERSIST_WORKER_PASS + WEB_WORKBENCH_PASS + QLIB_BULLETTRADE_LOOP_PASS + QUANTRADAR_SMOKE_PASS 全绿 → QUANTRADAR_V1_PASS
+     - investment_data → qlib_data → Alpha158+LGBModel → Prediction → IC/RankIC → TopK Target Weight → BulletTrade 账户回测
+     - 字段/复权口径已对照官方 investment_data（VWAP=amount*10/volume；字段 open/high/low/close/volume/amount/vwap）对齐
+终验：FULL_AUDIT_REPRO_PASS + PERSIST_WORKER_PASS + WEB_WORKBENCH_PASS + QLIB_BULLETTRADE_LOOP_PASS + QUANTRADAR_SMOKE_PASS 全绿 → QUANTRADAR_V1_PASS（已达成前 4 项；终验=重跑 make smoke）
 ```
 
 ---

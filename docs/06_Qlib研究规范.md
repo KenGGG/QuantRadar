@@ -108,6 +108,42 @@ Result Hash 可复现（见 04 第五节）
 
 ---
 
+# 六之一、已验证的数据构建约定（对齐官方 investment_data）
+
+`backend/quantradar/qml/dump.py` 的 qlib 日线数据构建已与官方
+[chenditc/investment_data](https://github.com/chenditc/investment_data) 导出方式交叉核对，
+确保字段与复权口径一致（审计可复现）：
+
+```text
+字段集（_QLIB_FIELDS）：
+  open / high / low / close / volume / amount / vwap
+
+VWAP 口径（与官方一致）：
+  vwap = amount * 10 / volume
+  官方 SQL：select *, amount / volume * 10 as vwap from final_a_stock_eod_price
+
+日历：SSE，is_open=1，自 2000-01-04
+复权：使用 Provider 提供的后复权 close（已审计，禁止自造复权）
+```
+
+Point-in-Time 选股（`select_universe`）：
+
+```text
+按 ts_a_stock_list 过滤：
+  list_date <= start AND (delist_date IS NULL OR delist_date >= start)
+按 ts_code 排序取前 N，禁止纳入回测区间开始前已退市标的
+```
+
+mlflow 落盘（防仓库污染）：
+
+```text
+qlib 默认 exp_manager.uri = file:<cwd>/mlruns，且忽略 MLFLOW_TRACKING_URI
+修复：qlib.init 显式传入 exp_manager，uri 指向 tempfile.mkdtemp 临时目录
+兜底：.gitignore 已忽略 mlruns/
+```
+
+---
+
 # 七、与其他文档关系
 
 ```text
