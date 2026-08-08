@@ -130,8 +130,19 @@ def build_snapshot(
     audit_env: Optional[Dict[str, Any]] = None,
     strategy_source: Optional[str] = None,
     connection: Optional[Any] = None,
+    security: Optional[str] = None,
+    amount: Optional[int] = None,
+    benchmark: Optional[str] = None,
 ) -> Dict[str, Any]:
     """从一次「已运行」的 BacktestEngine 构建快照 manifest（含完整审计字段）。
+
+    Hash 语义（三者职责分明，见 docs）：
+      - run_id        每次提交唯一 UUID（标识「这一次运行实例」，不可复现，仅用于检索）。
+      - snapshot_hash 实验设置指纹 = f(config_hash, strategy_hash, data_asof, dolt_commit,
+                       provider_version)，**确定性**：相同数据+策略+配置必得相同值，用于判定
+                      两次运行是否为「同一实验设置」。
+      - result_hash   输出指纹 = f(daily_records, trades, positions, metrics)，**确定性**：
+                       相同设置+相同数据必得相同值，用于判定结果可复现。
 
     Args:
         engine: 已 run() 完成的 BacktestEngine 实例。
@@ -141,10 +152,11 @@ def build_snapshot(
         audit_env: 审计环境字段（dolt_commit/schema_hash/...）；缺省自动采集。
         strategy_source: 策略源码（用户提交）；内置策略传 None 由配置推导规范串。
         connection: 只读连接（用于采集 dolt_commit/schema_hash）；缺省用 active provider。
+        security/amount/benchmark: 回测标的/每笔数量/基准（引擎未持久化这些属性，由调用方显式传入）。
 
     Returns:
-        manifest dict（可 JSON 序列化），含 snapshot_id / config_hash / strategy_hash /
-        environment / result_hash / metrics，支撑可复现与审计验证。
+        manifest dict（可 JSON 序列化），含 snapshot_id / config / config_hash / strategy_hash /
+        snapshot_hash / environment / result_hash / metrics，支撑可复现与审计验证。
     """
     records = getattr(engine, "daily_records", []) or []
     asof = data_asof
@@ -160,16 +172,31 @@ def build_snapshot(
 
     config = {
         "provider": "investment_data",
+        "security": security if security is not None else getattr(engine, "security", None),
         "initial_cash": getattr(engine, "initial_cash", None),
         "start_date": _fmt_ts(getattr(engine, "start_date", None)),
         "end_date": _fmt_ts(getattr(engine, "end_date", None)),
         "frequency": getattr(engine, "frequency", None),
+        "amount": amount if amount is not None else getattr(engine, "amount", None),
+        "benchmark": benchmark if benchmark is not None else getattr(engine, "benchmark", None),
         "seed": seed,
     }
     metrics = compute_metrics(records)
     env = audit_env if audit_env is not None else collect_audit_env(connection)
     c_hash = config_hash(config)
     s_hash = strategy_hash(strategy_source, config)
+    # 实验设置指纹（确定性）：相同数据+策略+配置 => 相同值，用于判定「同一实验设置」。
+    snapshot_hash = hashlib.sha256(
+        "|".join(
+            [
+                c_hash,
+                s_hash,
+                str(asof),
+                str(env.get("dolt_commit")),
+                str(env.get("provider_version")),
+            ]
+        ).encode("utf-8")
+    ).hexdigest()
     daily_fp = daily_records_fingerprint(records)
     result_hash = hashlib.sha256(
         "|".join(
@@ -187,6 +214,7 @@ def build_snapshot(
         "config": config,
         "config_hash": c_hash,
         "strategy_hash": s_hash,
+        "snapshot_hash": snapshot_hash,
         "extras": extras,
         "data_asof": asof,
         "records_count": len(records),

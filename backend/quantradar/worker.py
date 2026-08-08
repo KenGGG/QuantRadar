@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
 import threading
 import traceback
 import uuid
@@ -23,8 +24,14 @@ from .storage import (
     get_run,
     save_metrics,
     save_snapshot_record,
+    save_strategy,
     update_run,
 )
+
+
+def _hash_source(code: str) -> str:
+    """策略源码的稳定哈希（sha256），用于审计链与去重。"""
+    return hashlib.sha256(code.encode("utf-8")).hexdigest()
 
 
 def _now() -> datetime.datetime:
@@ -51,6 +58,20 @@ class BacktestWorker:
 
         init_db()
         run_id = _gen_run_id()
+
+        # 审计链：用户策略源码持久化到 strategies 表，回测运行绑定 strategy_id。
+        # 内置（无 code）策略不入 strategies 表，strategy_id 保持 None（由 config 决定可复现）。
+        code = payload.get("code")
+        strategy_id = None
+        strategy_hash = None
+        if code:
+            strategy_hash = _hash_source(code)
+            strategy_id = save_strategy(
+                name=payload.get("strategy_name") or "user_strategy",
+                source=code,
+                strategy_hash=strategy_hash,
+            ).id
+
         config = {
             "security": payload.get("security"),
             "start_date": payload.get("start_date"),
@@ -58,9 +79,12 @@ class BacktestWorker:
             "initial_cash": payload.get("initial_cash", 500000),
             "frequency": payload.get("frequency", "day"),
             "amount": payload.get("amount", 100),
+            "benchmark": payload.get("benchmark"),
             "extras": payload.get("extras"),
-            "has_code": bool(payload.get("code")),
+            "has_code": bool(code),
             "strategy_name": payload.get("strategy_name"),
+            "strategy_id": strategy_id,
+            "strategy_hash": strategy_hash,
         }
         create_run(run_id, config, strategy_id=strategy_id)
         t = threading.Thread(target=self._run, args=(run_id, payload), daemon=True)
@@ -83,6 +107,7 @@ class BacktestWorker:
                 frequency=payload.get("frequency", "day"),
                 amount=int(payload.get("amount", 100)),
                 extras=payload.get("extras"),
+                benchmark=payload.get("benchmark"),
             )
             if not getattr(engine, "daily_records", None):
                 raise ValueError("回测未产出任何记录（检查区间/数据/策略）")

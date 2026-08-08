@@ -136,3 +136,7 @@ def test_worker_user_strategy_persists(pg):
     rec = get_run(run_id)
     assert rec["status"] == "SUCCESS", rec.get("error")
     assert rec["snapshot"]["strategy_hash"], "用户策略应有 strategy_hash"
+    # 审计链：用户策略源码已落库并绑定 strategy_id
+    assert rec["strategy_id"] is not None, "运行应绑定 strategy_id"
+    assert rec["config"].get("strategy_id") == rec["strategy_id"]
+    assert rec["config"].get("strategy_hash"), "config 应记录 strategy_hash"

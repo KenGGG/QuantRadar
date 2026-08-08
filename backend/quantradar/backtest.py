@@ -76,11 +76,13 @@ def run_backtest(
     frequency: str = "day",
     amount: int = 100,
     extras: Optional[Dict[str, Any]] = None,
+    benchmark: Optional[str] = None,
 ) -> Tuple[Any, Dict[str, Any]]:
     """运行一次真实回测，返回 (engine, snapshot)。
 
     - code 非空：用户策略源码（JoinQuant 兼容），写入临时 .py 经 BacktestEngine(strategy_file=) 执行。
     - code 为空：内置 Buy&Hold（对 security 建仓并持有）。
+    benchmark 仅作为审计/配置字段记录（不参与撮合，撮合由 BulletTrade 负责）。
     """
     from bullet_trade.core.engine import BacktestEngine
 
@@ -108,7 +110,10 @@ def run_backtest(
                 os.unlink(tmp.name)
             except OSError:
                 pass
-        snapshot = build_snapshot(engine, extras=extras, strategy_source=code)
+        snapshot = build_snapshot(
+            engine, extras=extras, strategy_source=code,
+            security=security, amount=amount, benchmark=benchmark,
+        )
         return engine, _attach_details(snapshot, engine)
 
     # 内置 Buy&Hold
@@ -131,5 +136,8 @@ def run_backtest(
         initial_cash=initial_cash,
     )
     engine.run()
-    snapshot = build_snapshot(engine, extras=extras, strategy_source=None)
+    snapshot = build_snapshot(
+        engine, extras=extras, strategy_source=None,
+        security=sec, amount=amount, benchmark=benchmark,
+    )
     return engine, _attach_details(snapshot, engine)

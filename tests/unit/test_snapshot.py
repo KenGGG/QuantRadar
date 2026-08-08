@@ -99,3 +99,24 @@ class TestReproducibility:
         fp_high = daily_records_fingerprint(e_high.daily_records)
         # 不同初始资金 -> 不同资产曲线 -> 不同指纹
         assert fp_low != fp_high
+
+    def test_snapshot_hash_present_and_deterministic(self, active_provider):
+        """snapshot_hash 是「实验设置指纹」（数据+策略+配置），相同设置必相同。"""
+        e1 = _run()
+        e2 = _run()
+        s1 = build_snapshot(e1, extras={"universe": [TEST_SECURITY]})
+        s2 = build_snapshot(e2, extras={"universe": [TEST_SECURITY]})
+        assert "snapshot_hash" in s1
+        assert s1["snapshot_hash"] == s2["snapshot_hash"]
+        # snapshot_id 是运行实例唯一（每调不同），但 snapshot_hash 应确定
+        assert s1["snapshot_id"] != s2["snapshot_id"]
+
+    def test_config_includes_security_amount_benchmark(self, active_provider):
+        """回测标的/数量/基准应进入快照 config（审计链完整性）。"""
+        engine = _run()
+        snap = build_snapshot(
+            engine, security=TEST_SECURITY, amount=200, benchmark="000300.XSHG"
+        )
+        assert snap["config"]["security"] == TEST_SECURITY
+        assert snap["config"]["amount"] == 200
+        assert snap["config"]["benchmark"] == "000300.XSHG"

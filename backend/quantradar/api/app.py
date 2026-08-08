@@ -180,6 +180,9 @@ def backtest_async(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
                 "initial_cash": float(payload.get("initial_cash", 500000)),
                 "frequency": payload.get("frequency", "day"),
                 "amount": int(payload.get("amount", 100)),
+                "benchmark": payload.get("benchmark"),
+                "strategy_name": payload.get("strategy_name"),
+                "extras": payload.get("extras"),
             }
         )
     except RuntimeError as exc:
