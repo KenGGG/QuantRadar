@@ -10,6 +10,8 @@ get_price / get_index_stocks / order_target，不直连数据库、不伪造。
 from __future__ import annotations
 
 import pytest
+
+pytestmark = pytest.mark.requires_dolt
 from bullet_trade.core.engine import BacktestEngine
 
 from quantradar.bootstrap import bootstrap_investment_data

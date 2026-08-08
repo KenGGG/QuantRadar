@@ -19,6 +19,8 @@ import datetime
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.requires_dolt
+
 from quantradar.providers.investment_data.provider import InvestmentDataProvider
 from quantradar.providers.investment_data.symbols import normalize_stock_symbol
 

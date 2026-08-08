@@ -8,6 +8,9 @@
 
 from __future__ import annotations
 
+import os
+from typing import Optional
+
 import pytest
 
 import bullet_trade.data.api as data_api
@@ -17,6 +20,39 @@ from quantradar.providers.investment_data.connection import (
     InvestmentDataConnectionError,
 )
 from quantradar.providers.investment_data.provider import InvestmentDataProvider
+
+# Dolt 可达性缓存（整个测试会话只探测一次，CI 无 Dolt 时全体 requires_dolt 测试 skip）。
+_DOLT_REACHABLE: Optional[bool] = None
+
+
+def dolt_reachable() -> bool:
+    """investment_data（Dolt）是否可达。QUANTRADAR_FORCE_NO_DOLT=1 强制视为不可达（用于本地模拟 CI）。"""
+    global _DOLT_REACHABLE
+    if os.environ.get("QUANTRADAR_FORCE_NO_DOLT") == "1":
+        return False
+    if _DOLT_REACHABLE is None:
+        try:
+            conn = InvestmentDataConnection(load_investment_data_config())
+            conn.check()
+            conn.close()
+            _DOLT_REACHABLE = True
+        except Exception:
+            _DOLT_REACHABLE = False
+    return _DOLT_REACHABLE
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "requires_dolt: 需要可达的 investment_data(Dolt)；不可达时自动 skip"
+    )
+
+
+@pytest.fixture(autouse=True)
+def _skip_without_dolt(request):
+    """标记了 requires_dolt 的测试，在 Dolt 不可达时自动 skip（保证 CI 无 Dolt 仍绿）。"""
+    if request.node.get_closest_marker("requires_dolt") and not dolt_reachable():
+        pytest.skip("investment_data(Dolt) 不可达：跳过需要 Dolt 的测试")
+    yield
 
 
 @pytest.fixture

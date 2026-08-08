@@ -13,6 +13,8 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.requires_dolt
+
 from backend.quantradar.bootstrap import bootstrap_investment_data
 from backend.quantradar.config import load_investment_data_config
 from backend.quantradar.providers.investment_data.connection import (

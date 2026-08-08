@@ -289,6 +289,36 @@ def get_run(run_id: str, session=None) -> Optional[Dict[str, Any]]:
             s.close()
 
 
+def get_strategy(strategy_id: int, session=None) -> Optional[Strategy]:
+    """按 id 取策略记录（含源码）；不存在返回 None。"""
+    own = session is None
+    s = session or get_session()
+    try:
+        obj = s.get(Strategy, strategy_id)
+        return obj
+    finally:
+        if own:
+            s.close()
+
+
+def list_runs_by_status(status: str, limit: int = 200, session=None) -> List[Dict[str, Any]]:
+    """列出某状态的最近运行（按创建时间倒序），用于重启恢复 RUNNING -> PENDING。"""
+    own = session is None
+    s = session or get_session()
+    try:
+        rows = (
+            s.query(BacktestRun)
+            .filter(BacktestRun.status == status)
+            .order_by(BacktestRun.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [r.to_dict() for r in rows]
+    finally:
+        if own:
+            s.close()
+
+
 def list_runs(limit: int = 50, session=None) -> List[Dict[str, Any]]:
     """列出近期运行（按创建时间倒序）。"""
     own = session is None
@@ -376,6 +406,7 @@ def list_experiments(session=None) -> List[str]:
 __all__ = [
     "Base", "Strategy", "BacktestRun", "Experiment", "Snapshot", "Metrics",
     "get_engine", "get_session", "init_db", "drop_all",
-    "save_strategy", "create_run", "update_run", "get_run", "list_runs",
+    "save_strategy", "create_run", "update_run", "get_run", "get_strategy",
+    "list_runs", "list_runs_by_status",
     "save_snapshot_record", "save_metrics", "save_experiment", "get_experiment", "list_experiments",
 ]

@@ -12,6 +12,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.requires_dolt
+
 from quantradar.providers.investment_data.provider import InvestmentDataProvider
 
 

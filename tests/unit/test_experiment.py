@@ -17,7 +17,7 @@ from quantradar.experiment import (
 )
 from quantradar.snapshot import build_snapshot
 
-pytestmark = pytest.mark.unit
+pytestmark = [pytest.mark.unit, pytest.mark.requires_dolt]
 
 
 def _make_snapshot_fingerprint(seed: str) -> str:

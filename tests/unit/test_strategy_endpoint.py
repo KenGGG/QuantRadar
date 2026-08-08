@@ -6,7 +6,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from fastapi.testclient import TestClient
+
+pytestmark = pytest.mark.requires_dolt
 
 from quantradar.api.app import app
 

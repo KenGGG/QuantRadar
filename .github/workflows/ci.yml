@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# 说明：
+#   - 后端测试在「无 investment_data(Dolt) / 无 PostgreSQL」的 CI 环境中运行；
+#     需要 Dolt 的测试（标记 requires_dolt）与需要测试库的 PG 集成测试会自动 skip，
+#     纯逻辑测试（如 Qlib 桥接防未来函数单测）照常运行，保证套件全绿。
+#   - 前端独立 job 验证 React+TS+Vite 构建可复现。
+#   真实端到端（Dolt + PG）验证在本机环境进行（make smoke / make test 全量）。
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          # BulletTrade 基线（editable，源码在 vendor/ 下）
+          pip install -e ./vendor/bullet-trade
+          # 本项目及其依赖
+          pip install -e .
+          pip install -r requirements.txt
+
+      - name: Run unit tests
+        run: make test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install and build
+        run: npm ci && npm run build

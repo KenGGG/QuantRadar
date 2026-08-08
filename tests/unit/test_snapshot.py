@@ -14,6 +14,8 @@ import os
 
 import pytest
 
+pytestmark = pytest.mark.requires_dolt
+
 from bullet_trade.core.engine import BacktestEngine
 
 from quantradar.bootstrap import bootstrap_investment_data

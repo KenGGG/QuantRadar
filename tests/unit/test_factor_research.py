@@ -19,7 +19,7 @@ from quantradar.research.factors import (
     run_momentum_research,
 )
 
-pytestmark = pytest.mark.unit
+pytestmark = [pytest.mark.unit, pytest.mark.requires_dolt]
 
 UNIV = None  # 在 fixture 中惰性取沪深300子集
 START = "2023-01-03"

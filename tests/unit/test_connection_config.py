@@ -2,6 +2,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.requires_dolt
+
 from quantradar.config import InvestmentDataConfig, load_investment_data_config
 from quantradar.providers.investment_data.connection import (
     InvestmentDataConnection,

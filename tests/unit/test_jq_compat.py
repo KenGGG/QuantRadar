@@ -16,6 +16,8 @@ import bullet_trade.data.api as data_api
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.requires_dolt
+
 from quantradar.bootstrap import bootstrap_investment_data
 from quantradar.providers.investment_data.provider import InvestmentDataProvider
 from quantradar.providers.investment_data.symbols import normalize_stock_symbol

@@ -16,10 +16,13 @@ import pytest
 # 仅用专用测试库；绝不回退到正式 QUANT_RADAR_PG_URL（那是必须停止条件：不可逆 DB 写）。
 test_pg_url = os.environ.get("QUANT_RADAR_TEST_PG_URL")
 
-pytestmark = pytest.mark.skipif(
-    not test_pg_url,
-    reason="QUANT_RADAR_TEST_PG_URL 未设置：跳过 PostgreSQL 集成测试（避免误用正式库）",
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not test_pg_url,
+        reason="QUANT_RADAR_TEST_PG_URL 未设置：跳过 PostgreSQL 集成测试（避免误用正式库）",
+    ),
+    pytest.mark.requires_dolt,
+]
 
 
 @pytest.fixture(scope="module")
@@ -140,3 +143,46 @@ def test_worker_user_strategy_persists(pg):
     assert rec["strategy_id"] is not None, "运行应绑定 strategy_id"
     assert rec["config"].get("strategy_id") == rec["strategy_id"]
     assert rec["config"].get("strategy_hash"), "config 应记录 strategy_hash"
+
+
+def test_worker_recover_running_on_restart(pg):
+    """模拟进程重启：遗留 RUNNING 运行应被恢复为 PENDING 并重新执行成功。"""
+    from quantradar.storage import create_run, get_run, get_strategy, save_strategy, update_run
+    from quantradar.worker import BacktestWorker
+
+    code = (
+        "def initialize(context):\n"
+        "    context.security = '600519.XSHG'\n"
+        "def handle_data(context, data):\n"
+        "    if not context.portfolio.positions:\n"
+        "        order_target(context.security, 100)\n"
+    )
+    strat = save_strategy("recover_demo", code, "h_recover")
+    rid = "run_recover_001"
+    create_run(
+        rid,
+        {
+            "security": "600519.XSHG",
+            "start_date": "2023-01-03",
+            "end_date": "2023-03-31",
+            "initial_cash": 500000,
+            "frequency": "day",
+            "amount": 100,
+            "strategy_id": strat.id,
+            "strategy_name": "recover_demo",
+        },
+        strategy_id=strat.id,
+    )
+    # 模拟「进程崩溃」遗留的 RUNNING 状态
+    update_run(rid, status="RUNNING", started_at="2023-01-03 09:30:00")
+
+    # 新建 Worker 实例（非单例），触发 restart 恢复
+    w = BacktestWorker()
+    n = w.recover()
+    assert n >= 1, "应至少恢复 1 个 RUNNING 运行"
+    w.wait(rid, timeout=240)
+
+    rec = get_run(rid)
+    assert rec["status"] == "SUCCESS", f"恢复后应成功：{rec.get('error')}"
+    # 源码应从 strategies 表正确还原（恢复路径不依赖内存中 payload）
+    assert get_strategy(strat.id).source == code

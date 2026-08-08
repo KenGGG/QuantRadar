@@ -11,7 +11,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from bullet_trade.core.engine import BacktestEngine
+
+pytestmark = pytest.mark.requires_dolt
 
 from quantradar.bootstrap import bootstrap_investment_data
 from quantradar.snapshot import build_snapshot

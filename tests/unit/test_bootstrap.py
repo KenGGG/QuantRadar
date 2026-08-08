@@ -8,6 +8,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.requires_dolt
+
 from bullet_trade.data import get_data_provider, get_price
 from quantradar.bootstrap import PROVIDER_NAME, bootstrap_investment_data
 

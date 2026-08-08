@@ -1,17 +1,22 @@
-"""异步回测 Worker（Closing Phase 2：PERSIST_WORKER_PASS）。
+"""异步回测 Worker（Hardening#57：固定线程池 + 重启恢复）。
 
 职责：
-  - submit：生成 run_id，在 PostgreSQL 落库 PENDING 运行，启动后台线程执行真实回测。
-  - _run：调用 quantradar.backtest.run_backtest（复用 BulletTrade 撮合/账户/订单，
-          禁止重实现），回测完成写 Snapshot/Metrics/结果快照，更新状态 RUNNING→SUCCESS/FAILED。
+  - submit：生成 run_id，落库 PENDING 运行（策略源码先落库 strategies 表并绑定 strategy_id），
+    提交到固定大小线程池执行真实回测。
+  - _run：调用 quantradar.backtest.run_backtest（复用 BulletTrade 撮合/账户/订单，禁止重实现），
+    回测完成写 Snapshot/Metrics/结果快照，更新状态 RUNNING→SUCCESS/FAILED。
+  - recover：进程重启后将遗留的 RUNNING 运行恢复为 PENDING 并重新入队（单进程内保证最多一次重试）。
   - get_status / get_result：查询运行状态与结果。
 
-线程模型（本地可信研究工具）：以守护线程执行，避免阻塞 API；不引入额外进程/消息队列。
-所有价格/撮合/账户均来自 BulletTrade + InvestmentDataProvider，与同步接口共用 run_backtest。
+线程模型（本地可信研究工具）：
+  - 固定大小 ThreadPoolExecutor（默认 4 线程），杜绝「每次提交新建线程无限增长」。
+  - 单 uvicorn 进程内运行；多进程水平扩展不在本地研究工具范围（单进程已足够，FOR UPDATE
+    SKIP LOCKED 的分布式锁亦非必需）。
 """
 
 from __future__ import annotations
 
+import concurrent.futures
 import datetime
 import hashlib
 import threading
@@ -22,11 +27,30 @@ from typing import Any, Dict, Optional
 from .storage import (
     create_run,
     get_run,
+    get_strategy,
+    list_runs_by_status,
     save_metrics,
     save_snapshot_record,
     save_strategy,
     update_run,
 )
+
+# 固定线程池大小（本地研究工具，单进程即可；避免无限线程）。
+WORKER_POOL_SIZE = 4
+
+_executor: Optional[concurrent.futures.ThreadPoolExecutor] = None
+_executor_lock = threading.Lock()
+
+
+def _get_executor() -> concurrent.futures.ThreadPoolExecutor:
+    global _executor
+    if _executor is None:
+        with _executor_lock:
+            if _executor is None:
+                _executor = concurrent.futures.ThreadPoolExecutor(
+                    max_workers=WORKER_POOL_SIZE, thread_name_prefix="qr_worker"
+                )
+    return _executor
 
 
 def _hash_source(code: str) -> str:
@@ -42,17 +66,45 @@ def _gen_run_id() -> str:
     return "run_" + uuid.uuid4().hex
 
 
+def _payload_from_record(rec: Dict[str, Any]) -> Dict[str, Any]:
+    """从落库运行记录重建回测 payload（用于重启恢复）。"""
+    cfg = rec.get("config") or {}
+    code = None
+    sid = rec.get("strategy_id")
+    if sid is not None:
+        try:
+            s = get_strategy(sid)
+            code = s.source if s is not None else None
+        except Exception:
+            code = None
+    return {
+        "code": code,
+        "security": cfg.get("security"),
+        "start_date": cfg.get("start_date"),
+        "end_date": cfg.get("end_date"),
+        "initial_cash": cfg.get("initial_cash", 500000),
+        "frequency": cfg.get("frequency", "day"),
+        "amount": cfg.get("amount", 100),
+        "benchmark": cfg.get("benchmark"),
+        "strategy_name": cfg.get("strategy_name"),
+        "extras": cfg.get("extras"),
+    }
+
+
 class BacktestWorker:
-    """把「提交 → 运行 → 落库」封装为本地线程 Worker。"""
+    """把「提交 → 运行 → 落库」封装为本地线程池 Worker。"""
 
     def __init__(self) -> None:
-        self._threads: Dict[str, threading.Thread] = {}
+        self._futures: Dict[str, concurrent.futures.Future] = {}
         self._lock = threading.Lock()
+        self._recovered = False
 
-    def submit(self, payload: Dict[str, Any], strategy_id: Optional[int] = None) -> str:
+    # ----------------------------- 提交 -----------------------------
+    def submit(self, payload: Dict[str, Any], strategy_id: Optional[int] = None) -> Dict[str, Any]:
         """提交一次异步回测，立即返回 run_id（状态 PENDING）。
 
         会惰性建表（init_db）；若 QUANT_RADAR_PG_URL 未配置则抛 RuntimeError，由 API 转 503。
+        审计链：用户策略源码先落库 strategies 表，运行绑定 strategy_id。
         """
         from .storage import init_db
 
@@ -60,16 +112,12 @@ class BacktestWorker:
         run_id = _gen_run_id()
 
         # 审计链：用户策略源码持久化到 strategies 表，回测运行绑定 strategy_id。
-        # 内置（无 code）策略不入 strategies 表，strategy_id 保持 None（由 config 决定可复现）。
         code = payload.get("code")
-        strategy_id = None
-        strategy_hash = None
-        if code:
-            strategy_hash = _hash_source(code)
+        if strategy_id is None and code:
             strategy_id = save_strategy(
                 name=payload.get("strategy_name") or "user_strategy",
                 source=code,
-                strategy_hash=strategy_hash,
+                strategy_hash=_hash_source(code),
             ).id
 
         config = {
@@ -84,15 +132,19 @@ class BacktestWorker:
             "has_code": bool(code),
             "strategy_name": payload.get("strategy_name"),
             "strategy_id": strategy_id,
-            "strategy_hash": strategy_hash,
+            "strategy_hash": _hash_source(code) if code else None,
         }
         create_run(run_id, config, strategy_id=strategy_id)
-        t = threading.Thread(target=self._run, args=(run_id, payload), daemon=True)
-        with self._lock:
-            self._threads[run_id] = t
-        t.start()
+        self._enqueue(run_id, payload)
         return {"run_id": run_id, "status": "PENDING", "config": config}
 
+    def _enqueue(self, run_id: str, payload: Dict[str, Any]) -> None:
+        """提交到固定线程池执行（bounded；不会无限增长线程）。"""
+        future = _get_executor().submit(self._run, run_id, payload)
+        with self._lock:
+            self._futures[run_id] = future
+
+    # ----------------------------- 执行 -----------------------------
     def _run(self, run_id: str, payload: Dict[str, Any]) -> None:
         try:
             update_run(run_id, status="RUNNING", started_at=_now())
@@ -111,7 +163,7 @@ class BacktestWorker:
             )
             if not getattr(engine, "daily_records", None):
                 raise ValueError("回测未产出任何记录（检查区间/数据/策略）")
-            # 持久化：Snapshot manifest + Metrics + 运行结果
+            # 持久化：Snapshot manifest + Metrics + 运行结果（顺序保证结果先于状态 SUCCESS）
             save_snapshot_record(
                 snap["snapshot_id"], run_id, snap, snap.get("result_hash")
             )
@@ -133,29 +185,73 @@ class BacktestWorker:
             )
         finally:
             with self._lock:
-                self._threads.pop(run_id, None)
+                self._futures.pop(run_id, None)
 
+    # ----------------------------- 重启恢复 -----------------------------
+    def recover(self) -> int:
+        """进程重启后将遗留 RUNNING 恢复为 PENDING 并重新入队；返回恢复的运行数。
+
+        仅单进程内执行一次；多进程水平扩展（分布式锁/FOR UPDATE SKIP LOCKED）不在本地工具范围。
+        """
+        if self._recovered:
+            return 0
+        self._recovered = True
+        try:
+            running = list_runs_by_status("RUNNING")
+        except Exception:
+            return 0
+        recovered = 0
+        for rec in running:
+            rid = rec["run_id"]
+            try:
+                payload = _payload_from_record(rec)
+                update_run(
+                    rid,
+                    status="PENDING",
+                    started_at=None,
+                    finished_at=None,
+                    error="由进程重启恢复为 PENDING 并重试",
+                )
+                self._enqueue(rid, payload)
+                recovered += 1
+            except Exception:
+                # 恢复失败不应阻断其它运行；标记为 FAILED 以显式可见
+                try:
+                    update_run(rid, status="FAILED", error="重启恢复失败")
+                except Exception:
+                    pass
+        return recovered
+
+    # ----------------------------- 查询 -----------------------------
     def get_status(self, run_id: str) -> Optional[Dict[str, Any]]:
         return get_run(run_id)
 
     def wait(self, run_id: str, timeout: float = 300.0) -> None:
-        """等待某次运行的后台线程结束（测试/同步查询用）。"""
-        t: Optional[threading.Thread] = None
+        """等待某次运行完成（测试/同步查询用）。"""
+        future: Optional[concurrent.futures.Future] = None
         with self._lock:
-            t = self._threads.get(run_id)
-        if t is not None:
-            t.join(timeout)
+            future = self._futures.get(run_id)
+        if future is not None:
+            try:
+                future.result(timeout)
+            except Exception:
+                # 任务异常已落库 FAILED，这里不向上抛
+                pass
 
 
 # 模块级单例（本地进程内 Worker；不跨进程）。
 _worker: Optional[BacktestWorker] = None
+_worker_lock = threading.Lock()
 
 
 def get_worker() -> BacktestWorker:
     global _worker
     if _worker is None:
-        _worker = BacktestWorker()
+        with _worker_lock:
+            if _worker is None:
+                _worker = BacktestWorker()
+                _worker.recover()
     return _worker
 
 
-__all__ = ["BacktestWorker", "get_worker"]
+__all__ = ["BacktestWorker", "get_worker", "WORKER_POOL_SIZE"]
