@@ -10,7 +10,7 @@
 # 当前阶段
 
 ```text
-当前阶段：Hardening 完成 → FUNCTIONAL_V1_PASS ✅（功能型 V1）→ 严谨研究型 V1 进行中 QUANTRADAR_RESEARCH_V1_WIP（T1 复权口径统一 / T2 列表补全 / T3 多模型+网格+walk-forward 均已完成）
+当前阶段：Hardening 完成 → FUNCTIONAL_V1_PASS ✅（功能型 V1）→ 严谨研究型 V1 进行中 QUANTRADAR_RESEARCH_V1_WIP（T1 复权口径统一 / T2 列表补全 / T3 多模型+网格+walk-forward / T4 样本外稳健性+可复现报告 均已完成）
   1) 依赖可重建            PASS  HARDENING_DEPS_PASS ✅（pyproject 补依赖 / 干净 requirements.txt / Makefile setup 装前端 / 前端依赖补全）
   2) 测试库隔离+localhost  PASS  HARDENING_TEST_ISOLATION_PASS ✅（TEST 库隔离 + drop_all 拒绝非 _test 库 + 0.0.0.0 强警告）
   3) 审计链                PASS  HARDENING_AUDIT_CHAIN_PASS ✅（config 完整 + 策略源码落库 + run_id/snapshot_hash/result_hash 语义分明）
@@ -83,6 +83,7 @@ Qlib 多模型探测                PASS  （RESEARCH_T3_MULTIMODEL_PASS：avail
 Qlib 网格寻优                  PASS  （RESEARCH_T3_GRID_PASS：grid_search_qlib 固定 seed 遍历超参组合、按 IC 选优、结果可复现（同输入同输出）；2x2 网格 4 组；test_grid_search.py 2 passed）
 Qlib walk-forward 滚动窗口     PASS  （RESEARCH_T3_WALKFORWARD_PASS：walk_forward_qlib 逐折 Train/Valid/Test 不重叠（assert_segments_disjoint 防泄漏）、固定 seed 可复现、各折样本外 IC 有限；test_walk_forward.py 2 passed）
 Qlib 进程初始化隔离            PASS  （RESEARCH_T3_INIT_PASS：每个进程仅 qlib.init 一次（RecorderInitializationError 守卫），跨目录重定向仅改 C['provider_uri'] 且不重 init；joblib_backend 强制 'threading' 置于 _ensure_qlib_init 之后以规避重定向重置 multiprocessing 触发 loky 子进程缺 C 崩溃；同进程跨目录实测 dirA→dirB 切成功且 train_samples 指向 B）
+样本外稳健性验证              PASS  （RESEARCH_T4_OOS_PASS：run_research_oos 端到端（grid 选优 + walk_forward 多折 OOS）→ 结构化可复现报告（JSON+MD），含 config/grid/folds/oos(均值/标准差/正IC占比)/environment(git commit+版本)；固定 seed 同输入同输出；scripts/research_oos.py 复用/自动构建 qlib_data 产出双报告；test_research_oos.py 2 passed）
 ```
 
 ---
@@ -210,7 +211,7 @@ Phase 10（下一）：Qlib 高级研究（Alpha158 / LightGBM 等，需 QLIB_DA
   T1（已完成）：复权口径统一 + 同源验证 + 审计记录 fq（RESEARCH_T1_FQ_PASS；test_backtest_fq.py 3 passed）
   T2（已完成）：股票列表补全（RESEARCH_T2_UNIVERSE_PASS；extended_universe 从 final 补全 ts_a_stock_list 缺口 + 排除指数 + source='final_approx' PARTIAL；select_universe/run_qml_pipeline 增 use_extended；read_timeout 120s + query 断连重试；test_universe_extended.py 3 passed）
   T3（#60 已完成）：Qlib 多模型（lgb/xgb/mlp 探测可用性，本环境仅 lgb 可用、xgb/mlp 缺依赖抛 NotImplementedError 不伪造）+ grid_search_qlib（固定 seed 按 IC 选优、可复现）+ walk_forward_qlib（逐折不重叠防泄漏、可复现）；RESEARCH_T3_MULTIMODEL/GRID/WALKFORWARD/INIT_PASS；test_qlib_models/grid_search/walk_forward.py 共 8 passed
-  T4（#62 待做）：scripts/research_oos.py 端到端样本外稳健性验证 + 可复现报告（JSON+MD）；test_research_oos.py
+  T4（#62 已完成）：样本外稳健性验证 + 可复现报告；run_research_oos（grid 选优 + walk-forward 多折 OOS）→ 结构化报告（config/grid/folds/oos/environment），固定 seed 可复现；scripts/research_oos.py 端到端 CLI（复用/自动构建 qlib_data，产出 JSON+MD）；test_research_oos.py 2 passed（RESEARCH_T4_OOS_PASS）
   T5（#63 待做）：conftest 确保新增测试带 requires_dolt；make smoke 扩展；文档（ACTIVE_PHASE/CURRENT_STATE 升 RESEARCH_V1_WIP / 06_Qlib研究规范）；最终 make test + 模拟 CI 验收
   外部待定（用户侧，不阻塞）：数据补齐方案（ST/停牌/列表，来自只读 Dolt，本仓库无法补齐）
 禁止提前开发：PostgreSQL / ETF / QMT / 实盘（除非当前阶段需要）

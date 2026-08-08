@@ -21,6 +21,7 @@ from .loop import (
     walk_forward_qlib,
 )
 from .bridge import run_target_weight_backtest
+from .oos import render_oos_markdown, run_research_oos
 
 
 def run_qml_pipeline(
@@ -111,5 +112,7 @@ __all__ = [
     "walk_forward_qlib",
     "topk_target_weights",
     "run_target_weight_backtest",
+    "run_research_oos",
+    "render_oos_markdown",
     "run_qml_pipeline",
 ]

@@ -2,7 +2,7 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：Hardening 完成（FUNCTIONAL_V1_PASS）→ 严谨研究型 V1 进行中（RESEARCH_V1_WIP，T1/T2/T3 已完成）**
+**当前阶段：Hardening 完成（FUNCTIONAL_V1_PASS）→ 严谨研究型 V1 进行中（RESEARCH_V1_WIP，T1/T2/T3/T4 已完成）**
 
 ```text
 目标：在「功能型 V1」达成的基础上，补齐工程与研究正确性加固，使系统达到可审计、可复现、
@@ -157,9 +157,15 @@ make smoke 本机全量通过；GitHub Actions CI 已建）
     「单目录/会话」用法一致，彻底规避跨函数重定向。
 - 测试：`test_qlib_models.py`(4) / `test_grid_search.py`(2) / `test_walk_forward.py`(2) 共 8 passed。
 
-## T4) 样本外稳健性验证 + 可复现报告 —— #62 待做
-- `scripts/research_oos.py`：端到端跑 T3 的 walk-forward，输出样本外指标 + 可复现报告（JSON+MD）。
-- `tests/unit/test_research_oos.py`：验证报告字段齐全、可复现（同输入同输出）。
+## T4) 样本外稳健性验证 + 可复现报告 —— RESEARCH_T4_OOS_PASS ✅ (#62 已完成)
+- `qml/oos.py` `run_research_oos`：端到端（grid_search_qlib in-sample 选优 + walk_forward_qlib 多折 OOS）
+  → 结构化（JSON 可序列化）报告，含 `config` / `grid` / `folds` / `oos`(均值/标准差/正 IC 折占比
+  hit ratio) / `environment`(git commit + qlib/lightgbm/numpy/pandas 版本 + python 版本)。
+- 可复现：固定随机种子 + 报告内记录完整配置与运行环境，同输入产出逐字节一致 JSON。
+- 不伪造：完全依赖真实 Alpha158+LGBModel，任一失败如实抛出；numpy 标量转 python 原生类型保证可序列化。
+- `scripts/research_oos.py`：CLI，复用已有 `--qlib-data-dir` 或 `--build` 自动构建，产出 `<out>.json` + `<out>.md`；
+  `render_oos_markdown` 渲染可读摘要（配置/聚合指标/各折明细/环境）。
+- 测试：`test_research_oos.py` 2 passed（字段齐全且样本外 IC 有限；同输入两次运行 JSON 逐字节一致）。
 
 ## T5) 测试隔离 / CI / smoke 扩展 + 文档 —— #63 待做
 - `conftest` 确保新增测试带 `requires_dolt`；`make smoke` 扩展覆盖研究链路。
