@@ -13,7 +13,13 @@ import tempfile
 from typing import Any, Dict, Optional
 
 from .dump import build_qlib_data
-from .loop import run_qlib_loop, topk_target_weights
+from .loop import (
+    available_models,
+    grid_search_qlib,
+    run_qlib_loop,
+    topk_target_weights,
+    walk_forward_qlib,
+)
 from .bridge import run_target_weight_backtest
 
 
@@ -100,6 +106,9 @@ def run_qml_pipeline(
 __all__ = [
     "build_qlib_data",
     "run_qlib_loop",
+    "available_models",
+    "grid_search_qlib",
+    "walk_forward_qlib",
     "topk_target_weights",
     "run_target_weight_backtest",
     "run_qml_pipeline",

@@ -10,7 +10,7 @@
 # 当前阶段
 
 ```text
-当前阶段：Hardening 完成 → FUNCTIONAL_V1_PASS ✅（功能型 V1）→ 严谨研究型 V1 进行中 QUANTRADAR_RESEARCH_V1_WIP（T1 复权口径统一已完成）
+当前阶段：Hardening 完成 → FUNCTIONAL_V1_PASS ✅（功能型 V1）→ 严谨研究型 V1 进行中 QUANTRADAR_RESEARCH_V1_WIP（T1 复权口径统一 / T2 列表补全 / T3 多模型+网格+walk-forward 均已完成）
   1) 依赖可重建            PASS  HARDENING_DEPS_PASS ✅（pyproject 补依赖 / 干净 requirements.txt / Makefile setup 装前端 / 前端依赖补全）
   2) 测试库隔离+localhost  PASS  HARDENING_TEST_ISOLATION_PASS ✅（TEST 库隔离 + drop_all 拒绝非 _test 库 + 0.0.0.0 强警告）
   3) 审计链                PASS  HARDENING_AUDIT_CHAIN_PASS ✅（config 完整 + 策略源码落库 + run_id/snapshot_hash/result_hash 语义分明）
@@ -79,6 +79,10 @@ Qlib 防未来函数               PASS  （HARDENING_QLIB_NOFUTURE_PASS：bridg
 Worker 稳定性 + CI            PASS  （HARDENING_WORKER_CI_PASS：worker 固定 ThreadPoolExecutor + 重启恢复 RUNNING→PENDING 重入队；tests requires_dolt 自动 skip；GitHub Actions CI 后端测试+前端构建）
 复权口径配置化 + 同源验证       PASS  （RESEARCH_T1_FQ_PASS：run_backtest/run_target_weight_backtest 支持 fq∈{none,pre,qfq,post,hfq}，审计 config 记录 fq，_FQ_LOCK 线程安全切换 use_real_price；实测 final.close 已连续复权，回测腿与 Qlib 训练同源，无除权假跳变；test_backtest_fq.py 3 passed）
 股票列表补全（PIT 近似宇宙）    PASS  （RESEARCH_T2_UNIVERSE_PASS：extended_universe 从 final 聚合首/末现日补全 ts_a_stock_list(至2022-07-18)缺口上市股，排除指数代码，标注 source='final_approx' PARTIAL；select_universe(use_extended) 合并为完整 PIT 宇宙；read_timeout 升至120s + query 断连自动重试验证加固；test_universe_extended.py 3 passed）
+Qlib 多模型探测                PASS  （RESEARCH_T3_MULTIMODEL_PASS：available_models 按真实 import 探测 lgb/xgb/mlp；本环境仅 LGBModel 可用（xgb 缺 xgboost、mlp 缺 torch 则 _get_model_class 抛 NotImplementedError，绝不伪造）；run_qlib_loop(model='lgb') 跑通产出有限 IC/RankIC + 158 维特征 + Target Weight；test_qlib_models.py 4 passed）
+Qlib 网格寻优                  PASS  （RESEARCH_T3_GRID_PASS：grid_search_qlib 固定 seed 遍历超参组合、按 IC 选优、结果可复现（同输入同输出）；2x2 网格 4 组；test_grid_search.py 2 passed）
+Qlib walk-forward 滚动窗口     PASS  （RESEARCH_T3_WALKFORWARD_PASS：walk_forward_qlib 逐折 Train/Valid/Test 不重叠（assert_segments_disjoint 防泄漏）、固定 seed 可复现、各折样本外 IC 有限；test_walk_forward.py 2 passed）
+Qlib 进程初始化隔离            PASS  （RESEARCH_T3_INIT_PASS：每个进程仅 qlib.init 一次（RecorderInitializationError 守卫），跨目录重定向仅改 C['provider_uri'] 且不重 init；joblib_backend 强制 'threading' 置于 _ensure_qlib_init 之后以规避重定向重置 multiprocessing 触发 loky 子进程缺 C 崩溃；同进程跨目录实测 dirA→dirB 切成功且 train_samples 指向 B）
 ```
 
 ---
@@ -205,7 +209,7 @@ Phase 10（下一）：Qlib 高级研究（Alpha158 / LightGBM 等，需 QLIB_DA
 严谨研究型 V1 进行中（QUANTRADAR_RESEARCH_V1_WIP）：
   T1（已完成）：复权口径统一 + 同源验证 + 审计记录 fq（RESEARCH_T1_FQ_PASS；test_backtest_fq.py 3 passed）
   T2（已完成）：股票列表补全（RESEARCH_T2_UNIVERSE_PASS；extended_universe 从 final 补全 ts_a_stock_list 缺口 + 排除指数 + source='final_approx' PARTIAL；select_universe/run_qml_pipeline 增 use_extended；read_timeout 120s + query 断连重试；test_universe_extended.py 3 passed）
-  T3（#60 待做）：Qlib 多模型（lgb/xgb/mlp 探测可用性）+ grid_search_qlib + walk_forward_qlib；test_qlib_models/grid_search/walk_forward.py
+  T3（#60 已完成）：Qlib 多模型（lgb/xgb/mlp 探测可用性，本环境仅 lgb 可用、xgb/mlp 缺依赖抛 NotImplementedError 不伪造）+ grid_search_qlib（固定 seed 按 IC 选优、可复现）+ walk_forward_qlib（逐折不重叠防泄漏、可复现）；RESEARCH_T3_MULTIMODEL/GRID/WALKFORWARD/INIT_PASS；test_qlib_models/grid_search/walk_forward.py 共 8 passed
   T4（#62 待做）：scripts/research_oos.py 端到端样本外稳健性验证 + 可复现报告（JSON+MD）；test_research_oos.py
   T5（#63 待做）：conftest 确保新增测试带 requires_dolt；make smoke 扩展；文档（ACTIVE_PHASE/CURRENT_STATE 升 RESEARCH_V1_WIP / 06_Qlib研究规范）；最终 make test + 模拟 CI 验收
   外部待定（用户侧，不阻塞）：数据补齐方案（ST/停牌/列表，来自只读 Dolt，本仓库无法补齐）

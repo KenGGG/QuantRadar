@@ -2,7 +2,7 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：Hardening 完成（FUNCTIONAL_V1_PASS）→ 严谨研究型 V1 进行中（RESEARCH_V1_WIP，T1 已完成）**
+**当前阶段：Hardening 完成（FUNCTIONAL_V1_PASS）→ 严谨研究型 V1 进行中（RESEARCH_V1_WIP，T1/T2/T3 已完成）**
 
 ```text
 目标：在「功能型 V1」达成的基础上，补齐工程与研究正确性加固，使系统达到可审计、可复现、
@@ -141,11 +141,21 @@ make smoke 本机全量通过；GitHub Actions CI 已建）
 - 测试：`tests/unit/test_universe_extended.py` 3 passed（来源标注/PIT、合并宇宙含补全标的且非指数/非 ts 列表、
   确定性）。
 
-## T3) Qlib 多模型 + 参数寻优 + walk-forward —— #60 待做
-- 多模型探测可用性：lgb / xgb / mlp，任一不可用抛 `NotImplementedError`（不伪造）。
-- `grid_search_qlib`：轻量网格寻优（模型超参），固定随机种子，结果可复现。
-- `walk_forward_qlib`：滚动窗口训练/验证/测试，输出各窗口指标，杜绝单一切分的乐观偏差。
-- 测试：`test_qlib_models.py` / `test_grid_search.py` / `test_walk_forward.py`。
+## T3) Qlib 多模型 + 参数寻优 + walk-forward —— RESEARCH_T3_MULTIMODEL/GRID/WALKFORWARD/INIT_PASS ✅ (#60 已完成)
+- 多模型探测可用性：`available_models()` 按真实 import 探测 lgb/xgb/mlp；本环境仅 `LGBModel`
+  可用（`xgb` 缺 xgboost、`mlp` 缺 torch 时 `_get_model_class` 抛 `NotImplementedError`，绝不伪造）。
+- `grid_search_qlib`：轻量网格寻优（超参组合），固定随机种子按 IC 选优，结果可复现（同输入同输出）。
+- `walk_forward_qlib`：滚动窗口训练/验证/测试，每折 segments 不重叠（`assert_segments_disjoint` 防泄漏），
+  固定 seed 可复现，输出各折样本外 IC。
+- 进程初始化隔离（关键坑，已解决）：
+  * 每个进程仅 `qlib.init` 一次（`RecorderInitializationError` 守卫）；跨目录请求仅重定向
+    `C['provider_uri']={"day": new_dir}`，不重 init（同进程跨目录实测 dirA→dirB 切成功，train_samples 指向 B）。
+  * `joblib_backend` 强制 `'threading'` 必须置于 `_ensure_qlib_init` **之后**设置——重定向
+    `provider_uri` 会把它重置回默认 `'multiprocessing'`，否则 `inst_calculator` 在 loky 子进程里
+    因缺已注册的 `C` 崩溃（`AttributeError: No such 'registered'`）。
+  * 测试共享同一 qlib 目录（`tests/unit/_qml_helpers.build_shared_qlib_dir`），与真实
+    「单目录/会话」用法一致，彻底规避跨函数重定向。
+- 测试：`test_qlib_models.py`(4) / `test_grid_search.py`(2) / `test_walk_forward.py`(2) 共 8 passed。
 
 ## T4) 样本外稳健性验证 + 可复现报告 —— #62 待做
 - `scripts/research_oos.py`：端到端跑 T3 的 walk-forward，输出样本外指标 + 可复现报告（JSON+MD）。
