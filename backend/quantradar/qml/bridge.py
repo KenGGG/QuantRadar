@@ -19,8 +19,26 @@ import pandas as pd
 from quantradar.backtest import run_backtest
 
 
+def select_signal_date(weights_index: Any, day: Any) -> Optional[pd.Timestamp]:
+    """从权重表交易日索引中，选取「严格早于」交易执行日 day 的最新信号日。
+
+    防未来函数核心：T 日 09:30 调仓时，只能使用 T 日之前（不含 T）收盘产生的信号，
+    T 日信号须留到 T+1 交易。返回 None 表示尚无可用的历史信号。
+    """
+    idx = pd.DatetimeIndex(weights_index)
+    day = pd.Timestamp(day).normalize()
+    mask = idx < day  # 严格早于，杜绝同日信号前视
+    if not mask.any():
+        return None
+    return idx[mask][-1]
+
+
 def _build_strategy_source(weights_csv: str) -> str:
-    """生成读取权重表并按月再平衡的策略源码。"""
+    """生成读取权重表并按月再平衡的策略源码。
+
+    关键：再平衡在 T 日 09:30 触发，但只取「严格早于 T」的最新信号（T 日信号留到 T+1），
+    杜绝同日未来数据泄露（look-ahead bias）。
+    """
     return f'''# QuantRadar: Qlib Target Weight -> BulletTrade 月度再平衡
 import pandas as pd
 
@@ -29,7 +47,8 @@ _WEIGHTS = pd.read_csv(r"{weights_csv}", index_col=0, parse_dates=True)
 def _rebalance(context):
     dt = context.current_dt
     day = pd.Timestamp(dt).normalize()
-    mask = _WEIGHTS.index <= day
+    # 严格早于交易日的最近信号（T 日信号不能用于 T 日 09:30 调仓）
+    mask = _WEIGHTS.index < day
     if not mask.any():
         return
     row = _WEIGHTS[mask].iloc[-1]

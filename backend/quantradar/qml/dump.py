@@ -39,6 +39,12 @@ from quantradar.providers.investment_data.symbols import (
 _QLIB_FIELDS = ["open", "high", "low", "close", "volume", "amount", "vwap"]
 _PRICE_COLS = ["open", "high", "low", "close", "volume", "amount"]
 
+# 复权字段：用 final_a_stock_eod_price.adjclose 对 OHLC 做后复权调整，
+# 避免除权除息跳变污染 Alpha158 标签（Ref($close,-2)/Ref($close,-1)-1）与特征。
+# 调整方式：每日因子 adj_factor = adjclose / close，将 open/high/low/close 同比例缩放；
+# volume/amount 保持原始（量纲与真实成交一致），vwap 由原始 amount/volume 推导（scale-invariant）。
+_ADJUST_PRICE_COLS = ["open", "high", "low", "close"]
+
 
 def _init_qlib_storage_module():
     """惰性导入 qlib 存储类（避免在无 qlib 环境强制依赖）。"""
@@ -96,7 +102,7 @@ def fetch_ohlcv(
         internal_batch = [normalize_stock_symbol(s) for s in batch]
         placeholders = ",".join(["%s"] * len(internal_batch))
         rows = conn.query(
-            f"SELECT symbol, tradedate, open, high, low, close, volume, amount "
+            f"SELECT symbol, tradedate, open, high, low, close, volume, amount, adjclose "
             f"FROM final_a_stock_eod_price WHERE symbol IN ({placeholders}) "
             f"AND tradedate BETWEEN %s AND %s ORDER BY symbol, tradedate ASC",
             tuple(internal_batch) + (start, end),
@@ -116,6 +122,13 @@ def fetch_ohlcv(
             df["tradedate"] = pd.to_datetime(df["tradedate"])
             df = df.set_index("tradedate").sort_index()
             df["vwap"] = (df["amount"].astype(float) * 10.0) / df["volume"].astype(float)
+            # 后复权调整：以 adjclose/close 为每日因子，缩放 OHLC；除 close==0（异常）外均调整。
+            close = df["close"].astype(float)
+            adjclose = df["adjclose"].astype(float)
+            adj_factor = adjclose / close.replace(0, float("nan"))
+            adj_factor = adj_factor.fillna(1.0)
+            for col in _ADJUST_PRICE_COLS:
+                df[col] = df[col].astype(float) * adj_factor
             df = df[_QLIB_FIELDS].astype(float)
             out[jq] = df
     return out

@@ -57,6 +57,30 @@ def _default_segments(start: str, end: str) -> Dict[str, Tuple[str, str]]:
     }
 
 
+def assert_segments_disjoint(segments: Dict[str, Tuple[str, str]]) -> None:
+    """防泄漏守卫：Train/Valid/Test 时间区间必须严格不重叠且按时间顺序排列。
+
+    任一层重叠都意味着未来数据可能泄漏进训练/验证，直接拒绝。
+    """
+    from datetime import datetime
+
+    order = ["train", "valid", "test"]
+    parsed = {k: (datetime.fromisoformat(v[0]), datetime.fromisoformat(v[1])) for k, v in segments.items()}
+    for k in order:
+        if k not in parsed:
+            raise ValueError(f"segments 缺少 {k} 区间")
+    # 区间应为 [start, end] 且 start <= end
+    for k in order:
+        s, e = parsed[k]
+        if s > e:
+            raise ValueError(f"segments[{k}] 起点晚于终点：{segments[k]}")
+    # 相邻区间不重叠：train.end <= valid.start 且 valid.end <= test.start
+    if parsed["train"][1] > parsed["valid"][0]:
+        raise ValueError(f"Train/Valid 时间区间重叠（泄漏风险）：{segments}")
+    if parsed["valid"][1] > parsed["test"][0]:
+        raise ValueError(f"Valid/Test 时间区间重叠（泄漏风险）：{segments}")
+
+
 def topk_target_weights(
     pred: pd.Series,
     topk: int = 50,
@@ -129,6 +153,8 @@ def run_qlib_loop(
 
     if segments is None:
         segments = _default_segments(start, end)
+    # 防泄漏守卫：Train/Valid/Test 必须时间不重叠
+    assert_segments_disjoint(segments)
 
     handler = Alpha158(
         instruments=market,
