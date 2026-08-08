@@ -10,14 +10,17 @@
 # 当前阶段
 
 ```text
-当前阶段：Closing Phase 收官（4 项已补齐 → QUANTRADAR_V1_PASS ✅）
-  1) 完整 Snapshot/Audit          PASS  FULL_AUDIT_REPRO_PASS ✅
-  2) PostgreSQL + Worker          PASS  PERSIST_WORKER_PASS ✅（本机 1Panel Postgres 专用库 quantradar 已建表并验证异步回测落库）
-  3) 正式 React WebUI             PASS  WEB_WORKBENCH_PASS ✅（React+TS+Vite+AntD+Monaco+ECharts 工作台已构建并托管）
-  4) Qlib 最小闭环                 PASS  QLIB_BULLETTRADE_LOOP_PASS ✅（Alpha158+LightGBM 最小闭环；investment_data→Qlib→预测→IC/RankIC→TopK Target Weight→BulletTrade 账户回测；无未来数据）
-阶段标志：QUANTRADAR_V1_PASS ✅ 已达成（FULL_AUDIT_REPRO_PASS + PERSIST_WORKER_PASS + WEB_WORKBENCH_PASS + QLIB_BULLETTRADE_LOOP_PASS + QUANTRADAR_SMOKE_PASS 全绿；make smoke 终验 EXIT 0）
-最近完成（Closing 1）：build_snapshot 补齐审计字段 + backend/quantradar/audit.py（Dolt HEAD / schema 哈希 / commit）
-  + 确定性测试（NAV/Trades/Positions/Metrics 一致 + 审计指纹一致）
+当前阶段：Hardening & Research Correctness 完成 → QUANTRADAR_FUNCTIONAL_V1_PASS ✅（功能型 V1）
+  1) 依赖可重建            PASS  HARDENING_DEPS_PASS ✅（pyproject 补依赖 / 干净 requirements.txt / Makefile setup 装前端 / 前端依赖补全）
+  2) 测试库隔离+localhost  PASS  HARDENING_TEST_ISOLATION_PASS ✅（TEST 库隔离 + drop_all 拒绝非 _test 库 + 0.0.0.0 强警告）
+  3) 审计链                PASS  HARDENING_AUDIT_CHAIN_PASS ✅（config 完整 + 策略源码落库 + run_id/snapshot_hash/result_hash 语义分明）
+  4) Qlib 防未来函数       PASS  HARDENING_QLIB_NOFUTURE_PASS ✅（bridge 同日前视修复 + segment 守卫 + 复权训练）
+  5) Worker 稳定性 + CI    PASS  HARDENING_WORKER_CI_PASS ✅（固定线程池 + 重启恢复 + GitHub Actions CI）
+阶段标志：QUANTRADAR_FUNCTIONAL_V1_PASS ✅ 已达成（5 项 Hardening 标志全绿；make test / make smoke 本机全量通过；CI 已建）
+降级说明：原 QUANTRADAR_V1_PASS 更名为 FUNCTIONAL_V1_PASS——功能闭环已可用，但尚非「严谨研究型 V1」
+  （数据层 2023 后残缺、回测腿原始价 vs Qlib 复权价口径未统一、多模型/参数寻优未做）。严谨研究型 V1 为下一阶段，未启动。
+最近完成（Hardening）：pyproject/requirements/Makefile/frontend 依赖可重建；storage 测试隔离；snapshot config+策略落库+hash 语义；
+  qml bridge/loop/dump 防未来函数；worker 固定池+重启恢复；tests requires_dolt 跳过；GitHub Actions CI。
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
 BulletTrade 快照 base commit：be0451b（记录于 BASELINE.md；vendor/ 无 remote、无 .git）
 ```
@@ -63,6 +66,11 @@ PostgreSQL + Worker          PASS  （PERSIST_WORKER_PASS：backend/quantradar/s
 React WebUI（工作台）         PASS  （WEB_WORKBENCH_PASS：frontend/ React+TS+Vite+AntD+Monaco+ECharts；数据状态/策略编辑器(回测提交)/运行记录(异步状态轮询)/实验对比；净值·累计收益·回撤 ECharts 图 + Metrics + 持仓 + 成交 + 运行流水 + 审计环境；GET / 托管构建产物；test_web_workbench 5/5 通过）
 Qlib 数据构建                  PASS  （build_qlib_data：由 investment_data(Dolt) 真实导出 qlib_data；字段 open/high/low/close/volume/amount/vwap，VWAP=amount*10/volume（与官方 investment_data 一致）；FileCalendar/FileInstrument/FileFeature Storage 写二进制；Point-in-Time 宇宙防幸存者偏差；tests/unit/test_qlib_loop.py 验证）
 Qlib 最小闭环                  PASS  （QLIB_BULLETTRADE_LOOP_PASS：Alpha158 + LightGBM → Train/Valid/Test 时间切分 → Prediction → calc_ic IC/RankIC → TopK 等权 Target Weight → 月度再平衡策略 → BulletTrade 账户回测；无未来数据（标签为 Alpha158 Ref($close,-2)/Ref($close,-1)-1，按点对齐）；mlflow 经 exp_manager 重定向临时目录不污染仓库；tests/unit/test_qlib_loop.py 2/2 通过）
+依赖可重建                    PASS  （HARDENING_DEPS_PASS：pyproject[project.dependencies] 补齐；干净 requirements.txt；Makefile setup 装前端；frontend package.json 补全 antd/monaco/echarts 并构建）
+测试库隔离 + localhost 边界    PASS  （HARDENING_TEST_ISOLATION_PASS：集成测试仅用 QUANT_RADAR_TEST_PG_URL 的 _test 库；drop_all 拒绝非 _test 库；quantradar.sh 对 0.0.0.0 强警告）
+审计链                        PASS  （HARDENING_AUDIT_CHAIN_PASS：snapshot config 含 security/amount/benchmark/extras；新增确定性 snapshot_hash；用户策略源码落库 strategies 并绑定 backtest_runs.strategy_id）
+Qlib 防未来函数               PASS  （HARDENING_QLIB_NOFUTURE_PASS：bridge 同日前视修复 index<day；loop segment 不重叠守卫；dump 用 adjclose 后复权训练避免除权跳变）
+Worker 稳定性 + CI            PASS  （HARDENING_WORKER_CI_PASS：worker 固定 ThreadPoolExecutor + 重启恢复 RUNNING→PENDING 重入队；tests requires_dolt 自动 skip；GitHub Actions CI 后端测试+前端构建）
 ```
 
 ---

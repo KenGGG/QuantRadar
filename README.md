@@ -8,7 +8,10 @@
 
 ---
 
-## 一、能力矩阵（V1）
+## 一、能力矩阵（功能型 V1）
+
+> 状态：**QUANTRADAR_FUNCTIONAL_V1_PASS ✅**（功能闭环可用）。原 `QUANTRADAR_V1_PASS` 已降级为
+> 功能型——严谨研究型 V1（数据层完整性、复权口径统一、多模型/参数寻优、样本外稳健性）尚待后续阶段。
 
 | 标志 | 含义 |
 |------|------|
@@ -17,6 +20,16 @@
 | `WEB_WORKBENCH_PASS` | 正式 React WebUI 工作台（AntD + Monaco + ECharts） |
 | `QLIB_BULLETTRADE_LOOP_PASS` | Qlib 最小闭环（Alpha158 + LightGBM → Target Weight → BulletTrade 回测） |
 | `QUANTRADAR_SMOKE_PASS` | 全链路冒烟（`make smoke` EXIT 0：数据→回测→快照→API→Web 入口） |
+
+### Hardening 加固（已全绿）
+
+| 标志 | 含义 |
+|------|------|
+| `HARDENING_DEPS_PASS` | 依赖可重建（`pyproject` + 干净 `requirements.txt` + `make setup` 装前端 + 前端依赖补全） |
+| `HARDENING_TEST_ISOLATION_PASS` | 测试仅用 `_test` 库；`drop_all` 拒绝非 `_test` 库；`0.0.0.0` 强警告 |
+| `HARDENING_AUDIT_CHAIN_PASS` | snapshot config 完整 + 策略源码落库 + `run_id/snapshot_hash/result_hash` 语义分明 |
+| `HARDENING_QLIB_NOFUTURE_PASS` | bridge 同日前视修复 + Train/Valid/Test 不重叠守卫 + 复权训练 |
+| `HARDENING_WORKER_CI_PASS` | Worker 固定线程池 + 重启恢复 + GitHub Actions CI |
 
 ---
 
