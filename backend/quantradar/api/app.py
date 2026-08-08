@@ -17,7 +17,8 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 from fastapi import Body, FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from quantradar.backtest import run_backtest
 from quantradar.bootstrap import bootstrap_investment_data
@@ -31,6 +32,8 @@ _HTML_PATH = os.path.join(os.path.dirname(__file__), "static", "index.html")
 _DIST_PATH = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend", "dist", "index.html")
 )
+_DIST_DIR = os.path.dirname(_DIST_PATH)
+_ASSETS_DIR = os.path.join(_DIST_DIR, "assets")
 
 _SNAPSHOT_DIR = os.environ.get(
     "QUANT_RADAR_SNAPSHOT_DIR",
@@ -259,3 +262,25 @@ def snapshot_load(path: str = Query(...)) -> Dict[str, Any]:
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail=f"快照不存在：{path}")
     return load_snapshot(path)
+
+
+# ---------------------------------------------------------------------------
+# 前端静态资源挂载与 SPA 客户端路由兜底
+# ---------------------------------------------------------------------------
+# React+TS+Vite 构建产物（frontend/dist）的入口 index.html 以绝对路径
+# /assets/*.js|css 引用资源，必须由后端挂载 /assets 才能加载，否则白屏。
+if os.path.isdir(_ASSETS_DIR):
+    app.mount("/assets", StaticFiles(directory=_ASSETS_DIR), name="assets")
+
+
+@app.get("/{full_path:path}")
+def spa_fallback(full_path: str) -> Any:
+    """SPA 客户端路由兜底：非 API、非静态资源的页面路由返回 index.html。
+
+    带文件扩展名的请求（favicon.ico、*.map 等）按 404 处理，避免吞成 HTML。
+    """
+    if not os.path.exists(_DIST_PATH):
+        raise HTTPException(status_code=404, detail="前端页面缺失")
+    if os.path.splitext(full_path)[1]:
+        raise HTTPException(status_code=404, detail="not found")
+    return FileResponse(_DIST_PATH)
