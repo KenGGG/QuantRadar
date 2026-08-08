@@ -1,3 +1,5 @@
+# 本文件为开发机完整环境快照（pip freeze），仅供排查/对齐版本，不做安装用途。
+# 安装请用 requirements.txt（干净、可复现、不含本机绝对路径）；fresh clone 走 `make setup`。
 aiohappyeyeballs==2.7.1
 aiohttp==3.14.3
 aiosignal==1.4.0

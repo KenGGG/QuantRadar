@@ -10,7 +10,29 @@ requires-python = ">=3.11,<3.13"
 # 注意：BulletTrade 基线通过 vendor/bullet-trade 以 editable 方式单独安装：
 #     pip install -e ./vendor/bullet-trade
 # 不要通过 PyPI 安装另一份 bullet-trade，避免与源码版并存（见 docs/00 与 02）。
-# 本项目（quantradar）自身的依赖在后续阶段（backend/ 服务等）追加。
+# 因此本 [project.dependencies] 仅列 QuantRadar 自身（backend/quantradar）直接依赖，
+# 不含 bullet-trade（其依赖在 vendor/bullet-trade 内解析）。
+dependencies = [
+    "fastapi>=0.141.1",
+    "uvicorn>=0.52.1",
+    "sqlalchemy>=2.0.51",
+    "psycopg2-binary>=2.9.12",
+    "pandas>=2.3.3",
+    "numpy>=2.5.1",
+    "pydantic>=2.13.4",
+    "python-dotenv>=1.2.2",
+    "pyqlib>=0.9.7",
+    "lightgbm>=4.7.0",
+    "httpx>=0.28.1",
+    "pytest>=8.0",
+]
+
+[project.optional-dependencies]
+# 测试依赖（make setup 一并安装）
+test = [
+    "httpx>=0.28.1",
+    "pytest>=8.0",
+]
 
 [tool.setuptools]
 # QuantRadar 自身业务代码位于 backend/ 下（如 backend/quantradar）。

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert, Button, Card, Col, Descriptions, Input, Row, Spin, Table, Typography } from "antd";
-import { getHealth, getPrice, type Environment, type HealthResp, type PriceRow } from "../api";
+import { getHealth, getPrice, type HealthResp, type PriceRow } from "../api";
 
 const { Text } = Typography;
 

@@ -13,13 +13,14 @@
 
 PYTHON ?= .venv/bin/python
 PIP    ?= .venv/bin/pip
+NPM    ?= npm
 VENV   ?= .venv
 
 .PHONY: setup test smoke dev install-hooks help
 
 help:
 	@echo "QuantRadar 可用目标："
-	@echo "  make setup   安装依赖"
+	@echo "  make setup   安装依赖（BulletTrade editable + 本项目 + 运行时/测试依赖 + 前端构建）"
 	@echo "  make test    运行单元测试"
 	@echo "  make smoke   端到端冒烟测试"
 	@echo "  make dev     启动开发服务器 (http://127.0.0.1:7231)"
@@ -27,9 +28,23 @@ help:
 setup:
 	python3 -m venv $(VENV) || true
 	$(PIP) install --upgrade pip
+	# BulletTrade 基线（editable，源码在 vendor/ 下）
 	$(PIP) install -e ./vendor/bullet-trade
+	# 本项目（quantradar）及其依赖（依赖见 pyproject.toml [project.dependencies]）
 	$(PIP) install -e .
-	$(PIP) install pytest httpx
+	# 测试依赖 + 运行时依赖（干净可复现；不含本机绝对路径）
+	$(PIP) install -r requirements.txt
+	# 前端依赖与构建（React+TS+Vite+AntD+Monaco+ECharts）
+	cd frontend && $(NPM) ci && $(NPM) run build
+
+test:
+	$(PYTHON) -m pytest tests/unit -q
+
+smoke:
+	$(PYTHON) scripts/smoke.py
+
+dev:
+	$(PYTHON) -m uvicorn quantradar.api.app:app --host 127.0.0.1 --port 7231 --reload
 
 test:
 	$(PYTHON) -m pytest tests/unit -q

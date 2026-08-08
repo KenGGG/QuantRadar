@@ -1,0 +1,33 @@
+# QuantRadar 运行时 + 测试依赖（干净可复现，去除了 requirements.lock 中的本机绝对路径与无关包）。
+#
+# 安装：make setup（会自动先装 vendor/bullet-trade editable，再装本项目与下列依赖）。
+# 也可手动：pip install -e ./vendor/bullet-trade && pip install -r requirements.txt
+#
+# 说明：
+#   - bullet-trade 通过 vendor/bullet-trade 以 editable 方式单独安装，不进 PyPI，避免双份并存。
+#   - 版本号取自本机已验证可跑通的 requirements.lock，作为 fresh clone 的下界约束。
+
+# BulletTrade 基线（editable，源码在 vendor/ 下）
+-e ./vendor/bullet-trade
+
+# Web 服务
+fastapi>=0.141.1
+uvicorn>=0.52.1
+
+# 持久化（PostgreSQL）
+sqlalchemy>=2.0.51
+psycopg2-binary>=2.9.12
+
+# 数据处理 / 量化
+pandas>=2.3.3
+numpy>=2.5.1
+pydantic>=2.13.4
+python-dotenv>=1.2.2
+
+# Qlib 最小闭环（Alpha158 + LightGBM）
+pyqlib>=0.9.7
+lightgbm>=4.7.0
+
+# 测试
+httpx>=0.28.1
+pytest>=8.0
