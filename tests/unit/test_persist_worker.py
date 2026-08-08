@@ -1,9 +1,10 @@
-"""PostgreSQL + Worker 集成测试（Closing Phase 2：PERSIST_WORKER_PASS）。
+"""PostgreSQL + Worker 集成测试（Hardening#54：测试库隔离）。
 
-- 未设置 QUANT_RADAR_PG_URL 时整文件 skip（保证套件在缺 PG 环境仍绿）。
-- 配置时：在专用 quantradar 库建表，验证 5 张表的 CRUD 与「异步提交 -> Worker 执行 ->
+- 未设置 QUANT_RADAR_TEST_PG_URL 时整文件 skip（绝不使用正式 QUANT_RADAR_PG_URL 库，
+  以免误 DROP 正式库）。测试库名须含 `_test`（drop_all 也会二次拒绝非 `_test` 库）。
+- 配置时：在专用测试库建表，验证 5 张表的 CRUD 与「异步提交 -> Worker 执行 ->
   落库 Snapshot/Metrics/BacktestRun」全链路（复用 run_backtest -> BulletTrade，禁止重实现）。
-- 不硬编码凭证；表为本项目专用，测试前后 drop_all 保持隔离。
+- 不硬编码凭证；表为本项目专用，测试前后 drop_all 保持隔离（仅作用于 `_test` 库）。
 """
 
 from __future__ import annotations
@@ -12,10 +13,12 @@ import os
 
 import pytest
 
-pg_url = os.environ.get("QUANT_RADAR_PG_URL")
+# 仅用专用测试库；绝不回退到正式 QUANT_RADAR_PG_URL（那是必须停止条件：不可逆 DB 写）。
+test_pg_url = os.environ.get("QUANT_RADAR_TEST_PG_URL")
 
 pytestmark = pytest.mark.skipif(
-    not pg_url, reason="QUANT_RADAR_PG_URL 未设置：跳过 PostgreSQL 集成测试"
+    not test_pg_url,
+    reason="QUANT_RADAR_TEST_PG_URL 未设置：跳过 PostgreSQL 集成测试（避免误用正式库）",
 )
 
 
@@ -23,9 +26,9 @@ pytestmark = pytest.mark.skipif(
 def pg():
     from quantradar.storage import drop_all, init_db
 
-    init_db()  # 幂等建表
+    init_db()  # 幂等建表（指向 QUANT_RADAR_TEST_PG_URL 的 `_test` 库）
     yield None
-    drop_all()  # 仅作用于专用 quantradar 库，不触碰 investment_data
+    drop_all()  # 仅作用于 `_test` 库（drop_all 会拒绝非 `_test` 库名）
 
 
 def test_crud_strategy_and_run(pg):

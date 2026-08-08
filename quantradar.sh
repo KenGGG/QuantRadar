@@ -31,6 +31,15 @@ APP_MODULE="quantradar.api.app:app"
 HOST="${QUANTRADAR_HOST:-127.0.0.1}"
 PORT="${QUANTRADAR_PORT:-7231}"
 
+# ---- 安全边界：禁止将无认证 RCE 接口暴露到公网/LAN ----
+if [[ "$HOST" == "0.0.0.0" ]]; then
+  echo "[$APP_NAME] ⚠️ 严重警告：HOST=0.0.0.0 会把本应用（含无认证的 /api/backtest/strategy 代码执行接口）" >&2
+  echo "            暴露到所有网络接口（LAN/公网），存在远程代码执行风险。" >&2
+  echo "            仅限本地可信研究使用时才允许；生产/共享环境请保持默认 127.0.0.1 并前置鉴权网关。" >&2
+  echo "            5 秒后继续（Ctrl+C 取消）..." >&2
+  sleep 5
+fi
+
 LOG_DIR="$ROOT_DIR/logs"
 PID_FILE="$LOG_DIR/quantradar.pid"
 LOG_FILE="$LOG_DIR/quantradar.log"

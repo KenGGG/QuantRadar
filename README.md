@@ -4,7 +4,7 @@
 
 核心理念：以 [investment_data](https://github.com/chenditc/investment_data)（Dolt 只读事实源）为唯一数据真相，回测核心复用项目内 `vendor/bullet-trade` 的撮合/账户/组合会计，所有实验结果通过 Snapshot 指纹固化，保证可复现、防未来函数。
 
-> 状态：**QUANTRADAR_V1_PASS ✅**（Closing Phase 收官，5 项标志全绿）
+> 状态：**QUANTRADAR_FUNCTIONAL_V1_PASS ✅**（功能型 V1 达成；严谨研究型 V1 加固进行中，见 docs/ACTIVE_PHASE.md）
 
 ---
 
@@ -67,6 +67,9 @@ chmod +x quantradar.sh        # 首次需赋可执行权限（已默认提交）
   ```bash
   QUANTRADAR_HOST=0.0.0.0 QUANTRADAR_PORT=8010 ./quantradar.sh start
   ```
+  > ⚠️ **安全边界**：`QUANTRADAR_HOST=0.0.0.0` 会把应用暴露到所有网络接口。`/api/backtest/strategy`
+  > 接受任意策略源码并在本进程内执行（**无认证、等价于远程代码执行**）。仅限本机可信研究使用；
+  > 共享/LAN/公网环境请保持默认 `127.0.0.1` 并在前面加鉴权网关。`quantradar.sh` 在检测到 `0.0.0.0` 时会强警告。
 - 启动前会预检 Dolt(3307) 可达性；不可达仅**警告**不阻断（避免误杀）。
 - 端口冲突时 uvicorn 会退出，脚本报“启动失败”并指向日志，请用上面的端口变量换端口。
 
@@ -80,11 +83,14 @@ chmod +x quantradar.sh        # 首次需赋可执行权限（已默认提交）
 ## 五、开发命令（Makefile）
 
 ```bash
-make setup      # 安装依赖（BulletTrade editable + 本项目 + 测试依赖）
-make test       # 运行单元测试（pytest tests/unit）
+make setup      # 安装依赖（BulletTrade editable + 本项目 + 测试依赖 + 前端构建）
+make test       # 运行单元测试（pytest tests/unit；PG 集成测试需 QUANT_RADAR_TEST_PG_URL 指向 `_test` 库）
 make smoke      # 端到端冒烟（scripts/smoke.py，全链路）
 make dev        # 开发服务器（uvicorn --reload，等价于 start 的 reload 版）
 ```
+
+> 集成测试安全隔离：PG 相关测试仅当 `QUANT_RADAR_TEST_PG_URL` 指向**库名含 `_test`** 的专用库时才运行，
+> 否则整文件 skip；`drop_all` 对任何非 `_test` 库名拒绝执行。切勿将正式 `QUANT_RADAR_PG_URL` 用于测试。
 
 ---
 
@@ -105,5 +111,7 @@ logs/                 运行时日志（quantradar.log / quantradar.pid）
 
 - **禁止**向仓库写入 investment_data 的写操作（只读事实源）。
 - **禁止**用 Qlib 替换 BulletTrade 撮合与组合会计；Qlib 仅用于因子研究 / 模型 / 预测。
+- **安全**：`/api/backtest/strategy` 为无认证代码执行接口，默认仅绑 `127.0.0.1`，禁止暴露到 LAN/公网。
+- **测试隔离**：集成测试仅连接 `QUANT_RADAR_TEST_PG_URL` 指向的 `_test` 库，`storage.drop_all` 拒绝任何非 `_test` 库名，杜绝误 DROP 正式库。
 - 任意回测结果均以 Snapshot 指纹固化，相同配置应可复现；若指纹变化说明配置/数据/代码有变。
 - 后续（Phase 10，非 V1 范围）：Qlib 高级研究、多模型、参数寻优；ETF / QMT / 实盘为 BLOCKED。

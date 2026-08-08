@@ -10,6 +10,13 @@
 连接串来自环境变量 QUANT_RADAR_PG_URL（如 postgresql+psycopg2://user:pass@host:5432/db）。
 未设置时 get_engine() 抛 RuntimeError；测试据此 skip。绝不在代码/提交中硬编码凭证。
 建表通过 init_db()（SQLAlchemy create_all，幂等）；本文件不发出任何 DROP。
+
+测试隔离（安全边界）：
+  - 测试应使用专用测试库，连接串来自 QUANT_RADAR_TEST_PG_URL（库名须含 `_test`）。
+  - get_engine() 在 QUANT_RADAR_TEST_PG_URL 已设置时优先用它，使全部 CRUD 指向测试库，
+    从而与正式库（QUANT_RADAR_PG_URL）物理隔离。
+  - drop_all() 对任何「库名不含 `_test`」的连接串一律拒绝执行，杜绝误 DROP 正式库。
+    （这是必须停止条件：不可逆/未授权 DB 写。即使测试代码出错也不会波及正式库。）
 """
 
 from __future__ import annotations
@@ -40,7 +47,25 @@ def _now() -> datetime.datetime:
 
 
 def _pg_url() -> Optional[str]:
-    return os.environ.get("QUANT_RADAR_PG_URL")
+    """返回当前生效的连接串。
+
+    测试隔离：若设置了 QUANT_RADAR_TEST_PG_URL 则优先使用（指向专用 `_test` 库），
+    使全部 CRUD 落到测试库，与正式库物理隔离。运行时只设置 QUANT_RADAR_PG_URL，故不受影响。
+    """
+    return os.environ.get("QUANT_RADAR_TEST_PG_URL") or os.environ.get("QUANT_RADAR_PG_URL")
+
+
+def _db_name(url: Optional[str]) -> Optional[str]:
+    """从连接串解析数据库名（postgresql+psycopg2://user:pass@host:port/db）。"""
+    if not url:
+        return None
+    # 去掉 query/fragment
+    path = url.split("?")[0].split("#")[0]
+    # 取最后一个 '/'
+    last = path.rfind("/")
+    if last == -1:
+        return None
+    return path[last + 1 :] or None
 
 
 _engine = None
@@ -48,7 +73,7 @@ _sessionmaker = None
 
 
 def get_engine():
-    """返回（惰性创建）SQLAlchemy engine；未配置 QUANT_RADAR_PG_URL 抛 RuntimeError。"""
+    """返回（惰性创建）SQLAlchemy engine；未配置连接串抛 RuntimeError。"""
     global _engine
     url = _pg_url()
     if not url:
@@ -72,7 +97,18 @@ def init_db() -> None:
 
 
 def drop_all() -> None:
-    """仅测试用：清空全部表。"""
+    """仅测试用：清空全部表。
+
+    安全边界：任何「库名不含 '_test'」的连接串一律拒绝执行，杜绝误 DROP 正式库
+    （不可逆/未授权 DB 写为必须停止条件）。测试应连接 QUANT_RADAR_TEST_PG_URL 指向的 `_test` 库。
+    """
+    url = _pg_url()
+    name = _db_name(url)
+    if not name or "_test" not in name:
+        raise RuntimeError(
+            f"拒绝执行 drop_all：数据库名 {name!r} 不含 '_test'。"
+            f"测试必须连接专用测试库（QUANT_RADAR_TEST_PG_URL，库名含 '_test'），禁止对正式库 DROP。"
+        )
     Base.metadata.drop_all(get_engine())
 
 
