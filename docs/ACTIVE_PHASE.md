@@ -2,7 +2,7 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：Closing Phase — 收尾补齐 4 项（Audit → PostgreSQL/Worker → React WebUI → Qlib）→ QUANTRADAR_V1_PASS**
+**当前阶段：Closing Phase 收官 — 4 项已补齐 → QUANTRADAR_V1_PASS ✅**
 
 ```text
 目标：在已达成 QUANTRADAR_STOCK_V1_PASS 的主线之上，补齐 4 项并标记 QUANTRADAR_V1_PASS。
@@ -26,7 +26,7 @@
      - Alpha158 + LightGBM：Train/Valid/Test/Prediction/IC/RankIC/TopK/Target Weight
      - investment_data → qlib_data → Alpha158+LGBModel → Prediction → IC/RankIC → TopK Target Weight → BulletTrade 账户回测
      - 字段/复权口径已对照官方 investment_data（VWAP=amount*10/volume；字段 open/high/low/close/volume/amount/vwap）对齐
-终验：FULL_AUDIT_REPRO_PASS + PERSIST_WORKER_PASS + WEB_WORKBENCH_PASS + QLIB_BULLETTRADE_LOOP_PASS + QUANTRADAR_SMOKE_PASS 全绿 → QUANTRADAR_V1_PASS（已达成前 4 项；终验=重跑 make smoke）
+终验：FULL_AUDIT_REPRO_PASS + PERSIST_WORKER_PASS + WEB_WORKBENCH_PASS + QLIB_BULLETTRADE_LOOP_PASS + QUANTRADAR_SMOKE_PASS 全绿 → QUANTRADAR_V1_PASS ✅ 已达成（make smoke 终验 EXIT 0；5 项标志全绿）
 ```
 
 ---

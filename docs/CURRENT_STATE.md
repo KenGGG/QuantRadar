@@ -10,12 +10,12 @@
 # 当前阶段
 
 ```text
-当前阶段：Closing Phase（收尾补齐 4 项 → QUANTRADAR_V1_PASS）
+当前阶段：Closing Phase 收官（4 项已补齐 → QUANTRADAR_V1_PASS ✅）
   1) 完整 Snapshot/Audit          PASS  FULL_AUDIT_REPRO_PASS ✅
   2) PostgreSQL + Worker          PASS  PERSIST_WORKER_PASS ✅（本机 1Panel Postgres 专用库 quantradar 已建表并验证异步回测落库）
   3) 正式 React WebUI             PASS  WEB_WORKBENCH_PASS ✅（React+TS+Vite+AntD+Monaco+ECharts 工作台已构建并托管）
   4) Qlib 最小闭环                 PASS  QLIB_BULLETTRADE_LOOP_PASS ✅（Alpha158+LightGBM 最小闭环；investment_data→Qlib→预测→IC/RankIC→TopK Target Weight→BulletTrade 账户回测；无未来数据）
-阶段标志：Closing 4 项全绿；QUANTRADAR_V1_PASS 待全链路冒烟(make smoke) 重跑确认
+阶段标志：QUANTRADAR_V1_PASS ✅ 已达成（FULL_AUDIT_REPRO_PASS + PERSIST_WORKER_PASS + WEB_WORKBENCH_PASS + QLIB_BULLETTRADE_LOOP_PASS + QUANTRADAR_SMOKE_PASS 全绿；make smoke 终验 EXIT 0）
 最近完成（Closing 1）：build_snapshot 补齐审计字段 + backend/quantradar/audit.py（Dolt HEAD / schema 哈希 / commit）
   + 确定性测试（NAV/Trades/Positions/Metrics 一致 + 审计指纹一致）
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
