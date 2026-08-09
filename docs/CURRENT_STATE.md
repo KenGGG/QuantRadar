@@ -233,4 +233,8 @@ BulletTrade WebUI 收口（#70~#74 已完成）：统一回测链 run_unified_ba
 禁止提前开发：PostgreSQL / ETF / QMT / 实盘 / Qlib 深化 / 因子 / 寻优（除非当前阶段需要或用户决策）
 最终封版完成（BULLETTRADE_WEBUI_FINAL_PASS）：3 项必做——报告内联显示(REPORT_INLINE_PASS) / Worker 重启恢复双覆盖 RUNNING+PENDING(WORKER_RESTART_RECOVERY_PASS) / fq 重启恢复一致性(WORKER_FQ_RECOVERY_PASS)——全部达成，并已通过 live 服务器等价浏览器流程（提交 JoinQuant 兼容策略→轮询 SUCCESS→report?which=full|standard 均返回 Content-Disposition: inline→config.fq=snapshot.config.fq=pre 一致）最终验收。后端测试（Dolt+PG 13 passed）+ CI 后端（无 Dolt/PG 24 passed/138 skipped）+ 前端构建（npm run build 成功）全绿。
 下一动作：BulletTrade WebUI 主线已封版（BULLETTRADE_WEBUI_FINAL_PASS）。架构锁定于 investment_data → InvestmentDataProvider → BulletTrade 原生回测/账户/订单/指标/HTML 报告 → QuantRadar WebUI/API/Worker/Run/Audit。停止一切扩张，等待用户决策下一阶段（Qlib/ETF/模型/寻优/新交易引擎/新回测框架等新功能仍暂停）。
+封版后用户追加的 WebUI 增强（属 investment_data → WebUI 主线，非禁止的研究类新功能）：
+  ① 数据状态页显示最新数据时间：/api/health 的 environment 新增 latest_data_date（= SELECT MAX(tradedate) FROM final_a_stock_eod_price，实测 2026-08-04），数据源状态卡片「刷新状态」后展示「最新数据日期」。
+  ② 「更新数据」按钮：POST /api/data/pull 在本地 Dolt 仓库（默认 /data/investment_data，可用 QUANTRADAR_DOLT_REPO 覆盖）执行 dolt pull 拉取 origin 最新数据，成功后自动刷新状态（最新数据日期同步）。
+  ③ 行情查询 K 线图：DataStatus「行情查询」卡片改为查询最新窗口（默认最近 120 交易日，可调），用 echarts candlestick + 成交量柱展示 investment_data 能展示的最新 K 线，下方保留明细表；打开页面自动加载默认标的 600519.XSHG 最新 K 线。
 ```

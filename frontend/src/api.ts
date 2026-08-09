@@ -56,6 +56,7 @@ export interface Environment {
   provider_version: string;
   dolt_commit: string | null;
   schema_hash: string | null;
+  latest_data_date: string | null;
   bullettrade_commit: string;
   quantradar_commit: string;
 }
@@ -186,6 +187,18 @@ export function getPrice(params: {
   if (params.fields) qs.set("fields", params.fields);
   if (params.count != null) qs.set("count", String(params.count));
   return httpJson<PriceResp>(`/api/price?${qs.toString()}`);
+}
+
+export interface PullResp {
+  ok: boolean;
+  returncode: number;
+  message: string;
+  environment?: Environment;
+}
+
+/** 在本地 Dolt 仓库执行 dolt pull 更新 investment_data。 */
+export function pullData(): Promise<PullResp> {
+  return httpJson<PullResp>("/api/data/pull", { method: "POST" });
 }
 
 export function runBacktest(payload: BacktestPayload): Promise<BacktestResp> {

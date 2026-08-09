@@ -125,6 +125,19 @@ def schema_hash(connection: Any) -> Optional[str]:
         return None
 
 
+def latest_data_date(connection: Any) -> Optional[str]:
+    """investment_data 当前最新交易日（final_a_stock_eod_price.MAX(tradedate)）；不可用时返回 None。
+
+    反映「数据库最新的数据时间」——价格数据覆盖前沿（文档值 2026-08-04）。
+    """
+    if connection is None:
+        return None
+    try:
+        return connection.query_scalar("SELECT MAX(tradedate) FROM final_a_stock_eod_price")
+    except Exception:
+        return None
+
+
 def _active_connection() -> Any:
     """取当前 active InvestmentDataProvider 的只读连接（不可用时 None）。"""
     try:
@@ -148,6 +161,7 @@ def collect_audit_env(connection: Optional[Any] = None) -> Dict[str, Any]:
         "provider_version": PROVIDER_VERSION,
         "dolt_commit": dolt_head_commit(conn),
         "schema_hash": schema_hash(conn),
+        "latest_data_date": latest_data_date(conn),
         "bullettrade_commit": BULLETTRADE_COMMIT,
         "quantradar_commit": quantradar_commit(),
     }
@@ -190,6 +204,7 @@ __all__ = [
     "quantradar_commit",
     "dolt_head_commit",
     "schema_hash",
+    "latest_data_date",
     "collect_audit_env",
     "config_hash",
     "strategy_hash",

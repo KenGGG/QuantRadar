@@ -2,8 +2,9 @@
 
 仅暴露真实能力，所有价格/回测均来自 InvestmentDataProvider（investment_data），禁止 mock。
 接口：
-    GET  /api/health            健康检查 + provider 状态
+    GET  /api/health            健康检查 + provider 状态（含最新数据日期）
     GET  /api/price             透传 provider.get_price（真实行情）
+    POST /api/data/pull         在本地 Dolt 仓库执行 dolt pull 更新数据
     POST /api/backtest          运行真实回测，返回 summary + 结果快照（可复现指纹）
     POST /api/snapshot/save     保存快照 JSON
     GET  /api/snapshot/load     读取快照 JSON
@@ -12,6 +13,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import tempfile
 from typing import Any, Dict, List, Optional
 
@@ -34,6 +36,9 @@ _DIST_PATH = os.path.normpath(
 )
 _DIST_DIR = os.path.dirname(_DIST_PATH)
 _ASSETS_DIR = os.path.join(_DIST_DIR, "assets")
+
+# investment_data 的本地 Dolt 仓库目录（dolt pull 在此执行）；可用环境变量覆盖。
+_DOLT_REPO_DIR = os.environ.get("QUANTRADAR_DOLT_REPO", "/data/investment_data")
 
 _SNAPSHOT_DIR = os.environ.get(
     "QUANT_RADAR_SNAPSHOT_DIR",
@@ -71,6 +76,46 @@ def health() -> Dict[str, Any]:
         "provider": getattr(prov, "name", None),
         "environment": collect_audit_env(),
     }
+
+
+@app.post("/api/data/pull")
+def pull_data() -> Dict[str, Any]:
+    """更新 investment_data：在本地 Dolt 仓库目录执行 `dolt pull`（拉取 origin 最新数据）。
+
+    仅拉取，不做 merge/commit 等额外写操作；失败时将 dolt 输出原样返回前端。
+    目录默认 /data/investment_data，可用 QUANTRADAR_DOLT_REPO 覆盖。
+    """
+    from quantradar.audit import collect_audit_env
+
+    try:
+        proc = subprocess.run(
+            ["dolt", "pull"],
+            cwd=_DOLT_REPO_DIR,
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        ok = proc.returncode == 0
+        message = (proc.stdout + proc.stderr).strip() or ("dolt pull 成功" if ok else "dolt pull 失败")
+        result: Dict[str, Any] = {
+            "ok": ok,
+            "returncode": proc.returncode,
+            "message": message[-2000:],
+        }
+        if ok:
+            # 拉取成功后刷新审计环境（最新数据日期/dolt_commit 同步）
+            try:
+                prov = _ensure_provider()
+                result["environment"] = collect_audit_env()
+            except Exception:
+                pass
+        return result
+    except FileNotFoundError:
+        return {"ok": False, "returncode": -1, "message": f"未找到 dolt 命令（仓库目录：{_DOLT_REPO_DIR}）"}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "returncode": -1, "message": "dolt pull 超时（>600s）"}
+    except Exception as e:  # noqa: BLE001 - 将任意异常透传给前端
+        return {"ok": False, "returncode": -1, "message": str(e)}
 
 
 @app.get("/", response_class=HTMLResponse)
