@@ -102,7 +102,25 @@ export interface BacktestPayload {
   frequency?: string;
   amount?: number;
   code?: string;
+  benchmark?: string | null;
+  fq?: string;
+  strategy_name?: string;
   extras?: Record<string, unknown> | null;
+}
+
+export interface RunArtifact {
+  name: string;
+  size: number | null;
+  ext: string;
+  is_report: boolean;
+}
+
+export interface RunArtifactsResp {
+  run_id: string;
+  run_dir: string;
+  artifacts: RunArtifact[];
+  report_url: string;
+  standard_report_url: string;
 }
 
 export interface RunRecord {
@@ -193,6 +211,14 @@ export function submitAsync(payload: BacktestPayload): Promise<RunSubmitResp> {
 
 export function getRun(runId: string): Promise<RunRecord> {
   return httpJson<RunRecord>(`/api/backtest/runs/${encodeURIComponent(runId)}`);
+}
+
+export function getRunArtifacts(runId: string): Promise<RunArtifactsResp> {
+  return httpJson<RunArtifactsResp>(`/api/backtest/runs/${encodeURIComponent(runId)}/artifacts`);
+}
+
+export function getRunReportUrl(runId: string, which: "full" | "standard" = "standard"): string {
+  return `/api/backtest/runs/${encodeURIComponent(runId)}/report?which=${which}`;
 }
 
 export function listRuns(limit = 50): Promise<{ runs: RunRecord[] }> {

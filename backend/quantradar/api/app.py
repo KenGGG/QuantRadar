@@ -181,6 +181,7 @@ def backtest_async(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
                 "frequency": payload.get("frequency", "day"),
                 "amount": int(payload.get("amount", 100)),
                 "benchmark": payload.get("benchmark"),
+                "fq": payload.get("fq", "none"),
                 "strategy_name": payload.get("strategy_name"),
                 "extras": payload.get("extras"),
             }
@@ -207,6 +208,69 @@ def backtest_runs_list(limit: int = Query(50, ge=1, le=500)) -> Dict[str, Any]:
         return {"runs": list_runs(limit)}
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+
+
+# ---------------------- 报告 Artifact 服务（直接复用 BulletTrade HTML） ----------------------
+
+
+def _run_dir_of(run_id: str) -> str:
+    """从运行记录取产物目录；记录不存在或缺失目录则抛 404。"""
+    rec = get_worker().get_status(run_id)
+    if rec is None:
+        raise HTTPException(status_code=404, detail=f"运行不存在：{run_id}")
+    run_dir = (rec.get("config") or {}).get("run_dir")
+    if not run_dir or not os.path.isdir(run_dir):
+        raise HTTPException(status_code=404, detail=f"运行产物目录缺失：{run_id}")
+    return run_dir
+
+
+@app.get("/api/backtest/runs/{run_id}/report")
+def backtest_run_report(run_id: str, which: str = Query("full", pattern="^(full|standard)$")):
+    """直接返回该次 BulletTrade 原生 HTML 报告（前端 iframe 嵌入，禁止前端重算指标）。
+
+    - which=full（默认）：report.html（详细交互报告：指标+曲线+月度热力图+Trades/Positions/Daily 表）。
+    - which=standard：standard_report.html（聚宽风格精简报告，generate_cli_report 产出）。
+    """
+    run_dir = _run_dir_of(run_id)
+    fname = "report.html" if which == "full" else "standard_report.html"
+    path = os.path.join(run_dir, fname)
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail=f"报告文件不存在：{fname}（运行可能尚未成功或生成失败）")
+    return FileResponse(path, media_type="text/html", filename=fname)
+
+
+@app.get("/api/backtest/runs/{run_id}/artifacts")
+def backtest_run_artifacts(run_id: str) -> Dict[str, Any]:
+    """列出该次运行产物目录内可用的报告/CSV/日志/图片清单（不含大文件内容，仅元数据）。"""
+    run_dir = _run_dir_of(run_id)
+    items = []
+    for root, dirs, files in os.walk(run_dir):
+        if "__pycache__" in root:
+            continue
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        for name in sorted(files):
+            full = os.path.join(root, name)
+            rel = os.path.relpath(full, run_dir)
+            try:
+                size = os.path.getsize(full)
+            except OSError:
+                size = None
+            ext = os.path.splitext(name)[1].lower().lstrip(".")
+            items.append(
+                {
+                    "name": rel,
+                    "size": size,
+                    "ext": ext,
+                    "is_report": name in ("report.html", "standard_report.html"),
+                }
+            )
+    return {
+        "run_id": run_id,
+        "run_dir": run_dir,
+        "artifacts": items,
+        "report_url": f"/api/backtest/runs/{run_id}/report?which=full",
+        "standard_report_url": f"/api/backtest/runs/{run_id}/report?which=standard",
+    }
 
 
 @app.get("/api/experiments")

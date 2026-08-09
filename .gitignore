@@ -233,3 +233,8 @@ mlruns/
 # （dist/ 通用忽略规则不作用于此前端构建目录）
 !frontend/dist/
 !frontend/dist/**
+
+# 回测产物目录（每次运行独立 runs/<run_id>/，含 BulletTrade 原生 HTML/CSV/日志/快照；大文件不入库）
+runs/
+# 研究链路产出（make research 的 reports/oos.json+md）
+reports/

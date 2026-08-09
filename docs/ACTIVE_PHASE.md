@@ -2,7 +2,33 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：Hardening 完成（FUNCTIONAL_V1_PASS）→ 严谨研究型 V1 完成（RESEARCH_V1_PASS，T1/T2/T3/T4/T5 均已完成）**
+**当前阶段：严谨研究型 V1 完成（RESEARCH_V1_PASS）→ BulletTrade WebUI 收口（BULLETTRADE_WEB_REPORT_PASS ✅，暂停 Qlib/ETF/模型/寻优/因子等新开发）**
+
+---
+
+## 〇、审计记录（BulletTrade WebUI 收口起点）
+
+**原则**：BulletTrade = 回测与分析核心；QuantRadar = WebUI + API + 任务/结果管理。禁止重实现收益率/Sharpe/回撤/胜率/盈亏比等已有 BulletTrade 指标。
+
+### A. BulletTrade 原生已提供（应直接复用，不要重造）
+- `bullet_trade.core.engine.create_backtest(strategy_file, start, end, frequency, initial_cash, benchmark, log_file, extras)` → 返回 `results` 字典（含 `daily_records`/`trades`/`events`/`daily_positions`/`meta`/`summary`）。
+- `bullet_trade.core.analysis.generate_report(results, output_dir, gen_csv, gen_html, gen_images)` → 写 `report.html`（详细交互报告：指标+曲线+月度热力图+Trades/Positions/Daily 表）、`metrics.json`、`risk_metrics.csv`、`trades.csv`、`daily_records.csv`、`daily_positions.csv`、`annual_returns/monthly_returns/open_counts/instrument_pnl` 的 CSV/PNG。内部 `calculate_metrics` 计算完整指标（策略收益/年化/基准/累计超额/最大回撤/最大回撤区间/最大回撤持续天数/夏普/索提诺/Calmar/胜率/盈亏比/交易天数）。
+- `bullet_trade.reporting.generate_cli_report(input_dir, output_path, fmt, metrics_keys, title)` → 读目录内 `metrics.json`+`daily_records.csv` 生成聚宽风格 `standard_report.html`（13 项核心指标 + 净值/超额/回撤/月度热力图 4 张图，base64 内嵌）。其 `DEFAULT_METRICS_ORDER` 已精确覆盖目标要求。
+- CLI 链路（`vendor/bullet-trade/bullet_trade/cli/backtest.py`）：`create_backtest() → generate_report() → generate_cli_report()`。
+
+### B. QuantRadar 当前重复实现点（本次要消除）
+1. **前端 `frontend/src/components/ResultsView.tsx` 用 React+ECharts 重算并绘制净值曲线/累计收益率/回撤**——这些 BulletTrade 原生报告已含，必须改为直接嵌入 BulletTrade `report.html`/`standard_report.html`（iframe），前端不再重算/重绘指标图。
+2. **前端指标展示取 `snapshot.metrics`（`snapshot.py::compute_metrics` 仅 4 字段：final_total_value/total_return/max_drawdown/days）**——这是审计指纹用的极简指标，缺 Sharpe/Sortino/Calmar/胜率/盈亏比/超额/月度热力图。完整指标应来自 BulletTrade `metrics.json`。Snapshot/Audit 保留为附加审计信息，不替代原生 metrics。
+3. **回测链未走 BulletTrade 原生报告管线**：`backend/quantradar/backtest.py::run_backtest` 用 `BacktestEngine(strategy_file=)` + `build_snapshot`，从不调用 `generate_report`/`generate_cli_report`，故从未产出 `report.html`/`standard_report.html`/完整 `metrics.json`。
+
+### C. 统一方案（本次实施）
+- 新增 `backend/quantradar/backtest_run.py`：`run_unified_backtest()` = 写版本化 `strategy.py` → `_FQ_LOCK` 设 `use_real_price`（fq）→ `create_backtest()` → `generate_report()` → `generate_cli_report()` → 写 `snapshot.json`（审计附加）→ 返回 run 目录与产物路径。
+- `worker._run` 改走 `run_unified_backtest`；`runs/<run_id>/` 保存全部 BulletTrade artifact + snapshot.json；PostgreSQL 仅存 run_id/状态/策略版本/配置(含 run_dir/报告路径)/完整 BulletTrade metrics/result_hash。
+- API 新增/完善：`POST /api/backtest/async`（已存在，补 fq/benchmark/strategy_name）、`GET /api/backtest/runs/{id}`（已存在，补 run_dir/报告路径/完整 metrics）、`GET /api/backtest/runs/{id}/report`（直接返回 BulletTrade HTML）、`GET /api/backtest/runs/{id}/artifacts`（产物清单）。
+- WebUI：策略页保留 Monaco + 补 Benchmark/fq；提交走 async + 轮询状态 + 错误日志；成功后进入独立报告页（iframe 嵌入 BulletTrade HTML + 审计面板 + 产物清单）。
+- 保留 Snapshot/Audit 作为附加信息（不替代原生 metrics）。
+
+---
 
 ```text
 目标：在「功能型 V1」达成的基础上，补齐工程与研究正确性加固，使系统达到可审计、可复现、
@@ -118,7 +144,64 @@ make smoke 本机全量通过；GitHub Actions CI 已建）
 
 ---
 
-# 六、严谨研究型 V1 子项（进行中）
+# 六、BulletTrade WebUI 收口（BULLETTRADE_WEB_REPORT_PASS ✅）
+
+把 QuantRadar 建成完整 BulletTrade WebUI：用户提交 JoinQuant 兼容策略源码 → 获得类似聚宽回测页的
+完整 HTML 分析报告。**核心原则：禁止重实现 BulletTrade 已有指标能力（收益率/Sharpe/回撤/胜率/盈亏比等），
+全部复用 `bullet_trade.core.engine` / `analysis` / `reporting`（`create_backtest` / `generate_report` /
+`generate_cli_report`）。**
+
+## 实施内容
+- **统一回测链** `backend/quantradar/backtest_run.py::run_unified_backtest`：
+  写版本化 `strategy.py` → `_FQ_LOCK` 设 `use_real_price`（fq 透传）→ `bootstrap_investment_data(set_active=True)`
+  → `create_backtest()` → `generate_report()`（report.html/metrics.json/CSV/PNG）→ `generate_cli_report()`
+  （standard_report.html）→ `build_snapshot_from_results` 写 `snapshot.json`（审计附加）→ 返回 run 目录与产物路径。
+- **修复 BulletTrade 明确 bug（允许范围）**：`create_backtest(benchmark=...)` 参数长期未接线——
+  `BacktestEngine.__init__` 未保存 `self.benchmark`，`_run_impl` 在 `load_strategy` 的 `reset_settings()` 后
+  未重新注入基准，导致基准恒为 None、报告 `基准收益/累计超额收益` 永远 0。**修复**：引擎构造函数保存
+  `self.benchmark`，并在 `load_strategy` 之后、若 strategy 未自行 `set_benchmark` 时重新注入（strategy 胜出）。
+  实测修复后 `000300.XSHG` 基准收益 4.19%、累计超额 -2.47%（数据来自 investment_data 的 `SH000300` 指数行情）。
+- **API 四端点** `backend/quantradar/api/app.py`：
+  `POST /api/backtest/async`（补 fq/benchmark/strategy_name）、
+  `GET /api/backtest/runs/{id}`（补 run_dir/报告路径/完整 BulletTrade metrics）、
+  `GET /api/backtest/runs/{id}/report?which=full|standard`（直接返回 BulletTrade 原生 HTML），
+  `GET /api/backtest/runs/{id}/artifacts`（产物清单，报告标注 is_report + 可访问 URL）。
+- **WebUI 报告页** `frontend/src/components/ReportPage.tsx`：iframe 嵌入 BulletTrade `report.html` /
+  `standard_report.html`，不重算指标；独立审计面板（`snapshot.environment`：provider/provider_version/
+  dolt_commit/schema_hash/bullettrade_commit/quantradar_commit）；产物清单。策略页保留 Monaco + 补
+  Benchmark/fq，提交走 async + 轮询状态 + 错误日志。
+- **产物目录** `runs/<run_id>/` 保存全部 BulletTrade artifact（report.html / standard_report.html /
+  metrics.json / daily_records.csv / trades.csv / daily_positions.csv / risk_metrics.csv /
+  annual_returns/monthly_returns/open_counts/instrument_pnl 的 CSV+PNG / backtest.log / strategy.py /
+  snapshot.json）。PostgreSQL 仅存 run_id/状态/策略版本/配置(含 run_dir 与报告路径)/完整 BulletTrade
+  metrics/result_hash；大文件留文件系统，不入库。
+
+## 验收（BULLETTRADE_WEB_REPORT_PASS）
+
+```text
+[BULLETTRADE_WEB_REPORT_PASS]
+  1) 原生指标齐全（metrics.json 中文键，前端不重算）：
+     策略收益 / 策略年化收益 / 基准收益 / 累计超额收益 / 最大回撤 / 最大回撤区间 /
+     夏普比率 / 索提诺比率 / Calmar比率 / 胜率 / 盈亏比 / 交易天数  —— 全部非空
+  2) 报告图完整（standard_report.html，聚宽风格）：净值 / 基准 / 超额 / 回撤 / 月度热力图 / 收益曲线
+  3) 交易与审计产物齐全：Trades / Positions / Daily / Logs / 策略代码(参数) / Snapshot 审计
+     （provider/provider_version/dolt_commit/schema_hash/bullettrade_commit/quantradar_commit）
+  4) 报告 API 端到端：/report(full+standard) 返回 200 HTML 且含关键章节；/artifacts 列出全部产物；
+     历史 Run 再次打开同一报告幂等（同一产物）
+  5) Web 页面：frontend/dist 已构建；SPA 托管；ReportPage 进入构建产物（非死代码），
+     依赖的报告/产物 API 契约（getRunReportUrl/standard_report）在场
+  6) 自动化验收覆盖：tests/unit/test_bullettrade_web_report.py
+     (A) 统一回测链真实策略端到端产出全部 BulletTrade 原生产物 + 指标覆盖目标全部项
+     (B) PG 可用时 异步提交→落库→/report 与 /artifacts 端到端
+     (C) Web 页面契约（构建产物 + ReportPage 编译进 bundle + SPA 路由）
+[PASS] git diff --check 无遗留空白错误
+[PASS] 单一 commit 序列（#70~#74）
+[PASS] push origin main
+```
+
+---
+
+# 七、严谨研究型 V1 子项（进行中）
 
 ## T1) 复权口径统一 + 同源验证 + 审计记录 fq —— RESEARCH_T1_FQ_PASS ✅
 - `snapshot.py`：`build_snapshot` 增 `fq` 参数，写入 config（位于 benchmark 之后、seed 之前）。

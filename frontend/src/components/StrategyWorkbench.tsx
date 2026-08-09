@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dayjs from "dayjs";
 import {
   Alert,
@@ -10,13 +10,18 @@ import {
   InputNumber,
   Radio,
   Row,
+  Select,
   Space,
   Spin,
   Typography,
 } from "antd";
 import Editor from "@monaco-editor/react";
-import { runBacktest, runStrategy, type BacktestResp, type Snapshot } from "../api";
-import { ResultsView } from "./ResultsView";
+import {
+  submitAsync,
+  getRun,
+  type RunRecord,
+  type BacktestPayload,
+} from "../api";
 
 const { Text } = Typography;
 
@@ -31,35 +36,87 @@ def handle_data(context, data):
         order_target(context.security, context.amount)
 `;
 
-export function StrategyWorkbench() {
-  const [mode, setMode] = useState<"builtin" | "user">("builtin");
+const FQ_OPTIONS = [
+  { label: "原始价(none)", value: "none" },
+  { label: "前复权(pre)", value: "pre" },
+  { label: "前复权(qfq)", value: "qfq" },
+  { label: "后复权(post)", value: "post" },
+  { label: "后复权(hfq)", value: "hfq" },
+];
+
+export function StrategyWorkbench({
+  onOpenReport,
+}: {
+  onOpenReport: (runId: string) => void;
+}) {
+  const [mode, setMode] = useState<"builtin" | "user">("user");
   const [code, setCode] = useState(SAMPLE);
   const [security, setSecurity] = useState("600519.XSHG");
   const [start, setStart] = useState("2023-01-03");
   const [end, setEnd] = useState("2023-03-31");
   const [cash, setCash] = useState(500000);
+  const [benchmark, setBenchmark] = useState("000300.XSHG");
+  const [fq, setFq] = useState("none");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<Snapshot | null>(null);
+  const [run, setRun] = useState<RunRecord | null>(null);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPoll = () => {
+    if (timer.current) {
+      clearInterval(timer.current);
+      timer.current = null;
+    }
+  };
+
+  const poll = useCallback(
+    (runId: string) => {
+      stopPoll();
+      timer.current = setInterval(async () => {
+        try {
+          const rec = await getRun(runId);
+          setRun(rec);
+          if (rec.status === "SUCCESS" || rec.status === "FAILED") {
+            stopPoll();
+            setLoading(false);
+            if (rec.status === "SUCCESS") onOpenReport(runId);
+          }
+        } catch {
+          /* 瞬时错误忽略，继续轮询 */
+        }
+      }, 1500);
+    },
+    [onOpenReport]
+  );
 
   const onRun = () => {
     setLoading(true);
     setError(null);
-    setResult(null);
-    const payload = {
+    setRun(null);
+    const base: BacktestPayload = {
       start_date: start,
       end_date: end,
       initial_cash: cash,
       frequency: "day",
+      benchmark: benchmark || null,
+      fq,
+      strategy_name: "web_strategy",
     };
-    const call = mode === "user"
-      ? runStrategy({ ...payload, code })
-      : runBacktest({ ...payload, security });
-    call
-      .then((r: BacktestResp) => setResult(r.snapshot))
-      .catch((e: unknown) => setError(String(e)))
-      .finally(() => setLoading(false));
+    const payload: BacktestPayload =
+      mode === "user" ? { ...base, code } : { ...base, security };
+    submitAsync(payload)
+      .then((r) => {
+        setRun({ run_id: r.run_id, status: "PENDING", config: r.config });
+        poll(r.run_id);
+      })
+      .catch((e: unknown) => {
+        setError(String(e));
+        setLoading(false);
+      });
   };
+
+  // 组件卸载时停止轮询
+  useEffect(() => stopPoll, []);
 
   return (
     <Row gutter={12}>
@@ -79,7 +136,7 @@ export function StrategyWorkbench() {
           </Space>
           <div style={{ border: "1px solid #d9d9d9", borderRadius: 6, overflow: "hidden" }}>
             <Editor
-              height="360px"
+              height="340px"
               defaultLanguage="python"
               theme="vs-dark"
               value={code}
@@ -95,7 +152,7 @@ export function StrategyWorkbench() {
               <Input
                 value={security}
                 onChange={(e) => setSecurity(e.target.value)}
-                style={{ width: 180, marginLeft: 8 }}
+                style={{ width: 170, marginLeft: 8 }}
                 disabled={mode === "user"}
               />
             </Col>
@@ -107,21 +164,49 @@ export function StrategyWorkbench() {
               <Text type="secondary" style={{ marginLeft: 8 }}>止</Text>
               <DatePicker value={end ? dayjs(end) : null} onChange={(d) => setEnd(d ? d.format("YYYY-MM-DD") : "")} style={{ marginLeft: 4 }} />
             </Col>
+          </Row>
+          <Row gutter={8} align="middle" style={{ marginTop: 8 }}>
             <Col>
-              <Text type="secondary" style={{ marginLeft: 8 }}>初始资金</Text>
-              <InputNumber value={cash} min={10000} step={10000} onChange={(v) => setCash(v ?? 500000)} style={{ marginLeft: 4 }} />
+              <Text type="secondary">初始资金</Text>
+              <InputNumber value={cash} min={10000} step={10000} onChange={(v) => setCash(v ?? 500000)} style={{ marginLeft: 4, width: 130 }} />
+            </Col>
+            <Col>
+              <Text type="secondary" style={{ marginLeft: 8 }}>Benchmark</Text>
+              <Input value={benchmark} onChange={(e) => setBenchmark(e.target.value)} placeholder="000300.XSHG" style={{ width: 140, marginLeft: 4 }} />
+            </Col>
+            <Col>
+              <Text type="secondary" style={{ marginLeft: 8 }}>复权</Text>
+              <Select value={fq} onChange={setFq} options={FQ_OPTIONS} style={{ width: 130, marginLeft: 4 }} />
             </Col>
           </Row>
           <Button type="primary" loading={loading} onClick={onRun} style={{ marginTop: 12 }}>
             {mode === "user" ? "运行策略回测" : "运行 Buy&Hold 回测"}
           </Button>
-          {error && <Alert type="error" showIcon message={error} style={{ marginTop: 12 }} />}
         </Card>
       </Col>
       <Col xs={24} lg={13}>
-        <Card size="small" title="回测结果">
-          {loading && <div style={{ textAlign: "center", padding: 40 }}><Spin tip="回测执行中（真实数据）..." /></div>}
-          {!loading && <ResultsView snapshot={result} />}
+        <Card size="small" title="提交状态">
+          {loading && (
+            <div style={{ textAlign: "center", padding: 40 }}>
+              <Spin tip="后台回测执行中（真实数据，复用 BulletTrade 原生报告）..." />
+            </div>
+          )}
+          {!loading && !run && <Text type="secondary">填写策略与参数后点击运行；完成后自动跳转到完整回测报告页。</Text>}
+          {!loading && run && (
+            <Space direction="vertical" style={{ width: "100%" }}>
+              <Text>run_id：<Text copyable>{run.run_id}</Text></Text>
+              <Text>状态：{run.status}</Text>
+              {run.status === "SUCCESS" && (
+                <Button type="link" onClick={() => onOpenReport(run.run_id)}>
+                  打开完整回测报告 →
+                </Button>
+              )}
+              {run.status === "FAILED" && run.error && (
+                <Alert type="error" showIcon message="回测失败" description={<pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{run.error}</pre>} />
+              )}
+            </Space>
+          )}
+          {error && <Alert type="error" showIcon message={error} style={{ marginTop: 12 }} />}
         </Card>
       </Col>
     </Row>

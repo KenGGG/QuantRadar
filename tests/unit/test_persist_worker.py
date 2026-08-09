@@ -109,7 +109,8 @@ def test_worker_async_backtest_persists(pg):
     assert rec["result_hash"], "result_hash 应非空"
     assert rec["snapshot"], "Snapshot manifest 应已落库"
     assert rec["snapshot"]["metrics"].get("final_total_value") is not None
-    assert rec["metrics"].get("total_return") is not None
+    # total_return 属于 snapshot manifest 的指标（snapshot.py 计算），与 final_total_value 同级
+    assert rec["snapshot"]["metrics"].get("total_return") is not None
 
 
 def test_worker_user_strategy_persists(pg):

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Card, Col, Empty, Input, Row, Space, Table, Tag, Typography } from "antd";
-import { listRuns, submitAsync, getRun, type RunRecord, type Snapshot } from "../api";
-import { ResultsView } from "./ResultsView";
+import { Alert, Button, Card, Col, Descriptions, Empty, Input, Row, Space, Table, Tag, Typography } from "antd";
+import { listRuns, submitAsync, getRun, type RunRecord } from "../api";
 
 const { Text } = Typography;
 
@@ -12,7 +11,11 @@ const statusColor: Record<string, string> = {
   FAILED: "error",
 };
 
-export function RunExplorer() {
+export function RunExplorer({
+  onOpenReport,
+}: {
+  onOpenReport: (runId: string) => void;
+}) {
   const [security, setSecurity] = useState("600519.XSHG");
   const [start, setStart] = useState("2023-01-03");
   const [end, setEnd] = useState("2023-03-31");
@@ -74,8 +77,6 @@ export function RunExplorer() {
     if (rec.status === "RUNNING" || rec.status === "PENDING") onPoll(rec.run_id);
   };
 
-  const snapshot: Snapshot | null | undefined = selected?.snapshot;
-
   return (
     <Row gutter={12}>
       <Col xs={24} lg={9}>
@@ -119,13 +120,60 @@ export function RunExplorer() {
             <>
               <Space style={{ marginBottom: 8 }}>
                 <Tag color={statusColor[selected.status] ?? "default"}>{selected.status}</Tag>
+                {selected.status === "SUCCESS" && (
+                  <Button type="link" size="small" onClick={() => onOpenReport(selected.run_id)}>
+                    打开完整报告 →
+                  </Button>
+                )}
                 {selected.error && <Text type="danger">{selected.error}</Text>}
               </Space>
-              <ResultsView snapshot={snapshot} />
+              <RunSummary run={selected} onOpenReport={onOpenReport} />
             </>
           )}
         </Card>
       </Col>
     </Row>
   );
+}
+
+/** 运行记录详情摘要：仅展示配置/结果哈希与少数 BulletTrade 原生指标，完整图表见「打开完整报告」。 */
+function RunSummary({
+  run,
+  onOpenReport,
+}: {
+  run: RunRecord;
+  onOpenReport: (runId: string) => void;
+}) {
+  const cfg = (run.config || {}) as Record<string, unknown>;
+  const m = (run.metrics || {}) as Record<string, unknown>;
+  return (
+    <Card size="small" title={`运行详情 ${run.run_id}`}>
+      <Descriptions size="small" column={2} bordered>
+        <Descriptions.Item label="区间">
+          {String(cfg.start_date ?? "-")} → {String(cfg.end_date ?? "-")}
+        </Descriptions.Item>
+        <Descriptions.Item label="初始资金">{fmtNum(Number(cfg.initial_cash ?? 0), 0)}</Descriptions.Item>
+        <Descriptions.Item label="Benchmark">{String(cfg.benchmark ?? "-")}</Descriptions.Item>
+        <Descriptions.Item label="复权">{String(cfg.fq ?? "-")}</Descriptions.Item>
+        <Descriptions.Item label="策略收益">{fmtMetric(m["策略收益"])}</Descriptions.Item>
+        <Descriptions.Item label="最大回撤">{fmtMetric(m["最大回撤"])}</Descriptions.Item>
+        <Descriptions.Item label="夏普比率">{fmtMetric(m["夏普比率"])}</Descriptions.Item>
+        <Descriptions.Item label="结果哈希"><Text copyable>{run.result_hash ?? "-"}</Text></Descriptions.Item>
+      </Descriptions>
+      <Button type="primary" style={{ marginTop: 8 }} onClick={() => onOpenReport(run.run_id)}>
+        打开完整回测报告（BulletTrade 原生）
+      </Button>
+    </Card>
+  );
+}
+
+function fmtNum(v: number, digits = 2): string {
+  if (!v && v !== 0) return "-";
+  return v.toLocaleString("zh-CN", { maximumFractionDigits: digits });
+}
+
+function fmtMetric(v: unknown): string {
+  if (v == null || v === "") return "-";
+  if (typeof v === "number") return v.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+  return String(v);
 }

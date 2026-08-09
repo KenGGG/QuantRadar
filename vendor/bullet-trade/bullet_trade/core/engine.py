@@ -142,6 +142,7 @@ class BacktestEngine:
         self.start_date = pd.to_datetime(start_date) if start_date else None
         self.end_date = pd.to_datetime(end_date) if end_date else None
         self.frequency = frequency
+        self.benchmark = benchmark
         self.initial_cash = initial_cash
         self.log_file = log_file
         self.file_handler = None  # 文件处理器
@@ -663,7 +664,7 @@ class BacktestEngine:
         log.info("=" * 60)
 
         # 设置回测频率到 settings（供 scheduler 使用）
-        from .settings import set_option
+        from .settings import set_benchmark, set_option
 
         set_option("backtest_frequency", self.frequency)
 
@@ -672,6 +673,11 @@ class BacktestEngine:
 
         # 注意：load_strategy 内部会调用 reset_settings()，需要重新注入频率配置
         set_option("backtest_frequency", self.frequency)
+        # 重新注入基准：create_backtest 的 benchmark 参数在 load_strategy 的
+        # reset_settings() 后已失效。此处重新应用；若 strategy 已在 initialize 中
+        # 调用 set_benchmark，则优先保留 strategy 的设置（strategy 胜出）。
+        if self.benchmark and not get_settings().benchmark:
+            set_benchmark(self.benchmark)
 
         # 初始化上下文
         self.context = Context(

@@ -19,6 +19,7 @@ from __future__ import annotations
 import concurrent.futures
 import datetime
 import hashlib
+import os
 import threading
 import traceback
 import uuid
@@ -34,6 +35,7 @@ from .storage import (
     save_strategy,
     update_run,
 )
+from .backtest_run import default_runs_dir, run_unified_backtest
 
 # 固定线程池大小（本地研究工具，单进程即可；避免无限线程）。
 WORKER_POOL_SIZE = 4
@@ -128,11 +130,17 @@ class BacktestWorker:
             "frequency": payload.get("frequency", "day"),
             "amount": payload.get("amount", 100),
             "benchmark": payload.get("benchmark"),
+            "fq": payload.get("fq", "none"),
             "extras": payload.get("extras"),
             "has_code": bool(code),
             "strategy_name": payload.get("strategy_name"),
             "strategy_id": strategy_id,
             "strategy_hash": _hash_source(code) if code else None,
+            # 产物目录与报告路径（供 /runs/{id}/report 与 /artifacts 定位文件，不入数据库大文件）
+            "run_dir": os.path.join(default_runs_dir(), run_id),
+            "report_html": os.path.join(default_runs_dir(), run_id, "report.html"),
+            "standard_report_html": os.path.join(default_runs_dir(), run_id, "standard_report.html"),
+            "strategy_source": code,
         }
         create_run(run_id, config, strategy_id=strategy_id)
         self._enqueue(run_id, payload)
@@ -148,33 +156,23 @@ class BacktestWorker:
     def _run(self, run_id: str, payload: Dict[str, Any]) -> None:
         try:
             update_run(run_id, status="RUNNING", started_at=_now())
-            from .backtest import run_backtest
-
-            engine, snap = run_backtest(
-                code=payload.get("code"),
-                security=payload.get("security"),
-                start_date=payload.get("start_date"),
-                end_date=payload.get("end_date"),
-                initial_cash=float(payload.get("initial_cash", 500000)),
-                frequency=payload.get("frequency", "day"),
-                amount=int(payload.get("amount", 100)),
-                extras=payload.get("extras"),
-                benchmark=payload.get("benchmark"),
-            )
-            if not getattr(engine, "daily_records", None):
-                raise ValueError("回测未产出任何记录（检查区间/数据/策略）")
-            # 持久化：Snapshot manifest + Metrics + 运行结果（顺序保证结果先于状态 SUCCESS）
+            # 统一回测链：create_backtest → generate_report → generate_cli_report，
+            # 产物写入 runs/<run_id>/（report.html / standard_report.html / metrics.json / CSV / 日志 / snapshot.json）。
+            # 复用 BulletTrade 原生指标与报告，禁止重实现。
+            info = run_unified_backtest(run_id, payload)
+            # 持久化：Snapshot manifest（附加审计）+ 完整 BulletTrade metrics + 运行结果
+            # （顺序保证结果先于状态 SUCCESS）
             save_snapshot_record(
-                snap["snapshot_id"], run_id, snap, snap.get("result_hash")
+                info["snapshot"]["snapshot_id"], run_id, info["snapshot"], info["result_hash"]
             )
-            save_metrics(run_id, snap.get("metrics") or {})
+            save_metrics(run_id, info["metrics"])
             update_run(
                 run_id,
                 status="SUCCESS",
                 finished_at=_now(),
-                result_hash=snap.get("result_hash"),
-                snapshot=snap,
-                metrics=snap.get("metrics"),
+                result_hash=info["result_hash"],
+                snapshot=info["snapshot"],
+                metrics=info["metrics"],
             )
         except Exception as exc:  # noqa: BLE001 -- 全捕获以落库失败原因
             update_run(

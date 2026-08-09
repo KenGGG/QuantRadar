@@ -10,7 +10,7 @@
 # 当前阶段
 
 ```text
-当前阶段：Hardening 完成 → FUNCTIONAL_V1_PASS ✅（功能型 V1）→ 严谨研究型 V1 完成 QUANTRADAR_RESEARCH_V1_PASS ✅（T1/T2/T3/T4/T5 已完成）
+当前阶段：Hardening 完成 → FUNCTIONAL_V1_PASS ✅（功能型 V1）→ 严谨研究型 V1 完成 QUANTRADAR_RESEARCH_V1_PASS ✅（T1/T2/T3/T4/T5 已完成）→ BulletTrade WebUI 收口 BULLETTRADE_WEB_REPORT_PASS ✅（统一回测链 + 报告 API + BulletTrade 原生报告页；暂停 Qlib/ETF/模型/寻优/因子等新开发）
   1) 依赖可重建            PASS  HARDENING_DEPS_PASS ✅（pyproject 补依赖 / 干净 requirements.txt / Makefile setup 装前端 / 前端依赖补全）
   2) 测试库隔离+localhost  PASS  HARDENING_TEST_ISOLATION_PASS ✅（TEST 库隔离 + drop_all 拒绝非 _test 库 + 0.0.0.0 强警告）
   3) 审计链                PASS  HARDENING_AUDIT_CHAIN_PASS ✅（config 完整 + 策略源码落库 + run_id/snapshot_hash/result_hash 语义分明）
@@ -87,6 +87,7 @@ Qlib 进程初始化隔离            PASS  （RESEARCH_T3_INIT_PASS：qlib 初�
 研究测试隔离纪律              PASS  （RESEARCH_TEST_ISOLATION_PASS：所有依赖 investment_data 的研究测试均带 @pytest.mark.requires_dolt；conftest autouse _skip_without_dolt 在 Dolt 不可达时自动 skip；QUANTRADAR_FORCE_NO_DOLT=1 可模拟无 Dolt CI 环境整体绿；测试共享 qlib 目录避免跨进程重定向）
 研究链路 make 目标           PASS  （RESEARCH_MAKE_RESEARCH_PASS：Makefile 增 research 目标，端到端跑 scripts/research_oos.py --build 产出 reports/oos.json+md；修 Makefile 重复 target）
 Qlib 研究规范(06) 更新         PASS  （RESEARCH_SPEC_06_PASS：docs/06_Qlib研究规范.md 第八节落地研究正确性规则——不伪造/多模型探测/网格寻优/walk-forward防泄漏/可复现报告/进程初始化隔离/复权同源/测试隔离纪律；研究范围标注 T1-T4 已实现）
+BulletTrade WebUI 收口          PASS  （BULLETTRADE_WEB_REPORT_PASS：统一回测链 run_unified_backtest 复用 create_backtest→generate_report→generate_cli_report，产出 BulletTrade 原生 report.html/standard_report.html/metrics.json/CSV/PNG/日志/snapshot 于 runs/<run_id>/；指标全来自 BulletTrade 原生（策略收益/年化/基准/超额/最大回撤/区间/夏普/索提诺/Calmar/胜率/盈亏比/交易天数），前端 iframe 嵌入不重算；API /api/backtest/async + /runs/{id} + /runs/{id}/report(full|standard) + /runs/{id}/artifacts；ReportPage 审计面板 + 产物清单；修复 BulletTrade 明确 bug——create_backtest(benchmark=) 参数长期未接线致基准恒为 0，已修复（引擎保存 self.benchmark 并在 load_strategy 后重新注入，实测 000300.XSHG 基准收益 4.19%/累计超额 -2.47%）；tests/unit/test_bullettrade_web_report.py 6 passed + test_persist_worker 续绿）
 ```
 
 ---
@@ -216,6 +217,8 @@ Phase 10（下一）：Qlib 高级研究（Alpha158 / LightGBM 等，需 QLIB_DA
   T3（#60 已完成）：Qlib 多模型（lgb/xgb/mlp 探测可用性，本环境仅 lgb 可用、xgb/mlp 缺依赖抛 NotImplementedError 不伪造）+ grid_search_qlib（固定 seed 按 IC 选优、可复现）+ walk_forward_qlib（逐折不重叠防泄漏、可复现）；RESEARCH_T3_MULTIMODEL/GRID/WALKFORWARD/INIT_PASS；test_qlib_models/grid_search/walk_forward.py 共 8 passed
   T4（#62 已完成）：样本外稳健性验证 + 可复现报告；run_research_oos（grid 选优 + walk-forward 多折 OOS）→ 结构化报告（config/grid/folds/oos/environment），固定 seed 可复现；scripts/research_oos.py 端到端 CLI（复用/自动构建 qlib_data，产出 JSON+MD）；test_research_oos.py 2 passed（RESEARCH_T4_OOS_PASS）
   T5（#63 已完成）：conftest 确保研究测试带 requires_dolt（test_qlib_loop 补标记）+ QUANTRADAR_FORCE_NO_DOLT 模拟 CI；make research 端到端研究链路（reports/oos.json+md）；06_Qlib研究规范 第八节研究正确性规则；最终 make test 全量 + 模拟 CI 验收绿（RESEARCH_TEST_ISOLATION/MAKE_RESEARCH/SPEC_06_PASS）
+BulletTrade WebUI 收口（#70~#74 已完成）：统一回测链 run_unified_backtest 复用 BulletTrade 原生报告管线（create_backtest→generate_report→generate_cli_report），产出 BulletTrade 原生 report.html/standard_report.html/metrics.json/CSV/PNG/日志/snapshot 于 runs/<run_id>/；修复 BulletTrade 明确 bug（create_backtest(benchmark=) 参数未接线致基准恒 0）；API 四端点（/async + /runs/{id} + /runs/{id}/report(full|standard) + /runs/{id}/artifacts）；ReportPage iframe 嵌入原生报告 + 审计面板 + 产物清单；验收 BULLETTRADE_WEB_REPORT_PASS（tests/unit/test_bullettrade_web_report.py 6 passed）
   外部待定（用户侧，不阻塞）：数据补齐方案（ST/停牌/列表，来自只读 Dolt，本仓库无法补齐）
-禁止提前开发：PostgreSQL / ETF / QMT / 实盘（除非当前阶段需要）
+禁止提前开发：PostgreSQL / ETF / QMT / 实盘 / Qlib 深化 / 因子 / 寻优（除非当前阶段需要或用户决策）
+下一动作：等待用户决策下一阶段（BulletTrade WebUI 收口已达成，验收测试全绿；Qlib/ETF/模型/寻优等新开发仍暂停）
 ```

@@ -11,6 +11,7 @@ import { DataStatus } from "./components/DataStatus";
 import { StrategyWorkbench } from "./components/StrategyWorkbench";
 import { RunExplorer } from "./components/RunExplorer";
 import { ExperimentCompare } from "./components/ExperimentCompare";
+import { ReportPage } from "./components/ReportPage";
 
 const { Sider, Content, Header } = Layout;
 const { Title, Text } = Typography;
@@ -21,6 +22,12 @@ export function App() {
   const [health, setHealth] = useState<HealthResp | null>(null);
   const [tab, setTab] = useState<TabKey>("data");
   const [loading, setLoading] = useState(true);
+  const [viewRunId, setViewRunId] = useState<string | null>(null);
+
+  const openReport = (runId: string) => {
+    setViewRunId(runId);
+    setTab("strategy");
+  };
 
   useEffect(() => {
     getHealth()
@@ -61,11 +68,13 @@ export function App() {
             <div style={{ textAlign: "center", marginTop: 80 }}>
               <Spin tip="连接后端中..." />
             </div>
+          ) : viewRunId ? (
+            <ReportPage runId={viewRunId} onBack={() => setViewRunId(null)} />
           ) : (
             <>
               {tab === "data" && <DataStatus />}
-              {tab === "strategy" && <StrategyWorkbench />}
-              {tab === "runs" && <RunExplorer />}
+              {tab === "strategy" && <StrategyWorkbench onOpenReport={openReport} />}
+              {tab === "runs" && <RunExplorer onOpenReport={openReport} />}
               {tab === "experiments" && <ExperimentCompare />}
             </>
           )}

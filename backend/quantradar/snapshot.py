@@ -16,6 +16,7 @@ import hashlib
 import json
 import os
 import uuid
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -225,6 +226,136 @@ def build_snapshot(
         "metrics": metrics,
         "environment": env,
     }
+
+
+def build_snapshot_from_results(
+    results: Dict[str, Any],
+    *,
+    strategy_source: Optional[str] = None,
+    config: Optional[Dict[str, Any]] = None,
+    fq: Optional[str] = None,
+    connection: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """从 BulletTrade `create_backtest` 返回的 `results` 字典构建审计快照 manifest。
+
+    作为 BulletTrade 原生 metrics/报告的**附加审计信息**，不替代原生指标。复用既有指纹函数
+    （daily_records_fingerprint / trades_fingerprint / positions_fingerprint / compute_metrics），
+    通过适配对象（SimpleNamespace）桥接 results 与 engine 接口，避免重复实现指标准确性逻辑。
+
+    Args:
+        results: `engine.run()` 返回字典（daily_records 为 DataFrame，trades 为列表，
+                 daily_positions 为 DataFrame，meta 为 dict）。
+        strategy_source: 用户策略源码（内置策略传 None）。
+        config: 回测配置覆盖（security/initial_cash/start/end/frequency/amount/benchmark 等）。
+        fq: 复权口径（审计记录）。
+        connection: 只读连接（采集 dolt_commit/schema_hash）；缺省用 active provider。
+
+    Returns:
+        与 build_snapshot 同构的 manifest dict（含 snapshot_id/config/哈希/metrics(极简审计)/environment）。
+    """
+    df = results.get("daily_records")
+    records: List[Dict[str, Any]] = []
+    if df is not None and not getattr(df, "empty", True):
+        df = df.reset_index()
+        for _, r in df.iterrows():
+            records.append(
+                {
+                    "date": _fmt_ts(r.get("date")),
+                    "total_value": _to_native(r.get("total_value")),
+                    "cash": _to_native(r.get("cash")),
+                    "positions_value": _to_native(r.get("positions_value")),
+                    "daily_returns": _to_native(r.get("daily_returns")),
+                }
+            )
+
+    # 适配器：复用 trades_fingerprint / positions_fingerprint（它们用 getattr 读取 engine 接口）
+    trades_adapter = SimpleNamespace(trades=results.get("trades") or [])
+    positions_adapter = _positions_adapter_from_results(results)
+
+    asof = None
+    if records:
+        try:
+            asof = max(r.get("date") for r in records if r.get("date") is not None)
+        except Exception:
+            asof = None
+
+    meta = (results.get("meta") or {}) if isinstance(results.get("meta"), dict) else {}
+    cfg = dict(config or {})
+    # 用 results.meta 补全配置（start/end/benchmark/initial 等），确保审计配置完整
+    if "start_date" not in cfg and meta.get("start_date"):
+        cfg["start_date"] = meta.get("start_date")
+    if "end_date" not in cfg and meta.get("end_date"):
+        cfg["end_date"] = meta.get("end_date")
+    if "benchmark" not in cfg and meta.get("benchmark"):
+        cfg["benchmark"] = meta.get("benchmark")
+    if "initial_cash" not in cfg and meta.get("initial_total_value") is not None:
+        cfg["initial_cash"] = meta.get("initial_total_value")
+    cfg.setdefault("provider", "investment_data")
+    cfg.setdefault("fq", fq)
+
+    metrics = compute_metrics(records)
+    env = collect_audit_env(connection)
+    c_hash = config_hash(cfg)
+    s_hash = strategy_hash(strategy_source, cfg)
+    snapshot_hash = hashlib.sha256(
+        "|".join(
+            [
+                c_hash,
+                s_hash,
+                str(asof),
+                str(env.get("dolt_commit")),
+                str(env.get("provider_version")),
+            ]
+        ).encode("utf-8")
+    ).hexdigest()
+    daily_fp = daily_records_fingerprint(records)
+    result_hash = hashlib.sha256(
+        "|".join(
+            [
+                daily_fp,
+                trades_fingerprint(trades_adapter),
+                positions_fingerprint(positions_adapter),
+                _fingerprint_obj(metrics),
+            ]
+        ).encode("utf-8")
+    ).hexdigest()
+    return {
+        "snapshot_id": uuid.uuid4().hex,
+        "created_at": datetime.datetime.now().isoformat(timespec="seconds"),
+        "config": cfg,
+        "config_hash": c_hash,
+        "strategy_hash": s_hash,
+        "snapshot_hash": snapshot_hash,
+        "extras": cfg.get("extras"),
+        "data_asof": asof,
+        "records_count": len(records),
+        "result_fingerprint": daily_fp,
+        "result_hash": result_hash,
+        "metrics": metrics,
+        "environment": env,
+    }
+
+
+def _positions_adapter_from_results(results: Dict[str, Any]) -> Any:
+    """从 results['daily_positions'] 取每只标的最末一日持仓，构造 positions_fingerprint 所需的适配器。"""
+    dp = results.get("daily_positions")
+    positions: Dict[str, Any] = {}
+    if dp is not None and not getattr(dp, "empty", True) and len(dp) > 0:
+        try:
+            dp = dp.copy()
+            dp["date"] = pd.to_datetime(dp["date"])
+            last = dp.sort_values("date").groupby("code").tail(1)
+            for _, r in last.iterrows():
+                positions[r["code"]] = SimpleNamespace(
+                    amount=getattr(r, "amount", None),
+                    avg_cost=getattr(r, "avg_cost", None),
+                    price=getattr(r, "price", None),
+                )
+        except Exception:
+            positions = {}
+    return SimpleNamespace(
+        context=SimpleNamespace(portfolio=SimpleNamespace(positions=positions))
+    )
 
 
 def save_snapshot(snapshot: Dict[str, Any], path: str) -> str:
