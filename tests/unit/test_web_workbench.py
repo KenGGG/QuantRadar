@@ -44,6 +44,7 @@ def test_web_entry_served():
     assert "量子雷达" in r.text, "GET / 未托管中文工作台"
 
 
+@pytest.mark.requires_dolt
 def test_health_has_audit_env():
     from quantradar.api.app import app
 
@@ -57,6 +58,7 @@ def test_health_has_audit_env():
     assert env.get("schema_hash"), "health 未携带 schema_hash"
 
 
+@pytest.mark.requires_dolt
 def test_backtest_response_has_webui_details():
     from quantradar.api.app import app
 
@@ -78,6 +80,7 @@ def test_backtest_response_has_webui_details():
     assert snap.get("result_hash")
 
 
+@pytest.mark.requires_dolt
 def test_async_backtest_runs_and_queryable():
     """异步链路：提交 -> run_id -> 轮询 -> 结果可查。需 PostgreSQL（否则 skip）。"""
     pg_url = os.environ.get("QUANT_RADAR_PG_URL")
@@ -103,3 +106,20 @@ def test_async_backtest_runs_and_queryable():
     rec = rr.json()
     assert rec["status"] == "SUCCESS", rec.get("error")
     assert rec["snapshot"] and rec["snapshot"].get("result_hash")
+
+    # 产物清单 + 单文件查看/下载端点（条件② artifact 文件查看/下载）
+    arts = client.get(f"/api/backtest/runs/{run_id}/artifacts")
+    assert arts.status_code == 200
+    names = [a["name"] for a in arts.json()["artifacts"]]
+    assert "snapshot.json" in names, "产物清单缺少 snapshot.json"
+
+    snap_file = client.get(f"/api/backtest/runs/{run_id}/artifacts/snapshot.json")
+    assert snap_file.status_code == 200
+    assert snap_file.headers["content-type"].startswith("application/json")
+    assert "result_hash" in snap_file.text, "单文件端点未正确返回 snapshot.json 内容"
+
+    # 目录穿越防护
+    trav = client.get(
+        f"/api/backtest/runs/{run_id}/artifacts/{__import__('urllib.parse', fromlist=['quote']).quote('..%2F..%2Fetc%2Fpasswd')}"
+    )
+    assert trav.status_code in (400, 404), "目录穿越未被拦截"

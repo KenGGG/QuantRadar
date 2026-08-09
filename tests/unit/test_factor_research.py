@@ -28,8 +28,13 @@ END = "2023-03-31"
 
 @pytest.fixture(scope="module")
 def universe():
-    p = bootstrap_investment_data(set_active=True, overwrite=True)
-    return p.get_index_stocks("000300.SH", START)[:30]
+    # 防御性 skip：Dolt 不可达时（如 CI），即使 requires_dolt 标记的模块级 skip
+    # 因模块作用域 fixture 的 setup 顺序问题未拦截，也在此优雅跳过，避免 ERROR at setup。
+    try:
+        p = bootstrap_investment_data(set_active=True, overwrite=True)
+        return p.get_index_stocks("000300.SH", START)[:30]
+    except Exception as exc:  # 连接/查询失败（CI 无 Dolt）
+        pytest.skip(f"investment_data(Dolt) 不可达，跳过因子研究：{exc}")
 
 
 class TestFactorResearch:
