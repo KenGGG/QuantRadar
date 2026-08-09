@@ -221,6 +221,11 @@ export function getRunReportUrl(runId: string, which: "full" | "standard" = "sta
   return `/api/backtest/runs/${encodeURIComponent(runId)}/report?which=${which}`;
 }
 
+/** 单次运行产物的单文件查看/下载地址（按扩展名推断 Content-Type）。 */
+export function getRunArtifactUrl(runId: string, name: string): string {
+  return `/api/backtest/runs/${encodeURIComponent(runId)}/artifacts/${encodeURIComponent(name)}`;
+}
+
 export function listRuns(limit = 50): Promise<{ runs: RunRecord[] }> {
   return httpJson<{ runs: RunRecord[] }>(`/api/backtest/runs?limit=${limit}`);
 }

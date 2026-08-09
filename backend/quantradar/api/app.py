@@ -273,6 +273,44 @@ def backtest_run_artifacts(run_id: str) -> Dict[str, Any]:
     }
 
 
+# 常见产物扩展名 -> media type（供查看/下载时正确渲染）
+_MEDIA_BY_EXT = {
+    "html": "text/html",
+    "htm": "text/html",
+    "csv": "text/csv",
+    "json": "application/json",
+    "log": "text/plain",
+    "txt": "text/plain",
+    "md": "text/markdown",
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "svg": "image/svg+xml",
+    "gif": "image/gif",
+    "js": "application/javascript",
+    "css": "text/css",
+}
+
+
+@app.get("/api/backtest/runs/{run_id}/artifacts/{name:path}")
+def backtest_run_artifact_file(run_id: str, name: str):
+    """查看 / 下载单次运行的产物文件（CSV / 日志 / 图片 / HTML / JSON 等）。
+
+    - 路径限定在 runs/<run_id>/ 目录内（规范化后校验前缀，防目录穿越）。
+    - 按扩展名推断 Content-Type；浏览器据 Content-Disposition 决定内联或下载。
+    """
+    run_dir = _run_dir_of(run_id)
+    norm_dir = os.path.normpath(run_dir)
+    full = os.path.normpath(os.path.join(run_dir, name))
+    if full != norm_dir and not full.startswith(norm_dir + os.sep):
+        raise HTTPException(status_code=400, detail="非法产物路径（禁止目录穿越）")
+    if not os.path.isfile(full):
+        raise HTTPException(status_code=404, detail=f"产物文件不存在：{name}")
+    ext = os.path.splitext(name)[1].lower().lstrip(".")
+    media = _MEDIA_BY_EXT.get(ext, "application/octet-stream")
+    return FileResponse(full, media_type=media, filename=os.path.basename(full))
+
+
 @app.get("/api/experiments")
 def experiments_list() -> Dict[str, Any]:
     from quantradar.experiment import list_experiments

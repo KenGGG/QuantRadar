@@ -88,6 +88,7 @@ def _payload_from_record(rec: Dict[str, Any]) -> Dict[str, Any]:
         "frequency": cfg.get("frequency", "day"),
         "amount": cfg.get("amount", 100),
         "benchmark": cfg.get("benchmark"),
+        "fq": cfg.get("fq", "none"),
         "strategy_name": cfg.get("strategy_name"),
         "extras": cfg.get("extras"),
     }

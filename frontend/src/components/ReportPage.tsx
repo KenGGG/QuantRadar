@@ -15,6 +15,7 @@ import {
 import {
   getRun,
   getRunArtifacts,
+  getRunArtifactUrl,
   getRunReportUrl,
   type RunRecord,
   type RunArtifactsResp,
@@ -144,7 +145,12 @@ export function ReportPage({
                       {v}
                     </a>
                   ) : (
-                    <a href={`/api/backtest/runs/${encodeURIComponent(runId)}/artifacts`} download={v}>
+                    <a
+                      href={getRunArtifactUrl(runId, v)}
+                      target="_blank"
+                      rel="noreferrer"
+                      download={v}
+                    >
                       {v}
                     </a>
                   ),
