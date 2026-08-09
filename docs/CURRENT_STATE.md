@@ -88,6 +88,11 @@ Qlib 进程初始化隔离            PASS  （RESEARCH_T3_INIT_PASS：qlib 初�
 研究链路 make 目标           PASS  （RESEARCH_MAKE_RESEARCH_PASS：Makefile 增 research 目标，端到端跑 scripts/research_oos.py --build 产出 reports/oos.json+md；修 Makefile 重复 target）
 Qlib 研究规范(06) 更新         PASS  （RESEARCH_SPEC_06_PASS：docs/06_Qlib研究规范.md 第八节落地研究正确性规则——不伪造/多模型探测/网格寻优/walk-forward防泄漏/可复现报告/进程初始化隔离/复权同源/测试隔离纪律；研究范围标注 T1-T4 已实现）
 BulletTrade WebUI 收口          PASS  （BULLETTRADE_WEB_REPORT_PASS：统一回测链 run_unified_backtest 复用 create_backtest→generate_report→generate_cli_report，产出 BulletTrade 原生 report.html/standard_report.html/metrics.json/CSV/PNG/日志/snapshot 于 runs/<run_id>/；指标全来自 BulletTrade 原生（策略收益/年化/基准/超额/最大回撤/区间/夏普/索提诺/Calmar/胜率/盈亏比/交易天数），前端 iframe 嵌入不重算；API /api/backtest/async + /runs/{id} + /runs/{id}/report(full|standard) + /runs/{id}/artifacts；ReportPage 审计面板 + 产物清单；修复 BulletTrade 明确 bug——create_backtest(benchmark=) 参数长期未接线致基准恒为 0，已修复（引擎保存 self.benchmark 并在 load_strategy 后重新注入，实测 000300.XSHG 基准收益 4.19%/累计超额 -2.47%）；tests/unit/test_bullettrade_web_report.py 6 passed + test_persist_worker 续绿）
+BulletTrade WebUI 最终封版        PASS  （BULLETTRADE_WEBUI_FINAL_PASS：主线已封版。3 项必做全部达成——
+  (1) 报告内联显示 REPORT_INLINE_PASS：GET /api/backtest/runs/{id}/report?which=full|standard 返回 text/html + Content-Disposition: inline（FileResponse 加 content_disposition_type="inline"），前端 iframe 直接渲染 report.html/standard_report.html；test_async_backtest_runs_and_queryable 对两种报告断言 status=200/content-type=text/html/content-disposition 含 inline；实测 live 服务器 full/stand 均返回 inline。
+  (2) Worker 重启恢复双覆盖 WORKER_RESTART_RECOVERY_PASS：recover() 现扫描 ["RUNNING","PENDING"] 并全部重入队重跑；_recovered 仅在 DB 扫描成功启动后才置位——PG 暂不可达返回 0 且不永久阻断未来恢复；保持 PostgreSQL + 固定 ThreadPoolExecutor（无 Celery/Redis/Kafka）；storage.list_runs_by_status 支持状态列表。test_worker_restart_recovery_runs_and_pending 验证 RUNNING+PENDING 双找回并重跑成功；test_worker_recover_pg_unavailable_does_not_block 验证 PG 不可用时 recover 返回 0 且 _recovered=False。
+  (3) fq 重启恢复一致性 WORKER_FQ_RECOVERY_PASS：遗留在 RUNNING（覆盖 none/pre/qfq/post/hfq 五种）与 PENDING 的运行被恢复重跑后，真实执行 payload.fq / 落库 config.fq / 审计 snapshot.config.fq 全链路保持原 fq（非仅字段存在）；test_worker_restart_recovery_preserves_fq（5 值）与 test_worker_restart_recovery_pending_preserves_fq 验证；live 服务器提交 fq=pre 经完整链路 config.fq=snapshot.config.fq=pre。
+  架构锁定：investment_data → InvestmentDataProvider → BulletTrade（create_backtest / 撮合 / 账户 / 订单 / 成交 / 指标 / 原生 HTML 报告）→ QuantRadar WebUI/API/Worker/history Run/Audit；禁止重实现 BulletTrade 回测/账户/订单/指标/报告能力。暂停：Qlib/ETF/因子研究/参数寻优/新模型/Agent/新交易引擎/新回测框架/任何无关新功能。）
 ```
 
 ---
@@ -226,5 +231,6 @@ BulletTrade WebUI 收口（#70~#74 已完成）：统一回测链 run_unified_ba
     ⑤ 浏览器实跑策略最终验收：启动后端+前端，经浏览器等价流程（提交真实策略 600519.XSHG + 基准 000300.XSHG + fq=qfq → 轮询 SUCCESS → 打开 BulletTrade 报告页 + 产物清单下载）跑通；实测 基准收益 4.19% / 累计超额收益 -2.47%，dolt_commit 入审计。
   外部待定（用户侧，不阻塞）：数据补齐方案（ST/停牌/列表，来自只读 Dolt，本仓库无法补齐）
 禁止提前开发：PostgreSQL / ETF / QMT / 实盘 / Qlib 深化 / 因子 / 寻优（除非当前阶段需要或用户决策）
-下一动作：5 项收尾条件全部达成（CI绿 / artifact 查看下载 / Worker 恢复 fq / 删除 ResultsView / 浏览器实跑验收）；等待用户决策下一阶段（Qlib/ETF/模型/寻优等新开发仍暂停）
+最终封版完成（BULLETTRADE_WEBUI_FINAL_PASS）：3 项必做——报告内联显示(REPORT_INLINE_PASS) / Worker 重启恢复双覆盖 RUNNING+PENDING(WORKER_RESTART_RECOVERY_PASS) / fq 重启恢复一致性(WORKER_FQ_RECOVERY_PASS)——全部达成，并已通过 live 服务器等价浏览器流程（提交 JoinQuant 兼容策略→轮询 SUCCESS→report?which=full|standard 均返回 Content-Disposition: inline→config.fq=snapshot.config.fq=pre 一致）最终验收。后端测试（Dolt+PG 13 passed）+ CI 后端（无 Dolt/PG 24 passed/138 skipped）+ 前端构建（npm run build 成功）全绿。
+下一动作：BulletTrade WebUI 主线已封版（BULLETTRADE_WEBUI_FINAL_PASS）。架构锁定于 investment_data → InvestmentDataProvider → BulletTrade 原生回测/账户/订单/指标/HTML 报告 → QuantRadar WebUI/API/Worker/Run/Audit。停止一切扩张，等待用户决策下一阶段（Qlib/ETF/模型/寻优/新交易引擎/新回测框架等新功能仍暂停）。
 ```

@@ -5,7 +5,7 @@
     提交到固定大小线程池执行真实回测。
   - _run：调用 quantradar.backtest.run_backtest（复用 BulletTrade 撮合/账户/订单，禁止重实现），
     回测完成写 Snapshot/Metrics/结果快照，更新状态 RUNNING→SUCCESS/FAILED。
-  - recover：进程重启后将遗留的 RUNNING 运行恢复为 PENDING 并重新入队（单进程内保证最多一次重试）。
+  - recover：进程重启后将遗留的 RUNNING/PENDING 运行恢复为 PENDING 并重新入队（单进程内保证最多一次重试）。
   - get_status / get_result：查询运行状态与结果。
 
 线程模型（本地可信研究工具）：
@@ -188,19 +188,28 @@ class BacktestWorker:
 
     # ----------------------------- 重启恢复 -----------------------------
     def recover(self) -> int:
-        """进程重启后将遗留 RUNNING 恢复为 PENDING 并重新入队；返回恢复的运行数。
+        """进程重启后将遗留 RUNNING/PENDING 恢复为 PENDING 并重新入队；返回恢复的运行数。
 
-        仅单进程内执行一次；多进程水平扩展（分布式锁/FOR UPDATE SKIP LOCKED）不在本地工具范围。
+        覆盖两类遗留任务：
+          - RUNNING：进程中途崩溃，回测线程已中断未真正完成。
+          - PENDING：已落库但尚未出队执行（如崩溃发生在出队前，或线程池尚未调度）。
+        两者都必须在重启后找回重跑，否则会永久卡在 RUNNING/PENDING。
+
+        时序关键：只有 DB 扫描成功才开始才置 _recovered=True。若 PostgreSQL 暂不可用导致
+        扫描失败，则不置标志、返回 0，允许后续 get_worker() 再次触发重试——绝不能因一次
+        瞬时 DB 故障永久阻断未来的重启恢复。
         """
         if self._recovered:
             return 0
-        self._recovered = True
         try:
-            running = list_runs_by_status("RUNNING")
+            pending = list_runs_by_status(["RUNNING", "PENDING"])
         except Exception:
+            # PostgreSQL 暂不可用：本次不置 _recovered，允许未来恢复重试
             return 0
+        # 扫描成功启动后才标记已恢复，避免 DB 不可用永久阻断后续恢复
+        self._recovered = True
         recovered = 0
-        for rec in running:
+        for rec in pending:
             rid = rec["run_id"]
             try:
                 payload = _payload_from_record(rec)

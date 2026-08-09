@@ -236,7 +236,12 @@ def backtest_run_report(run_id: str, which: str = Query("full", pattern="^(full|
     path = os.path.join(run_dir, fname)
     if not os.path.isfile(path):
         raise HTTPException(status_code=404, detail=f"报告文件不存在：{fname}（运行可能尚未成功或生成失败）")
-    return FileResponse(path, media_type="text/html", filename=fname)
+    return FileResponse(
+        path,
+        media_type="text/html",
+        filename=fname,
+        content_disposition_type="inline",  # 浏览器内联展示（ReportPage iframe 直接渲染，不当附件下载）
+    )
 
 
 @app.get("/api/backtest/runs/{run_id}/artifacts")

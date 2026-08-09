@@ -2,7 +2,7 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：严谨研究型 V1 完成（RESEARCH_V1_PASS）→ BulletTrade WebUI 收口（BULLETTRADE_WEB_REPORT_PASS ✅）→ WebUI 收尾 5 项条件达成 ✅（CI 绿 / artifact 查看下载 / Worker 恢复 fq / 删除 ResultsView / 浏览器实跑验收；暂停 Qlib/ETF/模型/寻优/因子等新开发）**
+**当前阶段：严谨研究型 V1 完成（RESEARCH_V1_PASS）→ BulletTrade WebUI 收口（BULLETTRADE_WEB_REPORT_PASS ✅）→ WebUI 收尾 5 项条件达成 ✅ → BulletTrade WebUI 主线已封版（BULLETTRADE_WEBUI_FINAL_PASS ✅）。暂停 Qlib/ETF/模型/寻优/因子研究/新交易引擎/新回测框架/任何无关新功能；禁止重实现 BulletTrade 已有回测/账户/订单/指标/报告能力。**
 
 ---
 
@@ -225,6 +225,43 @@ WebUI 收口收尾 goal（CI绿 / artifact 查看下载 / Worker 恢复 fq / 删
    000300.XSHG + fq=qfq → 轮询 SUCCESS → 打开 BulletTrade 报告页 + 产物清单下载）跑通；
    实测 基准收益 4.19% / 累计超额收益 -2.47%，dolt_commit 入审计；report(full) 422KB / report(standard) 391KB 正常渲染。
 ```
+
+## 封版（BULLETTRADE_WEBUI_FINAL_PASS ✅）—— 主线已封版
+
+BulletTrade WebUI 主线封版，3 项必做条件全部达成，架构不再扩张：
+
+```text
+[BULLETTRADE_WEBUI_FINAL_PASS]
+  1) REPORT_INLINE_PASS：GET /api/backtest/runs/{run_id}/report 内联返回 HTML（非附件下载）
+     —— app.py 改 FileResponse(content_disposition_type="inline")；
+        测试覆盖 which=full 与 which=standard：status==200 / content-type 以 text/html 起头 /
+        content-disposition 含 inline（tests/unit/test_web_workbench.py::test_async_backtest_runs_and_queryable）。
+        实跑验证：report?which=full 与 report?which=standard 均 200 + text/html + inline。
+  2) WORKER_RESTART_RECOVERY_PASS：Worker 重启恢复覆盖 RUNNING + PENDING（原仅 RUNNING），
+     _recovered 仅在 DB 扫描+恢复流程成功启动后设置；PG 暂不可用时 recover 返回 0 但不永久封锁后续恢复。
+     —— worker.py::recover 改扫 ["RUNNING","PENDING"] 并后设 _recovered；storage.list_runs_by_status 支持状态列表。
+        测试：test_worker_restart_recovery_runs_and_pending（1 RUNNING + 1 PENDING → 2 均 SUCCESS）、
+              test_worker_recover_pg_unavailable_does_not_block（PG 不可用时 recover 返回 0 且 _recovered=False）。
+  3) WORKER_FQ_RECOVERY_PASS：Worker 重启恢复保留 fq（none/pre/qfq/post/hfq 全 5 值），
+     验证真实恢复出的任务仍用原始 fq（payload.fq == fq 且 config.fq == fq 且 snapshot.config.fq == fq），
+     非仅字段存在性。
+        测试：test_worker_restart_recovery_preserves_fq（5 fq 参数化）+ 
+              test_worker_restart_recovery_pending_preserves_fq（PENDING fq=pre，逐 run_id 捕获）。
+[QUANTRADAR_SMOKE_PASS] live-server e2e：提交真实 JoinQuant 兼容策略(600519.XSHG, fq=pre) → SUCCESS；
+   report(full) 与 report(standard) 均 200+text/html+inline；config.fq=pre=snapshot.config.fq。
+[CI_BACKEND_PASS] 后端 make test（无 Dolt/PG 等价 CI）：24 passed / 138 skipped，0 fail。
+[CI_FRONTEND_PASS] 前端 npm ci && npm run build 绿（无源码改动）。
+```
+
+### 架构（封版定稿，不再扩张）
+```text
+investment_data (Dolt，本地真实数据，只读)
+   → InvestmentDataProvider（接入+复权同源）
+   → BulletTrade（create_backtest / 账户 / 成交 / 指标 / 原生 HTML 报告，禁止重实现）
+   → QuantRadar WebUI / API / Worker / history Run / Audit
+```
+暂停清单（封版后不启动）：Qlib/ETF/因子研究/参数寻优/新模型/Agent/新交易引擎/新回测框架/任何无关新功能。
+禁止项：重实现 BulletTrade 已有的回测/账户/订单/指标/报告能力。
 
 ---
 

@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import datetime
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from sqlalchemy import (
     JSON,
@@ -301,18 +301,21 @@ def get_strategy(strategy_id: int, session=None) -> Optional[Strategy]:
             s.close()
 
 
-def list_runs_by_status(status: str, limit: int = 200, session=None) -> List[Dict[str, Any]]:
-    """列出某状态的最近运行（按创建时间倒序），用于重启恢复 RUNNING -> PENDING。"""
+def list_runs_by_status(status: Union[str, List[str]], limit: int = 200, session=None) -> List[Dict[str, Any]]:
+    """列出某状态（或状态列表）的最近运行（按创建时间倒序），用于重启恢复。
+
+    接受单个状态字符串或状态列表（如 ["RUNNING", "PENDING"]），用于把进程异常退出时
+    遗留在内存队列中、未真正完成的任务（RUNNING 中途中断 + PENDING 尚未出队）全部找回。
+    """
     own = session is None
     s = session or get_session()
     try:
-        rows = (
-            s.query(BacktestRun)
-            .filter(BacktestRun.status == status)
-            .order_by(BacktestRun.created_at.desc())
-            .limit(limit)
-            .all()
-        )
+        q = s.query(BacktestRun).order_by(BacktestRun.created_at.desc())
+        if isinstance(status, (list, tuple, set)):
+            q = q.filter(BacktestRun.status.in_(status))
+        else:
+            q = q.filter(BacktestRun.status == status)
+        rows = q.limit(limit).all()
         return [r.to_dict() for r in rows]
     finally:
         if own:
