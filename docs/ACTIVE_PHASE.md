@@ -2,7 +2,7 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：严谨研究型 V1 完成（RESEARCH_V1_PASS）→ BulletTrade WebUI 收口（BULLETTRADE_WEB_REPORT_PASS ✅，暂停 Qlib/ETF/模型/寻优/因子等新开发）**
+**当前阶段：严谨研究型 V1 完成（RESEARCH_V1_PASS）→ BulletTrade WebUI 收口（BULLETTRADE_WEB_REPORT_PASS ✅）→ WebUI 收尾 5 项条件达成 ✅（CI 绿 / artifact 查看下载 / Worker 恢复 fq / 删除 ResultsView / 浏览器实跑验收；暂停 Qlib/ETF/模型/寻优/因子等新开发）**
 
 ---
 
@@ -197,6 +197,33 @@ make smoke 本机全量通过；GitHub Actions CI 已建）
 [PASS] git diff --check 无遗留空白错误
 [PASS] 单一 commit 序列（#70~#74）
 [PASS] push origin main
+```
+
+## 收尾（5 项条件全部达成 ✅）
+
+```text
+WebUI 收口收尾 goal（CI绿 / artifact 查看下载 / Worker 恢复 fq / 删除 ResultsView / 浏览器实跑验收）全部达成：
+
+① CI 修绿：CI 无 investment_data(Dolt) / PostgreSQL 时 backend（23 passed / 131 skipped，0 failed / 0 errors）
+   + frontend（npm ci && npm run build）双 job 全绿；根因=3 个 Dolt 依赖测试缺 requires_dolt 标记
+   + 因子研究模块级 fixture setup 先于 autouse skip 触发 ERROR，已修（test_web_workbench 补标记 +
+   test_factor_research universe fixture 加 try/except skip 守卫）。
+
+② artifact 文件查看/下载：新增 GET /api/backtest/runs/{run_id}/artifacts/{name:path} 单文件端点
+   （按扩展名推断 Content-Type + 规范化路径前缀校验防目录穿越 400、缺失文件 404）；前端 api.ts 加
+   getRunArtifactUrl，ReportPage 产物清单非报告文件链接到单文件端点（内联/下载，替代原先指向列表端点的死链）。
+
+③ Worker 恢复 fq：worker._payload_from_record 从落库 config 还原 fq（none/pre/qfq/post/hfq），
+   重启恢复（RUNNING→PENDING 重入队）不丢复权口径；全链 API submit(payload.fq) → config.fq →
+   recover 重建 → run_unified_backtest(_FQ_LOCK + use_real_price 消费) 贯通；实跑验证
+   run config.fq=qfq、snapshot.config.fq=qfq。
+
+④ 删除旧 ResultsView：frontend/src/components/ResultsView.tsx 已删除（无残留引用），报告图改由
+   ReportPage 直接 iframe 嵌入 BulletTrade report.html / standard_report.html（前端不再重算/重绘）。
+
+⑤ 浏览器实跑策略最终验收：启动后端+前端，经浏览器等价流程（提交真实策略 600519.XSHG + 基准
+   000300.XSHG + fq=qfq → 轮询 SUCCESS → 打开 BulletTrade 报告页 + 产物清单下载）跑通；
+   实测 基准收益 4.19% / 累计超额收益 -2.47%，dolt_commit 入审计；report(full) 422KB / report(standard) 391KB 正常渲染。
 ```
 
 ---

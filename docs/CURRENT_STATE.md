@@ -218,7 +218,13 @@ Phase 10（下一）：Qlib 高级研究（Alpha158 / LightGBM 等，需 QLIB_DA
   T4（#62 已完成）：样本外稳健性验证 + 可复现报告；run_research_oos（grid 选优 + walk-forward 多折 OOS）→ 结构化报告（config/grid/folds/oos/environment），固定 seed 可复现；scripts/research_oos.py 端到端 CLI（复用/自动构建 qlib_data，产出 JSON+MD）；test_research_oos.py 2 passed（RESEARCH_T4_OOS_PASS）
   T5（#63 已完成）：conftest 确保研究测试带 requires_dolt（test_qlib_loop 补标记）+ QUANTRADAR_FORCE_NO_DOLT 模拟 CI；make research 端到端研究链路（reports/oos.json+md）；06_Qlib研究规范 第八节研究正确性规则；最终 make test 全量 + 模拟 CI 验收绿（RESEARCH_TEST_ISOLATION/MAKE_RESEARCH/SPEC_06_PASS）
 BulletTrade WebUI 收口（#70~#74 已完成）：统一回测链 run_unified_backtest 复用 BulletTrade 原生报告管线（create_backtest→generate_report→generate_cli_report），产出 BulletTrade 原生 report.html/standard_report.html/metrics.json/CSV/PNG/日志/snapshot 于 runs/<run_id>/；修复 BulletTrade 明确 bug（create_backtest(benchmark=) 参数未接线致基准恒 0）；API 四端点（/async + /runs/{id} + /runs/{id}/report(full|standard) + /runs/{id}/artifacts）；ReportPage iframe 嵌入原生报告 + 审计面板 + 产物清单；验收 BULLETTRADE_WEB_REPORT_PASS（tests/unit/test_bullettrade_web_report.py 6 passed）
+  WebUI 收口收尾（5 项达成）：
+    ① CI 修绿：CI 无 Dolt/PG 时 backend（23 passed / 131 skipped）+ frontend 全绿；根因=3 个 Dolt 依赖测试缺 requires_dolt 标记 + 因子研究模块级 fixture setup 顺序 ERROR，已修（test_web_workbench 补标记 + test_factor_research universe fixture 加 try/except skip 守卫）。
+    ② artifact 文件查看/下载：新增 GET /api/backtest/runs/{run_id}/artifacts/{name:path} 单文件端点（按扩展名推断 Content-Type + 防目录穿越），前端 ReportPage 产物清单链接到 getRunArtifactUrl（非报告产物可内联/下载，替代原先指向列表端点的死链）；test_async_backtest_runs_and_queryable 覆盖产物清单+单文件端点+穿越防护。
+    ③ Worker 恢复 fq：worker._payload_from_record 从落库 config 还原 fq（none/pre/qfq/post/hfq），重启恢复（RUNNING→PENDING 重入队）不丢复权口径；全链 API submit(payload.fq)→config.fq→recover 重建→run_unified_backtest(_FQ_LOCK+use_real_price) 贯通；实跑验证 run config.fq=qfq、snapshot.config.fq=qfq。
+    ④ 删除旧 ResultsView：frontend/src/components/ResultsView.tsx 已删除（无残留引用），报告图改为直接嵌入 BulletTrade report.html/standard_report.html（iframe）。
+    ⑤ 浏览器实跑策略最终验收：启动后端+前端，经浏览器等价流程（提交真实策略 600519.XSHG + 基准 000300.XSHG + fq=qfq → 轮询 SUCCESS → 打开 BulletTrade 报告页 + 产物清单下载）跑通；实测 基准收益 4.19% / 累计超额收益 -2.47%，dolt_commit 入审计。
   外部待定（用户侧，不阻塞）：数据补齐方案（ST/停牌/列表，来自只读 Dolt，本仓库无法补齐）
 禁止提前开发：PostgreSQL / ETF / QMT / 实盘 / Qlib 深化 / 因子 / 寻优（除非当前阶段需要或用户决策）
-下一动作：等待用户决策下一阶段（BulletTrade WebUI 收口已达成，验收测试全绿；Qlib/ETF/模型/寻优等新开发仍暂停）
+下一动作：5 项收尾条件全部达成（CI绿 / artifact 查看下载 / Worker 恢复 fq / 删除 ResultsView / 浏览器实跑验收）；等待用户决策下一阶段（Qlib/ETF/模型/寻优等新开发仍暂停）
 ```
