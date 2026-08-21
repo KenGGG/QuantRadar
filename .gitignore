@@ -213,6 +213,7 @@ helpers/bt_big_qmt_order_tags.json
 
 # ===== QuantRadar =====
 .venv/
+.venv-kronos/
 venv/
 node_modules/
 __pycache__/
@@ -225,6 +226,10 @@ logs/
 
 # QuantRadar 运行时数据（实验/快照，非源码）
 experiments/
+
+# Kronos Goal 1 local source and immutable model snapshots (large runtime assets)
+models/kronos/upstream/
+models/kronos/snapshots/
 
 # 本地隔离开发工作区
 .worktrees/
