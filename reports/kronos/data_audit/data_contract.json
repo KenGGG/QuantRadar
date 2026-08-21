@@ -1,0 +1,95 @@
+{
+  "accounting": {
+    "continuous_research_price": "qfq with explicit signal-date reference",
+    "corporate_action_accounting": "PARTIAL: event type/share/cash facts unavailable",
+    "trade_and_valuation_price": "raw OHLC"
+  },
+  "coverage": {
+    "corporate_action_proxy": {
+      "dataset": "corporate_action_proxy",
+      "date_column": "tradedate",
+      "max_date": "2023-06-09",
+      "min_date": "1990-12-19",
+      "row_count": 14342735,
+      "table": "bao_a_stock_eod_info"
+    },
+    "index_constituents": {
+      "dataset": "index_constituents",
+      "date_column": "trade_date",
+      "max_date": "2022-07-01",
+      "min_date": "2020-01-02",
+      "row_count": 18300,
+      "table": "ts_index_weight"
+    },
+    "price": {
+      "dataset": "price",
+      "date_column": "tradedate",
+      "max_date": "2026-08-18",
+      "min_date": "1990-12-19",
+      "row_count": 18354557,
+      "table": "final_a_stock_eod_price"
+    },
+    "st": {
+      "dataset": "st",
+      "date_column": "tradedate",
+      "max_date": "2023-06-09",
+      "min_date": "1990-12-19",
+      "row_count": 14342735,
+      "table": "bao_a_stock_eod_info"
+    },
+    "stock_master": {
+      "dataset": "stock_master",
+      "date_column": "list_date",
+      "max_date": "2022-07-18",
+      "min_date": "1990-12-10",
+      "row_count": 5023,
+      "table": "ts_a_stock_list"
+    },
+    "trade_calendar": {
+      "dataset": "trade_calendar",
+      "date_column": "date",
+      "max_date": "2026-12-31",
+      "min_date": "1990-12-19",
+      "row_count": 8797,
+      "table": "ts_trade_day_calendar"
+    },
+    "tradestatus_paused": {
+      "dataset": "tradestatus_paused",
+      "date_column": "tradedate",
+      "max_date": "2023-06-09",
+      "min_date": "1990-12-19",
+      "row_count": 14342735,
+      "table": "bao_a_stock_eod_info"
+    },
+    "up_down_limits": {
+      "dataset": "up_down_limits",
+      "date_column": "tradedate",
+      "max_date": "2023-06-12",
+      "min_date": "1996-12-16",
+      "row_count": 14057413,
+      "table": "final_a_stock_limit"
+    }
+  },
+  "fields": {
+    "adj_factor": "final_a_stock_eod_price.adjclose / close",
+    "adjusted_open/high/low/close": "derived from raw OHLC and final adjclose/close factor",
+    "amount": "final_a_stock_eod_price.amount (unadjusted)",
+    "corporate_action": "bao preclose/adjfactor proxy only; authoritative type unavailable",
+    "pre_close": "final_a_stock_limit.pre_close; bao preclose only through its own coverage",
+    "raw_open/high/low/close": "final_a_stock_eod_price.open/high/low/close",
+    "st": "bao_a_stock_eod_info.is_st",
+    "tradestatus": "bao_a_stock_eod_info.tradestatus",
+    "up_limit/down_limit": "final_a_stock_limit.up_limit/down_limit",
+    "volume": "final_a_stock_eod_price.volume (unadjusted)"
+  },
+  "price_semantics": {
+    "adjustment_factor": "final_a_stock_eod_price.adjclose / close",
+    "amount": "final_a_stock_eod_price.amount; unchanged by price adjustment",
+    "hfq_post": "raw_ohlc * adjustment_factor",
+    "pre_factor_ref_date": "required for Kronos inputs; signal_date in later goals",
+    "qfq_pre": "raw_ohlc * adjustment_factor / factor_at_explicit_reference_date",
+    "raw_price": "final_a_stock_eod_price.open/high/low/close",
+    "volume": "final_a_stock_eod_price.volume; unchanged by price adjustment"
+  },
+  "version": "kronos-data-contract-v1"
+}

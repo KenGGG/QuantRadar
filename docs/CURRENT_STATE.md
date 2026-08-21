@@ -10,7 +10,7 @@
 # 当前阶段
 
 ```text
-当前阶段：Hardening 完成 → FUNCTIONAL_V1_PASS ✅（功能型 V1）→ 严谨研究型 V1 完成 QUANTRADAR_RESEARCH_V1_PASS ✅（T1/T2/T3/T4/T5 已完成）→ BulletTrade WebUI 收口 BULLETTRADE_WEB_REPORT_PASS ✅（统一回测链 + 报告 API + BulletTrade 原生报告页；暂停 Qlib/ETF/模型/寻优/因子等新开发）
+当前阶段：既有 V1/WebUI 主线封版 → Kronos PRD v2.0 Goal 0 数据事实审计完成 KRONOS_DATA_CONTRACT_AUDIT_COMPLETE ✅；因数据门禁未通过而停止，不进入 Goal 1
   1) 依赖可重建            PASS  HARDENING_DEPS_PASS ✅（pyproject 补依赖 / 干净 requirements.txt / Makefile setup 装前端 / 前端依赖补全）
   2) 测试库隔离+localhost  PASS  HARDENING_TEST_ISOLATION_PASS ✅（TEST 库隔离 + drop_all 拒绝非 _test 库 + 0.0.0.0 强警告）
   3) 审计链                PASS  HARDENING_AUDIT_CHAIN_PASS ✅（config 完整 + 策略源码落库 + run_id/snapshot_hash/result_hash 语义分明）
@@ -19,12 +19,9 @@
 阶段标志：QUANTRADAR_FUNCTIONAL_V1_PASS ✅ 已达成（5 项 Hardening 标志全绿；make test / make smoke 本机全量通过；CI 已建）
 降级说明：原 QUANTRADAR_V1_PASS 更名为 FUNCTIONAL_V1_PASS——功能闭环已可用，但尚非「严谨研究型 V1」
   （数据层 2023 后残缺、多模型/参数寻优未做）。严谨研究型 V1 已启动：T1 复权口径统一已完成。
-  【实测纠正旧认知】final_a_stock_eod_price.close/open/high/low 本身已是连续复权价（除权缺口已消除），
-  600519 在 2023-2024 区间 fq='none' 与 fq='pre' 日收益率完全一致（none_min=pre_min=-0.0742，
-  期末对齐 0.0000%，除权日候选 0）→ 回测腿（读 final.close）与 Qlib 训练（读 final.adjclose 后复权）
-  天生同源连续复权，旧 summary「回测腿原始价 vs Qlib 复权价口径未统一」不实。两者已统一，无除权假跳变。
-  故 T1 交付定位为：复权口径 fq 配置化（run_backtest/run_target_weight_backtest 支持 none/pre/qfq/post/hfq）
-  + 审计 config 记录 fq + 线程安全切换 use_real_price（_FQ_LOCK），而非「修复假跳变」。
+  【Kronos Goal 0 纠正旧认知】30 只真实股票逐行对账确认：final_a_stock_eod_price OHLC 是 fq=none
+  的原始价；hfq/post = raw × (adjclose/close)，qfq/pre = raw × 当日因子 / 显式参考日因子；
+  volume/amount 不复权。后续连续研究输入必须显式 pre_factor_ref_date=signal_date，BulletTrade 成交与估值用原始价。
 最近完成（Hardening）：pyproject/requirements/Makefile/frontend 依赖可重建；storage 测试隔离；snapshot config+策略落库+hash 语义；
   qml bridge/loop/dump 防未来函数；worker 固定池+重启恢复；tests requires_dolt 跳过；GitHub Actions CI。
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
@@ -40,11 +37,11 @@ BulletTrade Ubuntu Core      PASS  （bullet-trade 0.9.2；BacktestEngine import
 QuantRadar Git 基线          PASS  （fork 为 vendor/bullet-trade 快照，QuantRadar 根自有仓库）
 项目内 Python .venv          PASS  （python3.12.3；bullet-trade 以 editable 装入，指向 vendor/bullet-trade）
 investment_data 可访问       PASS  （Dolt SQL server 127.0.0.1:3307，只读 SELECT 正常）
-A 股日线                     PASS  （final_a_stock_eod_price，1990-12-19..2026-08-04，6129 标的）
+A 股日线                     PASS  （final_a_stock_eod_price，1990-12-19..2026-08-18，18,354,557 行）
 交易日历                     PASS  （ts_trade_day_calendar，is_open=1 共 8797 日，1990-12-19..2026-12-31）
-指数权重                     PASS  （ts_index_weight，6 指数，2005-04-08..2026-06-30）
-指数成分                     PASS  （由 ts_index_weight 按 index_code 派生 stock_code）
-涨跌停                       PASS  （final_a_stock_limit，pre_close/up_limit/down_limit）
+指数权重                     PARTIAL（全表 6 指数覆盖 2005-04-08..2026-07-31；Kronos 所需 000300.SH 仅 2020-01-02..2022-07-01）
+指数成分                     PARTIAL（覆盖内 PIT 对账 20/20 PASS，但无法覆盖 2015..最新研究区间）
+涨跌停                       PARTIAL（final_a_stock_limit，pre_close/up_limit/down_limit；仅至 2023-06-12）
 ST 标记                      PARTIAL（bao_a_stock_eod_info.is_st ∈ {0,1}；bao 源仅至 2023-06-09）
 Provider 源码审计             PASS  （7 问已回答，见下「Provider 机制」）
 Generic Provider Registry    PASS  （Phase 1 实现：register_data_provider / unregister_data_provider，经 _create_provider 统一入口，见下）
@@ -63,7 +60,7 @@ FastAPI 服务基础             PASS  （Phase 7：/api/health、/api/price、/
 Web 构建（frontend/dist）     PASS  （offline 自包含中文 SPA：行情查询 / 策略回测(可编辑代码) / 实验列表，消费 /api/*，无 CDN、无构建步骤；GET / 优先托管；满足「Web build 成功」）
 React+TS+Vite 源码脚手架      PASS（frontend/ 已是完整工作台：AntD 布局 + Monaco 策略编辑器 + ECharts 净值/收益/回撤图 + 数据状态/策略回测/运行记录/实验对比；npm install && npm run build 已生成 dist 并由 GET / 托管；后端已挂载 /assets 静态目录 + SPA 兜底路由，修复资源 404 白屏）
 QuantRadar Provider bootstrap IMPLEMENTED（Phase 2A：backend/quantradar/bootstrap.py 显式 register + set_active + 校验 name）
-公司行为 + ST（Phase 5 补全）  PASS  （CORPORATE_ACTION_ST_PASS：get_split_dividend 据 bao_a_stock_eod_info 真实 preclose 缺口还原每股税前红利，与原始表逐行对账；get_extras('is_st'/'tradestatus') 直读真实列，df=True/Dict 两形态；9 个新测试 + 3 个 registry 测试通过）
+公司行为 + ST                PARTIAL（20 个真实 factor/preclose 候选已审计；无独立事件类型/送转比例/现金/股数事实表，且 is_st/tradestatus 仅至 2023-06-09）
 因子研究（Phase 9 无依赖）    PASS  （backend/quantradar/research 复用 bullet_trade.research.factors.evaluation.evaluate_factor_performance；动量因子 ic_mean≈0.0146、rank_ic_mean≈0.0065（HS300 子集）；长表 [date,code,factor,forward_return]；IC/RankIC/分层/多空 齐全；4 个测试通过）
 Experiment 实验管理（Phase 9） PASS  （backend/quantradar/experiment；基于 Snapshot 指纹的本地 JSON 存证与对比；save/load/list round-trip、不同配置不同指纹、同配置可复现、从 BacktestEngine 构造；3 个测试通过）
 Make / Smoke（QUANTRADAR_SMOKE_PASS） PASS  （Makefile：setup/test/smoke/dev；scripts/smoke.py 全链路 数据→回测→快照→API→Web 入口 通过；无 mock）
@@ -77,7 +74,7 @@ Qlib 最小闭环                  PASS  （QLIB_BULLETTRADE_LOOP_PASS：Alpha15
 审计链                        PASS  （HARDENING_AUDIT_CHAIN_PASS：snapshot config 含 security/amount/benchmark/extras；新增确定性 snapshot_hash；用户策略源码落库 strategies 并绑定 backtest_runs.strategy_id）
 Qlib 防未来函数               PASS  （HARDENING_QLIB_NOFUTURE_PASS：bridge 同日前视修复 index<day；loop segment 不重叠守卫；dump 用 adjclose 后复权训练避免除权跳变）
 Worker 稳定性 + CI            PASS  （HARDENING_WORKER_CI_PASS：worker 固定 ThreadPoolExecutor + 重启恢复 RUNNING→PENDING 重入队；tests requires_dolt 自动 skip；GitHub Actions CI 后端测试+前端构建）
-复权口径配置化 + 同源验证       PASS  （RESEARCH_T1_FQ_PASS：run_backtest/run_target_weight_backtest 支持 fq∈{none,pre,qfq,post,hfq}，审计 config 记录 fq，_FQ_LOCK 线程安全切换 use_real_price；实测 final.close 已连续复权，回测腿与 Qlib 训练同源，无除权假跳变；test_backtest_fq.py 3 passed）
+复权口径配置化                 PASS  （RESEARCH_T1_FQ_PASS：run_backtest/run_target_weight_backtest 支持 fq∈{none,pre,qfq,post,hfq}，审计 config 记录 fq，_FQ_LOCK 线程安全切换；Goal 0 已纠正语义为 final OHLC=raw）
 股票列表补全（PIT 近似宇宙）    PASS  （RESEARCH_T2_UNIVERSE_PASS：extended_universe 从 final 聚合首/末现日补全 ts_a_stock_list(至2022-07-18)缺口上市股，排除指数代码，标注 source='final_approx' PARTIAL；select_universe(use_extended) 合并为完整 PIT 宇宙；read_timeout 升至120s + query 断连自动重试验证加固；test_universe_extended.py 3 passed）
 Qlib 多模型探测                PASS  （RESEARCH_T3_MULTIMODEL_PASS：available_models 按真实 import 探测 lgb/xgb/mlp；本环境仅 LGBModel 可用（xgb 缺 xgboost、mlp 缺 torch 则 _get_model_class 抛 NotImplementedError，绝不伪造）；run_qlib_loop(model='lgb') 跑通产出有限 IC/RankIC + 158 维特征 + Target Weight；test_qlib_models.py 4 passed）
 Qlib 网格寻优                  PASS  （RESEARCH_T3_GRID_PASS：grid_search_qlib 固定 seed 遍历超参组合、按 IC 选优、结果可复现（同输入同输出）；2x2 网格 4 组；test_grid_search.py 2 passed）
@@ -139,12 +136,12 @@ investment_data (Dolt 3307)
 ### investment_data（Dolt，14 表）
 | 表 | 内容 | 规模 / 区间 |
 |---|---|---|
-| final_a_stock_eod_price | A 股日线主源（open/high/low/close/adjclose/volume/amount） | 18.3M 行；1990-12-19..2026-08-04；6129 标的；symbol 格式 `SH600601` |
+| final_a_stock_eod_price | A 股日线主源（open/high/low/close/adjclose/volume/amount） | 18,354,557 行；1990-12-19..2026-08-18；symbol 格式 `SH600601` |
 | final_a_stock_limit | 涨跌停（pre_close/up_limit/down_limit） | 14.1M；1996-12-16..2023-06-12 |
 | bao_a_stock_eod_info | 信息源（tradestatus 停牌 / is_st / adjfactor 复权因子 / adjclose / adjpreclose） | 14.3M；1990-12-19..2023-06-09；5183 标的 |
 | ts_a_stock_eod_price | Tushare 日线源 | 18.0M |
 | ts_a_stock_list | 证券主数据（ts_code `000001.SZ` / symbol `000001` / exchange / list_date / delist_date） | 5023 |
-| ts_index_weight | 指数权重（index_code / stock_code `000001.SZ` / trade_date / weight） | 2.4M；6 指数；2005-04-08..2026-06-30 |
+| ts_index_weight | 指数权重（index_code / stock_code `000001.SZ` / trade_date / weight） | 2,399,436 行；全表 2005-04-08..2026-07-31；000300.SH 仅 2020-01-02..2022-07-01 |
 | ts_trade_day_calendar | 交易日历（exchange=SSE / date / is_open） | 13162；is_open=1 共 8797 日 |
 | c_a_stock_eod_price / w_a_stock_eod_price / yahoo_a_stock_eod_price | 其他来源日线 | — |
 | c_link_table / ts_link_table / yahoo_link_table | 跨源 symbol 映射（link_date / adj_ratio） | — |
@@ -191,7 +188,7 @@ bao_a_stock_eod_info         → is_st / tradestatus(停牌) / adjfactor(复权�
 R1  Python 支持范围 >=3.11,<3.13（本机仅 3.12.3 可用，已验证安装/导入通过）。3.11 不可用、3.13 未验证；后续升级需复测。
 R2  symbol 多格式：Provider 必须做归一化，否则指数/日线对不齐。
 R3  investment_data 多源湖（final/c/ts/w/yahoo），final_* 似主源；Phase 2 需定主源与去重。
-R4  复权：final 仅 adjclose，原始 factor 只在 bao(adjfactor)；引擎已有 dynamic pre-factor 逻辑，Provider 需供给 raw price + factor。
+R4  复权：Kronos Goal 0 确认 final OHLC 为 raw，Provider 使用 final.adjclose/final.close 推导价格复权因子；bao.adjfactor 仅作公司行为代理证据且覆盖止于 2023-06-09。
 R5  公司行为显式数据缺失；ETF 缺失；alpha factor 缺失。
 R6  Qlib 数据未构建（QLIB_DATA_NOT_BUILT）。
 R7  trade calendar 仅 SSE 行（A 股日历统一，可接受）。
@@ -232,9 +229,10 @@ BulletTrade WebUI 收口（#70~#74 已完成）：统一回测链 run_unified_ba
   外部待定（用户侧，不阻塞）：数据补齐方案（ST/停牌/列表，来自只读 Dolt，本仓库无法补齐）
 禁止提前开发：PostgreSQL / ETF / QMT / 实盘 / Qlib 深化 / 因子 / 寻优（除非当前阶段需要或用户决策）
 最终封版完成（BULLETTRADE_WEBUI_FINAL_PASS）：3 项必做——报告内联显示(REPORT_INLINE_PASS) / Worker 重启恢复双覆盖 RUNNING+PENDING(WORKER_RESTART_RECOVERY_PASS) / fq 重启恢复一致性(WORKER_FQ_RECOVERY_PASS)——全部达成，并已通过 live 服务器等价浏览器流程（提交 JoinQuant 兼容策略→轮询 SUCCESS→report?which=full|standard 均返回 Content-Disposition: inline→config.fq=snapshot.config.fq=pre 一致）最终验收。后端测试（Dolt+PG 13 passed）+ CI 后端（无 Dolt/PG 24 passed/138 skipped）+ 前端构建（npm run build 成功）全绿。
-下一动作：BulletTrade WebUI 主线已封版（BULLETTRADE_WEBUI_FINAL_PASS）。架构锁定于 investment_data → InvestmentDataProvider → BulletTrade 原生回测/账户/订单/指标/HTML 报告 → QuantRadar WebUI/API/Worker/Run/Audit。停止一切扩张，等待用户决策下一阶段（Qlib/ETF/模型/寻优/新交易引擎/新回测框架等新功能仍暂停）。
+Kronos Goal 0（已完成）：只读数据事实审计，产出 `reports/kronos/data_audit/` 九项证据文件；30/30 价格语义通过，20 个公司行为候选 PARTIAL，20/20 覆盖内 PIT 对账通过但区间仅 2020-2022；所有研究/回测/实盘就绪门禁均为 false。
+下一动作：维持 Goal 0 停止状态。补齐或确认 000300.SH PIT、公司行为、ST/tradestatus、涨跌停和股票主数据后重新运行 `make kronos-data-audit`；不得自动进入 Kronos Goal 1。
 封版后用户追加的 WebUI 增强（属 investment_data → WebUI 主线，非禁止的研究类新功能）：
-  ① 数据状态页显示最新数据时间：/api/health 的 environment 新增 latest_data_date（= SELECT MAX(tradedate) FROM final_a_stock_eod_price，实测 2026-08-04），数据源状态卡片「刷新状态」后展示「最新数据日期」。
+  ① 数据状态页显示最新数据时间：/api/health 的 environment 新增 latest_data_date（= SELECT MAX(tradedate) FROM final_a_stock_eod_price；Goal 0 实测 2026-08-18），数据源状态卡片「刷新状态」后展示「最新数据日期」。
   ② 「更新数据」按钮：POST /api/data/pull 在本地 Dolt 仓库（默认 /data/investment_data，可用 QUANTRADAR_DOLT_REPO 覆盖）执行 dolt pull 拉取 origin 最新数据，成功后自动刷新状态（最新数据日期同步）。
   ③ 行情查询 K 线图：DataStatus「行情查询」卡片改为查询最新窗口（默认最近 120 交易日，可调），用 echarts candlestick + 成交量柱展示 investment_data 能展示的最新 K 线，下方保留明细表；打开页面自动加载默认标的 600519.XSHG 最新 K 线。
 ```

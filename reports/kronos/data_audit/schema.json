@@ -1,0 +1,324 @@
+{
+  "schemas": {
+    "bao_a_stock_eod_info": [
+      {
+        "key": "PRI",
+        "name": "tradedate",
+        "nullable": "NO",
+        "type": "date"
+      },
+      {
+        "key": "",
+        "name": "open",
+        "nullable": "YES",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "high",
+        "nullable": "YES",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "low",
+        "nullable": "YES",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "close",
+        "nullable": "YES",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "preclose",
+        "nullable": "YES",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "volume",
+        "nullable": "YES",
+        "type": "int"
+      },
+      {
+        "key": "",
+        "name": "amount",
+        "nullable": "YES",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "turn",
+        "nullable": "YES",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "tradestatus",
+        "nullable": "YES",
+        "type": "int"
+      },
+      {
+        "key": "",
+        "name": "is_st",
+        "nullable": "YES",
+        "type": "int"
+      },
+      {
+        "key": "",
+        "name": "adjclose",
+        "nullable": "YES",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "adjpreclose",
+        "nullable": "YES",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "adjfactor",
+        "nullable": "YES",
+        "type": "double"
+      },
+      {
+        "key": "PRI",
+        "name": "symbol",
+        "nullable": "NO",
+        "type": "varchar(100)"
+      }
+    ],
+    "final_a_stock_eod_price": [
+      {
+        "key": "PRI",
+        "name": "tradedate",
+        "nullable": "NO",
+        "type": "date"
+      },
+      {
+        "key": "PRI",
+        "name": "symbol",
+        "nullable": "NO",
+        "type": "varchar(100)"
+      },
+      {
+        "key": "",
+        "name": "high",
+        "nullable": "NO",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "low",
+        "nullable": "NO",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "open",
+        "nullable": "NO",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "close",
+        "nullable": "NO",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "adjclose",
+        "nullable": "NO",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "volume",
+        "nullable": "NO",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "amount",
+        "nullable": "YES",
+        "type": "double"
+      }
+    ],
+    "final_a_stock_limit": [
+      {
+        "key": "PRI",
+        "name": "tradedate",
+        "nullable": "NO",
+        "type": "date"
+      },
+      {
+        "key": "PRI",
+        "name": "symbol",
+        "nullable": "NO",
+        "type": "varchar(100)"
+      },
+      {
+        "key": "",
+        "name": "pre_close",
+        "nullable": "YES",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "up_limit",
+        "nullable": "YES",
+        "type": "double"
+      },
+      {
+        "key": "",
+        "name": "down_limit",
+        "nullable": "YES",
+        "type": "double"
+      }
+    ],
+    "ts_a_stock_list": [
+      {
+        "key": "PRI",
+        "name": "ts_code",
+        "nullable": "NO",
+        "type": "varchar(100)"
+      },
+      {
+        "key": "",
+        "name": "symbol",
+        "nullable": "NO",
+        "type": "varchar(100)"
+      },
+      {
+        "key": "",
+        "name": "exchange",
+        "nullable": "NO",
+        "type": "varchar(100)"
+      },
+      {
+        "key": "",
+        "name": "list_date",
+        "nullable": "NO",
+        "type": "date"
+      },
+      {
+        "key": "",
+        "name": "delist_date",
+        "nullable": "YES",
+        "type": "date"
+      }
+    ],
+    "ts_index_weight": [
+      {
+        "key": "PRI",
+        "name": "index_code",
+        "nullable": "NO",
+        "type": "varchar(100)"
+      },
+      {
+        "key": "PRI",
+        "name": "stock_code",
+        "nullable": "NO",
+        "type": "varchar(100)"
+      },
+      {
+        "key": "PRI",
+        "name": "trade_date",
+        "nullable": "NO",
+        "type": "date"
+      },
+      {
+        "key": "",
+        "name": "weight",
+        "nullable": "NO",
+        "type": "double"
+      }
+    ],
+    "ts_trade_day_calendar": [
+      {
+        "key": "PRI",
+        "name": "id",
+        "nullable": "NO",
+        "type": "int"
+      },
+      {
+        "key": "MUL",
+        "name": "exchange",
+        "nullable": "NO",
+        "type": "varchar(255)"
+      },
+      {
+        "key": "",
+        "name": "date",
+        "nullable": "NO",
+        "type": "date"
+      },
+      {
+        "key": "",
+        "name": "is_open",
+        "nullable": "NO",
+        "type": "binary(1)"
+      }
+    ]
+  },
+  "table_summaries": [
+    {
+      "date_column": "tradedate",
+      "duplicate_check": "ENFORCED_UNIQUE_INDEX",
+      "duplicate_groups": 0,
+      "max_date": "2026-08-18",
+      "min_date": "1990-12-19",
+      "row_count": 18354557,
+      "table": "final_a_stock_eod_price"
+    },
+    {
+      "date_column": "tradedate",
+      "duplicate_check": "ENFORCED_UNIQUE_INDEX",
+      "duplicate_groups": 0,
+      "max_date": "2023-06-09",
+      "min_date": "1990-12-19",
+      "row_count": 14342735,
+      "table": "bao_a_stock_eod_info"
+    },
+    {
+      "date_column": "tradedate",
+      "duplicate_check": "ENFORCED_UNIQUE_INDEX",
+      "duplicate_groups": 0,
+      "max_date": "2023-06-12",
+      "min_date": "1996-12-16",
+      "row_count": 14057413,
+      "table": "final_a_stock_limit"
+    },
+    {
+      "date_column": "trade_date",
+      "duplicate_check": "ENFORCED_UNIQUE_INDEX",
+      "duplicate_groups": 0,
+      "max_date": "2026-07-31",
+      "min_date": "2005-04-08",
+      "row_count": 2399436,
+      "table": "ts_index_weight"
+    },
+    {
+      "date_column": "date",
+      "duplicate_check": "ENFORCED_UNIQUE_INDEX",
+      "duplicate_groups": 0,
+      "max_date": "2026-12-31",
+      "min_date": "1990-12-19",
+      "row_count": 13162,
+      "table": "ts_trade_day_calendar"
+    },
+    {
+      "date_column": "list_date",
+      "duplicate_check": "ENFORCED_UNIQUE_INDEX",
+      "duplicate_groups": 0,
+      "max_date": "2022-07-18",
+      "min_date": "1990-12-10",
+      "row_count": 5023,
+      "table": "ts_a_stock_list"
+    }
+  ]
+}
