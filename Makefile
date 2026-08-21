@@ -17,7 +17,7 @@ PIP    ?= .venv/bin/pip
 NPM    ?= npm
 VENV   ?= .venv
 
-.PHONY: setup test smoke research kronos-data-audit kronos-runtime-setup kronos-gpu-smoke dev install-hooks help
+.PHONY: setup test smoke research kronos-data-audit kronos-runtime-setup kronos-gpu-smoke kronos-research-pipeline dev install-hooks help
 
 help:
 	@echo "QuantRadar 可用目标："
@@ -28,6 +28,7 @@ help:
 	@echo "  make kronos-data-audit  只读执行 Kronos Goal 0 数据事实审计"
 	@echo "  make kronos-runtime-setup  安装并锁定独立 Kronos-base CUDA 运行时"
 	@echo "  make kronos-gpu-smoke  执行 Kronos Goal 1 真实 GPU 分级基准"
+	@echo "  make kronos-research-pipeline START=2022-06-24 END=2022-07-01  执行 Goal 2 研究闭环"
 	@echo "  make dev        启动开发服务器 (http://127.0.0.1:7231)"
 
 setup:
@@ -63,6 +64,10 @@ kronos-runtime-setup:
 
 kronos-gpu-smoke:
 	PYTHONPATH=backend $(PYTHON) scripts/kronos_gpu_smoke.py
+
+kronos-research-pipeline:
+	PYTHONPATH=backend $(PYTHON) scripts/kronos_research_pipeline.py \
+		--start $(START) --end $(END) --topk $(or $(TOPK),20)
 
 dev:
 	$(PYTHON) -m uvicorn quantradar.api.app:app --host 127.0.0.1 --port 7231 --reload

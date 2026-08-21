@@ -104,10 +104,10 @@
 - `run_research_pipeline(...) -> dict` builds/resumes weeks, writes weights, calls `run_unified_backtest`, copies signal/strategy locks into the run, and writes `kronos_research_manifest.json`.
 - CLI returns 0 only when engineering artifacts validate, otherwise nonzero with a JSON reason.
 
-- [ ] Write failing orchestration tests with real temp artifacts and injected slow boundaries, asserting report-to-prediction hash traversal and false formal/assist gates.
-- [ ] Implement orchestration, strategy lock, attachment of signal files to the BulletTrade run directory, and engineering gate evaluation.
-- [ ] Implement CLI arguments and `kronos-research-pipeline` Make target; test success and failure exit codes.
-- [ ] Run all Goal 2 unit/integration tests and commit `feat(kronos): orchestrate research pipeline CLI`.
+- [x] Write failing orchestration tests with real temp artifacts and injected slow boundaries, asserting report-to-prediction hash traversal and false formal/assist gates.
+- [x] Implement orchestration, strategy lock, attachment of signal files to the BulletTrade run directory, and engineering gate evaluation.
+- [x] Implement CLI arguments and `kronos-research-pipeline` Make target; test success and failure exit codes.
+- [x] Run all Goal 2 unit/integration tests and commit `feat(kronos): orchestrate research pipeline CLI`.
 
 ### Task 6: Real Environment Acceptance
 
