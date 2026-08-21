@@ -1,12 +1,12 @@
 {
   "completion_marker": "KRONOS_DATA_CONTRACT_AUDIT_COMPLETE",
   "content_hashes": {
-    "corporate_actions.csv": "6cd3ecc0f5b6755d10042c3a64733b5cdd66304b8ba609f341e2f2787af16a2c",
-    "coverage.csv": "01ac1fed20a1b26ee7124edc1fa798a6bd98c232cfc3615df77aacd92d4719cb",
+    "corporate_actions.csv": "eccbffdba2532308a4b684fbaf5f5f896ed0e4b33b10b681c65c5f995964a797",
+    "coverage.csv": "5844d16b3d8e418cf2a6787caf60602db386ee00f866799b77cdc1d8279805f2",
     "data_contract.json": "6bad86d6a2d6c40f568ea641eff96c385d7a63a878317017436c87e3437118f7",
     "data_gate.json": "eff0e249e008601fc68d9d98d7dccd61485ba8b50f6b1bab744f3dfed082e690",
-    "pit_universe_checks.csv": "23f16237dc3ac06c865d6d9f62857da15b652b408703a2e7f01a7edb46bc17d9",
-    "price_semantics.csv": "0bdba1a1f4bb6ebbee8acb92bdc586ce73a6ad111224789d5f4a45d641478419",
+    "pit_universe_checks.csv": "e546f56285343be35fd9cc32aba91422fe73c001e028b038397a2d9f7adbe092",
+    "price_semantics.csv": "2a778273b89dcd11b5d7d7a18ec54f0129e588a47858b4fdc902823282f4cb3e",
     "price_semantics.md": "09e0585f6faa237e95c83a16107e43a6e83c24871db9003055c13cd25c3b0500",
     "schema.json": "3d8fec0043bde3a279f3ad5b156d0496607be0add7517337454a6f5257389fe1"
   },
@@ -15,7 +15,7 @@
     "pit_weeks": 20,
     "price_samples": 30
   },
-  "generated_at": "2026-08-21T07:48:53.275443+00:00",
+  "generated_at": "2026-08-21T08:07:34.960697+00:00",
   "goal": "Goal 0 - data fact audit",
   "run_end_commit": "rlr4k90ir2ok2tggb2nflr83qntc5q2t",
   "run_start_commit": "rlr4k90ir2ok2tggb2nflr83qntc5q2t"

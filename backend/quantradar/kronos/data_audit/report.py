@@ -27,7 +27,12 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     extras = sorted({key for row in rows for key in row} - set(fieldnames))
     fieldnames.extend(extras)
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=fieldnames,
+            extrasaction="ignore",
+            lineterminator="\n",
+        )
         writer.writeheader()
         for row in rows:
             writer.writerow(json_safe(row))
@@ -158,4 +163,3 @@ def publish_audit_reports(
         if backup.exists() and not output.exists():
             os.replace(backup, output)
         raise
-
