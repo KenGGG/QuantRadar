@@ -28,7 +28,7 @@ import uuid
 from typing import Any, Dict, Optional
 
 from quantradar.backtest import _FQ_LOCK
-from quantradar.snapshot import _to_native, build_snapshot_from_results
+from quantradar.snapshot import _to_native, build_snapshot_from_results, write_snapshot_json
 
 log = logging.getLogger(__name__)
 
@@ -179,8 +179,7 @@ def run_unified_backtest(
         },
         fq=fq,
     )
-    with open(os.path.join(run_dir, "snapshot.json"), "w", encoding="utf-8") as f:
-        json.dump(snapshot, f, ensure_ascii=False, indent=2, sort_keys=True)
+    snapshot = write_snapshot_json(os.path.join(run_dir, "snapshot.json"), snapshot)
 
     metrics = results.get("metrics") or {}
     dr = results.get("daily_records")

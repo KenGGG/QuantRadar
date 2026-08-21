@@ -362,9 +362,16 @@ def save_snapshot(snapshot: Dict[str, Any], path: str) -> str:
     """保存快照到 JSON 文件，返回路径。"""
     parent = os.path.dirname(os.path.abspath(path))
     os.makedirs(parent, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(snapshot, f, ensure_ascii=False, indent=2, sort_keys=True)
+    write_snapshot_json(path, snapshot)
     return path
+
+
+def write_snapshot_json(path: str | os.PathLike[str], snapshot: Dict[str, Any]) -> Dict[str, Any]:
+    """Serialize a snapshot at the filesystem boundary and return that exact payload."""
+    native = _to_native(snapshot)
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(native, handle, ensure_ascii=False, indent=2, sort_keys=True)
+    return native
 
 
 def load_snapshot(path: str) -> Dict[str, Any]:
