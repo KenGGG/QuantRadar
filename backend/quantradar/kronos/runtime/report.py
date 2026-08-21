@@ -58,6 +58,10 @@ def publish_runtime_reports(
             },
         )
         _write_json(stage / "determinism.json", runtime_result.get("determinism", {}))
+        _write_json(
+            stage / "batch_consistency.json",
+            runtime_result.get("batch_consistency", {}),
+        )
         _write_json(stage / "environment.json", runtime_result.get("environment", {}))
         _write_json(stage / "input_manifest.json", input_manifest)
         _write_json(stage / "runtime_gate.json", runtime_gate)

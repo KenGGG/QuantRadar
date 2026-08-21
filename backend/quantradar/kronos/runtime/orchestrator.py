@@ -35,6 +35,7 @@ def _blocked_result(input_manifest: dict[str, Any], error: Exception) -> dict[st
         "environment": {},
         "stages": [],
         "determinism": {"passed": False},
+        "batch_consistency": {"passed": False},
         "error": str(error),
     }
 

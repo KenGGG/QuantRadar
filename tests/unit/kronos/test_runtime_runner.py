@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import subprocess
 
+import numpy as np
 import pytest
 
 from kronos_runtime.runner import (
+    compare_batch_predictions,
     next_batch_size_after_oom,
     require_cuda,
     stage_plan,
@@ -50,6 +52,18 @@ def test_oom_reduction_halves_batch_and_stops_at_one() -> None:
     assert next_batch_size_after_oom(3) == 1
     with pytest.raises(RuntimeError, match="batch size 1"):
         next_batch_size_after_oom(1)
+
+
+def test_batch_serial_comparison_uses_explicit_numeric_tolerance() -> None:
+    batch = np.ones((5, 10, 6), dtype=np.float32)
+    serial = batch.copy()
+    serial[0, 0, 0] += 1e-6
+
+    comparison = compare_batch_predictions(batch, serial)
+
+    assert comparison["passed"] is True
+    serial[0, 0, 0] += 1e-2
+    assert compare_batch_predictions(batch, serial)["passed"] is False
 
 
 def test_parent_command_uses_only_isolated_python_and_offline_flags(tmp_path) -> None:

@@ -55,6 +55,7 @@ def _passing_runtime_result(eligible: int = 240) -> dict:
             "first_hash": "same",
             "repeat_hash": "same",
         },
+        "batch_consistency": {"passed": True, "max_abs_diff": 0.0},
     }
 
 
@@ -79,6 +80,7 @@ def test_publish_runtime_reports_is_atomic_and_hashes_every_evidence_file(tmp_pa
 
     assert manifest["completion_marker"] == "KRONOS_BASE_GPU_RUNTIME_PASS"
     assert sorted(manifest["content_hashes"]) == [
+        "batch_consistency.json",
         "benchmark.json",
         "determinism.json",
         "environment.json",
