@@ -53,6 +53,47 @@ def next_batch_size_after_oom(current: int) -> int:
     return max(1, current // 2)
 
 
+def compare_batch_predictions(
+    batch_values: np.ndarray,
+    serial_values: np.ndarray,
+    *,
+    relative_tolerance: float = 1e-5,
+    absolute_tolerance: float = 1e-5,
+) -> dict[str, Any]:
+    batch = np.asarray(batch_values, dtype=np.float32)
+    serial = np.asarray(serial_values, dtype=np.float32)
+    if batch.shape != serial.shape:
+        return {
+            "passed": False,
+            "shape_match": False,
+            "batch_shape": list(batch.shape),
+            "serial_shape": list(serial.shape),
+            "max_abs_diff": None,
+            "max_rel_diff": None,
+            "relative_tolerance": relative_tolerance,
+            "absolute_tolerance": absolute_tolerance,
+        }
+    absolute = np.abs(batch - serial)
+    relative = absolute / (np.abs(serial) + 1e-9)
+    return {
+        "passed": bool(
+            np.allclose(
+                batch,
+                serial,
+                rtol=relative_tolerance,
+                atol=absolute_tolerance,
+            )
+        ),
+        "shape_match": True,
+        "batch_shape": list(batch.shape),
+        "serial_shape": list(serial.shape),
+        "max_abs_diff": float(np.max(absolute)),
+        "max_rel_diff": float(np.max(relative)),
+        "relative_tolerance": relative_tolerance,
+        "absolute_tolerance": absolute_tolerance,
+    }
+
+
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -130,6 +171,9 @@ def _predict_path(
     symbol_count: int,
     seed: int,
     initial_batch_size: int,
+    temperature: float = 0.6,
+    top_k: int = 0,
+    top_p: float = 0.9,
 ) -> tuple[np.ndarray, int]:
     batch_size = min(initial_batch_size, symbol_count)
     while True:
@@ -162,9 +206,9 @@ def _predict_path(
                         x_timestamps,
                         y_timestamps,
                         pred_len=10,
-                        T=0.6,
-                        top_k=0,
-                        top_p=0.9,
+                        T=temperature,
+                        top_k=top_k,
+                        top_p=top_p,
                         sample_count=1,
                         verbose=False,
                     )
@@ -317,6 +361,51 @@ def execute_runtime(
     )
     first_hash = _prediction_hash(arrays["symbols"][:1], first_path_values)
     repeat_hash = _prediction_hash(arrays["symbols"][:1], repeated_values)
+    consistency_count = min(5, len(arrays["symbols"]))
+    batch_values, consistency_batch_size = _predict_path(
+        predictor=predictor,
+        torch_module=torch,
+        pandas_module=pd,
+        arrays=arrays,
+        symbol_count=consistency_count,
+        seed=FIXED_PATH_SEEDS[0],
+        initial_batch_size=consistency_count,
+        temperature=1.0,
+        top_k=1,
+        top_p=1.0,
+    )
+    serial_predictions: list[np.ndarray] = []
+    for index in range(consistency_count):
+        one_symbol_arrays = {
+            "values": arrays["values"][index : index + 1],
+            "symbols": arrays["symbols"][index : index + 1],
+            "x_dates": arrays["x_dates"][index : index + 1],
+            "y_dates": arrays["y_dates"],
+        }
+        serial_values, _ = _predict_path(
+            predictor=predictor,
+            torch_module=torch,
+            pandas_module=pd,
+            arrays=one_symbol_arrays,
+            symbol_count=1,
+            seed=FIXED_PATH_SEEDS[0],
+            initial_batch_size=1,
+            temperature=1.0,
+            top_k=1,
+            top_p=1.0,
+        )
+        serial_predictions.append(serial_values[0])
+    batch_consistency = compare_batch_predictions(
+        batch_values, np.stack(serial_predictions)
+    )
+    batch_consistency.update(
+        {
+            "symbol_count": consistency_count,
+            "seed": FIXED_PATH_SEEDS[0],
+            "batch_size": consistency_batch_size,
+            "sampling": {"temperature": 1.0, "top_k": 1, "top_p": 1.0},
+        }
+    )
     return {
         "device": "cuda:0",
         "fallback_used": False,
@@ -338,6 +427,7 @@ def execute_runtime(
             "first_hash": first_hash,
             "repeat_hash": repeat_hash,
         },
+        "batch_consistency": batch_consistency,
     }
 
 

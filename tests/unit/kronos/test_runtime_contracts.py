@@ -51,6 +51,7 @@ def _passing_result() -> dict:
             "first_hash": "same",
             "repeat_hash": "same",
         },
+        "batch_consistency": {"passed": True, "max_abs_diff": 0.0},
     }
 
 
@@ -111,3 +112,13 @@ def test_runtime_gate_rejects_changed_hashes_or_nondeterminism() -> None:
     assert gate["runtime_ready"] is False
     assert any("model lock" in reason for reason in gate["reasons"])
     assert any("determin" in reason.lower() for reason in gate["reasons"])
+
+
+def test_runtime_gate_rejects_batch_serial_inconsistency() -> None:
+    result = _passing_result()
+    result["batch_consistency"] = {"passed": False, "max_abs_diff": 0.5}
+
+    gate = evaluate_runtime_gate(result)
+
+    assert gate["runtime_ready"] is False
+    assert any("batch" in reason.lower() for reason in gate["reasons"])

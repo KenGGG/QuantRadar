@@ -1,0 +1,26 @@
+{
+  "absolute_tolerance": 1e-05,
+  "batch_shape": [
+    5,
+    10,
+    6
+  ],
+  "batch_size": 5,
+  "max_abs_diff": 0.25,
+  "max_rel_diff": 1.9182230914793763e-07,
+  "passed": true,
+  "relative_tolerance": 1e-05,
+  "sampling": {
+    "temperature": 1.0,
+    "top_k": 1,
+    "top_p": 1.0
+  },
+  "seed": 101,
+  "serial_shape": [
+    5,
+    10,
+    6
+  ],
+  "shape_match": true,
+  "symbol_count": 5
+}

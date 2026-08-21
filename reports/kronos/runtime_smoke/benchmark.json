@@ -13,12 +13,12 @@
       "path_count": 1,
       "peak_vram_mb": 447.89599609375,
       "requested_symbols": 1,
-      "runtime_seconds": 0.3297339759301394,
+      "runtime_seconds": 0.3217417390551418,
       "seeds": [
         101
       ],
       "status": "PASS",
-      "symbols_per_second": 3.032747830062467
+      "symbols_per_second": 3.1080829081632295
     },
     {
       "batch_size": 50,
@@ -31,12 +31,12 @@
       "path_count": 1,
       "peak_vram_mb": 695.5322265625,
       "requested_symbols": 50,
-      "runtime_seconds": 0.9034734480082989,
+      "runtime_seconds": 0.9191992310807109,
       "seeds": [
         101
       ],
       "status": "PASS",
-      "symbols_per_second": 55.34196949586583
+      "symbols_per_second": 54.39517169875626
     },
     {
       "batch_size": 50,
@@ -49,17 +49,17 @@
       "path_count": 1,
       "peak_vram_mb": 695.5322265625,
       "requested_symbols": 239,
-      "runtime_seconds": 4.386633642017841,
+      "runtime_seconds": 5.201445681042969,
       "seeds": [
         101
       ],
       "status": "PASS",
-      "symbols_per_second": 54.483692850643564
+      "symbols_per_second": 45.94876398902946
     },
     {
       "batch_size": 50,
       "completed_symbols": 239,
-      "estimated_full_backfill_hours": 0.8025883178391572,
+      "estimated_full_backfill_hours": 0.8083517337530308,
       "name": "full_pit_five_paths",
       "output_hashes": [
         "24c925a17778de44d55d0365b4c939ec80b1de0672ba28c433a9aab8b9c4fe67",
@@ -71,7 +71,7 @@
       "path_count": 5,
       "peak_vram_mb": 695.5322265625,
       "requested_symbols": 239,
-      "runtime_seconds": 22.397813521092758,
+      "runtime_seconds": 22.5586530349683,
       "seeds": [
         101,
         211,
@@ -80,7 +80,7 @@
         503
       ],
       "status": "PASS",
-      "symbols_per_second": 53.353422148757026
+      "symbols_per_second": 52.9730209577506
     }
   ]
 }

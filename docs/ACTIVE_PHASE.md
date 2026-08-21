@@ -16,12 +16,13 @@ Tokenizer revision：0e0117387f39004a9016484a186a908917e22426
 模型锁：离线逐文件 SHA256 校验 PASS
 
 真实输入：2022-07-01 PIT 沪深300；300 只候选，239 只合格，61 只排除
-1只/1路径：0.330 秒；峰值 allocated VRAM 447.90 MiB
-50只/1路径：0.903 秒；55.34 symbols/s；batch 50
-239只/1路径：4.387 秒；54.48 symbols/s；batch 50
-239只/5路径：22.398 秒；53.35 symbol-paths/s；batch 50
+1只/1路径：0.322 秒；峰值 allocated VRAM 447.90 MiB
+50只/1路径：0.919 秒；54.40 symbols/s；batch 50
+239只/1路径：5.201 秒；45.95 symbols/s；batch 50
+239只/5路径：22.559 秒；52.97 symbol-paths/s；batch 50
 固定 seed 101 重跑：prediction hash 完全一致
-现有 PIT 129 周五路径估算：0.803 小时（仅限 2020-2022 可用覆盖，不外推缺失历史）
+batch 5 vs 逐只推理：rtol/atol=1e-5 内一致；最大相对差 1.92e-7
+现有 PIT 129 周五路径估算：0.808 小时（仅限 2020-2022 可用覆盖，不外推缺失历史）
 
 阶段标志：KRONOS_BASE_GPU_RUNTIME_PASS
 注意：该标志只证明固定 Kronos-base 在真实 GPU 上可复现运行，不表示信号有效、回测可用或实盘可用。

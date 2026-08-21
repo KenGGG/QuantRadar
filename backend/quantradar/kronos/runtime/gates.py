@@ -71,6 +71,9 @@ def evaluate_runtime_gate(result: dict[str, Any]) -> dict[str, Any]:
         or determinism.get("first_hash") != determinism.get("repeat_hash")
     ):
         reasons.append("Fixed-seed output is not deterministic")
+    batch_consistency = result.get("batch_consistency") or {}
+    if batch_consistency.get("passed") is not True:
+        reasons.append("Batch and per-symbol predictions differ beyond tolerance")
 
     ready = not reasons
     return {
