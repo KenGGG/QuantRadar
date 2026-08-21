@@ -32,10 +32,10 @@
 - Consumes: `predictions: np.ndarray[path, symbol, horizon, feature]`, symbols, signal metadata.
 - Produces: `build_signals(...) -> pd.DataFrame` with the PRD schema and deterministic ranks; `prediction_content_hash(...) -> str`.
 
-- [ ] Write literal-fixture tests for median return, q10/q50/q90, up probability, population standard deviation, invalid paths, and symbol tie-breaks.
-- [ ] Run `PYTHONPATH=backend .venv/bin/python -m pytest tests/unit/kronos/test_signal_adapter.py -q` and verify missing-module failure.
-- [ ] Implement validation, per-path `close[-1] / open[0] - 1`, stable sorting, audit columns, and SHA-256 hashing without Torch.
-- [ ] Re-run the adapter tests and commit `feat(kronos): add deterministic signal adapter`.
+- [x] Write literal-fixture tests for median return, q10/q50/q90, up probability, population standard deviation, invalid paths, and symbol tie-breaks.
+- [x] Run `PYTHONPATH=backend .venv/bin/python -m pytest tests/unit/kronos/test_signal_adapter.py -q` and verify missing-module failure.
+- [x] Implement validation, per-path `close[-1] / open[0] - 1`, stable sorting, audit columns, and SHA-256 hashing without Torch.
+- [x] Re-run the adapter tests and commit `feat(kronos): add deterministic signal adapter`.
 
 ### Task 2: Reproducible Signal Artifact Store
 
