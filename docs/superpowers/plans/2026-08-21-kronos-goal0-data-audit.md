@@ -110,4 +110,3 @@
 - [ ] Re-run the real audit and compare manifest/output hashes where timestamps are excluded.
 - [ ] Run the complete unit suite, recording the pre-existing baseline failures separately.
 - [ ] Commit `docs(kronos): record Goal 0 audit evidence and gates`.
-
