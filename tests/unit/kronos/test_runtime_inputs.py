@@ -113,12 +113,14 @@ def test_publish_input_package_writes_hashed_real_arrays(tmp_path) -> None:
         pit_snapshot_date=dt.date(2022, 7, 1),
         data_commit="abc123",
         data_contract_hash="contract123",
+        available_pit_signal_weeks=131,
     )
 
     assert manifest["feature_names"] == list(FEATURE_NAMES)
     assert manifest["eligible_symbol_count"] == 56
     assert manifest["input_content_sha256"]
     assert manifest["npz_sha256"]
+    assert manifest["available_pit_signal_weeks"] == 131
     saved = np.load(tmp_path / "runtime_inputs.npz", allow_pickle=False)
     assert saved["values"].shape == (56, 90, 6)
     assert saved["symbols"].tolist() == sorted(saved["symbols"].tolist())

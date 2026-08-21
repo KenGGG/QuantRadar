@@ -43,6 +43,7 @@ def offline_runtime_environment(
             "HF_DATASETS_OFFLINE": "1",
             "TRANSFORMERS_OFFLINE": "1",
             "CUDA_VISIBLE_DEVICES": "0",
+            "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
             "TOKENIZERS_PARALLELISM": "false",
         }
     )
