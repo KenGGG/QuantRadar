@@ -226,6 +226,9 @@ logs/
 # QuantRadar 运行时数据（实验/快照，非源码）
 experiments/
 
+# 本地隔离开发工作区
+.worktrees/
+
 # qlib 训练产生的 mlflow 文件存储（已通过 qml/loop.py 重定向到临时目录，兜底忽略）
 mlruns/
 
