@@ -2,7 +2,28 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：Kronos PRD v2.0 Goal 1 独立运行时与真实 GPU smoke 完成（KRONOS_BASE_GPU_RUNTIME_PASS ✅）。Goal 0 的数据缺口仍存在，正式回测和实盘辅助门禁保持关闭。**
+**当前阶段：Kronos Goal 2 投资研究 Pipeline 已完成真实验收（GOAL2_ENGINEERING_PASS ✅）。Goal 0 的数据缺口仍存在，正式回测和实盘辅助门禁保持关闭。**
+
+## Kronos Goal 2 验收（2026-08-21）
+
+```text
+闭环：investment_data -> 固定 Kronos-base CUDA -> Signal Artifact -> TopK Target Weight
+      -> run_unified_backtest -> BulletTrade 原生报告
+真实 PIT 信号：2022-06-01、2022-06-30
+实际执行日：2022-06-02、2022-07-01（全部严格晚于信号日）
+真实数据 commit：rlr4k90ir2ok2tggb2nflr83qntc5q2t（运行期间未变化）
+模型路径：五条固定 seed；2022-06-30 在两次独立 SignalRun 的 prediction hash 完全一致
+真实回测：35 个交易日；两次实际调仓；report.html、standard_report.html、metrics.json、trades.csv、daily_positions.csv 与 snapshot.json 均已生成
+哈希链：prediction -> signals.parquet -> target_weights.parquet -> BulletTrade result_hash 已逐项核验
+阶段标志：GOAL2_ENGINEERING_PASS
+
+formal_backtest_ready = false
+real_assist_data_ready = false
+```
+
+证据：`reports/kronos/goal2_engineering/`。入口：`make kronos-research-pipeline START=2022-06-01 END=2022-06-30`。
+
+说明：该标志只证明工程闭环与可审计性，不证明信号有效、策略可正式回测或可用于实盘。后续 Goal 3 才实现 WebUI 工作区；Goal 4 才实现参数研究；Goal 5 才补齐数据。
 
 ## Kronos Goal 1 验收（2026-08-21）
 

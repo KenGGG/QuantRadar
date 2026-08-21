@@ -25,7 +25,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from .snapshot import build_snapshot, load_snapshot, save_snapshot
+from .snapshot import _to_native, build_snapshot, load_snapshot, save_snapshot
 
 
 def _default_dir() -> str:
@@ -77,7 +77,7 @@ def save_experiment(exp: Experiment, directory: Optional[str] = None) -> str:
     os.makedirs(directory, exist_ok=True)
     path = os.path.join(directory, f"{exp.name}.json")
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(exp.to_dict(), f, ensure_ascii=False, indent=2, sort_keys=True)
+        json.dump(_to_native(exp.to_dict()), f, ensure_ascii=False, indent=2, sort_keys=True)
     return path
 
 

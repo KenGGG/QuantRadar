@@ -1,0 +1,43 @@
+{
+  "goal": "Kronos Goal 2 - Investment Research Pipeline",
+  "acceptance_run": {
+    "signal_run_id": "signal_51cdbe7f774cb805b7fb",
+    "signal_run_dir": "artifacts/kronos/signals/signal_51cdbe7f774cb805b7fb",
+    "backtest_run_id": "kronos_49286b246b7c5dd41ee2",
+    "backtest_run_dir": "runs/kronos_49286b246b7c5dd41ee2",
+    "dolt_commit": "rlr4k90ir2ok2tggb2nflr83qntc5q2t",
+    "signal_dates": ["2022-06-01", "2022-06-30"],
+    "execution_dates": ["2022-06-02", "2022-07-01"],
+    "prediction_hashes": {
+      "2022-06-01": "e4c80e5c9d1012096e10b59ac6d212c7c78cb5c3e8be8ef7df6110288d6c72aa",
+      "2022-06-30": "3ff74c45f1f909011f3405dffdc0fefb27ec4defb7d96464f1df73024b24a98c"
+    },
+    "signals_sha256": "14297f2c6d37a0f8702ba417acc5c77ab045f7939e2e1a286a98a6d7e9ef353a",
+    "target_weights_sha256": "0aa78106c87f2ce07796837ba43310a84d541b45596aa41ff4001a77c0bde389",
+    "target_weight_content_sha256": "49286b246b7c5dd41ee291a4a716b0df348d53721a3a172040a8efb73e0fdd70",
+    "backtest_result_hash": "0ca490311ce9d840fc1095df1a54f8e1c94fb649622fab741a2d24ca38c1e870"
+  },
+  "determinism": {
+    "repeated_signal_date": "2022-06-30",
+    "first_signal_run_id": "signal_ecd1467ff39aba70bf7c",
+    "repeated_prediction_hash_matches": true
+  },
+  "required_artifacts": {
+    "signals_parquet": true,
+    "target_weights_parquet": true,
+    "report_html": true,
+    "standard_report_html": true,
+    "metrics_json": true,
+    "trades_csv": true,
+    "daily_positions_csv": true,
+    "snapshot_json": true,
+    "signal_manifest": true,
+    "strategy_lock": true,
+    "research_manifest": true
+  },
+  "data_gate": {
+    "research_only": true,
+    "formal_backtest_ready": false,
+    "real_assist_data_ready": false
+  }
+}
