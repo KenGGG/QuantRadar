@@ -48,9 +48,9 @@
 - Consumes: config/model/data fingerprints, a completed weekly signal frame, input and prediction files.
 - Produces: deterministic `signal_run_id`, atomic `weeks/YYYY-MM-DD`, validated resume state, merged `signals.parquet`, `progress.json`, and root `manifest.json`.
 
-- [ ] Write failing tests that commit one real temp-directory partition, resume it, reject a changed config, and reject a tampered artifact.
-- [ ] Implement canonical JSON hashing, file hashing, atomic JSON/Parquet writes, partition manifests, validation, and root merge.
-- [ ] Run store plus adapter tests and commit `feat(kronos): add resumable signal artifact store`.
+- [x] Write failing tests that commit one real temp-directory partition, resume it, reject a changed config, and reject a tampered artifact.
+- [x] Implement canonical JSON hashing, file hashing, atomic JSON/Parquet writes, partition manifests, validation, and root merge.
+- [x] Run store plus adapter tests and commit `feat(kronos): add resumable signal artifact store`.
 
 ### Task 3: PIT Weekly Inputs and CUDA Prediction Contract
 
