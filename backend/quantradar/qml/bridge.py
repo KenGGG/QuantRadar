@@ -17,6 +17,7 @@ from typing import Any, Dict, Optional, Tuple
 import pandas as pd
 
 from quantradar.backtest import run_backtest
+from quantradar.portfolio.target_weight_bridge import build_monthly_signal_weight_strategy
 
 
 def select_signal_date(weights_index: Any, day: Any) -> Optional[pd.Timestamp]:
@@ -39,35 +40,7 @@ def _build_strategy_source(weights_csv: str) -> str:
     关键：再平衡在 T 日 09:30 触发，但只取「严格早于 T」的最新信号（T 日信号留到 T+1），
     杜绝同日未来数据泄露（look-ahead bias）。
     """
-    return f'''# QuantRadar: Qlib Target Weight -> BulletTrade 月度再平衡
-import pandas as pd
-
-_WEIGHTS = pd.read_csv(r"{weights_csv}", index_col=0, parse_dates=True)
-
-def _rebalance(context):
-    dt = context.current_dt
-    day = pd.Timestamp(dt).normalize()
-    # 严格早于交易日的最近信号（T 日信号不能用于 T 日 09:30 调仓）
-    mask = _WEIGHTS.index < day
-    if not mask.any():
-        return
-    row = _WEIGHTS[mask].iloc[-1]
-    total = context.portfolio.total_value
-    targets = set()
-    for sec, w in row.items():
-        if pd.notna(w) and float(w) > 0:
-            order_target_value(sec, float(w) * total)
-            targets.add(sec)
-    # 清掉不在目标内的现有持仓
-    for sec in list(context.portfolio.positions.keys()):
-        if sec not in targets:
-            order_target_value(sec, 0.0)
-
-def initialize(context):
-    pass
-
-run_monthly(_rebalance, 1, '09:30')
-'''
+    return build_monthly_signal_weight_strategy(weights_csv)
 
 
 def run_target_weight_backtest(
