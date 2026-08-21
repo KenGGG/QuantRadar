@@ -43,6 +43,39 @@ def derive_latest_tradeability_evidence(
     return GateEvidence.pass_("coverage.csv")
 
 
+def derive_pit_universe_evidence(
+    checked: GateEvidence,
+    coverage_rows: list[dict[str, Any]],
+) -> GateEvidence:
+    if not checked.ready:
+        return checked
+    by_dataset = {str(row["dataset"]): row for row in coverage_rows}
+    index = by_dataset.get("index_constituents", {})
+    price = by_dataset.get("price", {})
+    first = index.get("min_date")
+    last = index.get("max_date")
+    latest_price = price.get("max_date")
+    if first is None or last is None or latest_price is None:
+        return GateEvidence.blocked(
+            "PIT index or price coverage boundary is missing",
+            "pit_universe_checks.csv",
+            "coverage.csv",
+        )
+    required_start = first.replace(year=2015, month=1, day=1)
+    reasons = []
+    if first > required_start:
+        reasons.append(f"000300.SH starts at {first}, later than required {required_start}")
+    if last < latest_price:
+        reasons.append(f"000300.SH ends at {last}, earlier than latest price {latest_price}")
+    if reasons:
+        return GateEvidence.partial(
+            "; ".join(reasons),
+            "pit_universe_checks.csv",
+            "coverage.csv",
+        )
+    return checked
+
+
 def derive_data_gates(evidence: Mapping[str, GateEvidence]) -> dict[str, Any]:
     missing = [name for name in _REQUIRED_EVIDENCE if name not in evidence]
     if missing:

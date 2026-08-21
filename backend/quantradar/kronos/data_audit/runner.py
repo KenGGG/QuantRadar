@@ -8,7 +8,11 @@ from typing import Any
 from quantradar.audit import dolt_head_commit
 
 from .actions import audit_corporate_actions
-from .gates import derive_data_gates, derive_latest_tradeability_evidence
+from .gates import (
+    derive_data_gates,
+    derive_latest_tradeability_evidence,
+    derive_pit_universe_evidence,
+)
 from .prices import audit_price_semantics
 from .report import publish_audit_reports
 from .schema import audit_schema_and_coverage
@@ -55,7 +59,9 @@ def run_data_audit(
     evidence = {
         "price_semantics": bundle["prices"]["evidence"],
         "corporate_action": bundle["actions"]["evidence"],
-        "pit_universe": bundle["universe"]["evidence"],
+        "pit_universe": derive_pit_universe_evidence(
+            bundle["universe"]["evidence"], bundle["schema"]["coverage"]
+        ),
         "latest_tradeability": derive_latest_tradeability_evidence(
             bundle["schema"]["coverage"]
         ),
