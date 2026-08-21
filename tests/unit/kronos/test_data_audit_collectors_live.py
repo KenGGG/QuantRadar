@@ -59,6 +59,8 @@ def test_real_price_audit_reconciles_thirty_diverse_symbols(price_audit):
         "STAR",
     }
     assert all(row["status"] == "PASS" for row in price_audit["rows"])
+    assert max(row["years_covered"] for row in price_audit["rows"]) >= 8
+    assert any(row["has_zero_volume_history"] for row in price_audit["rows"])
 
 
 def test_real_corporate_action_audit_keeps_missing_authoritative_fields_partial(

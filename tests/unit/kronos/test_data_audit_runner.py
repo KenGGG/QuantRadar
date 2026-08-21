@@ -99,6 +99,8 @@ def test_run_data_audit_publishes_required_files_with_json_safe_dates(tmp_path):
     assert manifest["generated_at"] == "2026-08-21T10:00:00+00:00"
     assert manifest["counts"] == {"action_events": 1, "pit_weeks": 1, "price_samples": 1}
     assert result["output_dir"] == str(output)
+    for csv_path in output.glob("*.csv"):
+        assert b"\r\n" not in csv_path.read_bytes()
 
 
 def test_changed_dolt_head_refuses_to_publish_official_reports(tmp_path):

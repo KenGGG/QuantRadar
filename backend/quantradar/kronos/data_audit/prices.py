@@ -108,7 +108,6 @@ def audit_price_semantics(connection, provider, min_samples: int = 30) -> dict[s
         per_board=20,
     )
     candidates: list[dict[str, Any]] = []
-    raw_by_symbol: dict[str, pd.DataFrame] = {}
     for symbol in pool:
         rows = connection.query(
             "SELECT tradedate, open, high, low, close, adjclose, volume, amount "
@@ -133,12 +132,20 @@ def audit_price_semantics(connection, provider, min_samples: int = 30) -> dict[s
                 "zero_volume_days": int((raw["volume"].fillna(0) == 0).sum()),
             }
         )
-        raw_by_symbol[symbol] = raw
     symbols = select_diverse_symbols(candidates, min_samples)
     candidate_by_symbol = {str(row["symbol"]): row for row in candidates}
     results: list[dict[str, Any]] = []
     for symbol in symbols:
-        raw = raw_by_symbol[symbol]
+        audit_rows = connection.query(
+            "SELECT tradedate, open, high, low, close, adjclose, volume, amount "
+            "FROM final_a_stock_eod_price WHERE symbol = %s AND close > 0 "
+            "AND adjclose > 0 AND tradedate BETWEEN %s AND %s ORDER BY tradedate",
+            (symbol, "2015-01-01", "2023-06-09"),
+        )
+        raw = pd.DataFrame(audit_rows)
+        if raw.empty:
+            continue
+        raw.index = pd.to_datetime(raw.pop("tradedate"))
         start = raw.index[0].date()
         end = raw.index[-1].date()
         jq_symbol = to_joinquant_symbol(symbol)
@@ -159,8 +166,12 @@ def audit_price_semantics(connection, provider, min_samples: int = 30) -> dict[s
             "input_start_date": start,
             "input_end_date": end,
             "input_rows": len(common),
-            "factor_changed": float(meta["max_factor"]) > float(meta["min_factor"]),
-            "has_zero_volume_history": int(meta["zero_volume_days"] or 0) > 0,
+            "years_covered": int(raw.index.year.nunique()),
+            "years_checked": ";".join(str(year) for year in sorted(raw.index.year.unique())),
+            "factor_changed": bool(
+                (raw["adjclose"].astype(float) / raw["close"].astype(float)).nunique() > 1
+            ),
+            "has_zero_volume_history": bool((raw["volume"].fillna(0) == 0).any()),
         }
         for field in _OHLC:
             result[f"none_{field}_max_abs_error"] = _max_abs_error(
