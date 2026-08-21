@@ -10,7 +10,7 @@
 # 当前阶段
 
 ```text
-当前阶段：既有 V1/WebUI 主线封版 → Kronos Goal 0 数据审计完成 → Goal 1 固定 Kronos-base 真实 GPU 运行通过 KRONOS_BASE_GPU_RUNTIME_PASS ✅；尚未进入 Goal 2
+当前阶段：既有 V1/WebUI 主线封版 → Kronos Goal 0 数据审计完成 → Goal 1 固定 Kronos-base 真实 GPU 运行通过 KRONOS_BASE_GPU_RUNTIME_PASS ✅ → Goal 2 投资研究 Pipeline 通过真实工程验收 GOAL2_ENGINEERING_PASS ✅；未进入后续 Goal 3 WebUI 工作区
   1) 依赖可重建            PASS  HARDENING_DEPS_PASS ✅（pyproject 补依赖 / 干净 requirements.txt / Makefile setup 装前端 / 前端依赖补全）
   2) 测试库隔离+localhost  PASS  HARDENING_TEST_ISOLATION_PASS ✅（TEST 库隔离 + drop_all 拒绝非 _test 库 + 0.0.0.0 强警告）
   3) 审计链                PASS  HARDENING_AUDIT_CHAIN_PASS ✅（config 完整 + 策略源码落库 + run_id/snapshot_hash/result_hash 语义分明）
@@ -24,6 +24,7 @@
   volume/amount 不复权。后续连续研究输入必须显式 pre_factor_ref_date=signal_date，BulletTrade 成交与估值用原始价。
   【Kronos Goal 1 真实运行】独立 .venv-kronos；RTX 4070 SUPER；固定 Base/Tokenizer revision 与全文件 SHA256；
   2022-07-01 PIT 300 只候选中 239 只合格；全池1路径 5.201秒、5路径22.559秒；固定 seed hash 一致；batch/逐只推理在 1e-5 容差内一致。
+  【Kronos Goal 2 真实闭环】2022-06-01 与 2022-06-30 两个 PIT 分区经独立 CUDA 子进程五路径预测，生成可恢复 Signal Artifact、Top20 等权 Target Weight；2022-06-02/2022-07-01 严格 T+1 执行并在 BulletTrade 真实成交。35 个交易日原生 HTML/metrics/CSV/snapshot 已产出；prediction→signal→weight→result 哈希链核验通过。数据缺口未改变：formal_backtest_ready=false、real_assist_data_ready=false。
 最近完成（Hardening）：pyproject/requirements/Makefile/frontend 依赖可重建；storage 测试隔离；snapshot config+策略落库+hash 语义；
   qml bridge/loop/dump 防未来函数；worker 固定池+重启恢复；tests requires_dolt 跳过；GitHub Actions CI。
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）

@@ -117,10 +117,10 @@
 - Create: `reports/kronos/goal2_engineering/engineering_gate.json`
 - Create: `reports/kronos/goal2_engineering/acceptance_manifest.json`
 
-- [ ] Run one real Dolt/PIT week through locked Kronos-base CUDA and verify prediction hashes by repeating it.
-- [ ] Run a real multi-week signal/weight/BulletTrade chain over the smallest valid range that produces trades and an HTML report.
-- [ ] Validate every manifest/file hash, `execution_date > signal_date`, weight sums, unchanged Dolt commit, native BulletTrade reports, and both closed data gates.
-- [ ] Commit compact evidence manifests (not large model/prediction/report binaries) as `test(kronos): record Goal 2 real acceptance`.
+- [x] Run one real Dolt/PIT week through locked Kronos-base CUDA and verify prediction hashes by repeating it.
+- [x] Run a real multi-week signal/weight/BulletTrade chain over the smallest valid range that produces trades and an HTML report.
+- [x] Validate every manifest/file hash, `execution_date > signal_date`, weight sums, unchanged Dolt commit, native BulletTrade reports, and both closed data gates.
+- [x] Commit compact evidence manifests (not large model/prediction/report binaries) as `test(kronos): record Goal 2 real acceptance`.
 
 ### Task 7: Regression, Documentation, and Delivery
 
@@ -129,6 +129,22 @@
 - Modify: `docs/CURRENT_STATE.md`
 - Modify: `docs/GOAL2_IMPLEMENTATION_PLAN.md`
 
-- [ ] Run the complete Kronos suite, affected bridge/backtest suites, and the full unit suite; distinguish new failures from the recorded 15 pre-existing date-serialization failures.
-- [ ] Mark every completed checkbox, document exact commands/counts/timings and `GOAL2_ENGINEERING_PASS` only if all ten completion conditions are true.
-- [ ] Use verification-before-completion and finishing-a-development-branch, commit documentation, inspect the final diff, and attempt a non-force push of the current feature branch.
+- [x] Run the complete Kronos suite, affected bridge/backtest suites, and the full unit suite; date-serialization failures were fixed at the Snapshot and Experiment JSON boundaries.
+- [x] Mark every completed checkbox, document exact commands/counts/timings and `GOAL2_ENGINEERING_PASS` only if all ten completion conditions are true.
+- [x] Use verification-before-completion and finishing-a-development-branch, commit documentation, inspect the final diff, and attempt a non-force push of the current feature branch.
+
+## Final Verification Record
+
+```text
+Focused Goal 2/Kronos/bridge/snapshot suite:
+PYTHONPATH=backend:. .venv/bin/python -m pytest tests/unit/kronos tests/unit/test_target_weight_bridge.py tests/unit/test_bridge.py tests/unit/test_snapshot_json.py -q
+74 passed in 99.96s
+
+Full unit suite:
+PYTHONPATH=backend:. .venv/bin/python -m pytest tests/unit -q
+230 passed in 1178.25s
+
+Real CLI acceptance:
+PYTHONPATH=backend .venv/bin/python scripts/kronos_research_pipeline.py --repo-root . --artifacts-root artifacts/kronos/signals --runs-dir runs --start 2022-06-01 --end 2022-06-30 --topk 20
+exit 0; completion_marker=GOAL2_ENGINEERING_PASS
+```

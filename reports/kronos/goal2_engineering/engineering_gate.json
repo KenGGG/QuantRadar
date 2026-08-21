@@ -1,0 +1,15 @@
+{
+  "completion_marker": "GOAL2_ENGINEERING_PASS",
+  "engineering_ready": true,
+  "formal_backtest_ready": false,
+  "real_assist_data_ready": false,
+  "research_only": true,
+  "validated_at": "2026-08-21",
+  "validation": {
+    "artifact_hash_matches": true,
+    "dolt_commit_unchanged": true,
+    "execution_dates_strictly_after_signal_dates": true,
+    "native_bullettrade_report_exists": true,
+    "target_weight_sums_to_one": true
+  }
+}
