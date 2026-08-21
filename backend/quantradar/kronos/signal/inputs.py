@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -15,6 +17,16 @@ from quantradar.kronos.runtime.inputs import (
     select_eligible_windows,
     sha256_file,
 )
+from quantradar.kronos.universe_spec import (
+    DEFAULT_UNIVERSE,
+    INDEX_CODE,
+    JQ_INDEX_CODE,
+    Universe,
+    all_a_liquid_symbols,
+    listed_trade_days,
+    list_signal_dates as _spec_list_signal_dates,
+)
+from quantradar.providers.investment_data.symbols import to_joinquant_symbol
 
 
 def _date(value: dt.date | str) -> dt.date:
@@ -26,19 +38,14 @@ def _date(value: dt.date | str) -> dt.date:
 
 
 def list_signal_dates(
-    provider, *, start: dt.date | str, end: dt.date | str
+    provider,
+    *,
+    start: dt.date | str,
+    end: dt.date | str,
+    universe: Universe = DEFAULT_UNIVERSE,
 ) -> list[dt.date]:
-    rows = provider.connection.query(
-        "SELECT DISTINCT trade_date FROM ts_index_weight "
-        "WHERE index_code = %s AND trade_date BETWEEN %s AND %s "
-        "ORDER BY trade_date",
-        ("000300.SH", _date(start).isoformat(), _date(end).isoformat()),
-    )
-    return [
-        value
-        for row in rows
-        if isinstance((value := row.get("trade_date")), dt.date)
-    ]
+    """周度信号日；委托给 universe_spec（默认 all_a_liquid，不查指数 PIT）。"""
+    return _spec_list_signal_dates(provider, start=start, end=end, universe=universe)
 
 
 def collect_week_input_package(
@@ -48,6 +55,7 @@ def collect_week_input_package(
     output_dir: str | Path,
     data_contract_path: str | Path,
     expected_data_commit: str | None = None,
+    universe: Universe = DEFAULT_UNIVERSE,
 ) -> dict:
     day = _date(signal_date)
     connection = provider.connection
@@ -58,17 +66,26 @@ def collect_week_input_package(
         raise RuntimeError(
             f"Dolt HEAD does not match SignalRun snapshot: {start_commit} != {expected_data_commit}"
         )
-    snapshot = connection.query_one(
-        "SELECT COUNT(*) AS member_count FROM ts_index_weight "
-        "WHERE index_code = %s AND trade_date = %s",
-        ("000300.SH", day.isoformat()),
-    ) or {}
-    if int(snapshot.get("member_count") or 0) == 0:
-        raise RuntimeError(f"No exact 000300.SH PIT snapshot for {day}")
 
-    symbols = sorted(provider.get_index_stocks("000300.XSHG", date=day))
-    statuses = _collect_status(connection, symbols, day)
-    securities = provider.get_all_securities("stock", date=day)
+    if universe is Universe.ALL_A_LIQUID:
+        internal_symbols = all_a_liquid_symbols(connection, day)
+        jq_by_internal = {sym: to_joinquant_symbol(sym) for sym in internal_symbols}
+        symbols = [jq_by_internal[sym] for sym in internal_symbols]
+        statuses = _collect_status(connection, symbols, day)
+        securities = None
+    else:
+        index_code = INDEX_CODE[universe]
+        snapshot = connection.query_one(
+            "SELECT COUNT(*) AS member_count FROM ts_index_weight "
+            "WHERE index_code = %s AND trade_date = %s",
+            (index_code, day.isoformat()),
+        ) or {}
+        if int(snapshot.get("member_count") or 0) == 0:
+            raise RuntimeError(f"No exact {index_code} PIT snapshot for {day}")
+        symbols = sorted(provider.get_index_stocks(JQ_INDEX_CODE[universe], date=day))
+        statuses = _collect_status(connection, symbols, day)
+        securities = provider.get_all_securities("stock", date=day)
+
     open_days = [item.date() for item in provider.get_trade_days(end_date=day)]
     future_dates = [
         item.date()
@@ -77,9 +94,27 @@ def collect_week_input_package(
         )
     ]
     windows: list[SymbolWindow] = []
-    for symbol in symbols:
+    candidate_symbols = (
+        internal_symbols if universe is Universe.ALL_A_LIQUID else symbols
+    )
+    for source in candidate_symbols:
+        if universe is Universe.ALL_A_LIQUID:
+            jq_symbol = jq_by_internal[source]
+            listed_days = listed_trade_days(connection, source, day)
+        else:
+            jq_symbol = source
+            listed_start = None
+            if source in securities.index:
+                raw = securities.loc[source, "start_date"]
+                if not pd.isna(raw):
+                    listed_start = pd.Timestamp(raw).date()
+            listed_days = (
+                sum(trade_day >= listed_start for trade_day in open_days)
+                if listed_start is not None
+                else 0
+            )
         frame = provider.get_price(
-            symbol,
+            jq_symbol,
             end_date=day,
             count=LOOKBACK_DAYS,
             fields=list(FEATURE_NAMES),
@@ -87,20 +122,10 @@ def collect_week_input_package(
             pre_factor_ref_date=day,
             fill_paused=False,
         )
-        listed_start = None
-        if symbol in securities.index:
-            raw = securities.loc[symbol, "start_date"]
-            if not pd.isna(raw):
-                listed_start = pd.Timestamp(raw).date()
-        listed_days = (
-            sum(trade_day >= listed_start for trade_day in open_days)
-            if listed_start is not None
-            else 0
-        )
-        is_st, tradestatus = statuses.get(symbol, (None, None))
+        is_st, tradestatus = statuses.get(jq_symbol, (None, None))
         windows.append(
             SymbolWindow(
-                symbol=symbol,
+                symbol=jq_symbol,
                 values=frame.loc[:, list(FEATURE_NAMES)].to_numpy(dtype="float64"),
                 dates=tuple(index.date() for index in frame.index),
                 listed_trade_days=listed_days,
@@ -122,13 +147,11 @@ def collect_week_input_package(
         pit_snapshot_date=day,
         data_commit=start_commit,
         data_contract_hash=sha256_file(data_contract_path),
+        universe=universe,
     )
     manifest["execution_date"] = future_dates[0].isoformat()
     manifest_path = Path(output_dir) / "input_manifest.json"
     temporary = manifest_path.with_name(".input_manifest.json.tmp")
-    import json
-    import os
-
     temporary.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",

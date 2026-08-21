@@ -13,7 +13,19 @@ import numpy as np
 import pandas as pd
 
 from quantradar.audit import dolt_head_commit
-from quantradar.providers.investment_data.symbols import normalize_stock_symbol
+from quantradar.kronos.universe_spec import (
+    DEFAULT_UNIVERSE,
+    INDEX_CODE,
+    JQ_INDEX_CODE,
+    Universe,
+    all_a_liquid_symbols,
+    latest_price_date,
+    listed_trade_days,
+)
+from quantradar.providers.investment_data.symbols import (
+    normalize_stock_symbol,
+    to_joinquant_symbol,
+)
 
 from .contracts import LOOKBACK_DAYS, PREDICTION_DAYS
 
@@ -132,6 +144,7 @@ def publish_input_package(
     pit_snapshot_date: dt.date,
     data_commit: str,
     data_contract_hash: str,
+    universe: Universe = DEFAULT_UNIVERSE,
     available_pit_signal_weeks: int | None = None,
 ) -> dict[str, Any]:
     if len(future_dates) != PREDICTION_DAYS:
@@ -161,6 +174,7 @@ def publish_input_package(
         "version": "kronos-runtime-input-v1",
         "signal_date": signal_date.isoformat(),
         "pit_snapshot_date": pit_snapshot_date.isoformat(),
+        "universe": universe.value,
         "lookback_days": LOOKBACK_DAYS,
         "prediction_days": PREDICTION_DAYS,
         "feature_names": list(FEATURE_NAMES),
@@ -226,26 +240,41 @@ def collect_real_input_package(
     *,
     output_dir: str | Path,
     data_contract_path: str | Path,
+    universe: Universe = DEFAULT_UNIVERSE,
 ) -> dict[str, Any]:
     connection = provider.connection
     start_commit = dolt_head_commit(connection)
-    snapshot = connection.query_one(
-        "SELECT MIN(trade_date) AS first_snapshot_date, "
-        "MAX(trade_date) AS snapshot_date FROM ts_index_weight "
-        "WHERE index_code = %s",
-        ("000300.SH",),
-    ) or {}
-    signal_date = snapshot.get("snapshot_date")
-    first_snapshot_date = snapshot.get("first_snapshot_date")
-    if not isinstance(signal_date, dt.date):
-        raise RuntimeError("No real 000300.SH PIT snapshot is available")
 
-    symbols = sorted(provider.get_index_stocks("000300.XSHG", date=signal_date))
-    statuses = _collect_status(connection, symbols, signal_date)
-    securities = provider.get_all_securities("stock", date=signal_date)
+    if universe is Universe.ALL_A_LIQUID:
+        signal_date = latest_price_date(connection)
+        if not isinstance(signal_date, dt.date):
+            raise RuntimeError("No investment_data price rows are available")
+        internal_symbols = all_a_liquid_symbols(connection, signal_date)
+        jq_by_internal = {sym: to_joinquant_symbol(sym) for sym in internal_symbols}
+        symbols = [jq_by_internal[sym] for sym in internal_symbols]
+        statuses = _collect_status(connection, symbols, signal_date)
+        securities = None
+        first_snapshot_date = None
+        available_pit_signal_weeks = None
+    else:
+        index_code = INDEX_CODE[universe]
+        snapshot = connection.query_one(
+            "SELECT MIN(trade_date) AS first_snapshot_date, "
+            "MAX(trade_date) AS snapshot_date FROM ts_index_weight "
+            "WHERE index_code = %s",
+            (index_code,),
+        ) or {}
+        signal_date = snapshot.get("snapshot_date")
+        first_snapshot_date = snapshot.get("first_snapshot_date")
+        if not isinstance(signal_date, dt.date):
+            raise RuntimeError(f"No real {index_code} PIT snapshot is available")
+
+        symbols = sorted(provider.get_index_stocks(JQ_INDEX_CODE[universe], date=signal_date))
+        statuses = _collect_status(connection, symbols, signal_date)
+        securities = provider.get_all_securities("stock", date=signal_date)
+
     open_days = [item.date() for item in provider.get_trade_days(end_date=signal_date)]
-    available_pit_signal_weeks = None
-    if isinstance(first_snapshot_date, dt.date):
+    if universe is not Universe.ALL_A_LIQUID and isinstance(first_snapshot_date, dt.date):
         available_pit_signal_weeks = len(
             {
                 (day.isocalendar().year, day.isocalendar().week)
@@ -261,9 +290,27 @@ def collect_real_input_package(
     ]
 
     windows: list[SymbolWindow] = []
-    for symbol in symbols:
+    candidate_symbols = (
+        internal_symbols if universe is Universe.ALL_A_LIQUID else symbols
+    )
+    for source in candidate_symbols:
+        if universe is Universe.ALL_A_LIQUID:
+            jq_symbol = jq_by_internal[source]
+            listed_days = listed_trade_days(connection, source, signal_date)
+        else:
+            jq_symbol = source
+            start_date = None
+            if source in securities.index:
+                raw_start = securities.loc[source, "start_date"]
+                if not pd.isna(raw_start):
+                    start_date = pd.Timestamp(raw_start).date()
+            listed_days = (
+                sum(day >= start_date for day in open_days)
+                if start_date is not None
+                else 0
+            )
         frame = provider.get_price(
-            symbol,
+            jq_symbol,
             end_date=signal_date,
             count=LOOKBACK_DAYS,
             fields=list(FEATURE_NAMES),
@@ -271,20 +318,10 @@ def collect_real_input_package(
             pre_factor_ref_date=signal_date,
             fill_paused=False,
         )
-        start_date = None
-        if symbol in securities.index:
-            raw_start = securities.loc[symbol, "start_date"]
-            if not pd.isna(raw_start):
-                start_date = pd.Timestamp(raw_start).date()
-        listed_days = (
-            sum(day >= start_date for day in open_days)
-            if start_date is not None
-            else 0
-        )
-        is_st, tradestatus = statuses.get(symbol, (None, None))
+        is_st, tradestatus = statuses.get(jq_symbol, (None, None))
         windows.append(
             SymbolWindow(
-                symbol=symbol,
+                symbol=jq_symbol,
                 values=frame.loc[:, list(FEATURE_NAMES)].to_numpy(dtype=np.float64),
                 dates=tuple(index.date() for index in frame.index),
                 listed_trade_days=listed_days,
@@ -307,5 +344,6 @@ def collect_real_input_package(
         pit_snapshot_date=signal_date,
         data_commit=start_commit,
         data_contract_hash=sha256_file(data_contract_path),
+        universe=universe,
         available_pit_signal_weeks=available_pit_signal_weeks,
     )

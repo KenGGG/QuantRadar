@@ -16,9 +16,12 @@ def test_execute_audit_cli_prints_machine_readable_gate_summary(tmp_path, capsys
         return {
             "output_dir": str(output_dir),
             "gates": {
-                "signal_research_ready": True,
-                "formal_backtest_ready": False,
+                "kronos_signal_research_ready": True,
+                "realistic_backtest_ready": True,
                 "real_assist_data_ready": False,
+                "csi300_pit_ready": False,
+                "signal_research_ready": True,
+                "formal_backtest_ready": True,
             },
         }
 
@@ -32,8 +35,11 @@ def test_execute_audit_cli_prints_machine_readable_gate_summary(tmp_path, capsys
     output = json.loads(capsys.readouterr().out)
     assert exit_code == 0
     assert output == {
-        "formal_backtest_ready": False,
+        "csi300_pit_ready": False,
+        "formal_backtest_ready": True,
+        "kronos_signal_research_ready": True,
         "output_dir": str(tmp_path / "audit"),
         "real_assist_data_ready": False,
+        "realistic_backtest_ready": True,
         "signal_research_ready": True,
     }

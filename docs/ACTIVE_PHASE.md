@@ -4,6 +4,33 @@
 
 **当前阶段：Kronos Goal 2 投资研究 Pipeline 已完成真实验收（GOAL2_ENGINEERING_PASS ✅）。Goal 0 的数据缺口仍存在，正式回测和实盘辅助门禁保持关闭。**
 
+---
+
+## 冻结声明与门禁重构（2026-08-22）
+
+**基线冻结**：Goal 0/1/2 已合并入 `main@be495bb`，作为正式基线冻结。后续 Goal 必须从 `main`
+**新建分支 + 新建 worktree** 开发，不复用旧 worktree/分支（避免基线漂移）。本变更在
+`feat/kronos-gate-refactor` / `.worktrees/kronos-gate-refactor`。
+
+**门禁重构（Goal 5A-refactor，已实施）**：复核 Kronos 官方要求后确认——Kronos `predict()` 仅依赖
+OHLC + 时间戳（volume/amount 可选），**不需要** 000300 PIT / ST / 停牌 / 涨跌停 / 主数据 / 公司行为。
+旧代码把「高保真回测 / 实盘辅助」所需数据错误提升为「Kronos 全局门禁」，并用
+`raise RuntimeError("No exact 000300.SH PIT snapshot ...")` 把 Kronos 绑死到 000300 PIT。
+现已修正：
+
+- 门禁改为 **4 层能力模型** + 独立的 `csi300_pit_ready`：`kronos_signal_research_ready` /
+  `realistic_backtest_ready`（fidelity=PARTIAL）/ `real_assist_data_ready` / `csi300_pit_ready`
+  独立判定；单一能力缺失不再阻塞 Kronos 研究。
+- 默认研究宇宙改为 **`all_a_liquid`**（由持续更新的 `final_a_stock_eod_price` 构造，PIT-free，
+  沪/深 A 股，排除北交所与指数代码）。`list_signal_dates` / `collect_week_input_package` /
+  `collect_real_input_package` 宇宙可配置（`--universe`）。
+- 实测：`kronos_signal_research_ready=True`、`realistic_backtest_ready=True`（PARTIAL）、
+  `real_assist_data_ready=False`、`csi300_pit_ready=PARTIAL`。
+- **数据补齐降级为 Goal 5B**：仅用于提升 realistic / live 层级保真度，不再是 Kronos 研究的阻塞项。
+
+**优先级（用户决策）**：门禁已开，Kronos 信号研究可立即推进；**不做 Goal 3/4、不做参数调优、不把
+Kronos 结果包装为正式投资结论**，直到相关门禁达到目标保真度。详见 `docs/DATA_GATE_CLOSURE_PLAN.md`。
+
 ## Kronos Goal 2 验收（2026-08-21）
 
 ```text

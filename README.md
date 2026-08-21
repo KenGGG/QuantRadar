@@ -33,7 +33,23 @@
 
 ---
 
-## 二、架构与关键路径
+## 二、Kronos 投资研究门禁（能力分层，Goal 0/1/2 已冻结）
+
+Kronos `predict()` 仅依赖 OHLC + 时间戳（volume/amount 可选）。当前 `investment_data` 持续更新的
+`final_a_stock_eod_price`（→2026-08-18，OHLC+volume+amount+adjclose）已足以支撑 Kronos 信号研究。
+门禁已从「全局阻断」重构为 4 层能力模型（详见 `docs/DATA_GATE_CLOSURE_PLAN.md`）：
+
+| 门禁 | 状态 | 说明 |
+|------|------|------|
+| `kronos_signal_research_ready` | ✅ true | 默认宇宙 `all_a_liquid`（由持续行情构造，PIT-free）即可研究，不再被 000300 PIT 阻塞 |
+| `realistic_backtest_ready` | ⚠️ PARTIAL | 可用但保真度有限（tradeability 覆盖滞后至 2023） |
+| `real_assist_data_ready` | ⛔ false | tradeability 未达 PASS，不实盘辅助 |
+| `csi300_pit_ready` | ⚠️ PARTIAL | 独立能力（000300.SH 成分仅 2020-2022），不阻塞 Kronos 研究 |
+
+代码解绑：`list_signal_dates` / `collect_week_input_package` / `collect_real_input_package`
+宇宙可配置（`--universe all_a_liquid|csi300_pit|csi500_pit|csi1000_pit`），默认 `all_a_liquid`。
+
+## 三、架构与关键路径
 
 ```text
 investment_data (Dolt SQL server, 127.0.0.1:3307, 只读事实源)
@@ -51,7 +67,7 @@ investment_data (Dolt SQL server, 127.0.0.1:3307, 只读事实源)
 
 ---
 
-## 三、依赖（启动前需就绪）
+## 四、依赖（启动前需就绪）
 
 | 依赖 | 说明 | 由谁管理 |
 |------|------|----------|
@@ -63,7 +79,7 @@ investment_data (Dolt SQL server, 127.0.0.1:3307, 只读事实源)
 
 ---
 
-## 四、一键启停（推荐）
+## 五、一键启停（推荐）
 
 根目录提供 `quantradar.sh` 管理启动 / 重启 / 关闭：
 
@@ -93,7 +109,7 @@ chmod +x quantradar.sh        # 首次需赋可执行权限（已默认提交）
 
 ---
 
-## 五、开发命令（Makefile）
+## 六、开发命令（Makefile）
 
 ```bash
 make setup      # 安装依赖（BulletTrade editable + 本项目 + 测试依赖 + 前端构建）
@@ -107,7 +123,7 @@ make dev        # 开发服务器（uvicorn --reload，等价于 start 的 reloa
 
 ---
 
-## 六、目录速览
+## 七、目录速览
 
 ```text
 backend/quantradar/   后端核心（provider / backtest / snapshot / audit / worker / storage / qml / api）
@@ -120,7 +136,7 @@ logs/                 运行时日志（quantradar.log / quantradar.pid）
 
 ---
 
-## 七、注意事项
+## 八、注意事项
 
 - **禁止**向仓库写入 investment_data 的写操作（只读事实源）。
 - **禁止**用 Qlib 替换 BulletTrade 撮合与组合会计；Qlib 仅用于因子研究 / 模型 / 预测。

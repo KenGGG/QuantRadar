@@ -118,6 +118,7 @@ def test_publish_input_package_writes_hashed_real_arrays(tmp_path) -> None:
 
     assert manifest["feature_names"] == list(FEATURE_NAMES)
     assert manifest["eligible_symbol_count"] == 56
+    assert manifest["universe"] == "all_a_liquid"
     assert manifest["input_content_sha256"]
     assert manifest["npz_sha256"]
     assert manifest["available_pit_signal_weeks"] == 131

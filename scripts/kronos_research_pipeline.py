@@ -8,6 +8,7 @@ from typing import Callable
 
 from quantradar.config import load_investment_data_config
 from quantradar.kronos.pipeline import run_research_pipeline
+from quantradar.kronos.universe_spec import DEFAULT_UNIVERSE, Universe, parse_universe
 from quantradar.providers.investment_data.provider import InvestmentDataProvider
 
 
@@ -20,6 +21,7 @@ def execute_pipeline_cli(
     start: str,
     end: str,
     topk: int,
+    universe: Universe = DEFAULT_UNIVERSE,
     pipeline_runner: Callable = run_research_pipeline,
 ) -> int:
     result = pipeline_runner(
@@ -30,6 +32,7 @@ def execute_pipeline_cli(
         start=start,
         end=end,
         topk=topk,
+        universe=universe,
     )
     gate = result["gate"]
     summary = {
@@ -37,8 +40,12 @@ def execute_pipeline_cli(
         "backtest_run_dir": result["backtest"]["run_dir"],
         "engineering_ready": gate["engineering_ready"],
         "completion_marker": gate["completion_marker"],
-        "formal_backtest_ready": gate["formal_backtest_ready"],
+        "universe": universe.value,
+        "kronos_signal_research_ready": gate["kronos_signal_research_ready"],
+        "realistic_backtest_ready": gate["realistic_backtest_ready"],
         "real_assist_data_ready": gate["real_assist_data_ready"],
+        "csi300_pit_ready": gate["csi300_pit_ready"],
+        "formal_backtest_ready": gate["formal_backtest_ready"],
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
     return 0 if gate.get("completion_marker") == "GOAL2_ENGINEERING_PASS" else 2
@@ -54,6 +61,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--start", required=True)
     parser.add_argument("--end", required=True)
     parser.add_argument("--topk", type=int, default=20)
+    parser.add_argument(
+        "--universe",
+        default=DEFAULT_UNIVERSE.value,
+        type=parse_universe,
+        help="signal universe: all_a_liquid (default), csi300_pit, csi500_pit, csi1000_pit",
+    )
     return parser
 
 
@@ -69,6 +82,7 @@ def main(argv: list[str] | None = None) -> int:
             start=args.start,
             end=args.end,
             topk=args.topk,
+            universe=args.universe,
         )
     except Exception as exc:
         print(
@@ -76,9 +90,12 @@ def main(argv: list[str] | None = None) -> int:
                 {
                     "engineering_ready": False,
                     "completion_marker": None,
+                    "universe": getattr(args, "universe", DEFAULT_UNIVERSE.value),
                     "error": str(exc),
-                    "formal_backtest_ready": False,
+                    "kronos_signal_research_ready": False,
+                    "realistic_backtest_ready": False,
                     "real_assist_data_ready": False,
+                    "csi300_pit_ready": False,
                 },
                 ensure_ascii=False,
                 indent=2,

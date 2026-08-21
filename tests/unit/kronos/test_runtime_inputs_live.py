@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from quantradar.kronos.runtime.inputs import collect_real_input_package
+from quantradar.kronos.universe_spec import Universe
 
 pytestmark = [pytest.mark.unit, pytest.mark.requires_dolt]
 
@@ -17,6 +18,7 @@ def test_real_goal1_package_uses_latest_pit_and_complete_qfq_windows(
         live_provider,
         output_dir=tmp_path,
         data_contract_path="reports/kronos/data_audit/data_contract.json",
+        universe=Universe.CSI300_PIT,
     )
 
     arrays = np.load(tmp_path / "runtime_inputs.npz", allow_pickle=False)

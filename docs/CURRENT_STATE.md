@@ -24,7 +24,7 @@
   volume/amount 不复权。后续连续研究输入必须显式 pre_factor_ref_date=signal_date，BulletTrade 成交与估值用原始价。
   【Kronos Goal 1 真实运行】独立 .venv-kronos；RTX 4070 SUPER；固定 Base/Tokenizer revision 与全文件 SHA256；
   2022-07-01 PIT 300 只候选中 239 只合格；全池1路径 5.201秒、5路径22.559秒；固定 seed hash 一致；batch/逐只推理在 1e-5 容差内一致。
-  【Kronos Goal 2 真实闭环】2022-06-01 与 2022-06-30 两个 PIT 分区经独立 CUDA 子进程五路径预测，生成可恢复 Signal Artifact、Top20 等权 Target Weight；2022-06-02/2022-07-01 严格 T+1 执行并在 BulletTrade 真实成交。35 个交易日原生 HTML/metrics/CSV/snapshot 已产出；prediction→signal→weight→result 哈希链核验通过。数据缺口未改变：formal_backtest_ready=false、real_assist_data_ready=false。
+  【Kronos Goal 2 真实闭环】2022-06-01 与 2022-06-30 两个 PIT 分区经独立 CUDA 子进程五路径预测，生成可恢复 Signal Artifact、Top20 等权 Target Weight；2022-06-02/2022-07-01 严格 T+1 执行并在 BulletTrade 真实成交。35 个交易日原生 HTML/metrics/CSV/snapshot 已产出；prediction→signal→weight→result 哈希链核验通过。数据缺口未改变（real_assist_data_ready=false，tradeability 滞后）；但门禁模型已重构为能力分层——kronos_signal_research_ready=true（默认宇宙 all_a_liquid 仅依赖持续行情，Kronos 信号研究不再被 000300 PIT 阻塞）、realistic_backtest_ready=true（fidelity=PARTIAL，可用但保真度有限）、csi300_pit_ready=PARTIAL（独立能力，不阻塞 Kronos 研究）。
 最近完成（Hardening）：pyproject/requirements/Makefile/frontend 依赖可重建；storage 测试隔离；snapshot config+策略落库+hash 语义；
   qml bridge/loop/dump 防未来函数；worker 固定池+重启恢复；tests requires_dolt 跳过；GitHub Actions CI。
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
@@ -233,9 +233,9 @@ BulletTrade WebUI 收口（#70~#74 已完成）：统一回测链 run_unified_ba
   外部待定（用户侧，不阻塞）：数据补齐方案（ST/停牌/列表，来自只读 Dolt，本仓库无法补齐）
 禁止提前开发：PostgreSQL / ETF / QMT / 实盘 / Qlib 深化 / 因子 / 寻优（除非当前阶段需要或用户决策）
 最终封版完成（BULLETTRADE_WEBUI_FINAL_PASS）：3 项必做——报告内联显示(REPORT_INLINE_PASS) / Worker 重启恢复双覆盖 RUNNING+PENDING(WORKER_RESTART_RECOVERY_PASS) / fq 重启恢复一致性(WORKER_FQ_RECOVERY_PASS)——全部达成，并已通过 live 服务器等价浏览器流程（提交 JoinQuant 兼容策略→轮询 SUCCESS→report?which=full|standard 均返回 Content-Disposition: inline→config.fq=snapshot.config.fq=pre 一致）最终验收。后端测试（Dolt+PG 13 passed）+ CI 后端（无 Dolt/PG 24 passed/138 skipped）+ 前端构建（npm run build 成功）全绿。
-Kronos Goal 0（已完成）：只读数据事实审计，产出 `reports/kronos/data_audit/` 九项证据文件；30/30 价格语义通过，20 个公司行为候选 PARTIAL，20/20 覆盖内 PIT 对账通过但区间仅 2020-2022；所有研究/回测/实盘就绪门禁均为 false。
+Kronos Goal 0（已完成）：只读数据事实审计，产出 `reports/kronos/data_audit/` 九项证据文件；30/30 价格语义通过，20 个公司行为候选 PARTIAL，20/20 覆盖内 PIT 对账通过但区间仅 2020-2022。门禁已重构为 4 层能力模型：kronos_signal_research_ready=true（默认宇宙 all_a_liquid 仅依赖持续行情，Kronos 信号研究不再被 000300 PIT 阻塞）、realistic_backtest_ready=true（fidelity=PARTIAL，可用但保真度有限）、real_assist_data_ready=false（tradeability 滞后）、csi300_pit_ready=PARTIAL（独立能力，不阻塞研究）。
 Kronos Goal 1（已完成）：`.venv-kronos` 与模型锁；固定源码 `67b630e...`、Base `2b554741...`、Tokenizer `0e011738...`；RTX 4070 SUPER 真实 CUDA smoke 四档通过；239只全池1路径 5.201 秒、5路径 22.559 秒；seed 101 hash 可复现；batch/逐只推理在 1e-5 容差内一致；现有 PIT 129 周回填估算 0.808 小时。
-下一动作：可开始 Goal 2 的历史 RankIC、五分组收益和信号排序；但最新 PIT 成分缺失使“最近2周真实运行证据”继续 BLOCKED，公司行为/ST/停牌等缺口补齐前 `formal_backtest_ready=false`、`real_assist_data_ready=false`。
+下一动作：Kronos 信号研究已在当前数据上解绑（默认宇宙 all_a_liquid，kronos_signal_research_ready=true），可开始历史 RankIC、五分组收益和信号排序；real_assist_data_ready=false（tradeability 滞后）补齐前不得开放实盘辅助；formal_backtest_ready（=realistic_backtest_ready）现为 true（PARTIAL 保真度）。Goal 3 WebUI 工作区 / Goal 4 参数研究 / Goal 5 数据补齐 仍按用户决策顺序推进。
 封版后用户追加的 WebUI 增强（属 investment_data → WebUI 主线，非禁止的研究类新功能）：
   ① 数据状态页显示最新数据时间：/api/health 的 environment 新增 latest_data_date（= SELECT MAX(tradedate) FROM final_a_stock_eod_price；Goal 0 实测 2026-08-18），数据源状态卡片「刷新状态」后展示「最新数据日期」。
   ② 「更新数据」按钮：POST /api/data/pull 在本地 Dolt 仓库（默认 /data/investment_data，可用 QUANTRADAR_DOLT_REPO 覆盖）执行 dolt pull 拉取 origin 最新数据，成功后自动刷新状态（最新数据日期同步）。

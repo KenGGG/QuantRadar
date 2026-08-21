@@ -84,10 +84,20 @@ def test_pipeline_links_prediction_signal_weight_and_native_report(tmp_path):
     )
 
     assert result["gate"]["completion_marker"] == "GOAL2_ENGINEERING_PASS"
-    assert result["gate"]["formal_backtest_ready"] is False
+    # 默认宇宙 all_a_liquid：Kronos 信号研究不被 000300 PIT 阻塞；
+    # realistic 默认可用（无缓存审计时视为可用），real_assist 仍阻塞。
+    assert result["gate"]["kronos_signal_research_ready"] is True
+    assert result["gate"]["signal_research_ready"] is True
+    assert result["gate"]["realistic_backtest_ready"] is True
+    assert result["gate"]["formal_backtest_ready"] is True
     assert result["gate"]["real_assist_data_ready"] is False
+    assert result["gate"]["csi300_pit_ready"] is False
     run_dir = Path(result["backtest"]["run_dir"])
     audit = json.loads((run_dir / "kronos_research_manifest.json").read_text())
+    assert audit["universe"] == "all_a_liquid"
+    assert audit["kronos_signal_research_ready"] is True
+    assert audit["realistic_backtest_ready"] is True
+    assert audit["real_assist_data_ready"] is False
     assert audit["prediction_hashes"]
     assert audit["signals_sha256"]
     assert audit["target_weights_sha256"]

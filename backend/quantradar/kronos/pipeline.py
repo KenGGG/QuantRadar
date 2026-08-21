@@ -22,6 +22,7 @@ from quantradar.kronos.portfolio import (
 from quantradar.kronos.runtime.contracts import KRONOS_MODEL_ID
 from quantradar.kronos.signal.adapter import build_signals
 from quantradar.kronos.signal.inputs import collect_week_input_package, list_signal_dates
+from quantradar.kronos.universe_spec import DEFAULT_UNIVERSE, Universe
 from quantradar.kronos.signal.manifest import file_hash, write_json_atomic
 from quantradar.kronos.signal.store import SignalArtifactStore
 from quantradar.kronos.signal.subprocess_runner import run_signal_subprocess
@@ -39,6 +40,21 @@ def _input_dates(input_dir: Path, manifest: dict[str, Any]) -> tuple[str, str]:
     return start, end
 
 
+def _load_cached_data_gate(repo_root: Path) -> dict[str, Any] | None:
+    """读取最近一次 ``make kronos-data-audit`` 产出的门禁（作为 tradeability 依据）。
+
+    研究流水线自身不重跑完整审计；门禁的 tradeability 维度以审计产物为准。
+    缺失时退化为保守默认值。
+    """
+    path = Path(repo_root) / "reports/kronos/data_audit/data_gate.json"
+    if not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return None
+
+
 def run_research_pipeline(
     provider,
     *,
@@ -50,6 +66,7 @@ def run_research_pipeline(
     topk: int = 20,
     initial_cash: float = 1_000_000.0,
     signal_dates: Iterable[str | dt.date] | None = None,
+    universe: Universe = DEFAULT_UNIVERSE,
     input_builder: Callable[..., dict[str, Any]] = collect_week_input_package,
     prediction_runner: Callable[..., dict[str, Any]] = run_signal_subprocess,
     backtest_runner: Callable[..., dict[str, Any]] = run_unified_target_weight_backtest,
@@ -63,7 +80,7 @@ def run_research_pipeline(
     if not data_commit:
         raise RuntimeError("Dolt HEAD is unavailable")
     dates = [str(value) for value in signal_dates] if signal_dates is not None else [
-        value.isoformat() for value in list_signal_dates(provider, start=start, end=end)
+        value.isoformat() for value in list_signal_dates(provider, start=start, end=end, universe=universe)
     ]
     if not dates:
         raise RuntimeError("No PIT signal dates in requested range")
@@ -94,6 +111,7 @@ def run_research_pipeline(
                 output_dir=input_dir,
                 data_contract_path=data_contract_path,
                 expected_data_commit=data_commit,
+                universe=universe,
             )
             prediction = prediction_runner(
                 repo_root=root, input_dir=input_dir, output_dir=output_dir
@@ -169,9 +187,23 @@ def run_research_pipeline(
         "signal_run_id": store.run_id,
     }
     write_json_atomic(run_dir / "strategy_lock.json", strategy_lock)
+    cached_gate = _load_cached_data_gate(root)
+    # 研究流水线已抵达此处 => 输入宇宙可构造（kronos_signal_research_ready=True）。
+    # realistic / real_assist / csi300_pit 的 tradeability 维度以最近一次审计为准。
+    kronos_signal_research_ready = True
+    realistic_backtest_ready = (
+        bool(cached_gate.get("realistic_backtest_ready")) if cached_gate else True
+    )
+    real_assist_data_ready = (
+        bool(cached_gate.get("real_assist_data_ready")) if cached_gate else False
+    )
+    csi300_pit_ready = (
+        bool(cached_gate.get("csi300_pit_ready")) if cached_gate else False
+    )
     research_manifest = {
         "signal_run_id": store.run_id,
         "data_commit": data_commit,
+        "universe": universe.value,
         "prediction_hashes": sorted(signals["prediction_hash"].dropna().unique().tolist()),
         "signals_sha256": file_hash(store.run_dir / "signals.parquet"),
         "target_weights_sha256": file_hash(run_dir / "target_weights.parquet"),
@@ -179,16 +211,23 @@ def run_research_pipeline(
         "backtest_result_hash": backtest.get("result_hash"),
         "report_html": backtest.get("report_html"),
         "research_only": True,
-        "formal_backtest_ready": False,
-        "real_assist_data_ready": False,
+        "kronos_signal_research_ready": kronos_signal_research_ready,
+        "realistic_backtest_ready": realistic_backtest_ready,
+        "real_assist_data_ready": real_assist_data_ready,
+        "csi300_pit_ready": csi300_pit_ready,
     }
     write_json_atomic(run_dir / "kronos_research_manifest.json", research_manifest)
     engineering_ready = Path(backtest["report_html"]).is_file()
     gate = {
         "engineering_ready": engineering_ready,
         "completion_marker": "GOAL2_ENGINEERING_PASS" if engineering_ready else None,
-        "formal_backtest_ready": False,
-        "real_assist_data_ready": False,
+        "kronos_signal_research_ready": kronos_signal_research_ready,
+        "realistic_backtest_ready": realistic_backtest_ready,
+        "real_assist_data_ready": real_assist_data_ready,
+        "csi300_pit_ready": csi300_pit_ready,
+        # 向后兼容别名
+        "formal_backtest_ready": realistic_backtest_ready,
+        "signal_research_ready": kronos_signal_research_ready,
     }
     return {
         "signal_run_dir": str(store.run_dir),

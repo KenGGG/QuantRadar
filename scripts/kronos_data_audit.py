@@ -38,9 +38,13 @@ def execute_audit_cli(
     gates = result["gates"]
     summary = {
         "output_dir": result["output_dir"],
+        "kronos_signal_research_ready": gates["kronos_signal_research_ready"],
+        "realistic_backtest_ready": gates["realistic_backtest_ready"],
+        "real_assist_data_ready": gates["real_assist_data_ready"],
+        "csi300_pit_ready": gates["csi300_pit_ready"],
+        # 向后兼容别名
         "signal_research_ready": gates["signal_research_ready"],
         "formal_backtest_ready": gates["formal_backtest_ready"],
-        "real_assist_data_ready": gates["real_assist_data_ready"],
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
     return 0
