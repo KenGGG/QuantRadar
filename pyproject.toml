@@ -44,5 +44,7 @@ where = ["backend"]
 markers = [
     "unit: 单元测试",
     "requires_dolt: 需要可达的 investment_data Dolt 数据库",
+    "requires_kronos: 需要已安装且模型锁匹配的 Kronos-base 运行时",
+    "requires_cuda: 需要可用的 NVIDIA CUDA GPU",
 ]
 testpaths = ["tests"]
