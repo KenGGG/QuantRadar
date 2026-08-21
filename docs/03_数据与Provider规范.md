@@ -271,6 +271,7 @@ investment_data 真实表名 → Provider 方法 的映射，由 CURRENT_STATE �
 ```text
 00 入口：数据正确性优先、不伪造
 01 边界：investment_data 是事实源，ETF 独立门禁
+Kronos 宇宙可配置（默认 all_a_liquid，由持续行情构造；另含 csi300/500/1000_pit），门禁为能力分层（kronos_signal_research_ready / realistic_backtest_ready / real_assist_data_ready / csi300_pit_ready 独立判定，单一能力缺失不阻塞 Kronos 信号研究）。
 04 回测：Provider 如何被 BulletTrade 使用、可复现
 06 Qlib：Provider 数据导出为 Qlib 格式
 ```
