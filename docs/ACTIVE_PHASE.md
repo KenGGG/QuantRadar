@@ -2,7 +2,31 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：严谨研究型 V1 完成（RESEARCH_V1_PASS）→ BulletTrade WebUI 收口（BULLETTRADE_WEB_REPORT_PASS ✅）→ WebUI 收尾 5 项条件达成 ✅ → BulletTrade WebUI 主线已封版（BULLETTRADE_WEBUI_FINAL_PASS ✅）。暂停 Qlib/ETF/模型/寻优/因子研究/新交易引擎/新回测框架/任何无关新功能；禁止重实现 BulletTrade 已有回测/账户/订单/指标/报告能力。**
+**当前阶段：Kronos PRD v2.0 Goal 0 数据事实审计完成（KRONOS_DATA_CONTRACT_AUDIT_COMPLETE ✅），但信号研究、正式回测和实盘辅助门禁均未就绪。按 PRD 在 Goal 0 停止，不自动进入 Goal 1。**
+
+## Kronos Goal 0 验收（2026-08-21）
+
+```text
+审计 Dolt commit：rlr4k90ir2ok2tggb2nflr83qntc5q2t（运行前后一致）
+价格语义：PASS（30/30 只真实股票，none/pre/qfq/post/hfq 对账通过）
+公司行为：PARTIAL（20 个真实候选事件；无独立事件类型、送转比例、现金与股数事实表）
+沪深300 PIT：PARTIAL（20/20 个覆盖内周度对账通过，但 000300.SH 仅覆盖 2020-01-02..2022-07-01）
+最新可交易状态：PARTIAL（价格至 2026-08-18；涨跌停至 2023-06-12；ST/tradestatus 至 2023-06-09；股票主数据至 2022-07-18）
+
+price_semantics_ready       = true
+corporate_action_ready      = false
+pit_universe_ready          = false
+latest_tradeability_ready   = false
+signal_research_ready       = false
+formal_backtest_ready       = false
+real_assist_data_ready      = false
+
+阶段标志：KRONOS_DATA_CONTRACT_AUDIT_COMPLETE
+注意：该标志表示审计完整执行，不表示数据全 PASS。
+下一动作：补齐/确认 000300.SH PIT 成分与公司行为、ST、停牌、涨跌停和股票主数据后，重新运行 make kronos-data-audit；门禁未通过前不得进入 Goal 1。
+```
+
+产物：`reports/kronos/data_audit/`；入口：`make kronos-data-audit`。
 
 ---
 
@@ -121,12 +145,10 @@ make smoke 本机全量通过；GitHub Actions CI 已建）
 # 四、已知局限（严谨研究型 V1 的前置，本阶段未做）
 
 ```text
-- 数据层 PARTIAL：investment_data 的 bao 源（ST/停牌/复权因子）仅至 2023-06-09；
-  2023 后数据（指数权重至 2026-06-30，日线至 2026-08-04）部分残缺，严谨研究需补齐。
-- 回测腿与 Qlib 训练复权口径【实测已统一，旧认知纠正】：final_a_stock_eod_price.close 本身已是
-  连续复权价（除权缺口已消除），故回测腿（读 final.close，fq='none'）与 Qlib 训练（读 final.adjclose
-  后复权）天生同源，日收益率完全一致、无除权假跳变。T1 已把 fq 配置化（run_backtest/
-  run_target_weight_backtest 支持 none/pre/qfq/post/hfq）+ 审计记录 fq；默认 fq='none' 保持兼容。
+- 数据层 PARTIAL：价格至 2026-08-18，但 bao 的 ST/tradestatus/公司行为代理仅至 2023-06-09，
+  涨跌停至 2023-06-12，股票主数据至 2022-07-18，000300.SH 成分仅至 2022-07-01。
+- Kronos Goal 0 已统一复权契约：final OHLC 为 raw；hfq/post 使用 final.adjclose/close 因子；
+  qfq/pre 必须显式给出参考日；volume/amount 不复权。旧的「final.close 已是连续复权价」结论失效。
 - Qlib 仅最小闭环（Alpha158+LightGBM）；多模型/参数寻优/更严谨的样本外评估属后续研究。
 - 单 uvicorn 进程模型；多进程水平扩展（分布式锁 FOR UPDATE SKIP LOCKED）不在本地工具范围。
 ```
@@ -274,7 +296,7 @@ investment_data (Dolt，本地真实数据，只读)
   `with _FQ_LOCK: set_option("use_real_price", _use_real_price) ... finally: 还原`；两路径均透传 `fq`。
 - `qml/bridge.py`：`run_target_weight_backtest` 默认 `fq="pre"` 并透传 `run_backtest(..., fq=fq)`
   （pre 与 Qlib 的 hfq 在同一窗口收益率等价，仅净值绝对水平缩放常数因子）。
-- 实测纠正：final.close 已是连续复权价，回测腿与 Qlib 训练同源，无除权假跳变（旧认知不实）。
+- 后续 Goal 0 审计纠正：final.close 是 raw；T1 的 fq 配置与审计记录仍保留，但其“已连续复权”解释失效。
 - 测试：`tests/unit/test_backtest_fq.py` 3 passed（fq 透传 config / 净值连续 <0.30 / none 与 pre 日收益率
   相关>0.999 且期末对齐<1%）。
 
@@ -327,5 +349,5 @@ investment_data (Dolt，本地真实数据，只读)
 ```text
 外部待定（用户侧，不阻塞）：数据补齐方案（ST/停牌/列表，来自只读 Dolt，本仓库无法补齐）。
 元信息缺口：bao_a_stock_eod_info→2023-06-09；final_a_stock_limit→2023-06-12；ts_a_stock_list→2022-07-18。
-价格+adjclose→2026-08-04；指数权重→2026-06-30（完整）。
+价格+adjclose→2026-08-18；指数权重全表→2026-07-31，但 000300.SH→2022-07-01（不完整）。
 ```

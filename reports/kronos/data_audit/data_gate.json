@@ -1,0 +1,51 @@
+{
+  "corporate_action_ready": false,
+  "formal_backtest_ready": false,
+  "gates": {
+    "corporate_action": {
+      "evidence_files": [
+        "corporate_actions.csv"
+      ],
+      "ready": false,
+      "reasons": [
+        "20+ factor/preclose events inspected, but no authoritative event type or share-change table exists"
+      ],
+      "status": "PARTIAL"
+    },
+    "latest_tradeability": {
+      "evidence_files": [
+        "coverage.csv"
+      ],
+      "ready": false,
+      "reasons": [
+        "index_constituents=2022-07-01 < price=2026-08-18; up_down_limits=2023-06-12 < price=2026-08-18; st=2023-06-09 < price=2026-08-18; tradestatus_paused=2023-06-09 < price=2026-08-18; corporate_action_proxy=2023-06-09 < price=2026-08-18; stock_master=2022-07-18 < price=2026-08-18"
+      ],
+      "status": "PARTIAL"
+    },
+    "pit_universe": {
+      "evidence_files": [
+        "pit_universe_checks.csv",
+        "coverage.csv"
+      ],
+      "ready": false,
+      "reasons": [
+        "000300.SH starts at 2020-01-02, later than required 2015-01-01; 000300.SH ends at 2022-07-01, earlier than latest price 2026-08-18"
+      ],
+      "status": "PARTIAL"
+    },
+    "price_semantics": {
+      "evidence_files": [
+        "price_semantics.csv",
+        "price_semantics.md"
+      ],
+      "ready": true,
+      "reasons": [],
+      "status": "PASS"
+    }
+  },
+  "latest_tradeability_ready": false,
+  "pit_universe_ready": false,
+  "price_semantics_ready": true,
+  "real_assist_data_ready": false,
+  "signal_research_ready": false
+}

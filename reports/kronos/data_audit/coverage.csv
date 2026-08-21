@@ -1,0 +1,9 @@
+dataset,table,date_column,min_date,max_date,row_count
+price,final_a_stock_eod_price,tradedate,1990-12-19,2026-08-18,18354557
+index_constituents,ts_index_weight,trade_date,2020-01-02,2022-07-01,18300
+up_down_limits,final_a_stock_limit,tradedate,1996-12-16,2023-06-12,14057413
+st,bao_a_stock_eod_info,tradedate,1990-12-19,2023-06-09,14342735
+tradestatus_paused,bao_a_stock_eod_info,tradedate,1990-12-19,2023-06-09,14342735
+corporate_action_proxy,bao_a_stock_eod_info,tradedate,1990-12-19,2023-06-09,14342735
+stock_master,ts_a_stock_list,list_date,1990-12-10,2022-07-18,5023
+trade_calendar,ts_trade_day_calendar,date,1990-12-19,2026-12-31,8797
