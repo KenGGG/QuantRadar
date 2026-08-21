@@ -86,10 +86,10 @@
 - Produces `build_topk_target_weights(signals, topk=20)` long and wide weights and a deterministic weight hash.
 - Produces strategy source for `weekly` or `monthly`; Qlib delegates with its unchanged monthly default.
 
-- [ ] Write failing tests for TopK, deterministic ties, fewer-than-K, row sum 1, `execution_date > signal_date`, weekly scheduling, and same-day execution-date eligibility without same-day signal leakage.
-- [ ] Implement pure portfolio conversion and the generic strategy-source builder.
-- [ ] Make Qlib delegate to the generic bridge while preserving its public API and existing tests.
-- [ ] Run portfolio/bridge/Qlib tests and commit `feat(kronos): bridge weekly target weights to BulletTrade`.
+- [x] Write failing tests for TopK, deterministic ties, fewer-than-K, row sum 1, `execution_date > signal_date`, weekly scheduling, and same-day execution-date eligibility without same-day signal leakage.
+- [x] Implement pure portfolio conversion and the generic strategy-source builder.
+- [x] Make Qlib delegate to the generic bridge while preserving its public API and existing tests.
+- [x] Run portfolio/bridge regressions; the long real Qlib loop is included in final regression, then commit `feat(kronos): bridge weekly target weights to BulletTrade`.
 
 ### Task 5: Pipeline Orchestrator, Audit Chain, and CLI
 
