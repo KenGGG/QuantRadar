@@ -1,0 +1,18 @@
+{
+  "completion_marker": "KRONOS_BASE_GPU_RUNTIME_PASS",
+  "content_hashes": {
+    "benchmark.json": "fff7dd1a9527dc226914fd704ae797ce15c4e607bab782579306a591b83c41dc",
+    "determinism.json": "bca0a4f9adab78247be7bb0c009ae624479594dfe3c27fa138d5d808416ad969",
+    "environment.json": "42642ac490f202bfcac968c59f7bc22aa319aca747dfa25ff6dcdeba16ef29ba",
+    "input_manifest.json": "59d950e6457403ff43097194fe8f52571367b98ecf08bfec75a0e910b194c6eb",
+    "runtime_gate.json": "8a4eccd7901664ca44a945604d52a6d8578fdaa719a161f6a8b93458a7e30778"
+  },
+  "generated_at": "2026-08-21T09:58:29.450709+00:00",
+  "goal": "Goal 1 - Kronos-base runtime and real GPU smoke",
+  "input_content_sha256": "b4b74fe8104515ecf9ebf01d68aaea63763378eff5ef677d319d8dfb91430112",
+  "model_id": "NeoQuasar/Kronos-base",
+  "model_revision": "2b554741eca47781b64468546e77fef3e85130e6",
+  "runtime_ready": true,
+  "source_commit": "67b630e67f6a18c9e9be918d9b4337c960db1e9a",
+  "tokenizer_revision": "0e0117387f39004a9016484a186a908917e22426"
+}

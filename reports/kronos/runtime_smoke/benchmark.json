@@ -1,0 +1,86 @@
+{
+  "eligible_symbol_count": 239,
+  "error": null,
+  "stages": [
+    {
+      "batch_size": 1,
+      "completed_symbols": 1,
+      "estimated_full_backfill_hours": null,
+      "name": "one_symbol_one_path",
+      "output_hashes": [
+        "488d3a46ed7534847b7906ee01d02d15ac84627f76de299beff2e38c41c6806c"
+      ],
+      "path_count": 1,
+      "peak_vram_mb": 447.89599609375,
+      "requested_symbols": 1,
+      "runtime_seconds": 0.3297339759301394,
+      "seeds": [
+        101
+      ],
+      "status": "PASS",
+      "symbols_per_second": 3.032747830062467
+    },
+    {
+      "batch_size": 50,
+      "completed_symbols": 50,
+      "estimated_full_backfill_hours": null,
+      "name": "fifty_symbols_one_path",
+      "output_hashes": [
+        "09b19e7ae8a2ce8bb96f15b1439f03f893189c4390dccd7b9d1fc1e993cced5c"
+      ],
+      "path_count": 1,
+      "peak_vram_mb": 695.5322265625,
+      "requested_symbols": 50,
+      "runtime_seconds": 0.9034734480082989,
+      "seeds": [
+        101
+      ],
+      "status": "PASS",
+      "symbols_per_second": 55.34196949586583
+    },
+    {
+      "batch_size": 50,
+      "completed_symbols": 239,
+      "estimated_full_backfill_hours": null,
+      "name": "full_pit_one_path",
+      "output_hashes": [
+        "24c925a17778de44d55d0365b4c939ec80b1de0672ba28c433a9aab8b9c4fe67"
+      ],
+      "path_count": 1,
+      "peak_vram_mb": 695.5322265625,
+      "requested_symbols": 239,
+      "runtime_seconds": 4.386633642017841,
+      "seeds": [
+        101
+      ],
+      "status": "PASS",
+      "symbols_per_second": 54.483692850643564
+    },
+    {
+      "batch_size": 50,
+      "completed_symbols": 239,
+      "estimated_full_backfill_hours": 0.8025883178391572,
+      "name": "full_pit_five_paths",
+      "output_hashes": [
+        "24c925a17778de44d55d0365b4c939ec80b1de0672ba28c433a9aab8b9c4fe67",
+        "74c6e44c479e831e341f9f19359f4b0c6d5eeb2b5608bea71029f1783fb18274",
+        "cdb050095ecc5bdb2b6a581660cfd51f300772b5dde60e8e9e88208e299a50c9",
+        "fe2d39bb694d77cca5b7250896329ea52a364935ea88b02e842fe0c3c4a5358a",
+        "6db8b04ee4dfc7c09fa4fd643a5148f5ec8aacec5316969276ee6c72fee1f974"
+      ],
+      "path_count": 5,
+      "peak_vram_mb": 695.5322265625,
+      "requested_symbols": 239,
+      "runtime_seconds": 22.397813521092758,
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503
+      ],
+      "status": "PASS",
+      "symbols_per_second": 53.353422148757026
+    }
+  ]
+}
