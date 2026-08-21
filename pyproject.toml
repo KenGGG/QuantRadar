@@ -43,5 +43,6 @@ where = ["backend"]
 [tool.pytest.ini_options]
 markers = [
     "unit: 单元测试",
+    "requires_dolt: 需要可达的 investment_data Dolt 数据库",
 ]
 testpaths = ["tests"]

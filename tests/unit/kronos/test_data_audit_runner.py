@@ -40,6 +40,14 @@ def audit_bundle():
                     "max_date": dt.date(2023, 6, 9),
                     "row_count": 14_000_000,
                 },
+                {
+                    "dataset": "index_constituents",
+                    "table": "ts_index_weight",
+                    "date_column": "trade_date",
+                    "min_date": dt.date(2020, 1, 2),
+                    "max_date": dt.date(2022, 7, 1),
+                    "row_count": 18_300,
+                },
             ],
         },
         "prices": {
@@ -82,7 +90,8 @@ def test_run_data_audit_publishes_required_files_with_json_safe_dates(tmp_path):
     }
     gates = json.loads((output / "data_gate.json").read_text(encoding="utf-8"))
     manifest = json.loads((output / "audit_manifest.json").read_text(encoding="utf-8"))
-    assert gates["signal_research_ready"] is True
+    assert gates["signal_research_ready"] is False
+    assert gates["gates"]["pit_universe"]["status"] == "PARTIAL"
     assert gates["formal_backtest_ready"] is False
     assert gates["real_assist_data_ready"] is False
     assert manifest["run_start_commit"] == "abc123"

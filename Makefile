@@ -17,7 +17,7 @@ PIP    ?= .venv/bin/pip
 NPM    ?= npm
 VENV   ?= .venv
 
-.PHONY: setup test smoke research dev install-hooks help
+.PHONY: setup test smoke research kronos-data-audit dev install-hooks help
 
 help:
 	@echo "QuantRadar 可用目标："
@@ -25,6 +25,7 @@ help:
 	@echo "  make test       运行单元测试"
 	@echo "  make smoke      端到端核心冒烟测试（数据→回测→快照→API→Web）"
 	@echo "  make research   研究链路端到端（Qlib 构建→网格+OOS 可复现报告，需 Dolt+qlib）"
+	@echo "  make kronos-data-audit  只读执行 Kronos Goal 0 数据事实审计"
 	@echo "  make dev        启动开发服务器 (http://127.0.0.1:7231)"
 
 setup:
@@ -51,6 +52,9 @@ research:
 		--train-years 2 --valid-months 6 --test-months 6 --step-months 6 \
 		--num-boost-round 50 --early-stopping-rounds 10 \
 		--out reports/oos
+
+kronos-data-audit:
+	PYTHONPATH=backend $(PYTHON) scripts/kronos_data_audit.py
 
 dev:
 	$(PYTHON) -m uvicorn quantradar.api.app:app --host 127.0.0.1 --port 7231 --reload
