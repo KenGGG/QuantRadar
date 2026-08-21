@@ -132,6 +132,7 @@ def publish_input_package(
     pit_snapshot_date: dt.date,
     data_commit: str,
     data_contract_hash: str,
+    available_pit_signal_weeks: int | None = None,
 ) -> dict[str, Any]:
     if len(future_dates) != PREDICTION_DAYS:
         raise ValueError(f"Expected {PREDICTION_DAYS} future trading dates")
@@ -173,6 +174,7 @@ def publish_input_package(
         "partial_status_symbols": selection.partial_status_symbols,
         "data_commit": data_commit,
         "data_contract_sha256": data_contract_hash,
+        "available_pit_signal_weeks": available_pit_signal_weeks,
         "input_content_sha256": array_content_hash(arrays),
         "npz_sha256": sha256_file(npz_path),
     }
@@ -228,11 +230,13 @@ def collect_real_input_package(
     connection = provider.connection
     start_commit = dolt_head_commit(connection)
     snapshot = connection.query_one(
-        "SELECT MAX(trade_date) AS snapshot_date FROM ts_index_weight "
+        "SELECT MIN(trade_date) AS first_snapshot_date, "
+        "MAX(trade_date) AS snapshot_date FROM ts_index_weight "
         "WHERE index_code = %s",
         ("000300.SH",),
     ) or {}
     signal_date = snapshot.get("snapshot_date")
+    first_snapshot_date = snapshot.get("first_snapshot_date")
     if not isinstance(signal_date, dt.date):
         raise RuntimeError("No real 000300.SH PIT snapshot is available")
 
@@ -240,6 +244,15 @@ def collect_real_input_package(
     statuses = _collect_status(connection, symbols, signal_date)
     securities = provider.get_all_securities("stock", date=signal_date)
     open_days = [item.date() for item in provider.get_trade_days(end_date=signal_date)]
+    available_pit_signal_weeks = None
+    if isinstance(first_snapshot_date, dt.date):
+        available_pit_signal_weeks = len(
+            {
+                (day.isocalendar().year, day.isocalendar().week)
+                for day in open_days
+                if first_snapshot_date <= day <= signal_date
+            }
+        )
     future_dates = [
         item.date()
         for item in provider.get_trade_days(
@@ -294,4 +307,5 @@ def collect_real_input_package(
         pit_snapshot_date=signal_date,
         data_commit=start_commit,
         data_contract_hash=sha256_file(data_contract_path),
+        available_pit_signal_weeks=available_pit_signal_weeks,
     )

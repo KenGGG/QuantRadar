@@ -67,6 +67,7 @@ def test_parent_command_uses_only_isolated_python_and_offline_flags(tmp_path) ->
     assert environment["HF_HUB_OFFLINE"] == "1"
     assert environment["TRANSFORMERS_OFFLINE"] == "1"
     assert environment["CUDA_VISIBLE_DEVICES"] == "0"
+    assert environment["CUBLAS_WORKSPACE_CONFIG"] == ":4096:8"
 
 
 def test_parent_reads_valid_json_result_without_importing_torch(tmp_path) -> None:

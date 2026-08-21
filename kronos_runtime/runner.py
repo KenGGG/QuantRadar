@@ -254,6 +254,7 @@ def execute_runtime(
             "HF_HUB_OFFLINE": "1",
             "HF_DATASETS_OFFLINE": "1",
             "TRANSFORMERS_OFFLINE": "1",
+            "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
         }
     )
     import pandas as pd
