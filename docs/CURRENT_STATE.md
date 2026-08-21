@@ -10,7 +10,7 @@
 # 当前阶段
 
 ```text
-当前阶段：既有 V1/WebUI 主线封版 → Kronos PRD v2.0 Goal 0 数据事实审计完成 KRONOS_DATA_CONTRACT_AUDIT_COMPLETE ✅；因数据门禁未通过而停止，不进入 Goal 1
+当前阶段：既有 V1/WebUI 主线封版 → Kronos Goal 0 数据审计完成 → Goal 1 固定 Kronos-base 真实 GPU 运行通过 KRONOS_BASE_GPU_RUNTIME_PASS ✅；尚未进入 Goal 2
   1) 依赖可重建            PASS  HARDENING_DEPS_PASS ✅（pyproject 补依赖 / 干净 requirements.txt / Makefile setup 装前端 / 前端依赖补全）
   2) 测试库隔离+localhost  PASS  HARDENING_TEST_ISOLATION_PASS ✅（TEST 库隔离 + drop_all 拒绝非 _test 库 + 0.0.0.0 强警告）
   3) 审计链                PASS  HARDENING_AUDIT_CHAIN_PASS ✅（config 完整 + 策略源码落库 + run_id/snapshot_hash/result_hash 语义分明）
@@ -22,6 +22,8 @@
   【Kronos Goal 0 纠正旧认知】30 只真实股票逐行对账确认：final_a_stock_eod_price OHLC 是 fq=none
   的原始价；hfq/post = raw × (adjclose/close)，qfq/pre = raw × 当日因子 / 显式参考日因子；
   volume/amount 不复权。后续连续研究输入必须显式 pre_factor_ref_date=signal_date，BulletTrade 成交与估值用原始价。
+  【Kronos Goal 1 真实运行】独立 .venv-kronos；RTX 4070 SUPER；固定 Base/Tokenizer revision 与全文件 SHA256；
+  2022-07-01 PIT 300 只候选中 239 只合格；全池1路径 4.387秒、5路径22.398秒；固定 seed hash 一致。
 最近完成（Hardening）：pyproject/requirements/Makefile/frontend 依赖可重建；storage 测试隔离；snapshot config+策略落库+hash 语义；
   qml bridge/loop/dump 防未来函数；worker 固定池+重启恢复；tests requires_dolt 跳过；GitHub Actions CI。
 QuantRadar 根 commit：见 git log（origin=KenGGG/QuantRadar）
@@ -36,6 +38,7 @@ BulletTrade 快照 base commit：be0451b（记录于 BASELINE.md；vendor/ 无 r
 BulletTrade Ubuntu Core      PASS  （bullet-trade 0.9.2；BacktestEngine import OK；lab --diagnose OK）
 QuantRadar Git 基线          PASS  （fork 为 vendor/bullet-trade 快照，QuantRadar 根自有仓库）
 项目内 Python .venv          PASS  （python3.12.3；bullet-trade 以 editable 装入，指向 vendor/bullet-trade）
+Kronos 独立 CUDA 运行时       PASS  （.venv-kronos；Torch 2.8.0+cu128；CUDA 12.8；RTX 4070 SUPER；固定源码/模型/Tokenizer 与离线 SHA256 验证；KRONOS_BASE_GPU_RUNTIME_PASS）
 investment_data 可访问       PASS  （Dolt SQL server 127.0.0.1:3307，只读 SELECT 正常）
 A 股日线                     PASS  （final_a_stock_eod_price，1990-12-19..2026-08-18，18,354,557 行）
 交易日历                     PASS  （ts_trade_day_calendar，is_open=1 共 8797 日，1990-12-19..2026-12-31）
@@ -230,7 +233,8 @@ BulletTrade WebUI 收口（#70~#74 已完成）：统一回测链 run_unified_ba
 禁止提前开发：PostgreSQL / ETF / QMT / 实盘 / Qlib 深化 / 因子 / 寻优（除非当前阶段需要或用户决策）
 最终封版完成（BULLETTRADE_WEBUI_FINAL_PASS）：3 项必做——报告内联显示(REPORT_INLINE_PASS) / Worker 重启恢复双覆盖 RUNNING+PENDING(WORKER_RESTART_RECOVERY_PASS) / fq 重启恢复一致性(WORKER_FQ_RECOVERY_PASS)——全部达成，并已通过 live 服务器等价浏览器流程（提交 JoinQuant 兼容策略→轮询 SUCCESS→report?which=full|standard 均返回 Content-Disposition: inline→config.fq=snapshot.config.fq=pre 一致）最终验收。后端测试（Dolt+PG 13 passed）+ CI 后端（无 Dolt/PG 24 passed/138 skipped）+ 前端构建（npm run build 成功）全绿。
 Kronos Goal 0（已完成）：只读数据事实审计，产出 `reports/kronos/data_audit/` 九项证据文件；30/30 价格语义通过，20 个公司行为候选 PARTIAL，20/20 覆盖内 PIT 对账通过但区间仅 2020-2022；所有研究/回测/实盘就绪门禁均为 false。
-下一动作：维持 Goal 0 停止状态。补齐或确认 000300.SH PIT、公司行为、ST/tradestatus、涨跌停和股票主数据后重新运行 `make kronos-data-audit`；不得自动进入 Kronos Goal 1。
+Kronos Goal 1（已完成）：`.venv-kronos` 与模型锁；固定源码 `67b630e...`、Base `2b554741...`、Tokenizer `0e011738...`；RTX 4070 SUPER 真实 CUDA smoke 四档通过；239只全池1路径 4.387 秒、5路径 22.398 秒；seed 101 hash 可复现；现有 PIT 129 周回填估算 0.803 小时。
+下一动作：可开始 Goal 2 的历史 RankIC、五分组收益和信号排序；但最新 PIT 成分缺失使“最近2周真实运行证据”继续 BLOCKED，公司行为/ST/停牌等缺口补齐前 `formal_backtest_ready=false`、`real_assist_data_ready=false`。
 封版后用户追加的 WebUI 增强（属 investment_data → WebUI 主线，非禁止的研究类新功能）：
   ① 数据状态页显示最新数据时间：/api/health 的 environment 新增 latest_data_date（= SELECT MAX(tradedate) FROM final_a_stock_eod_price；Goal 0 实测 2026-08-18），数据源状态卡片「刷新状态」后展示「最新数据日期」。
   ② 「更新数据」按钮：POST /api/data/pull 在本地 Dolt 仓库（默认 /data/investment_data，可用 QUANTRADAR_DOLT_REPO 覆盖）执行 dolt pull 拉取 origin 最新数据，成功后自动刷新状态（最新数据日期同步）。

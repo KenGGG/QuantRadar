@@ -2,7 +2,37 @@
 
 文件：`docs/ACTIVE_PHASE.md`
 
-**当前阶段：Kronos PRD v2.0 Goal 0 数据事实审计完成（KRONOS_DATA_CONTRACT_AUDIT_COMPLETE ✅），但信号研究、正式回测和实盘辅助门禁均未就绪。按 PRD 在 Goal 0 停止，不自动进入 Goal 1。**
+**当前阶段：Kronos PRD v2.0 Goal 1 独立运行时与真实 GPU smoke 完成（KRONOS_BASE_GPU_RUNTIME_PASS ✅）。Goal 0 的数据缺口仍存在，正式回测和实盘辅助门禁保持关闭。**
+
+## Kronos Goal 1 验收（2026-08-21）
+
+```text
+独立环境：.venv-kronos（主 .venv 不安装/导入 torch）
+GPU：NVIDIA GeForce RTX 4070 SUPER；compute capability 8.9
+Torch/CUDA/cuDNN：2.8.0+cu128 / 12.8 / 91002
+Kronos source：67b630e67f6a18c9e9be918d9b4337c960db1e9a
+Kronos-base revision：2b554741eca47781b64468546e77fef3e85130e6
+Tokenizer revision：0e0117387f39004a9016484a186a908917e22426
+模型锁：离线逐文件 SHA256 校验 PASS
+
+真实输入：2022-07-01 PIT 沪深300；300 只候选，239 只合格，61 只排除
+1只/1路径：0.330 秒；峰值 allocated VRAM 447.90 MiB
+50只/1路径：0.903 秒；55.34 symbols/s；batch 50
+239只/1路径：4.387 秒；54.48 symbols/s；batch 50
+239只/5路径：22.398 秒；53.35 symbol-paths/s；batch 50
+固定 seed 101 重跑：prediction hash 完全一致
+现有 PIT 129 周五路径估算：0.803 小时（仅限 2020-2022 可用覆盖，不外推缺失历史）
+
+阶段标志：KRONOS_BASE_GPU_RUNTIME_PASS
+注意：该标志只证明固定 Kronos-base 在真实 GPU 上可复现运行，不表示信号有效、回测可用或实盘可用。
+```
+
+产物：`models/kronos/kronos_model_lock.json`、`reports/kronos/runtime_smoke/`。
+入口：`make kronos-runtime-setup`、`make kronos-gpu-smoke`。
+
+下一动作：可以进入 Goal 2 的历史 RankIC、分组收益和信号排序工程；由于最新 PIT 成分缺失，Goal 2 的“最近2周真实运行证据”仍 BLOCKED，补齐数据前不得开放正式回测或实盘辅助。
+
+---
 
 ## Kronos Goal 0 验收（2026-08-21）
 
@@ -23,7 +53,7 @@ real_assist_data_ready      = false
 
 阶段标志：KRONOS_DATA_CONTRACT_AUDIT_COMPLETE
 注意：该标志表示审计完整执行，不表示数据全 PASS。
-下一动作：补齐/确认 000300.SH PIT 成分与公司行为、ST、停牌、涨跌停和股票主数据后，重新运行 make kronos-data-audit；门禁未通过前不得进入 Goal 1。
+数据后续：补齐/确认 000300.SH PIT 成分与公司行为、ST、停牌、涨跌停和股票主数据后，重新运行 make kronos-data-audit；这些门禁未通过前不得开放正式回测或实盘辅助。
 ```
 
 产物：`reports/kronos/data_audit/`；入口：`make kronos-data-audit`。
