@@ -66,10 +66,10 @@
 - Produces `list_signal_dates(provider, start, end)`, `collect_week_input_package(...)`, and `run_signal_subprocess(...)`.
 - Runtime output contains `predictions.npz` with `predictions[path,symbol,10,6]` and a JSON result whose hashes are independently verified by the caller.
 
-- [ ] Write failing pure/fake-connection tests for weekly dates, explicit PIT date, T+1 execution date, 90 rows, stable input hash, offline command, and malformed output rejection.
-- [ ] Extract shared locked-model prediction helpers from the Goal 1 runner without changing its output and implement the dedicated signal runner.
-- [ ] Implement main-process command/result validation and input packaging with Dolt HEAD checks before and after each week.
-- [ ] Run Goal 1 runtime regressions and new contract tests; commit `feat(kronos): add weekly PIT prediction runtime`.
+- [x] Write failing pure/fake-connection tests for weekly dates, explicit PIT date, T+1 execution date, 90 rows, stable input hash, offline command, and malformed output rejection.
+- [x] Reuse the locked prediction helpers from the Goal 1 runner without changing its output and implement the dedicated signal runner.
+- [x] Implement main-process command/result validation and input packaging with Dolt HEAD checks before and after each week.
+- [x] Run Goal 1 runtime regressions and new contract tests; commit `feat(kronos): add weekly PIT prediction runtime`.
 
 ### Task 4: TopK Portfolio and Generic Target-Weight Bridge
 
