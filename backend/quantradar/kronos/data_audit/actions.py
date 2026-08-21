@@ -98,4 +98,3 @@ def audit_corporate_actions(connection, symbols: list[str], min_events: int = 20
             "corporate_actions.csv",
         )
     return {"rows": events, "evidence": evidence}
-

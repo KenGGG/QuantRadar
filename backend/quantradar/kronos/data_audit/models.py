@@ -76,4 +76,3 @@ def json_safe(value: Any) -> Any:
     if isinstance(value, (list, tuple, set)):
         return [json_safe(item) for item in value]
     return value
-

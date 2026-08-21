@@ -2,4 +2,3 @@
 
 Goal 0 intentionally exposes only data-audit functionality.
 """
-
