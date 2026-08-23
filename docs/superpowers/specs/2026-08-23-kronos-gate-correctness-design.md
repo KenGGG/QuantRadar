@@ -1,65 +1,51 @@
-# Kronos Gate Correctness Design
+# Kronos 门禁正确性设计
 
-## Scope
+## 范围
 
-This change corrects four acceptance blockers in PR #2 without restoring the
-old CSI300 PIT dependency for default Kronos signal research. The default
-universe remains `all_a_liquid`; CSI PIT remains an independent optional
-capability.
+本次改动修复 PR #2 的四项验收阻塞问题，同时不恢复默认 Kronos 信号研究对旧
+CSI300 PIT 的依赖。默认股票池仍为 `all_a_liquid`；CSI PIT 仍是一项独立的可选能力。
 
-## Strict all-A PIT input eligibility
+## 严格的全 A 股 PIT 输入资格
 
-For `all_a_liquid`, a candidate must have a valid price row on the signal date.
-The candidate query therefore selects A-share symbols whose `tradedate` equals
-the signal date, not symbols that appeared at any earlier time. This excludes
-delisted securities and securities without a signal-date price from the current
-cross-section.
+对于 `all_a_liquid`，候选股票在 signal date 当天必须有一条有效行情。候选查询因此
+选择 `tradedate` 等于 signal date 的 A 股代码，而不是任何较早日期曾出现过的代码。
+这样会把已经退市的证券，以及 signal date 当天没有行情的证券排除在当前横截面外。
 
-The shared market calendar defines the canonical input window: the 90 most
-recent open market days ending at the signal date. A symbol is eligible only
-when its returned price dates exactly equal that canonical sequence and its
-OHLCVA values pass the existing completeness and structural checks. A provider
-returning 90 older observations to fill a suspension gap is therefore rejected.
+共享市场日历定义标准输入窗口：以 signal date 为终点的最近 90 个开市日。只有当一只
+股票返回的价格日期严格等于该标准序列，并且 OHLCVA 值通过现有的完整性与结构校验时，
+它才具备资格。因此，Provider 用更早的 90 条观测值填补停牌缺口时，该股票会被排除。
 
-Signal-date enumeration for `all_a_liquid` clamps the requested end date to
-`latest_price_date`. If no market dates remain after the clamp, it returns an
-empty list. A direct input build also rejects a signal date later than the
-latest available price date.
+`all_a_liquid` 的 signal date 枚举会把请求的结束日期截断至 `latest_price_date`。
+若截断后没有市场日期，则返回空列表。直接构建输入时，也会拒绝晚于最新可用行情日期的
+signal date。
 
-## Capability gates
+## 能力门禁
 
-`kronos_signal_research_ready` remains the permission to conduct OHLC-based
-Kronos signal research. `research_backtest_ready` is added as the equivalent
-research-only backtest permission.
+`kronos_signal_research_ready` 继续表示可以进行基于 OHLC 的 Kronos 信号研究。
+新增 `research_backtest_ready`，作为等价的仅研究级回测许可。
 
-`realistic_backtest_ready` may be true with fidelity `PARTIAL` when the latest
-tradeability evidence is not blocked. It is not a formal-quality declaration.
-`formal_backtest_ready` is true only when Kronos research is ready, latest
-tradeability evidence is `PASS`, and corporate-action evidence is ready. While
-any of those requirements are incomplete, it remains false. `real_assist_data_ready`
-continues to require full latest tradeability evidence.
+当最新交易可行性证据并非 `BLOCKED` 时，`realistic_backtest_ready` 可以为真，且其
+fidelity 为 `PARTIAL`；它不是“达到正式质量”的声明。只有同时满足 Kronos 研究可用、
+最新交易可行性证据为 `PASS`、公司行为证据可用时，`formal_backtest_ready` 才为真。
+其中任一要求未满足时，它必须保持为 false。`real_assist_data_ready` 仍要求完整的最新
+交易可行性证据。
 
-## Reproducible audit cache
+## 可复现的审计缓存
 
-The data-audit writer records the Dolt `data_commit` in `data_gate.json`. The
-research pipeline reads a cached gate only if it is parseable and its
-`data_commit` exactly matches the SignalRun's current Dolt HEAD. Missing,
-malformed, or stale cache yields conservative false values for realistic,
-formal, real-assist, and CSI PIT capabilities. The manifest records whether a
-matched audit gate was used.
+数据审计写入器会将 Dolt 的 `data_commit` 记录到 `data_gate.json`。研究流水线仅在缓存
+gate 可解析，且其 `data_commit` 与当前 SignalRun 的 Dolt HEAD 严格一致时才采用它。
+缺失、格式损坏或过期的缓存会对 realistic、formal、real-assist 和 CSI PIT 能力给出
+保守的 false 值。manifest 会记录是否使用了 commit 匹配的审计 gate。
 
-## CI isolation
+## CI 隔离
 
-Every test that opens a real `investment_data` connection carries the existing
-`requires_dolt` marker, including the new all-A live test. The marker's
-collection hook skips such tests when Dolt is unreachable, so GitHub Actions
-runs pure unit tests without attempting `127.0.0.1:3307`.
+每一个连接真实 `investment_data` 的测试（包括新的全 A 股 live test）都必须带有现有的
+`requires_dolt` 标记。Dolt 不可达时，该标记的收集钩子会跳过测试，因此 GitHub Actions
+只运行纯单元测试，不会尝试连接 `127.0.0.1:3307`。
 
-## Testing and acceptance
+## 测试与验收
 
-Unit tests cover candidate exclusion for delisted or absent signal-date prices,
-future-end clamping, a suspended/missing-date 90-day window, direct future
-signal-date rejection, gate semantics, and matched versus stale/missing audit
-caches. Live tests retain `requires_dolt` and skip in CI. Completion requires
-the targeted Kronos unit suite, `make test`, frontend build, and green GitHub
-Actions after pushing the branch.
+单元测试覆盖：退市或 signal date 当日无行情的候选排除、未来结束日期截断、含停牌/缺日的
+90 日窗口、直接传入未来 signal date 的拒绝、门禁语义，以及 commit 匹配、过期和缺失
+审计缓存的处理。live 测试保留 `requires_dolt`，并在 CI 中跳过。完成条件为：定向 Kronos
+单元测试、`make test`、前端构建全部通过，且分支推送后 GitHub Actions 变绿。
