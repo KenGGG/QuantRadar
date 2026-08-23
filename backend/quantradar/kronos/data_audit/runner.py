@@ -66,7 +66,7 @@ def run_data_audit(
             bundle["schema"]["coverage"]
         ),
     }
-    gates = derive_data_gates(evidence)
+    gates = {**derive_data_gates(evidence), "data_commit": start_commit}
     generated_at = generated_at or dt.datetime.now(dt.timezone.utc)
     manifest = publish_audit_reports(
         bundle,

@@ -124,6 +124,7 @@ def test_run_data_audit_publishes_required_files_with_json_safe_dates(tmp_path):
     manifest = json.loads((output / "audit_manifest.json").read_text(encoding="utf-8"))
     # 默认宇宙 all_a_liquid 仅依赖价格，Kronos 信号研究已不被 000300 PIT 阻塞。
     assert gates["kronos_signal_research_ready"] is True
+    assert gates["data_commit"] == "abc123"
     assert gates["research_backtest_ready"] is True
     assert gates["signal_research_ready"] is True
     assert gates["gates"]["pit_universe"]["status"] == "PARTIAL"

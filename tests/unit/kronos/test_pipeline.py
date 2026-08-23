@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from quantradar.kronos.pipeline import run_research_pipeline
+from quantradar.kronos.pipeline import _matching_cached_data_gate, run_research_pipeline
 
 
 class _Connection:
@@ -85,11 +85,11 @@ def test_pipeline_links_prediction_signal_weight_and_native_report(tmp_path):
 
     assert result["gate"]["completion_marker"] == "GOAL2_ENGINEERING_PASS"
     # 默认宇宙 all_a_liquid：Kronos 信号研究不被 000300 PIT 阻塞；
-    # realistic 默认可用（无缓存审计时视为可用），real_assist 仍阻塞。
+    # 没有同一 Dolt commit 的审计缓存时，所有非研究级能力保守降级。
     assert result["gate"]["kronos_signal_research_ready"] is True
     assert result["gate"]["research_backtest_ready"] is True
     assert result["gate"]["signal_research_ready"] is True
-    assert result["gate"]["realistic_backtest_ready"] is True
+    assert result["gate"]["realistic_backtest_ready"] is False
     assert result["gate"]["formal_backtest_ready"] is False
     assert result["gate"]["real_assist_data_ready"] is False
     assert result["gate"]["csi300_pit_ready"] is False
@@ -97,11 +97,23 @@ def test_pipeline_links_prediction_signal_weight_and_native_report(tmp_path):
     audit = json.loads((run_dir / "kronos_research_manifest.json").read_text())
     assert audit["universe"] == "all_a_liquid"
     assert audit["kronos_signal_research_ready"] is True
-    assert audit["realistic_backtest_ready"] is True
+    assert audit["realistic_backtest_ready"] is False
     assert audit["real_assist_data_ready"] is False
+    assert audit["audit_gate_data_commit"] is None
+    assert audit["audit_gate_matches_data_commit"] is False
     assert audit["prediction_hashes"]
     assert audit["signals_sha256"]
     assert audit["target_weights_sha256"]
     assert audit["backtest_result_hash"] == "backtest-hash"
     assert (run_dir / "kronos_signal_manifest.json").is_file()
     assert (run_dir / "target_weights.parquet").is_file()
+
+
+def test_cached_data_gate_is_accepted_only_for_the_current_dolt_commit(tmp_path):
+    audit_dir = tmp_path / "reports/kronos/data_audit"
+    audit_dir.mkdir(parents=True)
+    gate = {"data_commit": "dolt-rev", "realistic_backtest_ready": True}
+    (audit_dir / "data_gate.json").write_text(json.dumps(gate))
+
+    assert _matching_cached_data_gate(tmp_path, "dolt-rev") == gate
+    assert _matching_cached_data_gate(tmp_path, "other-rev") is None

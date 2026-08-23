@@ -55,6 +55,18 @@ def _load_cached_data_gate(repo_root: Path) -> dict[str, Any] | None:
         return None
 
 
+def _matching_cached_data_gate(
+    repo_root: Path, data_commit: str
+) -> dict[str, Any] | None:
+    """返回仅可用于当前 SignalRun Dolt 快照的审计 gate。"""
+    cached_gate = _load_cached_data_gate(repo_root)
+    if not isinstance(cached_gate, dict):
+        return None
+    if cached_gate.get("data_commit") != data_commit:
+        return None
+    return cached_gate
+
+
 def run_research_pipeline(
     provider,
     *,
@@ -187,13 +199,13 @@ def run_research_pipeline(
         "signal_run_id": store.run_id,
     }
     write_json_atomic(run_dir / "strategy_lock.json", strategy_lock)
-    cached_gate = _load_cached_data_gate(root)
+    cached_gate = _matching_cached_data_gate(root, data_commit)
     # 研究流水线已抵达此处 => 输入宇宙可构造（kronos_signal_research_ready=True）。
     # realistic / real_assist / csi300_pit 的 tradeability 维度以最近一次审计为准。
     kronos_signal_research_ready = True
     research_backtest_ready = kronos_signal_research_ready
     realistic_backtest_ready = (
-        bool(cached_gate.get("realistic_backtest_ready")) if cached_gate else True
+        bool(cached_gate.get("realistic_backtest_ready")) if cached_gate else False
     )
     real_assist_data_ready = (
         bool(cached_gate.get("real_assist_data_ready")) if cached_gate else False
@@ -204,9 +216,13 @@ def run_research_pipeline(
     formal_backtest_ready = (
         bool(cached_gate.get("formal_backtest_ready")) if cached_gate else False
     )
+    audit_gate_data_commit = cached_gate.get("data_commit") if cached_gate else None
+    audit_gate_matches_data_commit = cached_gate is not None
     research_manifest = {
         "signal_run_id": store.run_id,
         "data_commit": data_commit,
+        "audit_gate_data_commit": audit_gate_data_commit,
+        "audit_gate_matches_data_commit": audit_gate_matches_data_commit,
         "universe": universe.value,
         "prediction_hashes": sorted(signals["prediction_hash"].dropna().unique().tolist()),
         "signals_sha256": file_hash(store.run_dir / "signals.parquet"),
