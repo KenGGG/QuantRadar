@@ -17,11 +17,12 @@ def test_execute_audit_cli_prints_machine_readable_gate_summary(tmp_path, capsys
             "output_dir": str(output_dir),
             "gates": {
                 "kronos_signal_research_ready": True,
+                "research_backtest_ready": True,
                 "realistic_backtest_ready": True,
                 "real_assist_data_ready": False,
                 "csi300_pit_ready": False,
                 "signal_research_ready": True,
-                "formal_backtest_ready": True,
+                "formal_backtest_ready": False,
             },
         }
 
@@ -36,10 +37,11 @@ def test_execute_audit_cli_prints_machine_readable_gate_summary(tmp_path, capsys
     assert exit_code == 0
     assert output == {
         "csi300_pit_ready": False,
-        "formal_backtest_ready": True,
+        "formal_backtest_ready": False,
         "kronos_signal_research_ready": True,
         "output_dir": str(tmp_path / "audit"),
         "real_assist_data_ready": False,
+        "research_backtest_ready": True,
         "realistic_backtest_ready": True,
         "signal_research_ready": True,
     }

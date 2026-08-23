@@ -39,6 +39,7 @@ def execute_audit_cli(
     summary = {
         "output_dir": result["output_dir"],
         "kronos_signal_research_ready": gates["kronos_signal_research_ready"],
+        "research_backtest_ready": gates["research_backtest_ready"],
         "realistic_backtest_ready": gates["realistic_backtest_ready"],
         "real_assist_data_ready": gates["real_assist_data_ready"],
         "csi300_pit_ready": gates["csi300_pit_ready"],

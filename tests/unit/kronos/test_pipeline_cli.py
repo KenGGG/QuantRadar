@@ -15,10 +15,11 @@ def _passed_gate():
             "engineering_ready": True,
             "completion_marker": "GOAL2_ENGINEERING_PASS",
             "kronos_signal_research_ready": True,
+            "research_backtest_ready": True,
             "realistic_backtest_ready": True,
             "real_assist_data_ready": False,
             "csi300_pit_ready": False,
-            "formal_backtest_ready": True,
+            "formal_backtest_ready": False,
             "signal_research_ready": True,
         },
     }
@@ -32,6 +33,7 @@ def _blocked_gate():
             "engineering_ready": False,
             "completion_marker": None,
             "kronos_signal_research_ready": False,
+            "research_backtest_ready": False,
             "realistic_backtest_ready": False,
             "real_assist_data_ready": False,
             "csi300_pit_ready": False,
@@ -58,7 +60,8 @@ def test_cli_returns_zero_only_for_engineering_pass(capsys, tmp_path):
     assert code == 0
     output = json.loads(capsys.readouterr().out)
     assert output["completion_marker"] == "GOAL2_ENGINEERING_PASS"
-    assert output["formal_backtest_ready"] is True
+    assert output["research_backtest_ready"] is True
+    assert output["formal_backtest_ready"] is False
     assert output["real_assist_data_ready"] is False
 
 

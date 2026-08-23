@@ -191,6 +191,7 @@ def run_research_pipeline(
     # 研究流水线已抵达此处 => 输入宇宙可构造（kronos_signal_research_ready=True）。
     # realistic / real_assist / csi300_pit 的 tradeability 维度以最近一次审计为准。
     kronos_signal_research_ready = True
+    research_backtest_ready = kronos_signal_research_ready
     realistic_backtest_ready = (
         bool(cached_gate.get("realistic_backtest_ready")) if cached_gate else True
     )
@@ -199,6 +200,9 @@ def run_research_pipeline(
     )
     csi300_pit_ready = (
         bool(cached_gate.get("csi300_pit_ready")) if cached_gate else False
+    )
+    formal_backtest_ready = (
+        bool(cached_gate.get("formal_backtest_ready")) if cached_gate else False
     )
     research_manifest = {
         "signal_run_id": store.run_id,
@@ -212,7 +216,9 @@ def run_research_pipeline(
         "report_html": backtest.get("report_html"),
         "research_only": True,
         "kronos_signal_research_ready": kronos_signal_research_ready,
+        "research_backtest_ready": research_backtest_ready,
         "realistic_backtest_ready": realistic_backtest_ready,
+        "formal_backtest_ready": formal_backtest_ready,
         "real_assist_data_ready": real_assist_data_ready,
         "csi300_pit_ready": csi300_pit_ready,
     }
@@ -222,11 +228,12 @@ def run_research_pipeline(
         "engineering_ready": engineering_ready,
         "completion_marker": "GOAL2_ENGINEERING_PASS" if engineering_ready else None,
         "kronos_signal_research_ready": kronos_signal_research_ready,
+        "research_backtest_ready": research_backtest_ready,
         "realistic_backtest_ready": realistic_backtest_ready,
         "real_assist_data_ready": real_assist_data_ready,
         "csi300_pit_ready": csi300_pit_ready,
         # 向后兼容别名
-        "formal_backtest_ready": realistic_backtest_ready,
+        "formal_backtest_ready": formal_backtest_ready,
         "signal_research_ready": kronos_signal_research_ready,
     }
     return {

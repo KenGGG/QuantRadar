@@ -87,9 +87,10 @@ def test_pipeline_links_prediction_signal_weight_and_native_report(tmp_path):
     # 默认宇宙 all_a_liquid：Kronos 信号研究不被 000300 PIT 阻塞；
     # realistic 默认可用（无缓存审计时视为可用），real_assist 仍阻塞。
     assert result["gate"]["kronos_signal_research_ready"] is True
+    assert result["gate"]["research_backtest_ready"] is True
     assert result["gate"]["signal_research_ready"] is True
     assert result["gate"]["realistic_backtest_ready"] is True
-    assert result["gate"]["formal_backtest_ready"] is True
+    assert result["gate"]["formal_backtest_ready"] is False
     assert result["gate"]["real_assist_data_ready"] is False
     assert result["gate"]["csi300_pit_ready"] is False
     run_dir = Path(result["backtest"]["run_dir"])

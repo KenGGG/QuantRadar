@@ -43,11 +43,12 @@ def test_formal_and_real_assist_stay_blocked_without_corporate_action_evidence()
     assert result["latest_tradeability_ready"] is False
     # Kronos 信号研究不被企业行为/成分能力缺失阻塞（默认宇宙仅依赖价格）。
     assert result["kronos_signal_research_ready"] is True
+    assert result["research_backtest_ready"] is True
     assert result["signal_research_ready"] is True
     # 能力可用但保真度有限（tradeability 为 PARTIAL）=> realistic 可用，
     # 但实时辅助需 PASS，仍阻塞。
     assert result["realistic_backtest_ready"] is True
-    assert result["formal_backtest_ready"] is True
+    assert result["formal_backtest_ready"] is False
     assert result["real_assist_data_ready"] is False
     assert result["csi300_pit_ready"] is True
     assert result["fidelity"]["realistic_backtest_ready"] == "PARTIAL"
@@ -68,6 +69,7 @@ def test_failed_price_semantics_blocks_every_downstream_readiness_gate():
 
     assert result["price_semantics_ready"] is False
     assert result["kronos_signal_research_ready"] is False
+    assert result["research_backtest_ready"] is False
     assert result["signal_research_ready"] is False
     assert result["realistic_backtest_ready"] is False
     assert result["formal_backtest_ready"] is False

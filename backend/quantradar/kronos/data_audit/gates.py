@@ -111,10 +111,16 @@ def derive_data_gates(evidence: Mapping[str, GateEvidence]) -> dict[str, Any]:
     price_data_ready = price_ready
     kronos_input_ready = price_data_ready
     kronos_signal_research_ready = kronos_input_ready and universe_default_ready
+    research_backtest_ready = kronos_signal_research_ready
     csi300_pit_ready = pit_ready  # 独立能力，不作为全局阻塞
     realistic_backtest_ready = (
-        kronos_signal_research_ready
+        research_backtest_ready
         and tradeability_status != AuditStatus.BLOCKED
+    )
+    formal_backtest_ready = (
+        research_backtest_ready
+        and action_ready
+        and tradeability_status == AuditStatus.PASS
     )
     real_assist_data_ready = (
         kronos_signal_research_ready
@@ -128,8 +134,10 @@ def derive_data_gates(evidence: Mapping[str, GateEvidence]) -> dict[str, Any]:
         "kronos_signal_research_ready": (
             "PASS" if kronos_signal_research_ready else "BLOCKED"
         ),
+        "research_backtest_ready": "PASS" if research_backtest_ready else "BLOCKED",
         "csi300_pit_ready": csi300_pit_fidelity,
         "realistic_backtest_ready": "PARTIAL" if realistic_backtest_ready else "BLOCKED",
+        "formal_backtest_ready": "PASS" if formal_backtest_ready else "BLOCKED",
         "real_assist_data_ready": "PASS" if real_assist_data_ready else "BLOCKED",
     }
 
@@ -142,12 +150,13 @@ def derive_data_gates(evidence: Mapping[str, GateEvidence]) -> dict[str, Any]:
         "price_data_ready": price_data_ready,
         "kronos_input_ready": kronos_input_ready,
         "kronos_signal_research_ready": kronos_signal_research_ready,
+        "research_backtest_ready": research_backtest_ready,
         "csi300_pit_ready": csi300_pit_ready,
         "realistic_backtest_ready": realistic_backtest_ready,
         "real_assist_data_ready": real_assist_data_ready,
         # 向后兼容别名（平滑过渡，后续 Goal 清理）
         "signal_research_ready": kronos_signal_research_ready,
-        "formal_backtest_ready": realistic_backtest_ready,
+        "formal_backtest_ready": formal_backtest_ready,
         "fidelity": fidelity,
         "gates": {name: evidence[name].as_dict() for name in _REQUIRED_EVIDENCE},
     }
