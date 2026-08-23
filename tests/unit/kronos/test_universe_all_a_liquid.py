@@ -7,14 +7,15 @@ import pandas as pd
 from quantradar.kronos.runtime.contracts import LOOKBACK_DAYS, PREDICTION_DAYS
 from quantradar.kronos.runtime.inputs import FEATURE_NAMES
 from quantradar.kronos.signal.inputs import collect_week_input_package
-from quantradar.kronos.universe_spec import Universe
+from quantradar.kronos.universe_spec import Universe, all_a_liquid_symbols
 
 
 class _AllLiquidConnection:
     """最小可用连接：支撑 all_a_liquid 路径（不查指数 PIT）。"""
 
-    def __init__(self, symbols, as_of):
+    def __init__(self, symbols, as_of, historical_symbols=None):
         self._symbols = list(symbols)
+        self._historical_symbols = list(historical_symbols or symbols)
         self._as_of = as_of
         self.dolt = "fake-commit"
 
@@ -23,13 +24,16 @@ class _AllLiquidConnection:
             return {"commit_hash": self.dolt}
         if "COUNT(DISTINCT tradedate)" in sql:
             return {"n": 200}
+        if "MAX(tradedate)" in sql:
+            return {"max_date": self._as_of}
         return None
 
     def query(self, sql: str, params=None):
         if "ts_index_weight" in sql:
             return [{"member_count": 0}]
         if "final_a_stock_eod_price" in sql and "DISTINCT symbol" in sql:
-            return [{"symbol": s} for s in self._symbols]
+            symbols = self._symbols if "tradedate = %s" in sql else self._historical_symbols
+            return [{"symbol": s} for s in symbols]
         # _collect_status 的 bao 查询：无状态数据。
         return []
 
@@ -103,3 +107,29 @@ def test_collect_week_package_csi300_pit_without_snapshot_raises(tmp_path):
         raise AssertionError("expected RuntimeError for missing CSI300 PIT snapshot")
     except RuntimeError as exc:
         assert "000300.SH" in str(exc)
+
+
+def test_all_a_liquid_symbols_excludes_historical_only_delisted_symbols():
+    as_of = dt.date(2026, 8, 18)
+    connection = _AllLiquidConnection(
+        ["SH600001"], as_of, historical_symbols=["SH600001", "SZ000002"]
+    )
+
+    assert all_a_liquid_symbols(connection, as_of) == ["SH600001"]
+
+
+def test_collect_week_package_rejects_signal_date_after_latest_price(tmp_path):
+    latest = dt.date(2026, 8, 18)
+    provider = _AllLiquidProvider([f"SH{600000 + i:06d}" for i in range(70)], latest)
+
+    try:
+        collect_week_input_package(
+            provider,
+            signal_date=dt.date(2026, 8, 31),
+            output_dir=tmp_path,
+            data_contract_path="reports/kronos/data_audit/data_contract.json",
+        )
+    except RuntimeError as exc:
+        assert "latest available price date" in str(exc)
+    else:
+        raise AssertionError("expected a future signal date to be rejected")

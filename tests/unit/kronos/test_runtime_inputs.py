@@ -52,6 +52,17 @@ def test_validate_window_rejects_bad_ohlc_and_short_history() -> None:
     assert validate_window(bad) == "invalid OHLC structure"
 
 
+def test_validate_window_rejects_prices_that_skip_a_market_date() -> None:
+    window = _window("000001.XSHE", amount=100.0)
+    expected_dates = window.dates
+    window.dates = expected_dates[:45] + (dt.date(2022, 3, 20),) + expected_dates[46:]
+
+    assert (
+        validate_window(window, expected_dates=expected_dates)
+        == "price dates do not match the latest 90 market days"
+    )
+
+
 def test_selection_excludes_known_bad_status_and_bottom_liquidity() -> None:
     windows = [
         _window(f"00000{index}.XSHE", amount=float(index))

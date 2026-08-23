@@ -75,6 +75,12 @@ def list_signal_dates(
     start_s = _date(start)
     end_s = _date(end)
     if universe is Universe.ALL_A_LIQUID:
+        latest = latest_price_date(provider.connection)
+        if latest is None:
+            return []
+        end_s = min(end_s, latest)
+        if start_s > end_s:
+            return []
         rows = provider.connection.query(
             "SELECT date FROM ts_trade_day_calendar WHERE is_open = 1 "
             "AND date BETWEEN %s AND %s ORDER BY date",
@@ -98,14 +104,14 @@ def list_signal_dates(
 
 
 def all_a_liquid_symbols(connection, as_of: dt.date) -> list[str]:
-    """截至 as_of 在 ``final_a_stock_eod_price`` 有任意历史记录的沪/深 A 股（内部代码）。
+    """在 as_of 当日有有效行情的沪/深 A 股（内部代码）。
 
     完全 Point-in-Time：上市/存续由价格历史本身推导，无需证券主数据。
     已显式排除北交所（BJ*）与指数代码（SH000xxx / SZ399xxx 等）。
     """
     rows = connection.query(
         "SELECT DISTINCT symbol FROM final_a_stock_eod_price "
-        "WHERE tradedate <= %s AND symbol REGEXP %s",
+        "WHERE tradedate = %s AND symbol REGEXP %s",
         (as_of.isoformat(), _A_SHARE_INTERNAL),
     )
     return sorted(row["symbol"] for row in rows if row.get("symbol"))

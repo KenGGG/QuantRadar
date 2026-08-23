@@ -53,12 +53,16 @@ class WindowSelection:
     partial_status_symbols: list[str]
 
 
-def validate_window(window: SymbolWindow) -> str | None:
+def validate_window(
+    window: SymbolWindow, *, expected_dates: tuple[dt.date, ...] | None = None
+) -> str | None:
     values = np.asarray(window.values)
     if values.shape != (LOOKBACK_DAYS, len(FEATURE_NAMES)):
         return f"expected {LOOKBACK_DAYS} complete rows, got {values.shape[0]}"
     if len(window.dates) != LOOKBACK_DAYS:
         return f"expected {LOOKBACK_DAYS} timestamps, got {len(window.dates)}"
+    if expected_dates is not None and window.dates != expected_dates:
+        return "price dates do not match the latest 90 market days"
     if window.listed_trade_days < 120:
         return "listed for fewer than 120 trading days"
     if not np.isfinite(values).all():
@@ -80,11 +84,13 @@ def validate_window(window: SymbolWindow) -> str | None:
     return None
 
 
-def select_eligible_windows(windows: Iterable[SymbolWindow]) -> WindowSelection:
+def select_eligible_windows(
+    windows: Iterable[SymbolWindow], *, expected_dates: tuple[dt.date, ...] | None = None
+) -> WindowSelection:
     valid: list[SymbolWindow] = []
     exclusions: dict[str, str] = {}
     for window in sorted(windows, key=lambda item: item.symbol):
-        reason = validate_window(window)
+        reason = validate_window(window, expected_dates=expected_dates)
         if reason:
             exclusions[window.symbol] = reason
         else:
@@ -330,7 +336,9 @@ def collect_real_input_package(
             )
         )
 
-    selection = select_eligible_windows(windows)
+    selection = select_eligible_windows(
+        windows, expected_dates=tuple(open_days[-LOOKBACK_DAYS:])
+    )
     end_commit = dolt_head_commit(connection)
     if not start_commit or start_commit != end_commit:
         raise RuntimeError(

@@ -23,6 +23,7 @@ from quantradar.kronos.universe_spec import (
     JQ_INDEX_CODE,
     Universe,
     all_a_liquid_symbols,
+    latest_price_date,
     listed_trade_days,
     list_signal_dates as _spec_list_signal_dates,
 )
@@ -59,6 +60,13 @@ def collect_week_input_package(
 ) -> dict:
     day = _date(signal_date)
     connection = provider.connection
+    latest = latest_price_date(connection)
+    if latest is None:
+        raise RuntimeError("No investment_data price rows are available")
+    if day > latest:
+        raise RuntimeError(
+            f"signal date {day} is later than latest available price date {latest}"
+        )
     start_commit = dolt_head_commit(connection)
     if not start_commit or (
         expected_data_commit is not None and start_commit != expected_data_commit
@@ -133,7 +141,9 @@ def collect_week_input_package(
                 tradestatus=tradestatus,
             )
         )
-    selection = select_eligible_windows(windows)
+    selection = select_eligible_windows(
+        windows, expected_dates=tuple(open_days[-LOOKBACK_DAYS:])
+    )
     end_commit = dolt_head_commit(connection)
     if end_commit != start_commit:
         raise RuntimeError(
