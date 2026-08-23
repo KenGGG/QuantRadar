@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from quantradar.config import load_investment_data_config
@@ -7,7 +9,10 @@ from quantradar.kronos.data_audit.actions import audit_corporate_actions
 from quantradar.kronos.data_audit.prices import audit_price_semantics
 from quantradar.kronos.data_audit.schema import audit_schema_and_coverage
 from quantradar.kronos.data_audit.universe import audit_pit_universe
-from quantradar.providers.investment_data.connection import InvestmentDataConnection
+from quantradar.providers.investment_data.connection import (
+    InvestmentDataConnection,
+    InvestmentDataConnectionError,
+)
 from quantradar.providers.investment_data.provider import InvestmentDataProvider
 
 pytestmark = [pytest.mark.unit, pytest.mark.requires_dolt]
@@ -15,8 +20,15 @@ pytestmark = [pytest.mark.unit, pytest.mark.requires_dolt]
 
 @pytest.fixture(scope="module")
 def audit_context():
+    if os.environ.get("QUANTRADAR_FORCE_NO_DOLT") == "1":
+        pytest.skip("QUANTRADAR_FORCE_NO_DOLT=1：跳过数据审计 live 测试")
     config = load_investment_data_config()
     connection = InvestmentDataConnection(config)
+    try:
+        connection.check()
+    except InvestmentDataConnectionError as exc:
+        connection.close()
+        pytest.skip(f"investment_data(Dolt) 不可达，跳过数据审计 live 测试：{exc}")
     provider = InvestmentDataProvider(config)
     try:
         yield connection, provider
