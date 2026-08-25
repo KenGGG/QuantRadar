@@ -12,11 +12,12 @@ import { StrategyWorkbench } from "./components/StrategyWorkbench";
 import { RunExplorer } from "./components/RunExplorer";
 import { ExperimentCompare } from "./components/ExperimentCompare";
 import { ReportPage } from "./components/ReportPage";
+import { ResearchMVP } from "./components/ResearchMVP";
 
 const { Sider, Content, Header } = Layout;
 const { Title, Text } = Typography;
 
-type TabKey = "data" | "strategy" | "runs" | "experiments";
+type TabKey = "data" | "research" | "strategy" | "runs" | "experiments";
 
 export function App() {
   const [health, setHealth] = useState<HealthResp | null>(null);
@@ -47,6 +48,7 @@ export function App() {
           onClick={(e) => setTab(e.key as TabKey)}
           items={[
             { key: "data", icon: <ApiOutlined />, label: "数据状态" },
+            { key: "research", icon: <FileSearchOutlined />, label: "研报" },
             { key: "strategy", icon: <CodeOutlined />, label: "策略回测" },
             { key: "runs", icon: <FileSearchOutlined />, label: "运行记录" },
             { key: "experiments", icon: <ExperimentOutlined />, label: "实验对比" },
@@ -73,6 +75,7 @@ export function App() {
           ) : (
             <>
               {tab === "data" && <DataStatus />}
+              {tab === "research" && <ResearchMVP />}
               {tab === "strategy" && <StrategyWorkbench onOpenReport={openReport} />}
               {tab === "runs" && <RunExplorer onOpenReport={openReport} />}
               {tab === "experiments" && <ExperimentCompare />}

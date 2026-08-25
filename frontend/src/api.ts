@@ -6,6 +6,19 @@ export interface HealthResp {
   environment?: Environment;
 }
 
+export type ResearchChannel = "HOT" | "STRATEGY" | "FINANCIAL_ENGINEERING";
+
+export interface ResearchReport {
+  id: number;
+  title: string;
+  institution: string | null;
+  publish_date: string;
+  content_type: string;
+  channel: ResearchChannel;
+  platform_order: number;
+  status: string;
+}
+
 export interface PriceRow {
   date: string;
   [field: string]: string | number | null;
@@ -169,6 +182,15 @@ async function httpJson<T>(input: string, init?: RequestInit): Promise<T> {
 
 export function getHealth(): Promise<HealthResp> {
   return httpJson<HealthResp>("/api/health");
+}
+
+export function listResearchDates(): Promise<{ dates: string[] }> {
+  return httpJson<{ dates: string[] }>("/api/research/dates");
+}
+
+export function listResearchReports(date: string, channel: ResearchChannel): Promise<{ reports: ResearchReport[] }> {
+  const qs = new URLSearchParams({ date, channel });
+  return httpJson<{ reports: ResearchReport[] }>(`/api/research/reports?${qs.toString()}`);
 }
 
 export function getPrice(params: {

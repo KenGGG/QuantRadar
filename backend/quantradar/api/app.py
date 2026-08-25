@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 import subprocess
 import tempfile
+from datetime import date
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -57,6 +58,21 @@ def research_dates() -> Dict[str, Any]:
     """List collected Research dates, newest first; no artifact paths are exposed."""
     try:
         return {"dates": [value.isoformat() for value in _research_store().list_dates()]}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Research storage unavailable: {exc}")
+
+
+@app.get("/api/research/reports")
+def research_reports(
+    target_date: date = Query(..., alias="date"),
+    channel: str = Query(..., pattern="^(HOT|STRATEGY|FINANCIAL_ENGINEERING)$"),
+) -> Dict[str, Any]:
+    """Return presentation-safe report metadata for a collected channel."""
+    try:
+        reports = _research_store().list_channel_reports(target_date, channel)
+        for report in reports:
+            report["publish_date"] = report["publish_date"].isoformat()
+        return {"reports": reports}
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Research storage unavailable: {exc}")
 

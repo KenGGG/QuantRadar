@@ -63,6 +63,42 @@ class ResearchStore:
         with self._session() as session:
             return list(session.scalars(select(ResearchReportSnapshot).where(ResearchReportSnapshot.target_date == target_date).order_by(ResearchReportSnapshot.channel, ResearchReportSnapshot.platform_order)).all())
 
+    def list_channel_reports(self, target_date: date, channel: str) -> list[dict[str, Any]]:
+        """Return safe, presentation-ready report metadata for one collected channel."""
+        with self._session() as session:
+            rows = session.execute(
+                select(ResearchReportSnapshot, ResearchReport)
+                .join(ResearchReport, ResearchReport.id == ResearchReportSnapshot.report_id)
+                .where(
+                    ResearchReportSnapshot.target_date == target_date,
+                    ResearchReportSnapshot.channel == channel,
+                )
+                .order_by(ResearchReportSnapshot.platform_order)
+            ).all()
+            stage_rows = session.scalars(
+                select(ResearchStageRun).order_by(ResearchStageRun.report_id, ResearchStageRun.id.desc())
+            ).all()
+            latest_status: dict[int, str] = {}
+            for row in stage_rows:
+                latest_status.setdefault(row.report_id, row.status)
+
+            return [
+                {
+                    "id": report.id,
+                    "title": report.title,
+                    "institution": report.institution,
+                    "publish_date": report.publish_date,
+                    "content_type": report.content_type,
+                    "channel": snapshot.channel,
+                    "platform_order": snapshot.platform_order,
+                    "status": latest_status.get(
+                        report.id,
+                        "PENDING" if report.content_type == "pdf" else "UNSUPPORTED",
+                    ),
+                }
+                for snapshot, report in rows
+            ]
+
     def begin_stage(self, report_id: int, stage: str, input_hash: str) -> ResearchStageRun:
         with self._session() as session:
             row = session.scalar(select(ResearchStageRun).where(ResearchStageRun.report_id == report_id, ResearchStageRun.stage == stage, ResearchStageRun.input_hash == input_hash).order_by(ResearchStageRun.id.desc()))
