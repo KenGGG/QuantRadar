@@ -22,10 +22,12 @@ class ResearchSettings:
     mineru_timeout_seconds: int = 1800
     mineru_concurrency: int = 1
     agnes_base_url: str = "https://apihub.agnes-ai.com/v1"
+    agnes_api_key: str = ""
     agnes_model: str = "agnes-2.5-flash"
     agnes_max_input_tokens: int = 12000
     agnes_rpm: int = 19
     feishu_required_keyword: str = ""
+    feishu_webhook_url: str = ""
 
     def __post_init__(self) -> None:
         if not self.database_url:
@@ -45,10 +47,12 @@ class ResearchSettings:
             mineru_api_url=os.environ.get("QUANTRADAR_MINERU_API_URL", "http://127.0.0.1:58000"),
             mineru_timeout_seconds=int(os.environ.get("QUANTRADAR_MINERU_TIMEOUT_SECONDS", "1800")),
             agnes_base_url=os.environ.get("QUANTRADAR_AGNES_BASE_URL", "https://apihub.agnes-ai.com/v1"),
+            agnes_api_key=os.environ.get("QUANTRADAR_AGNES_API_KEY", ""),
             agnes_model=os.environ.get("QUANTRADAR_AGNES_MODEL", "agnes-2.5-flash"),
             agnes_max_input_tokens=int(os.environ.get("QUANTRADAR_AGNES_MAX_INPUT_TOKENS", "12000")),
             agnes_rpm=int(os.environ.get("QUANTRADAR_AGNES_RPM", "19")),
             feishu_required_keyword=os.environ.get("QUANTRADAR_FEISHU_REQUIRED_KEYWORD", ""),
+            feishu_webhook_url=os.environ.get("QUANTRADAR_FEISHU_WEBHOOK_URL", ""),
         )
 
     def ensure_directories(self) -> None:
