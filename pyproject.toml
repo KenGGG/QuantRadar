@@ -24,6 +24,7 @@ dependencies = [
     "pyqlib>=0.9.7",
     "lightgbm>=4.7.0",
     "httpx>=0.28.1",
+    "playwright>=1.50,<2",
     "pytest>=8.0",
 ]
 
