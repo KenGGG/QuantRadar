@@ -137,7 +137,12 @@ class QyjCollector:
 
         captured: dict[str, str] = {}
         with sync_playwright() as playwright:
-            context = playwright.chromium.launch_persistent_context(str(self.settings.qyj_profile_dir), headless=True, ignore_default_args=["--enable-automation"])
+            context = playwright.chromium.launch_persistent_context(
+                str(self.settings.qyj_profile_dir),
+                executable_path="/usr/bin/google-chrome",
+                headless=True,
+                ignore_default_args=["--enable-automation"],
+            )
             page = context.pages[0] if context.pages else context.new_page()
             page.goto("https://www.qyyjt.cn/report/research", wait_until="domcontentloaded", timeout=60_000)
             page.wait_for_timeout(2_000)

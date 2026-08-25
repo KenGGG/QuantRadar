@@ -45,8 +45,8 @@ class ResearchSettings:
         database_url = os.environ.get("QUANTRADAR_RESEARCH_DATABASE_URL") or os.environ.get("QUANT_RADAR_PG_URL", "")
         return cls(
             database_url=database_url,
-            data_dir=Path(os.environ.get("QUANTRADAR_RESEARCH_DATA_DIR", "/data/quantradar/research")),
-            qyj_profile_dir=Path(os.environ.get("QUANTRADAR_QYJ_PROFILE_DIR", "/data/quantradar/qyj-profile")),
+            data_dir=Path(os.environ.get("QUANTRADAR_RESEARCH_DATA_DIR", "/data/ken/.cache/quantradar/research")),
+            qyj_profile_dir=Path(os.environ.get("QUANTRADAR_QYJ_PROFILE_DIR", "/data/ken/.cache/quantradar/qyj-profile")),
             mineru_api_url=os.environ.get("QUANTRADAR_MINERU_API_URL", "http://127.0.0.1:58000"),
             mineru_timeout_seconds=int(os.environ.get("QUANTRADAR_MINERU_TIMEOUT_SECONDS", "1800")),
             agnes_base_url=os.environ.get("QUANTRADAR_AGNES_BASE_URL", "https://apihub.agnes-ai.com/v1"),
