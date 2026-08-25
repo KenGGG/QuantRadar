@@ -3,6 +3,7 @@ import { Alert, Card, Empty, Select, Space, Spin, Table, Tag, Typography } from 
 import {
   listResearchDates,
   listResearchReports,
+  getResearchStatus,
   type ResearchChannel,
   type ResearchReport,
 } from "../api";
@@ -23,6 +24,7 @@ export function ResearchMVP() {
   const [targetDate, setTargetDate] = useState<string>();
   const [channel, setChannel] = useState<ResearchChannel>("HOT");
   const [reports, setReports] = useState<ResearchReport[]>([]);
+  const [counts, setCounts] = useState<Partial<Record<ResearchChannel, number>>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 
@@ -46,6 +48,9 @@ export function ResearchMVP() {
       .then(({ reports: rows }) => setReports(rows))
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "无法读取研报列表"))
       .finally(() => setLoading(false));
+    getResearchStatus(targetDate)
+      .then(({ channels }) => setCounts(channels))
+      .catch(() => setCounts({}));
   }, [targetDate, channel]);
 
   return (
@@ -72,6 +77,9 @@ export function ResearchMVP() {
             onChange={(value) => setChannel(value as ResearchChannel)}
           />
         </Space>
+        {targetDate && <Space style={{ marginLeft: 20 }} wrap>
+          {CHANNELS.map(({ key, label }) => <Tag key={key}>{label} {counts[key] ?? 0} 篇</Tag>)}
+        </Space>}
       </Card>
       <Card title={CHANNELS.find((item) => item.key === channel)?.label}>
         {loading ? <div style={{ textAlign: "center", padding: 36 }}><Spin /></div> : !targetDate ? <Empty description="尚无已采集研报；完成采集后将在此显示。" /> : (

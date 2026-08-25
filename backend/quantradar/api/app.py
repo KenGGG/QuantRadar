@@ -77,6 +77,18 @@ def research_reports(
         raise HTTPException(status_code=503, detail=f"Research storage unavailable: {exc}")
 
 
+@app.get("/api/research/status")
+def research_status(target_date: date = Query(..., alias="date")) -> Dict[str, Any]:
+    try:
+        counts = _research_store().channel_counts(target_date)
+        return {
+            "date": target_date.isoformat(),
+            "channels": {channel: counts.get(channel, 0) for channel in ("HOT", "STRATEGY", "FINANCIAL_ENGINEERING")},
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Research storage unavailable: {exc}")
+
+
 def _ensure_provider():
     """惰性确保全局 active provider 为 InvestmentDataProvider（只读真实数据）。"""
     from bullet_trade.data import get_data_provider

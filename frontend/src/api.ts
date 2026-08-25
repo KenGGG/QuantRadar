@@ -193,6 +193,10 @@ export function listResearchReports(date: string, channel: ResearchChannel): Pro
   return httpJson<{ reports: ResearchReport[] }>(`/api/research/reports?${qs.toString()}`);
 }
 
+export function getResearchStatus(date: string): Promise<{ date: string; channels: Record<ResearchChannel, number> }> {
+  return httpJson<{ date: string; channels: Record<ResearchChannel, number> }>(`/api/research/status?date=${encodeURIComponent(date)}`);
+}
+
 export function getPrice(params: {
   security: string;
   start_date?: string;

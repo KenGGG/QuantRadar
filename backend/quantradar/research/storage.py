@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from sqlalchemy import Engine, create_engine, select
+from sqlalchemy import Engine, create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import ResearchSettings
@@ -98,6 +98,15 @@ class ResearchStore:
                 }
                 for snapshot, report in rows
             ]
+
+    def channel_counts(self, target_date: date) -> dict[str, int]:
+        with self._session() as session:
+            rows = session.execute(
+                select(ResearchReportSnapshot.channel, func.count())
+                .where(ResearchReportSnapshot.target_date == target_date)
+                .group_by(ResearchReportSnapshot.channel)
+            ).all()
+            return {str(channel): count for channel, count in rows}
 
     def begin_stage(self, report_id: int, stage: str, input_hash: str) -> ResearchStageRun:
         with self._session() as session:
