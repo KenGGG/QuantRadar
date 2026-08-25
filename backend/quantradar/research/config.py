@@ -6,6 +6,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 
 def _required_absolute(path: Path, name: str) -> Path:
     if not path.is_absolute():
@@ -39,6 +41,7 @@ class ResearchSettings:
 
     @classmethod
     def from_env(cls) -> "ResearchSettings":
+        load_dotenv(dotenv_path=Path.cwd() / ".env", override=False)
         database_url = os.environ.get("QUANTRADAR_RESEARCH_DATABASE_URL") or os.environ.get("QUANT_RADAR_PG_URL", "")
         return cls(
             database_url=database_url,

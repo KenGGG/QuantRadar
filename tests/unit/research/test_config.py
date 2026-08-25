@@ -36,3 +36,20 @@ def test_settings_loads_agnes_and_feishu_secrets_from_environment(tmp_path: Path
             data_dir=tmp_path / "research-data",
             qyj_profile_dir=Path("profile"),
         )
+
+
+def test_settings_loads_research_values_from_dotenv(tmp_path: Path, monkeypatch) -> None:
+    from quantradar.research.config import ResearchSettings
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "QUANTRADAR_RESEARCH_DATABASE_URL=sqlite+pysqlite:///:memory:\n"
+        f"QUANTRADAR_RESEARCH_DATA_DIR={tmp_path / 'data'}\n"
+        f"QUANTRADAR_QYJ_PROFILE_DIR={tmp_path / 'profile'}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("QUANTRADAR_RESEARCH_DATABASE_URL", raising=False)
+    monkeypatch.delenv("QUANT_RADAR_PG_URL", raising=False)
+
+    assert ResearchSettings.from_env().database_url == "sqlite+pysqlite:///:memory:"
