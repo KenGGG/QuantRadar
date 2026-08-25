@@ -1,0 +1,53 @@
+from datetime import date
+
+
+def _row(report_id: str, title: str) -> dict:
+    return {
+        "id": report_id,
+        "title": title,
+        "publishDate": "08-24",
+        "reportType": "行业周报",
+        "attach": [{"fileUrl": f"https://example.test/{report_id}.pdf", "filePages": 12}],
+    }
+
+
+def test_normalize_stable_source_report_id() -> None:
+    from quantradar.research.collector.qyj import Channel, normalize_report
+
+    normalized = normalize_report(_row("A" * 32, "标题"), Channel.HOT, 1, date(2026, 8, 24))
+
+    assert normalized.report["source"] == "qyj"
+    assert normalized.report["source_report_id"] == "A" * 32
+    assert normalized.report["content_type"] == "pdf"
+    assert normalized.platform_order == 1
+
+
+def test_pagination_uses_size_and_from_without_duplicates() -> None:
+    from quantradar.research.collector.qyj import Channel, QyjCollector
+
+    calls: list[int] = []
+
+    def fetch(channel: Channel, target_date: date, offset: int, size: int):
+        calls.append(offset)
+        rows = [_row("A" * 32, "第一页"), _row("B" * 32, "第二页")] if offset == 0 else [_row("B" * 32, "重复"), _row("C" * 32, "第三页")]
+        return {"total": 4, "data": {"list": rows}}
+
+    collector = QyjCollector(fetch_page=fetch, page_size=2)
+    result = collector.collect_channel(Channel.HOT, date(2026, 8, 24))
+
+    assert calls == [0, 2]
+    assert [row.report["source_report_id"] for row in result] == ["A" * 32, "B" * 32, "C" * 32]
+    assert [row.platform_order for row in result] == [1, 2, 4]
+
+
+def test_auth_failure_stops_collection() -> None:
+    from quantradar.research.collector.qyj import AuthState, QyjAuthenticationError, QyjCollector
+
+    collector = QyjCollector(auth_probe=lambda: AuthState.LOGIN_REQUIRED)
+
+    try:
+        collector.require_authenticated()
+    except QyjAuthenticationError as exc:
+        assert exc.code == "LOGIN_REQUIRED"
+    else:
+        raise AssertionError("collection must stop when login is required")
