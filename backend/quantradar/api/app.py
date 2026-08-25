@@ -46,6 +46,21 @@ _SNAPSHOT_DIR = os.environ.get(
 )
 
 
+def _research_store():
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.storage import ResearchStore
+    return ResearchStore(ResearchSettings.from_env())
+
+
+@app.get("/api/research/dates")
+def research_dates() -> Dict[str, Any]:
+    """List collected Research dates, newest first; no artifact paths are exposed."""
+    try:
+        return {"dates": [value.isoformat() for value in _research_store().list_dates()]}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Research storage unavailable: {exc}")
+
+
 def _ensure_provider():
     """惰性确保全局 active provider 为 InvestmentDataProvider（只读真实数据）。"""
     from bullet_trade.data import get_data_provider

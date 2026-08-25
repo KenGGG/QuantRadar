@@ -41,6 +41,11 @@ class ResearchStore:
         with self._session() as session:
             return len(session.scalars(select(ResearchReport)).all())
 
+    def list_dates(self) -> list[date]:
+        with self._session() as session:
+            rows = session.scalars(select(ResearchReport.publish_date).distinct().order_by(ResearchReport.publish_date.desc())).all()
+            return list(rows)
+
     def record_snapshot(self, report_id: int, target_date: date, channel: str, platform_order: int, raw_payload_hash: str) -> ResearchReportSnapshot:
         with self._session() as session:
             row = session.scalar(select(ResearchReportSnapshot).where(ResearchReportSnapshot.report_id == report_id, ResearchReportSnapshot.target_date == target_date, ResearchReportSnapshot.channel == channel))
