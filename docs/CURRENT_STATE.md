@@ -8,13 +8,13 @@ file records present facts, not a delivery plan or chronological log.
 - Branch: `feat/report-research-mvp`
 - The branch contains 12 local Research MVP commits ahead of `origin/main`.
 - Remote backup: `origin/feat/report-research-mvp`.
-- Baseline HEAD: `659d034` (`fix(research): use writable data root and system Chrome`).
+- Baseline establishment: `8732f91` (`chore(research): establish report MVP active baseline`).
 - Local runtime state under `data/runtime/` is ignored and is not source data.
 
 ## Active Product Work
 
-Milestone: `REPORT_MVP_ENGINEERING_PASS`. Sole active goal:
-`REPORT_MVP_BASELINE_PASS`.
+Milestone: `REPORT_MVP_ENGINEERING_PASS`. `REPORT_MVP_BASELINE_PASS` is
+passed. Sole active goal: `REPORT_MVP_AGNES_PASS`.
 
 ### Enterprise Alert Research MVP: implemented
 
@@ -57,5 +57,4 @@ Milestone: `REPORT_MVP_ENGINEERING_PASS`. Sole active goal:
 
 ## Current Next Action
 
-Complete `REPORT_MVP_BASELINE_PASS`, then automatically advance to
-`REPORT_MVP_AGNES_PASS`.
+Complete `REPORT_MVP_AGNES_PASS`.

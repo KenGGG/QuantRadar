@@ -1,7 +1,7 @@
 # QuantRadar Active Phase
 
 **Milestone:** `REPORT_MVP_ENGINEERING_PASS`
-**Active Goal:** `REPORT_MVP_BASELINE_PASS`
+**Active Goal:** `REPORT_MVP_AGNES_PASS`
 **Status:** ACTIVE
 
 ## Scope
@@ -23,11 +23,16 @@ QYJ metadata → PDF + quality → MinerU Markdown → Agnes analysis
 
 Completed historical work remains valid evidence; it is not an active goal.
 
-## Current Goal: REPORT_MVP_BASELINE_PASS
+## Completed Goal: REPORT_MVP_BASELINE_PASS
 
-Protect the 12 local Research MVP commits ahead of `origin/main`, put them on
-the remote `feat/report-research-mvp` branch, and align repository state docs.
-Runtime state is local-only and must not enter Git.
+`PASS` — the 12 pre-existing Research MVP commits are protected on
+`origin/feat/report-research-mvp`; the active-goal documents, runtime ignore
+rules, permanent agent protocol, and versioned plan are all in place.
+
+## Current Goal: REPORT_MVP_AGNES_PASS
+
+Implement versioned, idempotent Agnes full-text analysis for MinerU Markdown.
+The result must be traceable to its report, PDF, Markdown, model, and prompt.
 
 ## Queued Goals
 
