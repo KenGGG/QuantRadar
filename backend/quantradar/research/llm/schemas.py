@@ -14,7 +14,7 @@ class ValidationResult:
     errors: list[str]
 
 
-def validate_analysis(analysis: dict[str, Any], chunks: list[SourceChunk]) -> ValidationResult:
+def validate_analysis(analysis: dict[str, Any], chunks: list[SourceChunk], *, report_id: int | None = None, markdown_sha256: str | None = None) -> ValidationResult:
     known = {chunk.chunk_id: chunk.chunk_sha256 for chunk in chunks}
     errors = []
     for item in analysis.get("evidence", []):
@@ -23,4 +23,6 @@ def validate_analysis(analysis: dict[str, Any], chunks: list[SourceChunk]) -> Va
             errors.append(f"EVIDENCE_MISSING_CHUNK:{chunk_id}")
         elif item.get("chunk_sha256") != known[chunk_id]:
             errors.append(f"EVIDENCE_HASH_MISMATCH:{chunk_id}")
+        elif report_id is not None and (item.get("report_id") != report_id or item.get("markdown_sha256") != markdown_sha256):
+            errors.append(f"EVIDENCE_SCOPE_MISMATCH:{chunk_id}")
     return ValidationResult(not errors, errors)

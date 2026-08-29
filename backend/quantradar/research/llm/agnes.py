@@ -42,15 +42,19 @@ class AgnesAnalyzer:
     def __init__(self, client: AgnesClient):
         self.client = client
 
-    def analyze_report(self, markdown: str, chunks: list[SourceChunk]) -> dict[str, Any]:
+    def analyze_report(self, markdown: str, chunks: list[SourceChunk], *, report_id: int | None = None, markdown_sha256: str | None = None) -> dict[str, Any]:
         result = self.client.complete([{"role": "user", "content": markdown}])
-        validation = validate_analysis(result, chunks)
+        if report_id is not None:
+            for evidence in result.get("evidence", []):
+                evidence.setdefault("report_id", report_id)
+                evidence.setdefault("markdown_sha256", markdown_sha256)
+        validation = validate_analysis(result, chunks, report_id=report_id, markdown_sha256=markdown_sha256)
         if not validation.valid:
             raise ValueError(";".join(validation.errors))
         return result
 
-    def analyze_chunk(self, chunk: SourceChunk) -> dict[str, Any]:
-        return self.analyze_report(chunk.text, [chunk])
+    def analyze_chunk(self, chunk: SourceChunk, *, report_id: int | None = None, markdown_sha256: str | None = None) -> dict[str, Any]:
+        return self.analyze_report(chunk.text, [chunk], report_id=report_id, markdown_sha256=markdown_sha256)
 
-    def synthesize_report(self, chunks: list[SourceChunk]) -> dict[str, Any]:
-        return self.analyze_report("\n\n".join(chunk.text for chunk in chunks), chunks)
+    def synthesize_report(self, chunks: list[SourceChunk], *, report_id: int | None = None, markdown_sha256: str | None = None) -> dict[str, Any]:
+        return self.analyze_report("\n\n".join(chunk.text for chunk in chunks), chunks, report_id=report_id, markdown_sha256=markdown_sha256)

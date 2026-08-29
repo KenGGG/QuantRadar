@@ -30,11 +30,11 @@ def analyze_markdown(store: ResearchStore, report_id: int, markdown: str, analys
     analyzer = AgnesAnalyzer(client)
     try:
         if len(chunks) == 1:
-            result = analyzer.analyze_report(markdown, chunks)
+            result = analyzer.analyze_report(markdown, chunks, report_id=report_id, markdown_sha256=markdown_sha256)
         else:
             for chunk in chunks:
-                analyzer.analyze_chunk(chunk)
-            result = analyzer.synthesize_report(chunks)
+                analyzer.analyze_chunk(chunk, report_id=report_id, markdown_sha256=markdown_sha256)
+            result = analyzer.synthesize_report(chunks, report_id=report_id, markdown_sha256=markdown_sha256)
     except Exception as exc:
         store.record_analysis_failure(report_id, markdown_sha256, analysis_profile_hash, model, exc)
         raise
