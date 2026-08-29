@@ -110,3 +110,19 @@ def test_analysis_chunks_are_saved_with_report_and_markdown_scope(store) -> None
     rows = store.list_analysis_chunks(report.id, "m" * 64)
 
     assert [(row.chunk_index, row.source_start, row.source_end, row.chunk_sha256) for row in rows] == [(1, 0, 7, rows[0].chunk_sha256)]
+
+
+def test_create_schema_upgrades_existing_analysis_table_without_dropping_rows(tmp_path) -> None:
+    from sqlalchemy import create_engine, inspect, text
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.storage import ResearchStore
+    url = f"sqlite+pysqlite:///{tmp_path / 'legacy.db'}"
+    engine = create_engine(url)
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE research_reports (id INTEGER PRIMARY KEY)"))
+        conn.execute(text("CREATE TABLE research_analyses (id INTEGER PRIMARY KEY, report_id INTEGER NOT NULL, analysis_type VARCHAR(32) NOT NULL, model VARCHAR(128) NOT NULL, prompt_version VARCHAR(64) NOT NULL, input_hash VARCHAR(64) NOT NULL, output_json JSON NOT NULL, created_at DATETIME)"))
+        conn.execute(text("INSERT INTO research_analyses VALUES (1, 1, 'MARKET', 'old', 'v1', 'oldhash', '{}', NULL)"))
+    store = ResearchStore(ResearchSettings(url, tmp_path / "data", tmp_path / "profile"))
+    store.create_schema()
+    columns = {column["name"] for column in inspect(store.engine).get_columns("research_analyses")}
+    assert {"markdown_sha256", "analysis_profile_hash", "status"} <= columns

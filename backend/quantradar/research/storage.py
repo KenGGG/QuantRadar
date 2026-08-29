@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from sqlalchemy import Engine, create_engine, func, select
+from sqlalchemy import Engine, create_engine, func, inspect, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import ResearchSettings
@@ -20,6 +20,28 @@ class ResearchStore:
 
     def create_schema(self) -> None:
         ResearchBase.metadata.create_all(self.engine)
+        self._upgrade_analysis_schema()
+
+    def _upgrade_analysis_schema(self) -> None:
+        """Additive compatibility migration for Research databases created before Agnes v1."""
+        inspector = inspect(self.engine)
+        if "research_analyses" not in inspector.get_table_names():
+            return
+        existing = {column["name"] for column in inspector.get_columns("research_analyses")}
+        additions = {
+            "markdown_sha256": "VARCHAR(64)", "analysis_profile_hash": "VARCHAR(64)",
+            "status": "VARCHAR(32) DEFAULT 'PENDING'", "agnes_version": "VARCHAR(64)",
+            "schema_version": "VARCHAR(64)", "chunking_version": "VARCHAR(64)",
+            "analysis_hash": "VARCHAR(64)", "attempt_count": "INTEGER DEFAULT 0",
+            "last_error": "TEXT", "updated_at": "TIMESTAMP" if self.engine.dialect.name == "postgresql" else "DATETIME",
+        }
+        with self.engine.begin() as connection:
+            for name, definition in additions.items():
+                if name not in existing:
+                    connection.execute(text(f"ALTER TABLE research_analyses ADD COLUMN {name} {definition}"))
+            connection.execute(text("UPDATE research_analyses SET markdown_sha256 = input_hash WHERE markdown_sha256 IS NULL"))
+            connection.execute(text("UPDATE research_analyses SET analysis_profile_hash = prompt_version WHERE analysis_profile_hash IS NULL"))
+            connection.execute(text("UPDATE research_analyses SET status = 'SUCCESS' WHERE status IS NULL"))
 
     def _session(self) -> Session:
         return self._sessions()
