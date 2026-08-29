@@ -184,6 +184,9 @@ class ResearchStore:
                     output_json=output_json,
                     status="SUCCESS",
                     analysis_hash=analysis_hash,
+                    agnes_version="agnes-http-v1",
+                    schema_version="schema-v1",
+                    chunking_version="chunking-v1",
                 )
                 session.add(row)
             else:
@@ -191,6 +194,9 @@ class ResearchStore:
                 row.model = model
                 row.output_json = output_json
                 row.analysis_hash = analysis_hash
+                row.agnes_version = "agnes-http-v1"
+                row.schema_version = "schema-v1"
+                row.chunking_version = "chunking-v1"
                 row.status = "SUCCESS"
                 row.last_error = None
                 row.attempt_count += 1

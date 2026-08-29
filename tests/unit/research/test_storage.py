@@ -118,6 +118,9 @@ def test_saved_analysis_has_deterministic_result_hash(store) -> None:
 
     assert row.analysis_hash
     assert len(row.analysis_hash) == 64
+    assert row.agnes_version == "agnes-http-v1"
+    assert row.schema_version == "schema-v1"
+    assert row.chunking_version == "chunking-v1"
 
 
 def test_create_schema_upgrades_existing_analysis_table_without_dropping_rows(tmp_path) -> None:
