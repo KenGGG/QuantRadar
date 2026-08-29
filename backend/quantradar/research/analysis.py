@@ -14,6 +14,9 @@ from .models import ResearchAnalysis
 from .storage import ResearchStore
 
 
+ANALYSIS_PROMPT_VERSION = "prompt-v2"
+
+
 def build_analysis_profile_hash(prompt_version: str, model_name: str, agnes_version: str, schema_version: str, chunking_version: str) -> str:
     payload = {"prompt_version": prompt_version, "model_name": model_name, "agnes_version": agnes_version, "schema_version": schema_version, "chunking_version": chunking_version}
     return sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
@@ -39,9 +42,11 @@ def analyze_markdown(store: ResearchStore, report_id: int, markdown: str, analys
         if len(chunks) == 1:
             result = analyzer.analyze_report(markdown, chunks, report_id=report_id, markdown_sha256=markdown_sha256)
         else:
-            for chunk in chunks:
+            chunk_analyses = [
                 analyzer.analyze_chunk(chunk, report_id=report_id, markdown_sha256=markdown_sha256)
-            result = analyzer.synthesize_report(chunks, report_id=report_id, markdown_sha256=markdown_sha256)
+                for chunk in chunks
+            ]
+            result = analyzer.synthesize_report(chunks, chunk_analyses, report_id=report_id, markdown_sha256=markdown_sha256)
     except Exception as exc:
         store.record_analysis_failure(report_id, markdown_sha256, analysis_profile_hash, model, exc, status="FAILED_TERMINAL" if isinstance(exc, TerminalAgnesError) else "FAILED_RETRYABLE")
         raise

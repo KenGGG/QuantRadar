@@ -14,7 +14,7 @@ def test_existing_markdown_is_analyzed_once_and_persisted(tmp_path) -> None:
         calls = 0
         def complete(self, messages):
             self.calls += 1
-            return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": __import__("hashlib").sha256(messages[0]["content"].encode()).hexdigest()}]}
+            return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": __import__("hashlib").sha256(messages[-1]["content"].encode()).hexdigest()}]}
 
     client = Client()
     first = analyze_markdown(store, report.id, "正文", "profile", "model", client)
@@ -43,6 +43,29 @@ def test_long_markdown_analyzes_each_chunk_before_synthesis(tmp_path) -> None:
     assert client.calls > 1
 
 
+def test_long_report_synthesis_receives_chunk_analyses(tmp_path) -> None:
+    from quantradar.research.analysis import analyze_markdown
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.storage import ResearchStore
+
+    settings = ResearchSettings(database_url=f"sqlite+pysqlite:///{tmp_path / 'db.sqlite'}", data_dir=tmp_path / "data", qyj_profile_dir=tmp_path / "profile")
+    store = ResearchStore(settings); store.create_schema()
+    report = store.upsert_report({"source": "qyj", "source_report_id": "r5", "title": "长报告", "publish_date": date(2026, 8, 1), "content_type": "pdf", "source_payload": {}})
+
+    class Client:
+        messages: list[list[dict]] = []
+        def complete(self, messages):
+            self.messages.append(messages)
+            text = messages[-1]["content"]
+            if "chunk_analyses" in text:
+                return {"research_type": "MARKET", "one_line_summary": "综合结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": __import__("hashlib").sha256(("甲" * 10000).encode()).hexdigest()}]}
+            return {"research_type": "MARKET", "one_line_summary": "分块结论", "evidence": []}
+
+    client = Client()
+    analyze_markdown(store, report.id, "甲" * 10001 + "\n" + "乙" * 10001, "profile", "model", client)
+    assert "chunk_analyses" in client.messages[-1][-1]["content"]
+
+
 def test_failed_analysis_is_recorded_and_the_same_version_can_retry(tmp_path) -> None:
     from quantradar.research.analysis import analyze_markdown
     from quantradar.research.config import ResearchSettings
@@ -53,7 +76,7 @@ def test_failed_analysis_is_recorded_and_the_same_version_can_retry(tmp_path) ->
     class Broken:
         def complete(self, _messages): raise TimeoutError("timeout")
     class Good:
-        def complete(self, messages): return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": __import__("hashlib").sha256(messages[0]["content"].encode()).hexdigest()}]}
+        def complete(self, messages): return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": __import__("hashlib").sha256(messages[-1]["content"].encode()).hexdigest()}]}
     try:
         analyze_markdown(store, report.id, "正文", "profile", "model", Broken())
     except TimeoutError:
@@ -66,12 +89,13 @@ def test_failed_analysis_is_recorded_and_the_same_version_can_retry(tmp_path) ->
 
 
 def test_profile_hash_changes_when_model_or_prompt_changes() -> None:
-    from quantradar.research.analysis import build_analysis_profile_hash
+    from quantradar.research.analysis import ANALYSIS_PROMPT_VERSION, build_analysis_profile_hash
 
     baseline = build_analysis_profile_hash("prompt-v1", "model-a", "agnes-http-v1", "schema-v1", "chunking-v1")
 
     assert baseline != build_analysis_profile_hash("prompt-v2", "model-a", "agnes-http-v1", "schema-v1", "chunking-v1")
     assert baseline != build_analysis_profile_hash("prompt-v1", "model-b", "agnes-http-v1", "schema-v1", "chunking-v1")
+    assert ANALYSIS_PROMPT_VERSION == "prompt-v2"
 
 
 def test_terminal_agnes_error_is_not_marked_retryable(tmp_path) -> None:

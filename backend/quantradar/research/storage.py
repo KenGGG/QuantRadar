@@ -132,6 +132,21 @@ class ResearchStore:
             ).all()
             return {str(channel): count for channel, count in rows}
 
+    def list_reports_for_preparation(self, target_date: date, limit: int) -> list[ResearchReport]:
+        with self._session() as session:
+            report_ids = (
+                select(ResearchReportSnapshot.report_id)
+                .where(ResearchReportSnapshot.target_date == target_date)
+                .distinct()
+                .order_by(ResearchReportSnapshot.report_id)
+                .limit(limit)
+            )
+            return list(session.scalars(
+                select(ResearchReport)
+                .where(ResearchReport.id.in_(report_ids), ResearchReport.content_type == "pdf")
+                .order_by(ResearchReport.id)
+            ).all())
+
     def begin_stage(self, report_id: int, stage: str, input_hash: str) -> ResearchStageRun:
         with self._session() as session:
             row = session.scalar(select(ResearchStageRun).where(ResearchStageRun.report_id == report_id, ResearchStageRun.stage == stage, ResearchStageRun.input_hash == input_hash).order_by(ResearchStageRun.id.desc()))
@@ -207,6 +222,30 @@ class ResearchStore:
         with self._session() as session:
             return len(session.scalars(select(ResearchAnalysis)).all())
 
+    def save_markdown_artifact(
+        self,
+        report_id: int,
+        markdown_path: str | Any,
+        markdown_sha256: str,
+        *,
+        parser: str,
+        parser_version: str,
+        parse_quality: dict[str, Any],
+    ) -> ResearchArtifact:
+        with self._session() as session:
+            row = session.get(ResearchArtifact, report_id)
+            if row is None:
+                row = ResearchArtifact(report_id=report_id)
+                session.add(row)
+            row.markdown_path = str(markdown_path)
+            row.markdown_sha256 = markdown_sha256
+            row.parser = parser
+            row.parser_version = parser_version
+            row.parse_quality = parse_quality
+            session.commit()
+            session.refresh(row)
+            return row
+
     def list_markdown_reports(self, target_date: date, limit: int) -> list[tuple[ResearchReport, ResearchArtifact]]:
         with self._session() as session:
             return list(session.execute(
@@ -229,13 +268,14 @@ class ResearchStore:
             return list(session.scalars(select(ResearchAnalysisChunk).where(ResearchAnalysisChunk.report_id == report_id, ResearchAnalysisChunk.markdown_sha256 == markdown_sha256).order_by(ResearchAnalysisChunk.chunk_index)).all())
 
     def record_analysis_failure(self, report_id: int, markdown_sha256: str, profile_hash: str, model: str, error: Exception, *, status: str = "FAILED_RETRYABLE") -> ResearchAnalysis:
+        error_code = f"{type(error).__name__}: {error}"[:512]
         with self._session() as session:
             row = session.scalar(select(ResearchAnalysis).where(ResearchAnalysis.report_id == report_id, ResearchAnalysis.markdown_sha256 == markdown_sha256, ResearchAnalysis.analysis_profile_hash == profile_hash))
             if row is None:
-                row = ResearchAnalysis(report_id=report_id, analysis_type="UNKNOWN", model=model, prompt_version=profile_hash, markdown_sha256=markdown_sha256, analysis_profile_hash=profile_hash, input_hash=markdown_sha256, output_json={}, status=status, attempt_count=1, last_error=type(error).__name__)
+                row = ResearchAnalysis(report_id=report_id, analysis_type="UNKNOWN", model=model, prompt_version=profile_hash, markdown_sha256=markdown_sha256, analysis_profile_hash=profile_hash, input_hash=markdown_sha256, output_json={}, status=status, attempt_count=1, last_error=error_code)
                 session.add(row)
             else:
-                row.status, row.attempt_count, row.last_error = status, row.attempt_count + 1, type(error).__name__
+                row.status, row.attempt_count, row.last_error = status, row.attempt_count + 1, error_code
             session.commit(); session.refresh(row)
             return row
 

@@ -21,6 +21,25 @@ def test_short_report_calls_client_once_and_validates_evidence() -> None:
     assert client.calls == 1
 
 
+def test_analyzer_supplies_a_structured_analysis_contract_before_markdown() -> None:
+    from quantradar.research.llm.agnes import AgnesAnalyzer
+
+    class CapturingClient:
+        messages = None
+
+        def complete(self, messages):
+            self.messages = messages
+            return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": []}
+
+    client = CapturingClient()
+    AgnesAnalyzer(client).analyze_report("# 标题\n正文", [SourceChunk("chunk-0001", "# 标题\n正文", "ok")])
+
+    assert client.messages[0]["role"] == "system"
+    assert "research_type" in client.messages[0]["content"]
+    assert "one_line_summary" in client.messages[0]["content"]
+    assert client.messages[1] == {"role": "user", "content": "# 标题\n正文"}
+
+
 def test_http_client_extracts_json_analysis_without_exposing_key() -> None:
     from quantradar.research.llm.agnes import AgnesHttpClient
 
@@ -42,3 +61,14 @@ def test_http_client_marks_rate_limits_retryable() -> None:
         except RetryableAgnesError:
             return
     assert False, "rate limit must be retryable"
+
+
+def test_http_client_accepts_a_long_report_read_timeout() -> None:
+    from quantradar.research.llm.agnes import AgnesHttpClient
+
+    client = AgnesHttpClient("https://agnes.example/v1", "secret", "model-x", timeout_seconds=180)
+    try:
+        assert client.session.timeout.read == 180
+        assert client.session.timeout.connect == 10
+    finally:
+        client.session.close()

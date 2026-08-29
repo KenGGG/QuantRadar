@@ -47,3 +47,71 @@ def test_analyze_requires_a_date_and_returns_structured_empty_result(tmp_path, c
 
     assert run(["analyze", "--date", "2026-08-24"], settings=settings) == 0
     assert '"analyzed": 0' in capsys.readouterr().out
+
+
+def test_analyze_continues_after_one_report_fails(tmp_path, capsys) -> None:
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.cli import run
+    from quantradar.research.storage import ResearchStore
+
+    settings = ResearchSettings(f"sqlite+pysqlite:///{tmp_path / 'research.db'}", tmp_path / "data", tmp_path / "profile")
+    store = ResearchStore(settings); store.create_schema()
+    for source_id in ("A" * 32, "B" * 32):
+        report = store.upsert_report({"source": "qyj", "source_report_id": source_id, "title": source_id, "publish_date": date(2026, 8, 24), "content_type": "pdf", "source_payload": {}})
+        path = tmp_path / f"{report.id}.md"; path.write_text("正文", encoding="utf-8")
+        store.save_markdown_artifact(report.id, path, source_id.lower() * 2, parser="mineru", parser_version="3.4.4", parse_quality={"status": "PARSE_OK"})
+    calls: list[int] = []
+
+    def analyze(_store, report_id, _markdown, *_args):
+        calls.append(report_id)
+        if len(calls) == 1:
+            raise RuntimeError("temporary Agnes error")
+
+    assert run(["analyze", "--date", "2026-08-24", "--limit", "2"], settings=settings, analyze_fn=analyze) == 0
+    assert len(calls) == 2
+    output = capsys.readouterr().out
+    assert '"analyzed": 1' in output
+    assert '"failed": 1' in output
+
+
+def test_prepare_processes_collected_pdf_reports_for_date(tmp_path, capsys) -> None:
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.cli import run
+    from quantradar.research.storage import ResearchStore
+
+    settings = ResearchSettings(f"sqlite+pysqlite:///{tmp_path / 'research.db'}", tmp_path / "data", tmp_path / "profile")
+    store = ResearchStore(settings); store.create_schema()
+    report = store.upsert_report({"source": "qyj", "source_report_id": "A" * 32, "title": "标题", "publish_date": date(2026, 8, 24), "content_type": "pdf", "source_payload": {}})
+    store.record_snapshot(report.id, date(2026, 8, 24), "HOT", 1, "hash")
+    prepared: list[int] = []
+
+    def prepare(_store, _settings, item) -> None:
+        prepared.append(item.id)
+
+    assert run(["prepare", "--date", "2026-08-24", "--limit", "1"], settings=settings, prepare_fn=prepare) == 0
+    assert prepared == [report.id]
+    assert '"prepared": 1' in capsys.readouterr().out
+
+
+def test_prepare_continues_after_one_report_fails(tmp_path, capsys) -> None:
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.cli import run
+    from quantradar.research.storage import ResearchStore
+
+    settings = ResearchSettings(f"sqlite+pysqlite:///{tmp_path / 'research.db'}", tmp_path / "data", tmp_path / "profile")
+    store = ResearchStore(settings); store.create_schema()
+    for source_id in ("A" * 32, "B" * 32):
+        report = store.upsert_report({"source": "qyj", "source_report_id": source_id, "title": source_id, "publish_date": date(2026, 8, 24), "content_type": "pdf", "source_payload": {}})
+        store.record_snapshot(report.id, date(2026, 8, 24), "HOT", report.id, source_id)
+    calls: list[int] = []
+
+    def prepare(_store, _settings, item) -> None:
+        calls.append(item.id)
+        if len(calls) == 1:
+            raise RuntimeError("temporary MinerU error")
+
+    assert run(["prepare", "--date", "2026-08-24", "--limit", "2"], settings=settings, prepare_fn=prepare) == 0
+    assert len(calls) == 2
+    output = capsys.readouterr().out
+    assert '"prepared": 1' in output
+    assert '"failed": 1' in output

@@ -94,6 +94,14 @@ def test_analysis_profile_change_creates_a_new_version(store) -> None:
     assert store.analysis_count() == 2
 
 
+def test_analysis_failure_retains_the_safe_error_code(store) -> None:
+    report = store.upsert_report(_report_payload())
+
+    row = store.record_analysis_failure(report.id, "m" * 64, "profile", "model", RuntimeError("HTTP_429"))
+
+    assert row.last_error == "RuntimeError: HTTP_429"
+
+
 def test_analysis_keeps_raw_markdown_hash_separate_from_profile_hash(store) -> None:
     report = store.upsert_report(_report_payload())
     row = store.save_analysis(report.id, "a" * 64, "profile-a", "agnes-2.5-flash", {"summary": "结论", "research_type": "MARKET"})
@@ -110,6 +118,32 @@ def test_analysis_chunks_are_saved_with_report_and_markdown_scope(store) -> None
     rows = store.list_analysis_chunks(report.id, "m" * 64)
 
     assert [(row.chunk_index, row.source_start, row.source_end, row.chunk_sha256) for row in rows] == [(1, 0, 7, rows[0].chunk_sha256)]
+
+
+def test_markdown_artifact_is_persisted_for_the_report_date(store, tmp_path) -> None:
+    report = store.upsert_report(_report_payload())
+
+    store.save_markdown_artifact(
+        report.id,
+        tmp_path / "report.md",
+        "m" * 64,
+        parser="mineru",
+        parser_version="3.4.4",
+        parse_quality={"status": "PARSE_OK"},
+    )
+
+    rows = store.list_markdown_reports(date(2026, 8, 24), limit=10)
+    assert [(row.id, artifact.markdown_sha256, artifact.parser_version) for row, artifact in rows] == [
+        (report.id, "m" * 64, "3.4.4")
+    ]
+
+
+def test_reports_for_preparation_are_unique_per_snapshot_date(store) -> None:
+    report = store.upsert_report(_report_payload())
+    store.record_snapshot(report.id, date(2026, 8, 24), "HOT", 1, "hot")
+    store.record_snapshot(report.id, date(2026, 8, 24), "STRATEGY", 2, "strategy")
+
+    assert [row.id for row in store.list_reports_for_preparation(date(2026, 8, 24), limit=10)] == [report.id]
 
 
 def test_saved_analysis_has_deterministic_result_hash(store) -> None:
