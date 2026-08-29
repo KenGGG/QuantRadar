@@ -81,17 +81,28 @@ class ResearchStageRun(ResearchBase):
 
 class ResearchAnalysis(ResearchBase):
     __tablename__ = "research_analyses"
+    __table_args__ = (UniqueConstraint("report_id", "markdown_sha256", "analysis_profile_hash", name="uq_research_analysis_version"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     report_id: Mapped[int] = mapped_column(ForeignKey("research_reports.id"), nullable=False, index=True)
     analysis_type: Mapped[str] = mapped_column(String(32), nullable=False)
     model: Mapped[str] = mapped_column(String(128), nullable=False)
     prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    markdown_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    analysis_profile_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     input_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     output_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     output_markdown: Mapped[str | None] = mapped_column(Text)
     research_value: Mapped[str | None] = mapped_column(String(16))
     reproducibility: Mapped[str | None] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="PENDING")
+    agnes_version: Mapped[str | None] = mapped_column(String(64))
+    schema_version: Mapped[str | None] = mapped_column(String(64))
+    chunking_version: Mapped[str | None] = mapped_column(String(64))
+    analysis_hash: Mapped[str | None] = mapped_column(String(64))
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class ResearchDailyDigest(ResearchBase):

@@ -9,7 +9,7 @@ from sqlalchemy import Engine, create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import ResearchSettings
-from .models import ResearchBase, ResearchOutbox, ResearchReport, ResearchReportSnapshot, ResearchStageRun, utcnow
+from .models import ResearchAnalysis, ResearchBase, ResearchOutbox, ResearchReport, ResearchReportSnapshot, ResearchStageRun, utcnow
 
 
 class ResearchStore:
@@ -138,3 +138,31 @@ class ResearchStore:
     def outbox_count(self) -> int:
         with self._session() as session:
             return len(session.scalars(select(ResearchOutbox)).all())
+
+    def save_analysis(self, report_id: int, markdown_sha256: str, prompt_version: str, model: str, output_json: dict[str, Any]) -> ResearchAnalysis:
+        """Persist one reproducible analysis; identical source and prompt are reused."""
+        with self._session() as session:
+            row = session.scalar(select(ResearchAnalysis).where(
+                ResearchAnalysis.report_id == report_id,
+                ResearchAnalysis.markdown_sha256 == markdown_sha256,
+                ResearchAnalysis.analysis_profile_hash == prompt_version,
+            ))
+            if row is None:
+                row = ResearchAnalysis(
+                    report_id=report_id,
+                    analysis_type=str(output_json.get("research_type", "MARKET")),
+                    model=model,
+                    prompt_version=prompt_version,
+                    markdown_sha256=markdown_sha256,
+                    analysis_profile_hash=prompt_version,
+                    input_hash=markdown_sha256,
+                    output_json=output_json,
+                    status="SUCCESS",
+                )
+                session.add(row)
+                session.commit(); session.refresh(row)
+            return row
+
+    def analysis_count(self) -> int:
+        with self._session() as session:
+            return len(session.scalars(select(ResearchAnalysis)).all())

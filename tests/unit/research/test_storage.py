@@ -70,3 +70,33 @@ def test_outbox_notification_key_is_unique(store) -> None:
 
     assert first.id == second.id
     assert store.outbox_count() == 1
+
+
+def test_analysis_is_idempotent_for_same_markdown_and_prompt(store) -> None:
+    report = store.upsert_report(_report_payload())
+    payload = {"summary": "结论", "research_type": "MARKET"}
+
+    first = store.save_analysis(report.id, "md-hash", "prompt-v1", "agnes-2.5-flash", payload)
+    second = store.save_analysis(report.id, "md-hash", "prompt-v1", "agnes-2.5-flash", payload)
+
+    assert first.id == second.id
+    assert store.analysis_count() == 1
+
+
+def test_analysis_profile_change_creates_a_new_version(store) -> None:
+    report = store.upsert_report(_report_payload())
+    payload = {"summary": "结论", "research_type": "MARKET"}
+
+    first = store.save_analysis(report.id, "md-hash", "profile-a", "agnes-2.5-flash", payload)
+    second = store.save_analysis(report.id, "md-hash", "profile-b", "agnes-2.6", payload)
+
+    assert first.id != second.id
+    assert store.analysis_count() == 2
+
+
+def test_analysis_keeps_raw_markdown_hash_separate_from_profile_hash(store) -> None:
+    report = store.upsert_report(_report_payload())
+    row = store.save_analysis(report.id, "a" * 64, "profile-a", "agnes-2.5-flash", {"summary": "结论", "research_type": "MARKET"})
+
+    assert row.markdown_sha256 == "a" * 64
+    assert row.analysis_profile_hash == "profile-a"
