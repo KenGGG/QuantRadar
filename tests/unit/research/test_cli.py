@@ -115,3 +115,19 @@ def test_prepare_continues_after_one_report_fails(tmp_path, capsys) -> None:
     output = capsys.readouterr().out
     assert '"prepared": 1' in output
     assert '"failed": 1' in output
+
+
+def test_pipeline_invokes_the_resumable_runner(tmp_path, capsys) -> None:
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.cli import run
+
+    settings = ResearchSettings(f"sqlite+pysqlite:///{tmp_path / 'research.db'}", tmp_path / "data", tmp_path / "profile")
+    calls = []
+
+    def pipeline(runtime, target_date, *, limit):
+        calls.append((runtime, target_date, limit))
+        return type("Result", (), {"target_date": target_date.isoformat(), "collected": 3, "prepared": 2, "prepare_failed": 0, "analyzed": 2, "analyze_failed": 0})()
+
+    assert run(["pipeline", "--date", "2026-08-24", "--limit", "7"], settings=settings, pipeline_fn=pipeline) == 0
+    assert calls[0][1:] == (date(2026, 8, 24), 7)
+    assert '"analyzed": 2' in capsys.readouterr().out

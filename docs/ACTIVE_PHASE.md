@@ -1,7 +1,7 @@
 # QuantRadar Active Phase
 
 **Milestone:** `REPORT_MVP_ENGINEERING_PASS`
-**Active Goal:** `REPORT_MVP_PIPELINE_RESUME_PASS`
+**Active Goal:** `REPORT_MVP_DELIVERY_PASS`
 **Status:** ACTIVE
 
 ## Scope
@@ -27,22 +27,21 @@ Completed historical work remains valid evidence; it is not an active goal.
 
 - `REPORT_MVP_BASELINE_PASS` — `PASS`
 - `REPORT_MVP_AGNES_PASS` — `PASS`
+- `REPORT_MVP_PIPELINE_RESUME_PASS` — `PASS`
 
 Agnes acceptance includes live QYJ reports across 2026-08-26, 2026-08-27,
 and 2026-08-28; short and chunked-long analysis, traceable Evidence,
 recoverable retry, and idempotent replay were verified and saved as structured
 runtime evidence.
 
-## Current Goal: REPORT_MVP_PIPELINE_RESUME_PASS
+## Current Goal: REPORT_MVP_DELIVERY_PASS
 
-Implement and verify the single resumable collection-to-analysis pipeline.
-It may use the completed QYJ, MinerU, and Agnes stages only; it must not enter
-Digest, Outbox, Feishu, systemd, or frozen work.
+Implement and verify the Daily Digest, idempotent Outbox, and Feishu delivery
+path. It must not enter systemd or frozen work.
 
 ## Queued Goals
 
-1. `REPORT_MVP_DELIVERY_PASS`
-2. `REPORT_MVP_OPERATIONS_PASS`
+1. `REPORT_MVP_OPERATIONS_PASS`
 
 ## Observation Goal
 

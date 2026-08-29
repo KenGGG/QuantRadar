@@ -14,8 +14,9 @@ file records present facts, not plans or chronological logs.
 ## Active Product Work
 
 Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
-`REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`. Sole active goal:
-`REPORT_MVP_PIPELINE_RESUME_PASS`.
+`REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
+`REPORT_MVP_PIPELINE_RESUME_PASS`. Sole active goal:
+`REPORT_MVP_DELIVERY_PASS`.
 
 ### Enterprise Alert Research MVP: implemented
 
@@ -30,7 +31,13 @@ Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
   Evidence validation, durable retryable failure state, and current-contract
   validation before idempotent reuse.
 - Formal operator entry points: `research prepare`, `research analyze`,
-  `make research-prepare`, and `make research-analyze`.
+  `research pipeline`, `make research-prepare`, `make research-analyze`, and
+  `make research-pipeline`.
+- Resumable QYJ → MinerU → Agnes pipeline with durable PREPARE/ANALYZE stage
+  checkpoints and per-report failure isolation. Live resume evidence:
+  `/data/ken/.cache/quantradar/research/analysis/acceptance/pipeline-resume-2026-08-28.json`;
+  the first run recorded two successful stages of each type, and the rerun
+  collected 99 metadata records while skipping both completed heavy stages.
 - Structured live acceptance evidence:
   `/data/ken/.cache/quantradar/research/analysis/acceptance/agnes-acceptance-2026-08-29.json`.
   It verifies 30 successful real reports across three dates, report/Markdown/
@@ -40,7 +47,6 @@ Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
 
 ### Enterprise Alert Research MVP: not implemented
 
-- A single resumable collect-to-analysis pipeline and resume command.
 - Daily Digest, idempotent Feishu outbox sender, and delivery verification.
 - Single-instance lock, structured logs, `systemd --user` units, and final
   engineering acceptance.
@@ -57,7 +63,7 @@ Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
 ## Verification
 
 - CI-equivalent backend: `156 passed, 143 skipped, 0 failed` (`make test`).
-- Research unit suite: `60 passed, 0 failed`.
+- Research unit suite: `63 passed, 0 failed`.
 - Frontend `npm run typecheck`: passed.
 - Frontend `npm run build`: passed; the known 2.16 MB bundle warning remains
   frozen and out of scope.
@@ -65,4 +71,4 @@ Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
 
 ## Current Next Action
 
-Complete `REPORT_MVP_PIPELINE_RESUME_PASS`.
+Complete `REPORT_MVP_DELIVERY_PASS`.

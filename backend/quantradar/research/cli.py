@@ -13,6 +13,7 @@ from .analysis import ANALYSIS_PROMPT_VERSION, analyze_markdown, build_analysis_
 from .config import ResearchSettings
 from .llm.agnes import AgnesHttpClient
 from .parser.mineru import MineruClient
+from .pipeline import run_pipeline
 from .preparation import prepare_report
 from .storage import ResearchStore
 
@@ -29,6 +30,9 @@ def _parser() -> argparse.ArgumentParser:
     analyze = commands.add_parser("analyze", help="analyze already-published MinerU Markdown only")
     analyze.add_argument("--date", type=date.fromisoformat, required=True, help="target date (YYYY-MM-DD)")
     analyze.add_argument("--limit", type=int, default=30, help="maximum reports to analyze")
+    pipeline = commands.add_parser("pipeline", help="run the resumable collect-to-analysis pipeline")
+    pipeline.add_argument("--date", type=date.fromisoformat, required=True, help="target date (YYYY-MM-DD)")
+    pipeline.add_argument("--limit", type=int, default=30, help="maximum reports to prepare and analyze")
     return parser
 
 
@@ -41,6 +45,7 @@ def run(
     agnes_client_cls=AgnesHttpClient,
     prepare_fn=prepare_report,
     analyze_fn=analyze_markdown,
+    pipeline_fn=run_pipeline,
 ) -> int:
     args = _parser().parse_args(argv)
     runtime = settings or ResearchSettings.from_env()
@@ -49,6 +54,17 @@ def run(
     if args.command == "health":
         response = mineru_cls(runtime.mineru_api_url, runtime.mineru_timeout_seconds).health()
         print(json.dumps({"mineru": response}, ensure_ascii=False, sort_keys=True))
+        return 0
+    if args.command == "pipeline":
+        result = pipeline_fn(runtime, args.date, limit=args.limit)
+        print(json.dumps({
+            "date": result.target_date,
+            "collected": result.collected,
+            "prepared": result.prepared,
+            "prepare_failed": result.prepare_failed,
+            "analyzed": result.analyzed,
+            "analyze_failed": result.analyze_failed,
+        }, ensure_ascii=False, sort_keys=True))
         return 0
 
     store = ResearchStore(runtime)
