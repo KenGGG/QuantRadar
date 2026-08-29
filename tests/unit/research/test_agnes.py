@@ -40,6 +40,28 @@ def test_analyzer_supplies_a_structured_analysis_contract_before_markdown() -> N
     assert client.messages[1] == {"role": "user", "content": "# 标题\n正文"}
 
 
+def test_analyzer_repairs_invalid_evidence_once_before_failing() -> None:
+    from quantradar.research.llm.agnes import AgnesAnalyzer
+
+    class RepairingClient:
+        calls = 0
+        repair_prompt = ""
+
+        def complete(self, messages):
+            self.calls += 1
+            if self.calls == 1:
+                return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "wrong", "chunk_sha256": "wrong"}]}
+            self.repair_prompt = messages[0]["content"]
+            return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": "ok"}]}
+
+    client = RepairingClient()
+    result = AgnesAnalyzer(client).analyze_report("正文", [SourceChunk("chunk-0001", "正文", "ok")])
+
+    assert result["evidence"][0]["chunk_id"] == "chunk-0001"
+    assert client.calls == 2
+    assert "EVIDENCE_MISSING_CHUNK:wrong" in client.repair_prompt
+
+
 def test_http_client_extracts_json_analysis_without_exposing_key() -> None:
     from quantradar.research.llm.agnes import AgnesHttpClient
 

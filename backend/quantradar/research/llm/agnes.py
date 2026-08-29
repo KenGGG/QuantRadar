@@ -72,11 +72,26 @@ class AgnesAnalyzer:
             {"role": "system", "content": contract},
             {"role": "user", "content": markdown},
         ])
-        if report_id is not None:
-            for evidence in result.get("evidence", []):
-                evidence.setdefault("report_id", report_id)
-                evidence.setdefault("markdown_sha256", markdown_sha256)
+        def scope_evidence(payload: dict[str, Any]) -> dict[str, Any]:
+            if report_id is not None:
+                for evidence in payload.get("evidence", []):
+                    evidence.setdefault("report_id", report_id)
+                    evidence.setdefault("markdown_sha256", markdown_sha256)
+            return payload
+
+        result = scope_evidence(result)
         validation = validate_analysis(result, chunks, report_id=report_id, markdown_sha256=markdown_sha256)
+        if not validation.valid:
+            repair_contract = (
+                f"{contract} The previous JSON failed validation with: {';'.join(validation.errors)}. "
+                f"Previous JSON: {json.dumps(result, ensure_ascii=False)}. "
+                "Return corrected JSON only; preserve claims only when their evidence cites the exact allowed chunk_id and chunk_sha256."
+            )
+            result = scope_evidence(self.client.complete([
+                {"role": "system", "content": repair_contract},
+                {"role": "user", "content": markdown},
+            ]))
+            validation = validate_analysis(result, chunks, report_id=report_id, markdown_sha256=markdown_sha256)
         if not validation.valid:
             raise ValueError(";".join(validation.errors))
         return result
