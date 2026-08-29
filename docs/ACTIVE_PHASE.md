@@ -1,8 +1,8 @@
 # QuantRadar Active Phase
 
 **Milestone:** `REPORT_MVP_ENGINEERING_PASS`
-**Active Goal:** `REPORT_MVP_OPERATIONS_PASS`
-**Status:** ACTIVE
+**Active Goal:** None — engineering milestone complete
+**Status:** COMPLETE
 
 ## Scope
 
@@ -29,20 +29,23 @@ Completed historical work remains valid evidence; it is not an active goal.
 - `REPORT_MVP_AGNES_PASS` — `PASS`
 - `REPORT_MVP_PIPELINE_RESUME_PASS` — `PASS`
 - `REPORT_MVP_DELIVERY_PASS` — `PASS`
+- `REPORT_MVP_OPERATIONS_PASS` — `PASS`
 
 Agnes acceptance includes live QYJ reports across 2026-08-26, 2026-08-27,
 and 2026-08-28; short and chunked-long analysis, traceable Evidence,
 recoverable retry, and idempotent replay were verified and saved as structured
 runtime evidence.
 
-## Current Goal: REPORT_MVP_OPERATIONS_PASS
+## Operations Acceptance
 
-Implement and verify single-instance runtime locking, structured operational
-records, and `systemd --user` units. It must not enter frozen work.
+Single-instance locking, redacted structured runtime records, and unenabled
+`systemd --user` service/timer units are implemented and verified. The real
+2026-08-28 pipeline rerun collected 99 metadata records while safely skipping
+completed stages and writing an operational record.
 
 ## Queued Goals
 
-None. Completion of this goal completes `REPORT_MVP_ENGINEERING_PASS`.
+None. `REPORT_MVP_ENGINEERING_PASS` is complete.
 
 ## Observation Goal
 

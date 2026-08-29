@@ -15,8 +15,8 @@ file records present facts, not plans or chronological logs.
 
 Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
 `REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
-`REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`. Sole active
-goal: `REPORT_MVP_OPERATIONS_PASS`.
+`REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`, and
+`REPORT_MVP_OPERATIONS_PASS`. `REPORT_MVP_ENGINEERING_PASS` is complete.
 
 ### Enterprise Alert Research MVP: implemented
 
@@ -42,6 +42,10 @@ goal: `REPORT_MVP_OPERATIONS_PASS`.
   `/data/ken/.cache/quantradar/research/analysis/acceptance/delivery-2026-08-28.json`
   records a successful first send and an idempotent second run that did not
   send again.
+- Single-instance runtime lock, credential-redacted JSON operation records,
+  and verified but not enabled `systemd --user` service/timer templates.
+  A real locked 2026-08-28 pipeline rerun collected 99 records, skipped
+  completed PREPARE/ANALYZE stages, and wrote a safe runtime log.
 - Structured live acceptance evidence:
   `/data/ken/.cache/quantradar/research/analysis/acceptance/agnes-acceptance-2026-08-29.json`.
   It verifies 30 successful real reports across three dates, report/Markdown/
@@ -51,8 +55,6 @@ goal: `REPORT_MVP_OPERATIONS_PASS`.
 
 ### Enterprise Alert Research MVP: not implemented
 
-- Single-instance lock, structured logs, `systemd --user` units, and final
-  engineering acceptance.
 - Real Feishu delivery and the separate seven-day observation are not started.
 
 ## Frozen Historical Facts
@@ -66,7 +68,7 @@ goal: `REPORT_MVP_OPERATIONS_PASS`.
 ## Verification
 
 - CI-equivalent backend: `156 passed, 143 skipped, 0 failed` (`make test`).
-- Research unit suite: `65 passed, 0 failed`.
+- Research unit suite: `67 passed, 0 failed`.
 - Frontend `npm run typecheck`: passed.
 - Frontend `npm run build`: passed; the known 2.16 MB bundle warning remains
   frozen and out of scope.
@@ -74,4 +76,5 @@ goal: `REPORT_MVP_OPERATIONS_PASS`.
 
 ## Current Next Action
 
-Complete `REPORT_MVP_OPERATIONS_PASS`.
+No engineering Goal is active. Do not claim `REPORT_MVP_7D_LIVE_PASS` until
+seven real operating days have been verified.

@@ -15,6 +15,7 @@ from .delivery import deliver_daily_digest
 from .llm.agnes import AgnesHttpClient
 from .parser.mineru import MineruClient
 from .pipeline import run_pipeline
+from .operations import ResearchRunLock, write_operation_record
 from .preparation import prepare_report
 from .storage import ResearchStore
 
@@ -60,7 +61,9 @@ def run(
         print(json.dumps({"mineru": response}, ensure_ascii=False, sort_keys=True))
         return 0
     if args.command == "pipeline":
-        result = pipeline_fn(runtime, args.date, limit=args.limit)
+        with ResearchRunLock(runtime.data_dir / "runtime" / "research.lock"):
+            result = pipeline_fn(runtime, args.date, limit=args.limit)
+        write_operation_record(runtime.data_dir, "pipeline", {"date": result.target_date, "collected": result.collected, "prepared": result.prepared, "prepare_failed": result.prepare_failed, "analyzed": result.analyzed, "analyze_failed": result.analyze_failed})
         print(json.dumps({
             "date": result.target_date,
             "collected": result.collected,
@@ -74,7 +77,9 @@ def run(
     store = ResearchStore(runtime)
     store.create_schema()
     if args.command == "deliver":
-        result = delivery_fn(store, runtime, args.date)
+        with ResearchRunLock(runtime.data_dir / "runtime" / "research.lock"):
+            result = delivery_fn(store, runtime, args.date)
+        write_operation_record(runtime.data_dir, "deliver", {"date": args.date.isoformat(), "digest_hash": result.digest_hash, "sent": result.sent, "outbox_status": result.outbox_status})
         print(json.dumps({"date": args.date.isoformat(), "digest_hash": result.digest_hash, "sent": result.sent, "outbox_status": result.outbox_status}, ensure_ascii=False, sort_keys=True))
         return 0
     if args.command == "prepare":
