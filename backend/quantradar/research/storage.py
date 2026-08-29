@@ -9,7 +9,7 @@ from sqlalchemy import Engine, create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import ResearchSettings
-from .models import ResearchAnalysis, ResearchBase, ResearchOutbox, ResearchReport, ResearchReportSnapshot, ResearchStageRun, utcnow
+from .models import ResearchAnalysis, ResearchArtifact, ResearchBase, ResearchOutbox, ResearchReport, ResearchReportSnapshot, ResearchStageRun, utcnow
 
 
 class ResearchStore:
@@ -166,3 +166,12 @@ class ResearchStore:
     def analysis_count(self) -> int:
         with self._session() as session:
             return len(session.scalars(select(ResearchAnalysis)).all())
+
+    def list_markdown_reports(self, target_date: date, limit: int) -> list[tuple[ResearchReport, ResearchArtifact]]:
+        with self._session() as session:
+            return list(session.execute(
+                select(ResearchReport, ResearchArtifact)
+                .join(ResearchArtifact, ResearchArtifact.report_id == ResearchReport.id)
+                .where(ResearchReport.publish_date == target_date, ResearchArtifact.markdown_path.is_not(None))
+                .order_by(ResearchReport.id).limit(limit)
+            ).all())

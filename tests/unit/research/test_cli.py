@@ -37,3 +37,13 @@ def test_collect_creates_schema_and_collects_requested_date(tmp_path) -> None:
 
     assert run(["collect", "--date", "2026-08-24"], settings=settings, collector_cls=FakeCollector) == 0
     assert calls == [date(2026, 8, 24)]
+
+
+def test_analyze_requires_a_date_and_returns_structured_empty_result(tmp_path, capsys) -> None:
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.cli import run
+
+    settings = ResearchSettings(f"sqlite+pysqlite:///{tmp_path / 'research.db'}", tmp_path / "data", tmp_path / "profile")
+
+    assert run(["analyze", "--date", "2026-08-24"], settings=settings) == 0
+    assert '"analyzed": 0' in capsys.readouterr().out
