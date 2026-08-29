@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from hashlib import sha256
+import json
 from typing import Any
 
 from sqlalchemy import select
@@ -11,6 +12,11 @@ from .llm.agnes import AgnesAnalyzer, AgnesClient
 from .llm.chunking import plan_chunks
 from .models import ResearchAnalysis
 from .storage import ResearchStore
+
+
+def build_analysis_profile_hash(prompt_version: str, model_name: str, agnes_version: str, schema_version: str, chunking_version: str) -> str:
+    payload = {"prompt_version": prompt_version, "model_name": model_name, "agnes_version": agnes_version, "schema_version": schema_version, "chunking_version": chunking_version}
+    return sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def analyze_markdown(store: ResearchStore, report_id: int, markdown: str, analysis_profile_hash: str, model: str, client: AgnesClient) -> ResearchAnalysis:

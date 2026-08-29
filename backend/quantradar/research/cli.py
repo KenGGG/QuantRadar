@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Sequence
 
 from .collector.qyj import QyjCollector
-from .analysis import analyze_markdown
+from .analysis import analyze_markdown, build_analysis_profile_hash
 from .config import ResearchSettings
 from .llm.agnes import AgnesHttpClient
 from .parser.mineru import MineruClient
@@ -49,10 +49,11 @@ def run(
     store.create_schema()
     if args.command == "analyze":
         client = agnes_client_cls(runtime.agnes_base_url, runtime.agnes_api_key, runtime.agnes_model)
+        profile_hash = build_analysis_profile_hash("prompt-v1", runtime.agnes_model, "agnes-http-v1", "schema-v1", "chunking-v1")
         analyzed = 0
         for report, artifact in store.list_markdown_reports(args.date, args.limit):
             markdown = Path(artifact.markdown_path).read_text(encoding="utf-8")
-            analyze_markdown(store, report.id, markdown, "agnes-v1", runtime.agnes_model, client)
+            analyze_markdown(store, report.id, markdown, profile_hash, runtime.agnes_model, client)
             analyzed += 1
         print(json.dumps({"date": args.date.isoformat(), "analyzed": analyzed}, ensure_ascii=False, sort_keys=True))
         return 0

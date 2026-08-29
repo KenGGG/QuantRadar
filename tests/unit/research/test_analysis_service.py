@@ -63,3 +63,12 @@ def test_failed_analysis_is_recorded_and_the_same_version_can_retry(tmp_path) ->
     recovered = analyze_markdown(store, report.id, "正文", "profile", "model", Good())
     assert recovered.id == failed.id
     assert recovered.status == "SUCCESS"
+
+
+def test_profile_hash_changes_when_model_or_prompt_changes() -> None:
+    from quantradar.research.analysis import build_analysis_profile_hash
+
+    baseline = build_analysis_profile_hash("prompt-v1", "model-a", "agnes-http-v1", "schema-v1", "chunking-v1")
+
+    assert baseline != build_analysis_profile_hash("prompt-v2", "model-a", "agnes-http-v1", "schema-v1", "chunking-v1")
+    assert baseline != build_analysis_profile_hash("prompt-v1", "model-b", "agnes-http-v1", "schema-v1", "chunking-v1")
