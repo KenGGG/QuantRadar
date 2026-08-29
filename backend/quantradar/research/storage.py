@@ -9,7 +9,7 @@ from sqlalchemy import Engine, create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import ResearchSettings
-from .models import ResearchAnalysis, ResearchArtifact, ResearchBase, ResearchOutbox, ResearchReport, ResearchReportSnapshot, ResearchStageRun, utcnow
+from .models import ResearchAnalysis, ResearchAnalysisChunk, ResearchArtifact, ResearchBase, ResearchOutbox, ResearchReport, ResearchReportSnapshot, ResearchStageRun, utcnow
 
 
 class ResearchStore:
@@ -182,6 +182,18 @@ class ResearchStore:
                 .where(ResearchReport.publish_date == target_date, ResearchArtifact.markdown_path.is_not(None))
                 .order_by(ResearchReport.id).limit(limit)
             ).all())
+
+    def save_analysis_chunks(self, report_id: int, markdown_sha256: str, chunks) -> None:
+        with self._session() as session:
+            for chunk in chunks:
+                row = session.scalar(select(ResearchAnalysisChunk).where(ResearchAnalysisChunk.report_id == report_id, ResearchAnalysisChunk.markdown_sha256 == markdown_sha256, ResearchAnalysisChunk.chunk_index == chunk.chunk_index))
+                if row is None:
+                    session.add(ResearchAnalysisChunk(report_id=report_id, markdown_sha256=markdown_sha256, chunk_id=chunk.chunk_id, chunk_index=chunk.chunk_index, source_start=chunk.source_start, source_end=chunk.source_end, chunk_sha256=chunk.chunk_sha256, text=chunk.text))
+            session.commit()
+
+    def list_analysis_chunks(self, report_id: int, markdown_sha256: str) -> list[ResearchAnalysisChunk]:
+        with self._session() as session:
+            return list(session.scalars(select(ResearchAnalysisChunk).where(ResearchAnalysisChunk.report_id == report_id, ResearchAnalysisChunk.markdown_sha256 == markdown_sha256).order_by(ResearchAnalysisChunk.chunk_index)).all())
 
     def record_analysis_failure(self, report_id: int, markdown_sha256: str, profile_hash: str, model: str, error: Exception) -> ResearchAnalysis:
         with self._session() as session:

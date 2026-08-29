@@ -105,6 +105,20 @@ class ResearchAnalysis(ResearchBase):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
+class ResearchAnalysisChunk(ResearchBase):
+    __tablename__ = "research_analysis_chunks"
+    __table_args__ = (UniqueConstraint("report_id", "markdown_sha256", "chunk_index", name="uq_research_analysis_chunk"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    report_id: Mapped[int] = mapped_column(ForeignKey("research_reports.id"), nullable=False, index=True)
+    markdown_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    chunk_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_start: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_end: Mapped[int] = mapped_column(Integer, nullable=False)
+    chunk_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 class ResearchDailyDigest(ResearchBase):
     __tablename__ = "research_daily_digests"
     target_date: Mapped[date] = mapped_column(Date, primary_key=True)

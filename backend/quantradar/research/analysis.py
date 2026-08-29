@@ -27,6 +27,7 @@ def analyze_markdown(store: ResearchStore, report_id: int, markdown: str, analys
     if existing is not None:
         return existing
     chunks = plan_chunks(markdown, max_chars=10000)
+    store.save_analysis_chunks(report_id, markdown_sha256, chunks)
     analyzer = AgnesAnalyzer(client)
     try:
         if len(chunks) == 1:

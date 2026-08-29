@@ -100,3 +100,13 @@ def test_analysis_keeps_raw_markdown_hash_separate_from_profile_hash(store) -> N
 
     assert row.markdown_sha256 == "a" * 64
     assert row.analysis_profile_hash == "profile-a"
+
+
+def test_analysis_chunks_are_saved_with_report_and_markdown_scope(store) -> None:
+    from quantradar.research.llm.chunking import plan_chunks
+    report = store.upsert_report(_report_payload())
+
+    store.save_analysis_chunks(report.id, "m" * 64, plan_chunks("# 标题\n正文", 100))
+    rows = store.list_analysis_chunks(report.id, "m" * 64)
+
+    assert [(row.chunk_index, row.source_start, row.source_end, row.chunk_sha256) for row in rows] == [(1, 0, 7, rows[0].chunk_sha256)]
