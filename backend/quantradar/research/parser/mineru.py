@@ -37,3 +37,20 @@ class MineruClient:
     def health(self) -> dict:
         with httpx.Client(timeout=5) as client:
             response = client.get(f"{self.api_url}/health"); response.raise_for_status(); return response.json()
+
+    def parse_pdf(self, pdf_path: Path) -> tuple[str, str]:
+        with pdf_path.open("rb") as handle, httpx.Client(timeout=self.timeout_seconds) as client:
+            response = client.post(
+                f"{self.api_url}/file_parse",
+                files={"files": (pdf_path.name, handle, "application/pdf")},
+                data={"backend": "pipeline", "return_md": "true", "response_format_zip": "false"},
+            )
+        response.raise_for_status()
+        payload = response.json()
+        if payload.get("status") != "completed":
+            raise RuntimeError(f"MinerU parse did not complete: {payload.get('status')}")
+        results = payload.get("results") or {}
+        result = results.get(pdf_path.stem)
+        if not isinstance(result, dict) or not isinstance(result.get("md_content"), str) or not result["md_content"].strip():
+            raise ValueError("MinerU response contains no Markdown")
+        return result["md_content"], str(payload.get("version") or "unknown")

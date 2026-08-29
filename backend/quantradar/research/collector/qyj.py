@@ -28,6 +28,22 @@ CHANNEL_PARAMS = {
 }
 
 
+def build_search_params(channel: Channel, target_date: date, offset: int, size: int) -> dict[str, str]:
+    return {
+        "sortKey": "",
+        "sortType": "",
+        "hotThemeCode": "",
+        "depthOnly": "0",
+        "includeNoAccess": "1",
+        "includeWx": "1",
+        "size": str(size),
+        "from": str(offset),
+        "system": "web",
+        "publishDate": f"[{target_date.isoformat()},{target_date.isoformat()}]",
+        **CHANNEL_PARAMS[channel],
+    }
+
+
 class AuthState(StrEnum):
     AUTH_OK = "AUTH_OK"
     LOGIN_REQUIRED = "LOGIN_REQUIRED"
@@ -180,7 +196,7 @@ class QyjCollector:
             page.on("request", capture)
             page.reload(wait_until="domcontentloaded"); page.wait_for_timeout(2_000)
             allowed = {key: captured[key] for key in ("accept", "client", "content-type", "pcuss", "system", "system1", "terminal", "user", "ver", "x-request-id", "x-request-url") if key in captured}
-            params = {"sortKey": "", "sortType": "", "hotThemeCode": "", "depthOnly": "0", "includeNoAccess": "1", "includeWx": "1", "size": str(size), "from": str(offset), "system": "web", "publishDate": f"[{target_date.isoformat()},{target_date.isoformat()}", **CHANNEL_PARAMS[channel]}
+            params = build_search_params(channel, target_date, offset, size)
             response = page.evaluate("""async ({params, headers}) => { const r = await fetch('/finchinaAPP/searchReportNew.action', {method: 'POST', headers, credentials: 'include', body: new URLSearchParams(params)}); return await r.json(); }""", {"params": params, "headers": allowed})
             context.close()
             return response

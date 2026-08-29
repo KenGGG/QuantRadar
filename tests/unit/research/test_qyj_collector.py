@@ -22,6 +22,16 @@ def test_normalize_stable_source_report_id() -> None:
     assert normalized.platform_order == 1
 
 
+def test_search_params_use_a_closed_publish_date_range() -> None:
+    from quantradar.research.collector.qyj import Channel, build_search_params
+
+    params = build_search_params(Channel.HOT, date(2026, 8, 28), offset=50, size=20)
+
+    assert params["publishDate"] == "[2026-08-28,2026-08-28]"
+    assert params["from"] == "50"
+    assert params["size"] == "20"
+
+
 def test_pagination_uses_size_and_from_without_duplicates() -> None:
     from quantradar.research.collector.qyj import Channel, QyjCollector
 
