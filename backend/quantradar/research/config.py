@@ -41,7 +41,9 @@ class ResearchSettings:
 
     @classmethod
     def from_env(cls) -> "ResearchSettings":
-        load_dotenv(dotenv_path=Path.cwd() / ".env", override=False)
+        project_root = Path(__file__).resolve().parents[3]
+        cwd_dotenv = Path.cwd() / ".env"
+        load_dotenv(dotenv_path=cwd_dotenv if cwd_dotenv.is_file() else project_root / ".env", override=False)
         database_url = os.environ.get("QUANTRADAR_RESEARCH_DATABASE_URL") or os.environ.get("QUANT_RADAR_PG_URL", "")
         return cls(
             database_url=database_url,
