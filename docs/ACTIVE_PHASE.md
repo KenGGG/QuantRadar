@@ -1,7 +1,7 @@
 # QuantRadar Active Phase
 
 **Milestone:** `REPORT_MVP_ENGINEERING_PASS`
-**Active Goal:** `REPORT_MVP_AGNES_PASS`
+**Active Goal:** `REPORT_MVP_PIPELINE_RESUME_PASS`
 **Status:** ACTIVE
 
 ## Scope
@@ -10,7 +10,7 @@ The only active work is the Enterprise Alert research-report MVP.
 
 ```text
 QYJ metadata → PDF + quality → MinerU Markdown → Agnes analysis
-→ Daily Digest → Feishu Outbox → delivery → resumable operations
+→ resumable pipeline → Daily Digest → Feishu Outbox → delivery → operations
 ```
 
 ## Frozen
@@ -23,23 +23,26 @@ QYJ metadata → PDF + quality → MinerU Markdown → Agnes analysis
 
 Completed historical work remains valid evidence; it is not an active goal.
 
-## Completed Goal: REPORT_MVP_BASELINE_PASS
+## Completed Goals
 
-`PASS` — the 12 pre-existing Research MVP commits are protected on
-`origin/feat/report-research-mvp`; the active-goal documents, runtime ignore
-rules, permanent agent protocol, and versioned plan are all in place.
+- `REPORT_MVP_BASELINE_PASS` — `PASS`
+- `REPORT_MVP_AGNES_PASS` — `PASS`
 
-## Current Goal: REPORT_MVP_AGNES_PASS
+Agnes acceptance includes live QYJ reports across 2026-08-26, 2026-08-27,
+and 2026-08-28; short and chunked-long analysis, traceable Evidence,
+recoverable retry, and idempotent replay were verified and saved as structured
+runtime evidence.
 
-Implement versioned, idempotent Agnes full-text analysis for MinerU Markdown.
-The result must be traceable to its report, PDF, Markdown, model, and prompt.
+## Current Goal: REPORT_MVP_PIPELINE_RESUME_PASS
+
+Implement and verify the single resumable collection-to-analysis pipeline.
+It may use the completed QYJ, MinerU, and Agnes stages only; it must not enter
+Digest, Outbox, Feishu, systemd, or frozen work.
 
 ## Queued Goals
 
-1. `REPORT_MVP_AGNES_PASS`
-2. `REPORT_MVP_PIPELINE_RESUME_PASS`
-3. `REPORT_MVP_DELIVERY_PASS`
-4. `REPORT_MVP_OPERATIONS_PASS`
+1. `REPORT_MVP_DELIVERY_PASS`
+2. `REPORT_MVP_OPERATIONS_PASS`
 
 ## Observation Goal
 

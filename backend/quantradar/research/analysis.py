@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from .llm.agnes import AgnesAnalyzer, AgnesClient, TerminalAgnesError
 from .llm.chunking import plan_chunks
+from .llm.schemas import validate_analysis
 from .models import ResearchAnalysis
 from .storage import ResearchStore
 
@@ -26,6 +27,7 @@ def analyze_markdown(store: ResearchStore, report_id: int, markdown: str, analys
     if not markdown.strip():
         raise ValueError("Markdown is empty")
     markdown_sha256 = sha256(markdown.encode()).hexdigest()
+    chunks = plan_chunks(markdown, max_chars=10000)
     with store._session() as session:
         existing = session.scalar(select(ResearchAnalysis).where(
             ResearchAnalysis.report_id == report_id,
@@ -33,9 +35,8 @@ def analyze_markdown(store: ResearchStore, report_id: int, markdown: str, analys
             ResearchAnalysis.analysis_profile_hash == analysis_profile_hash,
             ResearchAnalysis.status == "SUCCESS",
         ))
-    if existing is not None:
+    if existing is not None and validate_analysis(existing.output_json, chunks, report_id=report_id, markdown_sha256=markdown_sha256).valid:
         return existing
-    chunks = plan_chunks(markdown, max_chars=10000)
     store.save_analysis_chunks(report_id, markdown_sha256, chunks)
     analyzer = AgnesAnalyzer(client)
     try:

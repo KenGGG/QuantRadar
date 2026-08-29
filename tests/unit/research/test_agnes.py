@@ -29,7 +29,7 @@ def test_analyzer_supplies_a_structured_analysis_contract_before_markdown() -> N
 
         def complete(self, messages):
             self.messages = messages
-            return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": []}
+            return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": "ok"}]}
 
     client = CapturingClient()
     AgnesAnalyzer(client).analyze_report("# 标题\n正文", [SourceChunk("chunk-0001", "# 标题\n正文", "ok")])
@@ -60,6 +60,18 @@ def test_analyzer_repairs_invalid_evidence_once_before_failing() -> None:
     assert result["evidence"][0]["chunk_id"] == "chunk-0001"
     assert client.calls == 2
     assert "EVIDENCE_MISSING_CHUNK:wrong" in client.repair_prompt
+
+
+def test_analyzer_canonicalizes_hash_for_a_known_evidence_chunk() -> None:
+    from quantradar.research.llm.agnes import AgnesAnalyzer
+
+    class HashMistypingClient:
+        def complete(self, messages):
+            return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": "model-typo"}]}
+
+    result = AgnesAnalyzer(HashMistypingClient()).analyze_report("正文", [SourceChunk("chunk-0001", "正文", "authoritative-hash")])
+
+    assert result["evidence"] == [{"chunk_id": "chunk-0001", "chunk_sha256": "authoritative-hash"}]
 
 
 def test_http_client_extracts_json_analysis_without_exposing_key() -> None:
@@ -94,3 +106,20 @@ def test_http_client_accepts_a_long_report_read_timeout() -> None:
         assert client.session.timeout.connect == 10
     finally:
         client.session.close()
+
+
+def test_http_client_spaces_requests_by_configured_rate_limit() -> None:
+    from quantradar.research.llm.agnes import AgnesHttpClient
+
+    clock = [0.0]
+    sleeps = []
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json={"choices": [{"message": {"content": '{"research_type":"MARKET","evidence":[]}'}}]}))
+    with httpx.Client(transport=transport) as session:
+        client = AgnesHttpClient(
+            "https://agnes.example/v1", "secret", "model-x", session=session,
+            requests_per_minute=20, clock=lambda: clock[0], sleeper=lambda delay: sleeps.append(delay),
+        )
+        client.complete([{"role": "user", "content": "first"}])
+        client.complete([{"role": "user", "content": "second"}])
+
+    assert sleeps == [3.0]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any, Protocol
 
 import httpx
@@ -26,11 +27,31 @@ class TerminalAgnesError(RuntimeError):
 class AgnesHttpClient:
     """OpenAI-compatible Agnes transport with bounded connection/request timeouts."""
 
-    def __init__(self, base_url: str, api_key: str, model: str, *, timeout_seconds: int = 180, session: httpx.Client | None = None):
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str,
+        model: str,
+        *,
+        timeout_seconds: int = 180,
+        requests_per_minute: int = 19,
+        session: httpx.Client | None = None,
+        clock=time.monotonic,
+        sleeper=time.sleep,
+    ):
+        if requests_per_minute < 1:
+            raise ValueError("requests_per_minute must be positive")
         self.base_url, self.api_key, self.model = base_url.rstrip("/"), api_key, model
         self.session = session or httpx.Client(timeout=httpx.Timeout(timeout_seconds, connect=10.0))
+        self._minimum_interval = 60.0 / requests_per_minute
+        self._clock, self._sleeper, self._last_request_at = clock, sleeper, None
 
     def complete(self, messages: list[dict[str, str]]) -> dict[str, Any]:
+        if self._last_request_at is not None:
+            remaining = self._minimum_interval - (self._clock() - self._last_request_at)
+            if remaining > 0:
+                self._sleeper(remaining)
+        self._last_request_at = self._clock()
         try:
             response = self.session.post(
                 f"{self.base_url}/chat/completions",
@@ -57,6 +78,7 @@ class AgnesAnalyzer:
         self.client = client
 
     def analyze_report(self, markdown: str, chunks: list[SourceChunk], *, report_id: int | None = None, markdown_sha256: str | None = None, task: str = "Analyze the supplied research-report Markdown.") -> dict[str, Any]:
+        authoritative_hashes = {chunk.chunk_id: chunk.chunk_sha256 for chunk in chunks}
         evidence_contract = [
             {"chunk_id": chunk.chunk_id, "chunk_sha256": chunk.chunk_sha256}
             for chunk in chunks
@@ -73,8 +95,13 @@ class AgnesAnalyzer:
             {"role": "user", "content": markdown},
         ])
         def scope_evidence(payload: dict[str, Any]) -> dict[str, Any]:
-            if report_id is not None:
-                for evidence in payload.get("evidence", []):
+            for evidence in payload.get("evidence", []):
+                if not isinstance(evidence, dict):
+                    continue
+                chunk_id = evidence.get("chunk_id")
+                if chunk_id in authoritative_hashes:
+                    evidence["chunk_sha256"] = authoritative_hashes[chunk_id]
+                if report_id is not None:
                     evidence.setdefault("report_id", report_id)
                     evidence.setdefault("markdown_sha256", markdown_sha256)
             return payload

@@ -1,49 +1,49 @@
 # Current State
 
 `docs/ACTIVE_PHASE.md` is the sole source of truth for the current goal. This
-file records present facts, not a delivery plan or chronological log.
+file records present facts, not plans or chronological logs.
 
 ## Repository
 
 - Branch: `feat/report-research-mvp`
-- The branch contains the protected Research MVP history and subsequent Agnes
-  Goal implementation commits ahead of `origin/main`.
-- Remote backup: `origin/feat/report-research-mvp`.
-- Baseline establishment: `8732f91` (`chore(research): establish report MVP active baseline`).
+- Remote backup: `origin/feat/report-research-mvp`
+- HEAD at the Agnes acceptance transition: `964dab0`
+  (`chore(research): add report MVP make targets`).
 - Local runtime state under `data/runtime/` is ignored and is not source data.
 
 ## Active Product Work
 
-Milestone: `REPORT_MVP_ENGINEERING_PASS`. `REPORT_MVP_BASELINE_PASS` is
-passed. Sole active goal: `REPORT_MVP_AGNES_PASS`.
+Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
+`REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`. Sole active goal:
+`REPORT_MVP_PIPELINE_RESUME_PASS`.
 
 ### Enterprise Alert Research MVP: implemented
 
 - Isolated SQLAlchemy registry for reports, snapshots, artifacts, stage runs,
   analyses, digests, and outbox rows.
-- Environment-based Research settings and local artifact directory layout.
-- QYJ metadata collection with stable identities, channel ordering, pagination,
-  and diagnostic authentication failure handling.
-- Atomic PDF artifacts with SHA-256 identity and page-count checks.
-- Shared MinerU loopback adapter, safe output handling, Markdown publication,
-  and parse-quality checks.
-- Versioned Agnes HTTP client and analysis contracts for short reports and
-  chunked long reports, with scoped evidence validation, durable failure
-  states, retry support, and idempotent successful re-runs.
-- Operator `research analyze` command for already-published Markdown.
-- Read-only dates/reports/status APIs, minimal Research verification UI, and
-  operator `health` / `collect` commands.
+- QYJ collection using the user-authorized persistent browser profile; 364
+  real snapshots were collected across 2026-08-26 through 2026-08-28.
+- Atomic PDF artifacts, shared MinerU Markdown publication, parse-quality
+  checks, and 57 real Markdown reports across those three dates.
+- Versioned Agnes HTTP adapter with configured 19 RPM request spacing,
+  short-report and chunked-long-report analysis, synthesis, non-empty scoped
+  Evidence validation, durable retryable failure state, and current-contract
+  validation before idempotent reuse.
+- Formal operator entry points: `research prepare`, `research analyze`,
+  `make research-prepare`, and `make research-analyze`.
+- Structured live acceptance evidence:
+  `/data/ken/.cache/quantradar/research/analysis/acceptance/agnes-acceptance-2026-08-29.json`.
+  It verifies 30 successful real reports across three dates, report/Markdown/
+  chunk Evidence traceability, one-chunk and 13-chunk paths, recovered retry,
+  and an idempotent replay that made no Agnes request.
+- Read-only dates/reports/status APIs and minimal Research verification UI.
 
 ### Enterprise Alert Research MVP: not implemented
 
-- A single resumable collect-to-digest pipeline and resume command.
+- A single resumable collect-to-analysis pipeline and resume command.
 - Daily Digest, idempotent Feishu outbox sender, and delivery verification.
 - Single-instance lock, structured logs, `systemd --user` units, and final
   engineering acceptance.
-- Live Agnes evidence remains incomplete: the configured QYJ persistent
-  Chrome profile has a saved login entry but no valid QYJ session, so no live
-  report corpus is presently available for the required 30-report/three-date
-  acceptance.
 - Real Feishu delivery and the separate seven-day observation are not started.
 
 ## Frozen Historical Facts
@@ -54,15 +54,15 @@ passed. Sole active goal: `REPORT_MVP_AGNES_PASS`.
 - Kronos Goals 0–2 have recorded data-audit, GPU-runtime, and pipeline
   evidence. Their data/real-assist limitations remain recorded.
 
-## Verification at Baseline Start
+## Verification
 
-- CI-equivalent backend: `115 passed, 143 skipped, 0 failed`
-  (`QUANTRADAR_FORCE_NO_DOLT=1 make test`).
-- Research unit suite: `19 passed, 0 failed`.
-- Frontend `npm run build` (including TypeScript checking): passed.
-- The 2.16 MB frontend bundle warning is known and out of scope.
+- CI-equivalent backend: `156 passed, 143 skipped, 0 failed` (`make test`).
+- Research unit suite: `60 passed, 0 failed`.
+- Frontend `npm run typecheck`: passed.
+- Frontend `npm run build`: passed; the known 2.16 MB bundle warning remains
+  frozen and out of scope.
+- `git diff --check`: pending final state-transition commit verification.
 
 ## Current Next Action
 
-Complete `REPORT_MVP_AGNES_PASS`; resume live collection after a valid QYJ
-browser session exists in `QUANTRADAR_QYJ_PROFILE_DIR`.
+Complete `REPORT_MVP_PIPELINE_RESUME_PASS`.

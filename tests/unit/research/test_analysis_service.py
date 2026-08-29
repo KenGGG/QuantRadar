@@ -1,4 +1,5 @@
 from datetime import date
+import re
 
 
 def test_existing_markdown_is_analyzed_once_and_persisted(tmp_path) -> None:
@@ -24,6 +25,31 @@ def test_existing_markdown_is_analyzed_once_and_persisted(tmp_path) -> None:
     assert client.calls == 1
 
 
+def test_analysis_reanalyzes_a_legacy_success_without_evidence(tmp_path) -> None:
+    from quantradar.research.analysis import analyze_markdown
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.storage import ResearchStore
+
+    settings = ResearchSettings(database_url=f"sqlite+pysqlite:///{tmp_path / 'db.sqlite'}", data_dir=tmp_path / "data", qyj_profile_dir=tmp_path / "profile")
+    store = ResearchStore(settings); store.create_schema()
+    report = store.upsert_report({"source": "qyj", "source_report_id": "legacy", "title": "旧结果", "publish_date": date(2026, 8, 1), "content_type": "pdf", "source_payload": {}})
+    markdown = "正文"
+    markdown_sha256 = __import__("hashlib").sha256(markdown.encode()).hexdigest()
+    store.save_analysis(report.id, markdown_sha256, "profile", "model", {"research_type": "MARKET", "one_line_summary": "旧结论", "evidence": []})
+
+    class Client:
+        calls = 0
+        def complete(self, messages):
+            self.calls += 1
+            return {"research_type": "MARKET", "one_line_summary": "新结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": "ignored"}]}
+
+    client = Client()
+    result = analyze_markdown(store, report.id, markdown, "profile", "model", client)
+
+    assert client.calls == 1
+    assert result.output_json["one_line_summary"] == "新结论"
+
+
 def test_long_markdown_analyzes_each_chunk_before_synthesis(tmp_path) -> None:
     from quantradar.research.analysis import analyze_markdown
     from quantradar.research.config import ResearchSettings
@@ -36,7 +62,8 @@ def test_long_markdown_analyzes_each_chunk_before_synthesis(tmp_path) -> None:
         def complete(self, messages):
             self.calls += 1
             text = messages[0]["content"]
-            evidence = [{"chunk_id": "chunk-0001", "chunk_sha256": __import__("hashlib").sha256(text.split("\n\n")[0].encode()).hexdigest()}] if "\n\n" in text else []
+            chunk_id = re.search(r'"chunk_id": "(chunk-\d+)"', text).group(1)
+            evidence = [{"chunk_id": chunk_id, "chunk_sha256": "test-hash"}]
             return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": evidence}
     client = Client()
     analyze_markdown(store, report.id, "甲" * 10001 + "\n" + "乙" * 10001, "profile", "model", client)
@@ -59,7 +86,8 @@ def test_long_report_synthesis_receives_chunk_analyses(tmp_path) -> None:
             text = messages[-1]["content"]
             if "chunk_analyses" in text:
                 return {"research_type": "MARKET", "one_line_summary": "综合结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": __import__("hashlib").sha256(("甲" * 10000).encode()).hexdigest()}]}
-            return {"research_type": "MARKET", "one_line_summary": "分块结论", "evidence": []}
+            chunk_id = re.search(r'"chunk_id": "(chunk-\d+)"', messages[0]["content"]).group(1)
+            return {"research_type": "MARKET", "one_line_summary": "分块结论", "evidence": [{"chunk_id": chunk_id, "chunk_sha256": "test-hash"}]}
 
     client = Client()
     analyze_markdown(store, report.id, "甲" * 10001 + "\n" + "乙" * 10001, "profile", "model", client)

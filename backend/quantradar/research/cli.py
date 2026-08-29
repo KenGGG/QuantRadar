@@ -64,7 +64,7 @@ def run(
         print(json.dumps({"date": args.date.isoformat(), "prepared": prepared, "failed": failed}, ensure_ascii=False, sort_keys=True))
         return 0
     if args.command == "analyze":
-        client = agnes_client_cls(runtime.agnes_base_url, runtime.agnes_api_key, runtime.agnes_model)
+        client = agnes_client_cls(runtime.agnes_base_url, runtime.agnes_api_key, runtime.agnes_model, requests_per_minute=runtime.agnes_rpm)
         profile_hash = build_analysis_profile_hash(ANALYSIS_PROMPT_VERSION, runtime.agnes_model, "agnes-http-v1", "schema-v1", "chunking-v1")
         analyzed, failed = 0, 0
         for report, artifact in store.list_markdown_reports(args.date, args.limit):
