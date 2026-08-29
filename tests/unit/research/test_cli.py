@@ -131,3 +131,19 @@ def test_pipeline_invokes_the_resumable_runner(tmp_path, capsys) -> None:
     assert run(["pipeline", "--date", "2026-08-24", "--limit", "7"], settings=settings, pipeline_fn=pipeline) == 0
     assert calls[0][1:] == (date(2026, 8, 24), 7)
     assert '"analyzed": 2' in capsys.readouterr().out
+
+
+def test_deliver_invokes_the_idempotent_delivery_runner(tmp_path, capsys) -> None:
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.cli import run
+
+    settings = ResearchSettings(f"sqlite+pysqlite:///{tmp_path / 'research.db'}", tmp_path / "data", tmp_path / "profile", feishu_webhook_url="https://feishu.example/webhook")
+    calls = []
+
+    def deliver(store, runtime, target_date):
+        calls.append((store, runtime, target_date))
+        return type("Result", (), {"digest_hash": "abc", "sent": True, "outbox_status": "SENT"})()
+
+    assert run(["deliver", "--date", "2026-08-24"], settings=settings, delivery_fn=deliver) == 0
+    assert calls[0][2] == date(2026, 8, 24)
+    assert '"sent": true' in capsys.readouterr().out

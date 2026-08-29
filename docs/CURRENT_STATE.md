@@ -15,8 +15,8 @@ file records present facts, not plans or chronological logs.
 
 Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
 `REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
-`REPORT_MVP_PIPELINE_RESUME_PASS`. Sole active goal:
-`REPORT_MVP_DELIVERY_PASS`.
+`REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`. Sole active
+goal: `REPORT_MVP_OPERATIONS_PASS`.
 
 ### Enterprise Alert Research MVP: implemented
 
@@ -38,6 +38,10 @@ Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
   `/data/ken/.cache/quantradar/research/analysis/acceptance/pipeline-resume-2026-08-28.json`;
   the first run recorded two successful stages of each type, and the rerun
   collected 99 metadata records while skipping both completed heavy stages.
+- Daily Digest, unique notification-key Outbox, and real Feishu delivery.
+  `/data/ken/.cache/quantradar/research/analysis/acceptance/delivery-2026-08-28.json`
+  records a successful first send and an idempotent second run that did not
+  send again.
 - Structured live acceptance evidence:
   `/data/ken/.cache/quantradar/research/analysis/acceptance/agnes-acceptance-2026-08-29.json`.
   It verifies 30 successful real reports across three dates, report/Markdown/
@@ -47,7 +51,6 @@ Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
 
 ### Enterprise Alert Research MVP: not implemented
 
-- Daily Digest, idempotent Feishu outbox sender, and delivery verification.
 - Single-instance lock, structured logs, `systemd --user` units, and final
   engineering acceptance.
 - Real Feishu delivery and the separate seven-day observation are not started.
@@ -63,7 +66,7 @@ Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
 ## Verification
 
 - CI-equivalent backend: `156 passed, 143 skipped, 0 failed` (`make test`).
-- Research unit suite: `63 passed, 0 failed`.
+- Research unit suite: `65 passed, 0 failed`.
 - Frontend `npm run typecheck`: passed.
 - Frontend `npm run build`: passed; the known 2.16 MB bundle warning remains
   frozen and out of scope.
@@ -71,4 +74,4 @@ Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
 
 ## Current Next Action
 
-Complete `REPORT_MVP_DELIVERY_PASS`.
+Complete `REPORT_MVP_OPERATIONS_PASS`.

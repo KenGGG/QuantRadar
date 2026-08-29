@@ -17,7 +17,7 @@ PIP    ?= .venv/bin/pip
 NPM    ?= npm
 VENV   ?= .venv
 
-.PHONY: setup test smoke research research-prepare research-analyze research-pipeline kronos-data-audit kronos-runtime-setup kronos-gpu-smoke kronos-research-pipeline dev install-hooks help
+.PHONY: setup test smoke research research-prepare research-analyze research-pipeline research-deliver kronos-data-audit kronos-runtime-setup kronos-gpu-smoke kronos-research-pipeline dev install-hooks help
 
 help:
 	@echo "QuantRadar 可用目标："
@@ -28,6 +28,7 @@ help:
 	@echo "  make research-prepare DATE=YYYY-MM-DD [LIMIT=30]  下载并解析企业预警通报告"
 	@echo "  make research-analyze DATE=YYYY-MM-DD [LIMIT=30]  执行已解析报告的 Agnes 分析"
 	@echo "  make research-pipeline DATE=YYYY-MM-DD [LIMIT=30]  续跑收集、解析和 Agnes 分析"
+	@echo "  make research-deliver DATE=YYYY-MM-DD  构建并发送幂等研究日报"
 	@echo "  make kronos-data-audit  只读执行 Kronos Goal 0 数据事实审计"
 	@echo "  make kronos-runtime-setup  安装并锁定独立 Kronos-base CUDA 运行时"
 	@echo "  make kronos-gpu-smoke  执行 Kronos Goal 1 真实 GPU 分级基准"
@@ -67,6 +68,9 @@ research-analyze:
 
 research-pipeline:
 	PYTHONPATH=backend $(PYTHON) -m quantradar.research.cli pipeline --date $(DATE) --limit $(or $(LIMIT),30)
+
+research-deliver:
+	PYTHONPATH=backend $(PYTHON) -m quantradar.research.cli deliver --date $(DATE)
 
 kronos-data-audit:
 	PYTHONPATH=backend $(PYTHON) scripts/kronos_data_audit.py

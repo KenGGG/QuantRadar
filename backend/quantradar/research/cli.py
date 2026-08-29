@@ -11,6 +11,7 @@ from typing import Sequence
 from .collector.qyj import QyjCollector
 from .analysis import ANALYSIS_PROMPT_VERSION, analyze_markdown, build_analysis_profile_hash
 from .config import ResearchSettings
+from .delivery import deliver_daily_digest
 from .llm.agnes import AgnesHttpClient
 from .parser.mineru import MineruClient
 from .pipeline import run_pipeline
@@ -33,6 +34,8 @@ def _parser() -> argparse.ArgumentParser:
     pipeline = commands.add_parser("pipeline", help="run the resumable collect-to-analysis pipeline")
     pipeline.add_argument("--date", type=date.fromisoformat, required=True, help="target date (YYYY-MM-DD)")
     pipeline.add_argument("--limit", type=int, default=30, help="maximum reports to prepare and analyze")
+    deliver = commands.add_parser("deliver", help="build and send the idempotent daily research digest")
+    deliver.add_argument("--date", type=date.fromisoformat, required=True, help="target date (YYYY-MM-DD)")
     return parser
 
 
@@ -46,6 +49,7 @@ def run(
     prepare_fn=prepare_report,
     analyze_fn=analyze_markdown,
     pipeline_fn=run_pipeline,
+    delivery_fn=deliver_daily_digest,
 ) -> int:
     args = _parser().parse_args(argv)
     runtime = settings or ResearchSettings.from_env()
@@ -69,6 +73,10 @@ def run(
 
     store = ResearchStore(runtime)
     store.create_schema()
+    if args.command == "deliver":
+        result = delivery_fn(store, runtime, args.date)
+        print(json.dumps({"date": args.date.isoformat(), "digest_hash": result.digest_hash, "sent": result.sent, "outbox_status": result.outbox_status}, ensure_ascii=False, sort_keys=True))
+        return 0
     if args.command == "prepare":
         prepared, failed = 0, 0
         for report in store.list_reports_for_preparation(args.date, args.limit):
