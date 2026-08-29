@@ -160,7 +160,14 @@ class ResearchStore:
                     status="SUCCESS",
                 )
                 session.add(row)
-                session.commit(); session.refresh(row)
+            else:
+                row.analysis_type = str(output_json.get("research_type", "MARKET"))
+                row.model = model
+                row.output_json = output_json
+                row.status = "SUCCESS"
+                row.last_error = None
+                row.attempt_count += 1
+            session.commit(); session.refresh(row)
             return row
 
     def analysis_count(self) -> int:
@@ -175,3 +182,20 @@ class ResearchStore:
                 .where(ResearchReport.publish_date == target_date, ResearchArtifact.markdown_path.is_not(None))
                 .order_by(ResearchReport.id).limit(limit)
             ).all())
+
+    def record_analysis_failure(self, report_id: int, markdown_sha256: str, profile_hash: str, model: str, error: Exception) -> ResearchAnalysis:
+        with self._session() as session:
+            row = session.scalar(select(ResearchAnalysis).where(ResearchAnalysis.report_id == report_id, ResearchAnalysis.markdown_sha256 == markdown_sha256, ResearchAnalysis.analysis_profile_hash == profile_hash))
+            if row is None:
+                row = ResearchAnalysis(report_id=report_id, analysis_type="UNKNOWN", model=model, prompt_version=profile_hash, markdown_sha256=markdown_sha256, analysis_profile_hash=profile_hash, input_hash=markdown_sha256, output_json={}, status="FAILED_RETRYABLE", attempt_count=1, last_error=type(error).__name__)
+                session.add(row)
+            else:
+                row.status, row.attempt_count, row.last_error = "FAILED_RETRYABLE", row.attempt_count + 1, type(error).__name__
+            session.commit(); session.refresh(row)
+            return row
+
+    def latest_analysis(self, report_id: int, profile_hash: str) -> ResearchAnalysis:
+        with self._session() as session:
+            row = session.scalar(select(ResearchAnalysis).where(ResearchAnalysis.report_id == report_id, ResearchAnalysis.analysis_profile_hash == profile_hash).order_by(ResearchAnalysis.id.desc()))
+            if row is None: raise KeyError(report_id)
+            return row

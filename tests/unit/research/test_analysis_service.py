@@ -41,3 +41,25 @@ def test_long_markdown_analyzes_each_chunk_before_synthesis(tmp_path) -> None:
     client = Client()
     analyze_markdown(store, report.id, "甲" * 10001 + "\n" + "乙" * 10001, "profile", "model", client)
     assert client.calls > 1
+
+
+def test_failed_analysis_is_recorded_and_the_same_version_can_retry(tmp_path) -> None:
+    from quantradar.research.analysis import analyze_markdown
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.storage import ResearchStore
+    settings = ResearchSettings(database_url=f"sqlite+pysqlite:///{tmp_path / 'db.sqlite'}", data_dir=tmp_path / "data", qyj_profile_dir=tmp_path / "profile")
+    store = ResearchStore(settings); store.create_schema()
+    report = store.upsert_report({"source": "qyj", "source_report_id": "r3", "title": "失败重试", "publish_date": date(2026, 8, 1), "content_type": "pdf", "source_payload": {}})
+    class Broken:
+        def complete(self, _messages): raise TimeoutError("timeout")
+    class Good:
+        def complete(self, messages): return {"research_type": "MARKET", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": __import__("hashlib").sha256(messages[0]["content"].encode()).hexdigest()}]}
+    try:
+        analyze_markdown(store, report.id, "正文", "profile", "model", Broken())
+    except TimeoutError:
+        pass
+    failed = store.latest_analysis(report.id, "profile")
+    assert failed.status == "FAILED_RETRYABLE"
+    recovered = analyze_markdown(store, report.id, "正文", "profile", "model", Good())
+    assert recovered.id == failed.id
+    assert recovered.status == "SUCCESS"

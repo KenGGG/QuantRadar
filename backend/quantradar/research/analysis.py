@@ -28,10 +28,14 @@ def analyze_markdown(store: ResearchStore, report_id: int, markdown: str, analys
         return existing
     chunks = plan_chunks(markdown, max_chars=10000)
     analyzer = AgnesAnalyzer(client)
-    if len(chunks) == 1:
-        result = analyzer.analyze_report(markdown, chunks)
-    else:
-        for chunk in chunks:
-            analyzer.analyze_chunk(chunk)
-        result = analyzer.synthesize_report(chunks)
+    try:
+        if len(chunks) == 1:
+            result = analyzer.analyze_report(markdown, chunks)
+        else:
+            for chunk in chunks:
+                analyzer.analyze_chunk(chunk)
+            result = analyzer.synthesize_report(chunks)
+    except Exception as exc:
+        store.record_analysis_failure(report_id, markdown_sha256, analysis_profile_hash, model, exc)
+        raise
     return store.save_analysis(report_id, markdown_sha256, analysis_profile_hash, model, result)
