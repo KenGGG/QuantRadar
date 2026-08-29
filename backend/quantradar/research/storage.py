@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import date
+from hashlib import sha256
+import json
 from typing import Any
 
 from sqlalchemy import Engine, create_engine, func, inspect, select, text
@@ -163,6 +165,7 @@ class ResearchStore:
 
     def save_analysis(self, report_id: int, markdown_sha256: str, prompt_version: str, model: str, output_json: dict[str, Any]) -> ResearchAnalysis:
         """Persist one reproducible analysis; identical source and prompt are reused."""
+        analysis_hash = sha256(json.dumps(output_json, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         with self._session() as session:
             row = session.scalar(select(ResearchAnalysis).where(
                 ResearchAnalysis.report_id == report_id,
@@ -180,12 +183,14 @@ class ResearchStore:
                     input_hash=markdown_sha256,
                     output_json=output_json,
                     status="SUCCESS",
+                    analysis_hash=analysis_hash,
                 )
                 session.add(row)
             else:
                 row.analysis_type = str(output_json.get("research_type", "MARKET"))
                 row.model = model
                 row.output_json = output_json
+                row.analysis_hash = analysis_hash
                 row.status = "SUCCESS"
                 row.last_error = None
                 row.attempt_count += 1

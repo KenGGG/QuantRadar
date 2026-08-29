@@ -112,6 +112,14 @@ def test_analysis_chunks_are_saved_with_report_and_markdown_scope(store) -> None
     assert [(row.chunk_index, row.source_start, row.source_end, row.chunk_sha256) for row in rows] == [(1, 0, 7, rows[0].chunk_sha256)]
 
 
+def test_saved_analysis_has_deterministic_result_hash(store) -> None:
+    report = store.upsert_report(_report_payload())
+    row = store.save_analysis(report.id, "m" * 64, "profile", "model", {"research_type": "MARKET", "summary": "结论"})
+
+    assert row.analysis_hash
+    assert len(row.analysis_hash) == 64
+
+
 def test_create_schema_upgrades_existing_analysis_table_without_dropping_rows(tmp_path) -> None:
     from sqlalchemy import create_engine, inspect, text
     from quantradar.research.config import ResearchSettings
