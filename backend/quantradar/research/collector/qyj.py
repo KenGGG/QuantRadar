@@ -130,6 +130,24 @@ class QyjCollector:
             report = self.store.upsert_report(item.report)
             self.store.record_snapshot(report.id, target_date, channel.value, item.platform_order, item.raw_payload_hash)
 
+    @staticmethod
+    def _submit_saved_browser_login(page: Any) -> bool:
+        """Let Chrome autofill its own saved QYJ credential and submit it.
+
+        Credentials remain inside the persistent Chrome profile: this method never
+        reads field values or accesses the password store.
+        """
+        page.locator("#username").click()
+        page.keyboard.press("ArrowDown")
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(250)
+        submit = page.locator("button[type='submit']")
+        if not submit.is_enabled():
+            return False
+        submit.click(no_wait_after=True)
+        page.wait_for_timeout(2_000)
+        return True
+
     def _browser_fetch_page(self, channel: Channel, target_date: date, offset: int, size: int) -> dict[str, Any]:
         if self.settings is None:
             raise RuntimeError("ResearchSettings is required for live QYJ collection")
@@ -148,7 +166,14 @@ class QyjCollector:
             page.wait_for_timeout(2_000)
             text = page.locator("body").inner_text()
             if "登录" in text and "研究报告" not in text:
-                context.close(); raise QyjAuthenticationError(AuthState.LOGIN_REQUIRED)
+                submitted = self._submit_saved_browser_login(page)
+                if not submitted:
+                    context.close()
+                    raise QyjAuthenticationError(AuthState.LOGIN_REQUIRED)
+                text = page.locator("body").inner_text()
+                if "登录" in text and "研究报告" not in text:
+                    context.close()
+                    raise QyjAuthenticationError(AuthState.LOGIN_REQUIRED)
             def capture(request):
                 if "searchReportNew.action" in request.url and not captured:
                     captured.update(request.headers)

@@ -6,7 +6,8 @@ file records present facts, not a delivery plan or chronological log.
 ## Repository
 
 - Branch: `feat/report-research-mvp`
-- The branch contains 12 local Research MVP commits ahead of `origin/main`.
+- The branch contains the protected Research MVP history and subsequent Agnes
+  Goal implementation commits ahead of `origin/main`.
 - Remote backup: `origin/feat/report-research-mvp`.
 - Baseline establishment: `8732f91` (`chore(research): establish report MVP active baseline`).
 - Local runtime state under `data/runtime/` is ignored and is not source data.
@@ -26,18 +27,24 @@ passed. Sole active goal: `REPORT_MVP_AGNES_PASS`.
 - Atomic PDF artifacts with SHA-256 identity and page-count checks.
 - Shared MinerU loopback adapter, safe output handling, Markdown publication,
   and parse-quality checks.
+- Versioned Agnes HTTP client and analysis contracts for short reports and
+  chunked long reports, with scoped evidence validation, durable failure
+  states, retry support, and idempotent successful re-runs.
+- Operator `research analyze` command for already-published Markdown.
 - Read-only dates/reports/status APIs, minimal Research verification UI, and
   operator `health` / `collect` commands.
 
 ### Enterprise Alert Research MVP: not implemented
 
-- Agnes full-text analysis with versioned/idempotent persistence.
 - A single resumable collect-to-digest pipeline and resume command.
 - Daily Digest, idempotent Feishu outbox sender, and delivery verification.
 - Single-instance lock, structured logs, `systemd --user` units, and final
   engineering acceptance.
-- Live evidence: 30 reports over three dates, real Feishu delivery, and the
-  separate seven-day observation.
+- Live Agnes evidence remains incomplete: the configured QYJ persistent
+  Chrome profile has a saved login entry but no valid QYJ session, so no live
+  report corpus is presently available for the required 30-report/three-date
+  acceptance.
+- Real Feishu delivery and the separate seven-day observation are not started.
 
 ## Frozen Historical Facts
 
@@ -57,4 +64,5 @@ passed. Sole active goal: `REPORT_MVP_AGNES_PASS`.
 
 ## Current Next Action
 
-Complete `REPORT_MVP_AGNES_PASS`.
+Complete `REPORT_MVP_AGNES_PASS`; resume live collection after a valid QYJ
+browser session exists in `QUANTRADAR_QYJ_PROFILE_DIR`.

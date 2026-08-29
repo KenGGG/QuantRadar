@@ -51,3 +51,75 @@ def test_auth_failure_stops_collection() -> None:
         assert exc.code == "LOGIN_REQUIRED"
     else:
         raise AssertionError("collection must stop when login is required")
+
+
+def test_saved_browser_login_submits_without_reading_credentials() -> None:
+    from quantradar.research.collector.qyj import QyjCollector
+
+    events: list[str] = []
+
+    class FakeKeyboard:
+        def press(self, key: str) -> None:
+            events.append(f"key:{key}")
+
+    class FakeLocator:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+        def click(self, **kwargs) -> None:
+            events.append(f"click:{self.name}:{kwargs}")
+
+        def is_enabled(self) -> bool:
+            return True
+
+    class FakePage:
+        keyboard = FakeKeyboard()
+
+        def locator(self, selector: str) -> FakeLocator:
+            return FakeLocator(selector)
+
+        def wait_for_timeout(self, milliseconds: int) -> None:
+            events.append(f"wait:{milliseconds}")
+
+    QyjCollector._submit_saved_browser_login(FakePage())
+
+    assert events == [
+        "click:#username:{}",
+        "key:ArrowDown",
+        "key:Enter",
+        "wait:250",
+        "click:button[type='submit']:{'no_wait_after': True}",
+        "wait:2000",
+    ]
+
+
+def test_saved_browser_login_returns_false_when_autofill_is_unavailable() -> None:
+    from quantradar.research.collector.qyj import QyjCollector
+
+    events: list[str] = []
+
+    class FakeKeyboard:
+        def press(self, key: str) -> None:
+            events.append(f"key:{key}")
+
+    class FakeLocator:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+        def click(self, **kwargs) -> None:
+            events.append(f"click:{self.name}:{kwargs}")
+
+        def is_enabled(self) -> bool:
+            return False
+
+    class FakePage:
+        keyboard = FakeKeyboard()
+
+        def locator(self, selector: str) -> FakeLocator:
+            return FakeLocator(selector)
+
+        def wait_for_timeout(self, milliseconds: int) -> None:
+            events.append(f"wait:{milliseconds}")
+
+    assert QyjCollector._submit_saved_browser_login(FakePage()) is False
+    assert events == ["click:#username:{}", "key:ArrowDown", "key:Enter", "wait:250"]
