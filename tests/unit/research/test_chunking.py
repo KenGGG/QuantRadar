@@ -15,3 +15,4 @@ def test_long_report_preserves_the_tail_in_stable_chunks() -> None:
     assert [chunk.chunk_id for chunk in chunks] == ["chunk-0001", "chunk-0002"]
     assert "尾部结论" in chunks[-1].text
     assert "".join(chunk.text for chunk in chunks).replace("\n", "") == source.replace("\n", "")
+    assert [(chunk.chunk_index, chunk.source_start, chunk.source_end) for chunk in chunks] == [(1, 0, len(chunks[0].text)), (2, len(chunks[0].text), len(source))]

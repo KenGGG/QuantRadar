@@ -11,13 +11,16 @@ class SourceChunk:
     chunk_id: str
     text: str
     chunk_sha256: str = ""
+    chunk_index: int = 0
+    source_start: int = 0
+    source_end: int = 0
 
 
 def plan_chunks(markdown: str, max_chars: int) -> list[SourceChunk]:
     if max_chars < 1:
         raise ValueError("max_chars must be positive")
     if len(markdown) <= max_chars:
-        return [SourceChunk("chunk-0001", markdown, sha256(markdown.encode()).hexdigest())]
+        return [SourceChunk("chunk-0001", markdown, sha256(markdown.encode()).hexdigest(), 1, 0, len(markdown))]
 
     parts = markdown.splitlines(keepends=True)
     groups: list[str] = []
@@ -35,4 +38,9 @@ def plan_chunks(markdown: str, max_chars: int) -> list[SourceChunk]:
         current += part
     if current:
         groups.append(current)
-    return [SourceChunk(f"chunk-{index:04d}", text, sha256(text.encode()).hexdigest()) for index, text in enumerate(groups, 1)]
+    offset = 0
+    chunks = []
+    for index, text in enumerate(groups, 1):
+        chunks.append(SourceChunk(f"chunk-{index:04d}", text, sha256(text.encode()).hexdigest(), index, offset, offset + len(text)))
+        offset += len(text)
+    return chunks
