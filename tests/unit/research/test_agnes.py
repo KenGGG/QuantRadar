@@ -29,3 +29,16 @@ def test_http_client_extracts_json_analysis_without_exposing_key() -> None:
         result = AgnesHttpClient("https://agnes.example/v1", "secret", "model-x", session=session).complete([{"role": "user", "content": "正文"}])
 
     assert result == {"research_type": "MARKET", "evidence": []}
+
+
+def test_http_client_marks_rate_limits_retryable() -> None:
+    from quantradar.research.llm.agnes import AgnesHttpClient, RetryableAgnesError
+
+    transport = httpx.MockTransport(lambda request: httpx.Response(429, json={"error": "rate limited"}))
+    with httpx.Client(transport=transport) as session:
+        client = AgnesHttpClient("https://agnes.example/v1", "secret", "model-x", session=session)
+        try:
+            client.complete([{"role": "user", "content": "正文"}])
+        except RetryableAgnesError:
+            return
+    assert False, "rate limit must be retryable"

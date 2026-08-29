@@ -8,7 +8,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from .llm.agnes import AgnesAnalyzer, AgnesClient
+from .llm.agnes import AgnesAnalyzer, AgnesClient, TerminalAgnesError
 from .llm.chunking import plan_chunks
 from .models import ResearchAnalysis
 from .storage import ResearchStore
@@ -43,6 +43,6 @@ def analyze_markdown(store: ResearchStore, report_id: int, markdown: str, analys
                 analyzer.analyze_chunk(chunk, report_id=report_id, markdown_sha256=markdown_sha256)
             result = analyzer.synthesize_report(chunks, report_id=report_id, markdown_sha256=markdown_sha256)
     except Exception as exc:
-        store.record_analysis_failure(report_id, markdown_sha256, analysis_profile_hash, model, exc)
+        store.record_analysis_failure(report_id, markdown_sha256, analysis_profile_hash, model, exc, status="FAILED_TERMINAL" if isinstance(exc, TerminalAgnesError) else "FAILED_RETRYABLE")
         raise
     return store.save_analysis(report_id, markdown_sha256, analysis_profile_hash, model, result)

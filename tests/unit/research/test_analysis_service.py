@@ -72,3 +72,18 @@ def test_profile_hash_changes_when_model_or_prompt_changes() -> None:
 
     assert baseline != build_analysis_profile_hash("prompt-v2", "model-a", "agnes-http-v1", "schema-v1", "chunking-v1")
     assert baseline != build_analysis_profile_hash("prompt-v1", "model-b", "agnes-http-v1", "schema-v1", "chunking-v1")
+
+
+def test_terminal_agnes_error_is_not_marked_retryable(tmp_path) -> None:
+    from quantradar.research.analysis import analyze_markdown
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.llm.agnes import TerminalAgnesError
+    from quantradar.research.storage import ResearchStore
+    settings = ResearchSettings(database_url=f"sqlite+pysqlite:///{tmp_path / 'db.sqlite'}", data_dir=tmp_path / "data", qyj_profile_dir=tmp_path / "profile")
+    store = ResearchStore(settings); store.create_schema()
+    report = store.upsert_report({"source": "qyj", "source_report_id": "r4", "title": "终止失败", "publish_date": date(2026, 8, 1), "content_type": "pdf", "source_payload": {}})
+    class Broken:
+        def complete(self, _messages): raise TerminalAgnesError("HTTP_401")
+    try: analyze_markdown(store, report.id, "正文", "profile", "model", Broken())
+    except TerminalAgnesError: pass
+    assert store.latest_analysis(report.id, "profile").status == "FAILED_TERMINAL"

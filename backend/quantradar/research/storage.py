@@ -228,14 +228,14 @@ class ResearchStore:
         with self._session() as session:
             return list(session.scalars(select(ResearchAnalysisChunk).where(ResearchAnalysisChunk.report_id == report_id, ResearchAnalysisChunk.markdown_sha256 == markdown_sha256).order_by(ResearchAnalysisChunk.chunk_index)).all())
 
-    def record_analysis_failure(self, report_id: int, markdown_sha256: str, profile_hash: str, model: str, error: Exception) -> ResearchAnalysis:
+    def record_analysis_failure(self, report_id: int, markdown_sha256: str, profile_hash: str, model: str, error: Exception, *, status: str = "FAILED_RETRYABLE") -> ResearchAnalysis:
         with self._session() as session:
             row = session.scalar(select(ResearchAnalysis).where(ResearchAnalysis.report_id == report_id, ResearchAnalysis.markdown_sha256 == markdown_sha256, ResearchAnalysis.analysis_profile_hash == profile_hash))
             if row is None:
-                row = ResearchAnalysis(report_id=report_id, analysis_type="UNKNOWN", model=model, prompt_version=profile_hash, markdown_sha256=markdown_sha256, analysis_profile_hash=profile_hash, input_hash=markdown_sha256, output_json={}, status="FAILED_RETRYABLE", attempt_count=1, last_error=type(error).__name__)
+                row = ResearchAnalysis(report_id=report_id, analysis_type="UNKNOWN", model=model, prompt_version=profile_hash, markdown_sha256=markdown_sha256, analysis_profile_hash=profile_hash, input_hash=markdown_sha256, output_json={}, status=status, attempt_count=1, last_error=type(error).__name__)
                 session.add(row)
             else:
-                row.status, row.attempt_count, row.last_error = "FAILED_RETRYABLE", row.attempt_count + 1, type(error).__name__
+                row.status, row.attempt_count, row.last_error = status, row.attempt_count + 1, type(error).__name__
             session.commit(); session.refresh(row)
             return row
 

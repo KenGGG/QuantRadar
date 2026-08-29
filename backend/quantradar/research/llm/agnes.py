@@ -15,6 +15,14 @@ class AgnesClient(Protocol):
     def complete(self, messages: list[dict[str, str]]) -> dict[str, Any]: ...
 
 
+class RetryableAgnesError(RuntimeError):
+    pass
+
+
+class TerminalAgnesError(RuntimeError):
+    pass
+
+
 class AgnesHttpClient:
     """OpenAI-compatible Agnes transport with bounded connection/request timeouts."""
 
@@ -23,12 +31,18 @@ class AgnesHttpClient:
         self.session = session or httpx.Client(timeout=httpx.Timeout(60.0, connect=10.0))
 
     def complete(self, messages: list[dict[str, str]]) -> dict[str, Any]:
-        response = self.session.post(
-            f"{self.base_url}/chat/completions",
-            headers={"Authorization": f"Bearer {self.api_key}"},
-            json={"model": self.model, "messages": messages, "response_format": {"type": "json_object"}},
-        )
-        response.raise_for_status()
+        try:
+            response = self.session.post(
+                f"{self.base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json={"model": self.model, "messages": messages, "response_format": {"type": "json_object"}},
+            )
+        except (httpx.TimeoutException, httpx.NetworkError) as exc:
+            raise RetryableAgnesError(type(exc).__name__) from exc
+        if response.status_code == 429 or response.status_code >= 500:
+            raise RetryableAgnesError(f"HTTP_{response.status_code}")
+        if response.status_code >= 400:
+            raise TerminalAgnesError(f"HTTP_{response.status_code}")
         content = response.json()["choices"][0]["message"]["content"]
         if not isinstance(content, str):
             raise ValueError("Agnes returned non-text completion content")
