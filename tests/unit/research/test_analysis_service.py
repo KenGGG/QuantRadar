@@ -53,7 +53,7 @@ def test_failed_analysis_is_recorded_and_the_same_version_can_retry(tmp_path) ->
     class Broken:
         def complete(self, _messages): raise TimeoutError("timeout")
     class Good:
-        def complete(self, messages): return {"research_type": "MARKET", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": __import__("hashlib").sha256(messages[0]["content"].encode()).hexdigest()}]}
+        def complete(self, messages): return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": __import__("hashlib").sha256(messages[0]["content"].encode()).hexdigest()}]}
     try:
         analyze_markdown(store, report.id, "正文", "profile", "model", Broken())
     except TimeoutError:
