@@ -17,7 +17,7 @@ PIP    ?= .venv/bin/pip
 NPM    ?= npm
 VENV   ?= .venv
 
-.PHONY: setup test smoke research kronos-data-audit kronos-runtime-setup kronos-gpu-smoke kronos-research-pipeline dev install-hooks help
+.PHONY: setup test smoke research research-prepare research-analyze kronos-data-audit kronos-runtime-setup kronos-gpu-smoke kronos-research-pipeline dev install-hooks help
 
 help:
 	@echo "QuantRadar 可用目标："
@@ -25,6 +25,8 @@ help:
 	@echo "  make test       运行单元测试"
 	@echo "  make smoke      端到端核心冒烟测试（数据→回测→快照→API→Web）"
 	@echo "  make research   研究链路端到端（Qlib 构建→网格+OOS 可复现报告，需 Dolt+qlib）"
+	@echo "  make research-prepare DATE=YYYY-MM-DD [LIMIT=30]  下载并解析企业预警通报告"
+	@echo "  make research-analyze DATE=YYYY-MM-DD [LIMIT=30]  执行已解析报告的 Agnes 分析"
 	@echo "  make kronos-data-audit  只读执行 Kronos Goal 0 数据事实审计"
 	@echo "  make kronos-runtime-setup  安装并锁定独立 Kronos-base CUDA 运行时"
 	@echo "  make kronos-gpu-smoke  执行 Kronos Goal 1 真实 GPU 分级基准"
@@ -55,6 +57,12 @@ research:
 		--train-years 2 --valid-months 6 --test-months 6 --step-months 6 \
 		--num-boost-round 50 --early-stopping-rounds 10 \
 		--out reports/oos
+
+research-prepare:
+	PYTHONPATH=backend $(PYTHON) -m quantradar.research.cli prepare --date $(DATE) --limit $(or $(LIMIT),30)
+
+research-analyze:
+	PYTHONPATH=backend $(PYTHON) -m quantradar.research.cli analyze --date $(DATE) --limit $(or $(LIMIT),30)
 
 kronos-data-audit:
 	PYTHONPATH=backend $(PYTHON) scripts/kronos_data_audit.py
