@@ -17,7 +17,35 @@ export interface ResearchReport {
   channel: ResearchChannel;
   platform_order: number;
   status: string;
+  pdf_status: string;
+  mineru_status: string;
+  agnes_status: string;
+  research_value: string | null;
+  reproducibility: string | null;
 }
+
+export interface ResearchOverview {
+  date: string;
+  metadata_count: number;
+  pdf_success: number;
+  pdf_failed: number;
+  parse_success: number;
+  parse_failed: number;
+  analysis_success: number;
+  analysis_failed: number;
+  digest_status: string;
+  outbox_status: string;
+  sent_at: string | null;
+  latest_operation_status: string;
+  runtime_seconds: number | null;
+  channels: Record<ResearchChannel, { count: number }>;
+  observation: ResearchObservation;
+}
+
+export interface ResearchObservation { engineering_pass: boolean; live_pass: boolean; real_operating_days: number; required_operating_days: number; }
+export interface ResearchDetail { id: number; basic: Record<string, unknown>; artifact: Record<string, unknown> | null; analysis: Record<string, unknown> | null; evidence: Array<Record<string, unknown>>; audit: Record<string, unknown> | null; }
+export interface ResearchDigest { date: string; content_md: string; completeness: string; digest_hash: string; created_at: string; outbox: { status: string; attempt: number; sent_at: string | null; last_error: string | null } | null; }
+export interface ResearchOperations { date: string; runs: Array<{ stage: string; status: string; attempt: number; started_at: string; finished_at: string | null; runtime_seconds: number | null }>; stages: Record<string, { success: number; failed: number; skipped: number }>; }
 
 export interface PriceRow {
   date: string;
@@ -196,6 +224,17 @@ export function listResearchReports(date: string, channel: ResearchChannel): Pro
 export function getResearchStatus(date: string): Promise<{ date: string; channels: Record<ResearchChannel, number> }> {
   return httpJson<{ date: string; channels: Record<ResearchChannel, number> }>(`/api/research/status?date=${encodeURIComponent(date)}`);
 }
+
+export function getResearchOverview(date: string): Promise<ResearchOverview> {
+  return httpJson<ResearchOverview>(`/api/research/overview?date=${encodeURIComponent(date)}`);
+}
+
+export function getResearchReport(id: number): Promise<ResearchDetail> { return httpJson<ResearchDetail>(`/api/research/reports/${id}`); }
+export function getResearchPdfUrl(id: number): string { return `/api/research/reports/${id}/pdf`; }
+export function getResearchMarkdownUrl(id: number): string { return `/api/research/reports/${id}/markdown`; }
+export function getResearchDigest(date: string): Promise<ResearchDigest> { return httpJson<ResearchDigest>(`/api/research/digests/${encodeURIComponent(date)}`); }
+export function getResearchOperations(date: string): Promise<ResearchOperations> { return httpJson<ResearchOperations>(`/api/research/operations?date=${encodeURIComponent(date)}`); }
+export function getResearchObservation(): Promise<ResearchObservation> { return httpJson<ResearchObservation>("/api/research/observation"); }
 
 export function getPrice(params: {
   security: string;

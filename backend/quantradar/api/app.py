@@ -16,6 +16,7 @@ import os
 import subprocess
 import tempfile
 from datetime import date
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -87,6 +88,146 @@ def research_status(target_date: date = Query(..., alias="date")) -> Dict[str, A
         }
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Research storage unavailable: {exc}")
+
+
+def _research_time(value: Any) -> str | None:
+    return value.isoformat() if value is not None else None
+
+
+def _registered_research_artifact(store, report_id: int, field: str) -> Path:
+    """Resolve an Artifact recorded for a report without accepting user paths."""
+    try:
+        _, artifact, _, _ = store.report_visibility_detail(report_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Research report not found")
+    raw_path = store.registered_artifact_path(report_id, field.removesuffix("_path"))
+    if raw_path is None:
+        raise HTTPException(status_code=404, detail="Registered artifact not found")
+    candidate = raw_path.resolve()
+    root = store.settings.data_dir.resolve()
+    if not candidate.is_relative_to(root) or not candidate.is_file():
+        raise HTTPException(status_code=404, detail="Registered artifact not available")
+    return candidate
+
+
+@app.get("/api/research/overview")
+def research_overview(target_date: date = Query(..., alias="date")) -> Dict[str, Any]:
+    try:
+        store = _research_store()
+        overview = store.visibility_overview(target_date)
+        operations = store.visibility_operations(target_date)
+        latest = operations[0] if operations else None
+        return {
+            **overview,
+            "date": target_date.isoformat(),
+            "sent_at": _research_time(overview["sent_at"]),
+            "latest_operation_status": latest.status if latest else "MISSING",
+            "runtime_seconds": round((latest.finished_at - latest.started_at).total_seconds(), 3) if latest and latest.finished_at else None,
+            "observation": {"engineering_pass": True, "live_pass": False, "real_operating_days": 0, "required_operating_days": 7},
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Research storage unavailable: {exc}")
+
+
+@app.get("/api/research/reports/{report_id}")
+def research_report_detail(report_id: int) -> Dict[str, Any]:
+    try:
+        store = _research_store()
+        report, artifact, analysis, chunks = store.report_visibility_detail(report_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Research report not found")
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Research storage unavailable: {exc}")
+    output = analysis.output_json if analysis else {}
+    return {
+        "id": report.id,
+        "basic": {
+            "title": report.title, "institution": report.institution, "authors": report.authors or [],
+            "publish_date": report.publish_date.isoformat(), "category": report.category, "industry": report.industry,
+            "security": report.security, "source_report_id": report.source_report_id,
+        },
+        "artifact": None if artifact is None else {
+            "pdf_pages": artifact.pdf_pages, "platform_pages": artifact.platform_pages,
+            "page_count_match": artifact.page_count_match, "pdf_sha256": artifact.pdf_sha256,
+            "parser": artifact.parser, "parser_version": artifact.parser_version,
+            "parse_quality": artifact.parse_quality, "markdown_sha256": artifact.markdown_sha256,
+            "has_pdf": store.registered_artifact_path(report_id, "pdf") is not None,
+            "has_markdown": store.registered_artifact_path(report_id, "markdown") is not None,
+        },
+        "analysis": None if analysis is None else {
+            "status": analysis.status, "summary": output.get("summary") or output.get("one_line_summary"),
+            "research_type": output.get("research_type"), "core_method": output.get("core_method"),
+            "key_variables": output.get("key_variables", []), "main_conclusion": output.get("main_conclusion"),
+            "applicable_market": output.get("applicable_market"),
+            "possible_quantradar_use": output.get("possible_quantradar_use"),
+            "risks_and_limitations": output.get("risks_and_limitations"),
+            "research_value": analysis.research_value or output.get("research_value"),
+            "reproducibility": analysis.reproducibility or output.get("reproducibility"),
+        },
+        "evidence": [{
+            "chunk_id": chunk.chunk_id, "chunk_index": chunk.chunk_index, "source_start": chunk.source_start,
+            "source_end": chunk.source_end, "chunk_sha256": chunk.chunk_sha256, "text": chunk.text,
+        } for chunk in chunks],
+        "audit": None if analysis is None else {
+            "model": analysis.model, "agnes_version": analysis.agnes_version, "prompt_version": analysis.prompt_version,
+            "schema_version": analysis.schema_version, "chunking_version": analysis.chunking_version,
+            "analysis_profile_hash": analysis.analysis_profile_hash, "analysis_hash": analysis.analysis_hash,
+            "attempt_count": analysis.attempt_count, "updated_at": _research_time(analysis.updated_at),
+        },
+    }
+
+
+@app.get("/api/research/reports/{report_id}/pdf")
+def research_report_pdf(report_id: int):
+    store = _research_store()
+    return FileResponse(_registered_research_artifact(store, report_id, "pdf_path"), media_type="application/pdf", filename=f"research-report-{report_id}.pdf")
+
+
+@app.get("/api/research/reports/{report_id}/markdown")
+def research_report_markdown(report_id: int):
+    store = _research_store()
+    return FileResponse(_registered_research_artifact(store, report_id, "markdown_path"), media_type="text/markdown; charset=utf-8", filename=f"research-report-{report_id}.md")
+
+
+@app.get("/api/research/digests/{target_date}")
+def research_digest(target_date: date) -> Dict[str, Any]:
+    try:
+        digest, outbox = _research_store().digest_visibility(target_date)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Research storage unavailable: {exc}")
+    if digest is None:
+        raise HTTPException(status_code=404, detail="Research digest not found")
+    return {
+        "date": target_date.isoformat(), "content_md": digest.content_md, "completeness": digest.completeness,
+        "digest_hash": digest.digest_hash, "created_at": _research_time(digest.created_at),
+        "outbox": None if outbox is None else {"status": outbox.status, "attempt": outbox.attempt, "sent_at": _research_time(outbox.sent_at), "last_error": outbox.last_error},
+    }
+
+
+@app.get("/api/research/operations")
+def research_operations(target_date: date = Query(..., alias="date")) -> Dict[str, Any]:
+    try:
+        runs = _research_store().visibility_operations(target_date)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Research storage unavailable: {exc}")
+    stage_counts: dict[str, dict[str, int]] = {stage: {"success": 0, "failed": 0, "skipped": 0} for stage in ("COLLECT", "DOWNLOAD/PREPARE", "PARSE", "ANALYZE", "DIGEST", "OUTBOX", "FEISHU")}
+    records = []
+    for run in runs:
+        stage = "DOWNLOAD/PREPARE" if run.stage == "PREPARE" else run.stage
+        if stage not in stage_counts:
+            stage_counts[stage] = {"success": 0, "failed": 0, "skipped": 0}
+        bucket = "success" if run.status == "SUCCESS" else "skipped" if run.status.startswith("SKIP") else "failed" if run.status.startswith("FAILED") else "skipped"
+        stage_counts[stage][bucket] += 1
+        records.append({"stage": stage, "status": run.status, "attempt": run.attempt, "started_at": _research_time(run.started_at), "finished_at": _research_time(run.finished_at), "runtime_seconds": round((run.finished_at - run.started_at).total_seconds(), 3) if run.finished_at else None})
+    return {"date": target_date.isoformat(), "runs": records, "stages": stage_counts}
+
+
+@app.get("/api/research/observation")
+def research_observation() -> Dict[str, Any]:
+    # This goal deliberately does not derive days from historical replays.
+    return {"engineering_pass": True, "live_pass": False, "real_operating_days": 0, "required_operating_days": 7}
 
 
 def _ensure_provider():

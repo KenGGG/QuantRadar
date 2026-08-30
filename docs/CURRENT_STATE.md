@@ -7,13 +7,14 @@ file records present facts, not plans or chronological logs.
 
 - Branch: `feat/report-research-mvp`
 - Remote backup: `origin/feat/report-research-mvp`
-- HEAD at the Agnes acceptance transition: `964dab0`
-  (`chore(research): add report MVP make targets`).
+- HEAD: the current commit on this branch (`git rev-parse HEAD`).
 - Local runtime state under `data/runtime/` is ignored and is not source data.
 
 ## Active Product Work
 
-Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
+`REPORT_MVP_ENGINEERING_PASS` and `REPORT_MVP_WEB_VISIBILITY_PASS` are
+complete. The current active goal is `REPORT_MVP_7D_LIVE_PASS` observation;
+Research code is frozen. Passed engineering goals:
 `REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
 `REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`, and
 `REPORT_MVP_OPERATIONS_PASS`. `REPORT_MVP_ENGINEERING_PASS` is complete.
@@ -52,10 +53,18 @@ Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
   chunk Evidence traceability, one-chunk and 13-chunk paths, recovered retry,
   and an idempotent replay that made no Agnes request.
 - Read-only dates/reports/status APIs and minimal Research verification UI.
+- Read-only visibility APIs for overview, report detail, registered PDF and
+  Markdown artifacts, Daily Digest, operations, and observation state. Artifact
+  delivery is constrained to the Research data root and database-registered
+  report identities; no local path is accepted from a caller.
+- Existing `ResearchMVP.tsx` now has 今日概览、研报列表、Daily Digest、运行状态
+  tabs. It renders backend-computed counters, structured Agnes/Evidence/Audit
+  details, formatted Markdown, stage summaries, and no Research write actions.
 
 ### Enterprise Alert Research MVP: not implemented
 
-- Real Feishu delivery and the separate seven-day observation are not started.
+- `REPORT_MVP_7D_LIVE_PASS` is active but remains false at `0 / 7` real
+  operating days. Historical replay does not advance the count.
 
 ## Frozen Historical Facts
 
@@ -67,14 +76,14 @@ Milestone: `REPORT_MVP_ENGINEERING_PASS`. Passed goals:
 
 ## Verification
 
-- CI-equivalent backend: `156 passed, 143 skipped, 0 failed` (`make test`).
-- Research unit suite: `67 passed, 0 failed`.
+- CI-equivalent backend: `165 passed, 143 skipped, 0 failed` (`make test`).
+- Research unit suite: `69 passed, 0 failed`.
 - Frontend `npm run typecheck`: passed.
 - Frontend `npm run build`: passed; the known 2.16 MB bundle warning remains
   frozen and out of scope.
-- `git diff --check`: pending final state-transition commit verification.
+- `git diff --check`: passed for the Web visibility change before its commit.
 
 ## Current Next Action
 
-No engineering Goal is active. Do not claim `REPORT_MVP_7D_LIVE_PASS` until
-seven real operating days have been verified.
+Observe seven real operating days. Do not claim `REPORT_MVP_7D_LIVE_PASS`
+before the seventh recorded operating day.

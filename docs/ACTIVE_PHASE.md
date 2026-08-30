@@ -1,12 +1,13 @@
 # QuantRadar Active Phase
 
-**Milestone:** `REPORT_MVP_ENGINEERING_PASS`
-**Active Goal:** None — engineering milestone complete
-**Status:** COMPLETE
+**Milestone:** `REPORT_MVP_7D_LIVE_PASS`
+**Active Goal:** `REPORT_MVP_7D_LIVE_PASS`
+**Status:** OBSERVATION
 
 ## Scope
 
-The only active work is the Enterprise Alert research-report MVP.
+The only active work is the real seven-operating-day observation of the frozen
+Enterprise Alert research-report MVP.
 
 ```text
 QYJ metadata → PDF + quality → MinerU Markdown → Agnes analysis
@@ -21,7 +22,9 @@ QYJ metadata → PDF + quality → MinerU Markdown → Agnes analysis
 - frontend bundle optimization
 - ETF, live trading, new models, and unrelated product work
 
-Completed historical work remains valid evidence; it is not an active goal.
+All Research code is frozen. The existing WebUI is read-only and may only read
+persisted ResearchStore records and registered artifacts; it must not change
+collection, parsing, Agnes, Digest, Outbox, Feishu, or systemd behavior.
 
 ## Completed Goals
 
@@ -30,6 +33,7 @@ Completed historical work remains valid evidence; it is not an active goal.
 - `REPORT_MVP_PIPELINE_RESUME_PASS` — `PASS`
 - `REPORT_MVP_DELIVERY_PASS` — `PASS`
 - `REPORT_MVP_OPERATIONS_PASS` — `PASS`
+- `REPORT_MVP_WEB_VISIBILITY_PASS` — `PASS`
 
 Agnes acceptance includes live QYJ reports across 2026-08-26, 2026-08-27,
 and 2026-08-28; short and chunked-long analysis, traceable Evidence,
@@ -45,7 +49,7 @@ completed stages and writing an operational record.
 
 ## Queued Goals
 
-None. `REPORT_MVP_ENGINEERING_PASS` is complete.
+None. Research engineering is frozen during observation.
 
 ## Observation Goal
 
@@ -54,6 +58,6 @@ cannot be claimed during engineering acceptance.
 
 ## Completion Rule
 
-After the active goal passes, update this file, commit the transition, and
-continue immediately to the next queued goal. `REPORT_MVP_ENGINEERING_PASS`
-requires all queued engineering goals; it does not imply the 7-day live pass.
+`REPORT_MVP_7D_LIVE_PASS = false` until seven real operating days are recorded.
+Historic replay never advances it. Do not begin unrelated development while
+the observation is active.

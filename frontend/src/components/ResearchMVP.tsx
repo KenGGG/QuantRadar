@@ -1,102 +1,24 @@
 import { useEffect, useState } from "react";
-import { Alert, Card, Empty, Select, Space, Spin, Table, Tag, Typography } from "antd";
-import {
-  listResearchDates,
-  listResearchReports,
-  getResearchStatus,
-  type ResearchChannel,
-  type ResearchReport,
-} from "../api";
+import { Alert, Button, Card, Collapse, Descriptions, Drawer, Empty, Select, Space, Spin, Table, Tabs, Tag, Typography } from "antd";
+import { getResearchDigest, getResearchMarkdownUrl, getResearchObservation, getResearchOperations, getResearchOverview, getResearchPdfUrl, getResearchReport, listResearchDates, listResearchReports, type ResearchChannel, type ResearchDetail, type ResearchDigest, type ResearchObservation, type ResearchOperations, type ResearchOverview, type ResearchReport } from "../api";
 
-const CHANNELS: Array<{ key: ResearchChannel; label: string }> = [
-  { key: "HOT", label: "热门研报" },
-  { key: "STRATEGY", label: "策略研究" },
-  { key: "FINANCIAL_ENGINEERING", label: "金融工程" },
-];
-
-function statusTag(status: string) {
-  const color = status === "SUCCESS" ? "green" : status === "UNSUPPORTED" ? "default" : status === "FAILED" ? "red" : "blue";
-  return <Tag color={color}>{status}</Tag>;
-}
+const CHANNELS: Array<{ key: ResearchChannel; label: string }> = [{ key: "HOT", label: "热门研报" }, { key: "STRATEGY", label: "策略研究" }, { key: "FINANCIAL_ENGINEERING", label: "金融工程" }];
+const stages = ["COLLECT", "DOWNLOAD/PREPARE", "PARSE", "ANALYZE", "DIGEST", "OUTBOX", "FEISHU"];
+function tag(status?: string | null) { const s = status || "MISSING"; return <Tag color={s === "SUCCESS" || s === "SENT" || s === "COMPLETE" ? "green" : s.startsWith("FAILED") ? "red" : s === "MISSING" ? "default" : "blue"}>{s}</Tag>; }
+function value(v: unknown) { return v == null || v === "" ? "—" : Array.isArray(v) ? v.join("、") : typeof v === "object" ? JSON.stringify(v) : String(v); }
+function Markdown({ content }: { content: string }) { return <Typography.Paragraph style={{ whiteSpace: "pre-wrap", lineHeight: 1.8, marginBottom: 0 }}>{content}</Typography.Paragraph>; }
 
 export function ResearchMVP() {
-  const [dates, setDates] = useState<string[]>([]);
-  const [targetDate, setTargetDate] = useState<string>();
-  const [channel, setChannel] = useState<ResearchChannel>("HOT");
-  const [reports, setReports] = useState<ResearchReport[]>([]);
-  const [counts, setCounts] = useState<Partial<Record<ResearchChannel, number>>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>();
-
-  useEffect(() => {
-    listResearchDates()
-      .then(({ dates: collectedDates }) => {
-        setDates(collectedDates);
-        setTargetDate(collectedDates[0]);
-      })
-      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "无法读取采集记录"))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    if (!targetDate) {
-      setReports([]);
-      return;
-    }
-    setLoading(true);
-    listResearchReports(targetDate, channel)
-      .then(({ reports: rows }) => setReports(rows))
-      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "无法读取研报列表"))
-      .finally(() => setLoading(false));
-    getResearchStatus(targetDate)
-      .then(({ channels }) => setCounts(channels))
-      .catch(() => setCounts({}));
-  }, [targetDate, channel]);
-
-  return (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
-      <div>
-        <Typography.Title level={3} style={{ marginBottom: 4 }}>研报</Typography.Title>
-        <Typography.Text type="secondary">企业预警采集结果；展示顺序与栏目保持平台原始顺序。</Typography.Text>
-      </div>
-      {error && <Alert type="warning" showIcon message="研报存储暂不可用" description={error} />}
-      <Card>
-        <Space wrap>
-          <Typography.Text>采集日期</Typography.Text>
-          <Select
-            style={{ minWidth: 150 }}
-            value={targetDate}
-            placeholder="暂无已采集日期"
-            options={dates.map((value) => ({ value, label: value }))}
-            onChange={setTargetDate}
-          />
-          <Select
-            style={{ minWidth: 130 }}
-            value={channel}
-            options={CHANNELS.map(({ key, label }) => ({ value: key, label }))}
-            onChange={(value) => setChannel(value as ResearchChannel)}
-          />
-        </Space>
-        {targetDate && <Space style={{ marginLeft: 20 }} wrap>
-          {CHANNELS.map(({ key, label }) => <Tag key={key}>{label} {counts[key] ?? 0} 篇</Tag>)}
-        </Space>}
-      </Card>
-      <Card title={CHANNELS.find((item) => item.key === channel)?.label}>
-        {loading ? <div style={{ textAlign: "center", padding: 36 }}><Spin /></div> : !targetDate ? <Empty description="尚无已采集研报；完成采集后将在此显示。" /> : (
-          <Table<ResearchReport>
-            rowKey="id"
-            pagination={{ pageSize: 20, showSizeChanger: false }}
-            dataSource={reports}
-            columns={[
-              { title: "序号", dataIndex: "platform_order", width: 80 },
-              { title: "标题", dataIndex: "title" },
-              { title: "机构", dataIndex: "institution", width: 180, render: (value) => value || "—" },
-              { title: "类型", dataIndex: "content_type", width: 100 },
-              { title: "处理状态", dataIndex: "status", width: 120, render: statusTag },
-            ]}
-          />
-        )}
-      </Card>
-    </Space>
-  );
+  const [dates, setDates] = useState<string[]>([]); const [date, setDate] = useState<string>(); const [channel, setChannel] = useState<ResearchChannel>("HOT");
+  const [reports, setReports] = useState<ResearchReport[]>([]); const [overview, setOverview] = useState<ResearchOverview>(); const [digest, setDigest] = useState<ResearchDigest>(); const [operations, setOperations] = useState<ResearchOperations>(); const [observation, setObservation] = useState<ResearchObservation>();
+  const [detail, setDetail] = useState<ResearchDetail>(); const [open, setOpen] = useState(false); const [artifact, setArtifact] = useState<"pdf" | "markdown">(); const [markdown, setMarkdown] = useState<string>(); const [loading, setLoading] = useState(true); const [error, setError] = useState<string>();
+  useEffect(() => { listResearchDates().then((r) => { setDates(r.dates); setDate(r.dates[0]); }).catch((e: unknown) => setError(e instanceof Error ? e.message : "无法读取采集记录")).finally(() => setLoading(false)); }, []);
+  useEffect(() => { if (!date) return; setLoading(true); setError(undefined); Promise.all([listResearchReports(date, channel), getResearchOverview(date), getResearchOperations(date), getResearchObservation()]).then(([list, o, ops, obs]) => { setReports(list.reports); setOverview(o); setOperations(ops); setObservation(obs); }).catch((e: unknown) => setError(e instanceof Error ? e.message : "无法读取研报存储")).finally(() => setLoading(false)); getResearchDigest(date).then(setDigest).catch(() => setDigest(undefined)); }, [date, channel]);
+  const show = (r: ResearchReport) => { setOpen(true); setDetail(undefined); setArtifact(undefined); setMarkdown(undefined); getResearchReport(r.id).then(setDetail).catch((e: unknown) => setError(e instanceof Error ? e.message : "无法读取报告详情")); };
+  const showMarkdown = async () => { if (!detail) return; setArtifact("markdown"); try { setMarkdown(await (await fetch(getResearchMarkdownUrl(detail.id))).text()); } catch { setMarkdown("Markdown artifact 暂不可用。"); } };
+  const overviewBody = <Space direction="vertical" style={{ width: "100%" }}><Card><Descriptions size="small" column={{ xs: 1, sm: 2, md: 4 }} items={[["Metadata", overview?.metadata_count], ["PDF", `${overview?.pdf_success ?? 0} 成功 / ${overview?.pdf_failed ?? 0} 失败`], ["MinerU", `${overview?.parse_success ?? 0} 成功 / ${overview?.parse_failed ?? 0} 失败`], ["Agnes", `${overview?.analysis_success ?? 0} 成功 / ${overview?.analysis_failed ?? 0} 失败`], ["Digest", overview?.digest_status], ["Outbox", overview?.outbox_status], ["Sent at", overview?.sent_at], ["最新运行", overview?.latest_operation_status], ["运行秒数", overview?.runtime_seconds]].map(([label, child]) => ({ key: String(label), label: String(label), children: value(child) }))} /></Card><Card title="7 日真实运行观察"><Space wrap><Tag color={observation?.engineering_pass ? "green" : "red"}>REPORT_MVP_ENGINEERING_PASS = {String(observation?.engineering_pass)}</Tag><Tag color="blue">REPORT_MVP_7D_LIVE_PASS = false</Tag><Typography.Text>{observation?.real_operating_days ?? 0} / {observation?.required_operating_days ?? 7} real operating days</Typography.Text></Space></Card><Card title="栏目概览"><Space wrap>{CHANNELS.map((c) => <Tag key={c.key}>{c.label}：{overview?.channels[c.key]?.count ?? 0} 篇</Tag>)}</Space></Card></Space>;
+  const reportBody = <Space direction="vertical" style={{ width: "100%" }}><Select style={{ width: 150 }} value={channel} options={CHANNELS.map((c) => ({ value: c.key, label: c.label }))} onChange={(v) => setChannel(v as ResearchChannel)} /><Table<ResearchReport> rowKey="id" pagination={{ pageSize: 20, showSizeChanger: false }} dataSource={reports} columns={[{ title: "序号", dataIndex: "platform_order", width: 70 }, { title: "标题", dataIndex: "title", render: (v, r) => <Typography.Link onClick={() => show(r)}>{v}</Typography.Link> }, { title: "机构", dataIndex: "institution", width: 130, render: value }, { title: "栏目", dataIndex: "channel", width: 110 }, { title: "PDF", dataIndex: "pdf_status", width: 90, render: tag }, { title: "MinerU", dataIndex: "mineru_status", width: 95, render: tag }, { title: "Agnes", dataIndex: "agnes_status", width: 95, render: tag }, { title: "research_value", dataIndex: "research_value", width: 120, render: value }, { title: "reproducibility", dataIndex: "reproducibility", width: 120, render: value }, { title: "操作", width: 70, render: (_, r) => <Button type="link" onClick={() => show(r)}>查看</Button> }]} /></Space>;
+  const digestBody = digest ? <Space direction="vertical" style={{ width: "100%" }}><Card><Descriptions size="small" column={2} items={[{ key: "c", label: "完整性", children: tag(digest.completeness) }, { key: "h", label: "Digest hash", children: digest.digest_hash }, { key: "t", label: "创建时间", children: digest.created_at }, { key: "o", label: "Outbox", children: digest.outbox ? tag(digest.outbox.status) : "—" }, { key: "s", label: "发送时间", children: digest.outbox?.sent_at || "—" }, { key: "e", label: "错误", children: digest.outbox?.last_error || "—" }]} /></Card><Card title="Daily Digest"><Markdown content={digest.content_md} /></Card></Space> : <Empty description="该日期尚无 Daily Digest" />;
+  const operationBody = <Space direction="vertical" style={{ width: "100%" }}><Card title="阶段统计"><Table size="small" pagination={false} rowKey="stage" dataSource={stages.map((stage) => ({ stage, ...(operations?.stages[stage] || { success: 0, failed: 0, skipped: 0 }) }))} columns={[{ title: "阶段", dataIndex: "stage" }, { title: "成功", dataIndex: "success" }, { title: "失败", dataIndex: "failed" }, { title: "跳过", dataIndex: "skipped" }]} /></Card><Card title="最近运行"><Table size="small" rowKey={(r) => `${r.stage}-${r.started_at}-${r.attempt}`} pagination={{ pageSize: 10 }} dataSource={operations?.runs || []} columns={[{ title: "阶段", dataIndex: "stage" }, { title: "状态", dataIndex: "status", render: tag }, { title: "开始", dataIndex: "started_at" }, { title: "结束", dataIndex: "finished_at", render: value }, { title: "秒数", dataIndex: "runtime_seconds", render: value }]} /></Card><Card title="最近 7 个真实运行日"><Table size="small" pagination={false} dataSource={[]} locale={{ emptyText: "观察期尚未开始；历史回放不会计入。" }} columns={[{ title: "date", dataIndex: "date" }, { title: "collect", dataIndex: "collect" }, { title: "pdf", dataIndex: "pdf" }, { title: "parse", dataIndex: "parse" }, { title: "analysis", dataIndex: "analysis" }, { title: "digest", dataIndex: "digest" }, { title: "feishu", dataIndex: "feishu" }, { title: "status", dataIndex: "status" }]} /></Card></Space>;
+  return <Space direction="vertical" size="large" style={{ width: "100%" }}><div><Typography.Title level={3} style={{ marginBottom: 4 }}>研报</Typography.Title><Typography.Text type="secondary">只读展示已持久化的企业预警 Research 结果。</Typography.Text></div>{error && <Alert type="warning" showIcon message="研报存储暂不可用" description={error} />}<Card size="small"><Space wrap><Typography.Text>采集日期</Typography.Text><Select style={{ minWidth: 150 }} value={date} placeholder="暂无已采集日期" options={dates.map((v) => ({ value: v, label: v }))} onChange={setDate} />{CHANNELS.map((c) => <Tag key={c.key}>{c.label} {overview?.channels[c.key]?.count ?? 0} 篇</Tag>)}</Space></Card>{loading && !overview ? <div style={{ textAlign: "center", padding: 36 }}><Spin /></div> : <Tabs items={[{ key: "overview", label: "今日概览", children: date ? overviewBody : <Empty /> }, { key: "reports", label: "研报列表", children: reportBody }, { key: "digest", label: "Daily Digest", children: digestBody }, { key: "operations", label: "运行状态", children: operationBody }]} />}<Drawer title="研报详情（只读）" width={760} open={open} onClose={() => setOpen(false)}>{!detail ? <Spin /> : <Space direction="vertical" size="middle" style={{ width: "100%" }}><Card title="基本信息"><Descriptions size="small" column={2} items={Object.entries(detail.basic).map(([k, v]) => ({ key: k, label: k, children: value(v) }))} /></Card><Card title="Artifact"><Descriptions size="small" column={2} items={Object.entries(detail.artifact || {}).filter(([k]) => !k.startsWith("has_")).map(([k, v]) => ({ key: k, label: k, children: value(v) }))} /><Space style={{ marginTop: 12 }}>{detail.artifact?.has_pdf === true && <Button onClick={() => setArtifact("pdf")}>查看 PDF</Button>}{detail.artifact?.has_markdown === true && <Button onClick={showMarkdown}>查看 Markdown</Button>}</Space>{artifact === "pdf" && <iframe title="Research PDF" src={getResearchPdfUrl(detail.id)} style={{ width: "100%", height: 500, border: 0, marginTop: 12 }} />}{artifact === "markdown" && <Card size="small" style={{ marginTop: 12 }}><Markdown content={markdown || "加载中…"} /></Card>}</Card><Card title="Agnes"><Descriptions size="small" column={1} items={Object.entries(detail.analysis || {}).map(([k, v]) => ({ key: k, label: k, children: value(v) }))} /></Card><Card title="Evidence"><Collapse items={detail.evidence.map((item) => ({ key: String(item.chunk_id), label: `${item.chunk_id} · #${item.chunk_index} · ${item.source_start}-${item.source_end}`, children: <><Typography.Text type="secondary">sha256: {value(item.chunk_sha256)}</Typography.Text><Markdown content={value(item.text)} /></> }))} /></Card><Card title="Audit"><Descriptions size="small" column={1} items={Object.entries(detail.audit || {}).map(([k, v]) => ({ key: k, label: k, children: value(v) }))} /></Card></Space>}</Drawer></Space>;
 }

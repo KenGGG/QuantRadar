@@ -5,13 +5,15 @@ from __future__ import annotations
 from datetime import date
 from hashlib import sha256
 import json
+import re
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import Engine, create_engine, func, inspect, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import ResearchSettings
-from .models import ResearchAnalysis, ResearchAnalysisChunk, ResearchArtifact, ResearchBase, ResearchOutbox, ResearchReport, ResearchReportSnapshot, ResearchStageRun, utcnow
+from .models import ResearchAnalysis, ResearchAnalysisChunk, ResearchArtifact, ResearchBase, ResearchDailyDigest, ResearchOutbox, ResearchReport, ResearchReportSnapshot, ResearchStageRun, utcnow
 
 
 class ResearchStore:
@@ -103,8 +105,15 @@ class ResearchStore:
                 select(ResearchStageRun).order_by(ResearchStageRun.report_id, ResearchStageRun.id.desc())
             ).all()
             latest_status: dict[int, str] = {}
+            latest_by_stage: dict[tuple[int, str], str] = {}
             for row in stage_rows:
                 latest_status.setdefault(row.report_id, row.status)
+                latest_by_stage.setdefault((row.report_id, row.stage), row.status)
+            artifacts = {row.report_id: row for row in session.scalars(select(ResearchArtifact)).all()}
+            analysis_rows = session.scalars(select(ResearchAnalysis).order_by(ResearchAnalysis.report_id, ResearchAnalysis.updated_at.desc(), ResearchAnalysis.id.desc())).all()
+            analyses: dict[int, ResearchAnalysis] = {}
+            for row in analysis_rows:
+                analyses.setdefault(row.report_id, row)
 
             return [
                 {
@@ -119,6 +128,11 @@ class ResearchStore:
                         report.id,
                         "PENDING" if report.content_type == "pdf" else "UNSUPPORTED",
                     ),
+                    "pdf_status": "SUCCESS" if artifacts.get(report.id) and artifacts[report.id].pdf_path else latest_by_stage.get((report.id, "PREPARE"), "PENDING"),
+                    "mineru_status": "SUCCESS" if artifacts.get(report.id) and artifacts[report.id].markdown_path else latest_by_stage.get((report.id, "PARSE"), "PENDING"),
+                    "agnes_status": analyses[report.id].status if report.id in analyses else latest_by_stage.get((report.id, "ANALYZE"), "PENDING"),
+                    "research_value": analyses[report.id].research_value if report.id in analyses else None,
+                    "reproducibility": analyses[report.id].reproducibility if report.id in analyses else None,
                 }
                 for snapshot, report in rows
             ]
@@ -284,3 +298,89 @@ class ResearchStore:
             row = session.scalar(select(ResearchAnalysis).where(ResearchAnalysis.report_id == report_id, ResearchAnalysis.analysis_profile_hash == profile_hash).order_by(ResearchAnalysis.id.desc()))
             if row is None: raise KeyError(report_id)
             return row
+
+    def report_visibility_detail(self, report_id: int) -> tuple[ResearchReport, ResearchArtifact | None, ResearchAnalysis | None, list[ResearchAnalysisChunk]]:
+        """Load only database-registered, presentation-safe Research records."""
+        with self._session() as session:
+            report = session.get(ResearchReport, report_id)
+            if report is None:
+                raise KeyError(report_id)
+            artifact = session.get(ResearchArtifact, report_id)
+            analysis = session.scalar(select(ResearchAnalysis).where(ResearchAnalysis.report_id == report_id).order_by(ResearchAnalysis.updated_at.desc(), ResearchAnalysis.id.desc()))
+            chunks = [] if analysis is None else list(session.scalars(
+                select(ResearchAnalysisChunk).where(
+                    ResearchAnalysisChunk.report_id == report_id,
+                    ResearchAnalysisChunk.markdown_sha256 == analysis.markdown_sha256,
+                ).order_by(ResearchAnalysisChunk.chunk_index)
+            ).all())
+            return report, artifact, analysis, chunks
+
+    def registered_artifact_path(self, report_id: int, kind: str) -> Path | None:
+        """Resolve a registered artifact under the Research data root, read-only.
+
+        Early MVP rows registered the source report but omitted ``pdf_path`` while
+        retaining their immutable raw PDF under ``raw/pdf/<source-id>-<hash>.pdf``.
+        That legacy form is deliberately resolved from the database value only;
+        callers never supply a filesystem path.
+        """
+        report, artifact, _, _ = self.report_visibility_detail(report_id)
+        stored = getattr(artifact, f"{kind}_path", None) if artifact else None
+        if stored:
+            return Path(stored)
+        if kind != "pdf" or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", report.source_report_id):
+            return None
+        matches = sorted((self.settings.data_dir / "raw" / "pdf").glob(f"{report.source_report_id}-*.pdf"))
+        return matches[0] if len(matches) == 1 else None
+
+    def digest_visibility(self, target_date: date) -> tuple[ResearchDailyDigest | None, ResearchOutbox | None]:
+        with self._session() as session:
+            digest = session.get(ResearchDailyDigest, target_date)
+            outbox = session.scalar(select(ResearchOutbox).where(ResearchOutbox.target_date == target_date).order_by(ResearchOutbox.id.desc()))
+            return digest, outbox
+
+    def visibility_overview(self, target_date: date) -> dict[str, Any]:
+        """Compute Research UI counters server-side from durable rows only."""
+        with self._session() as session:
+            snapshot_report_ids = list(session.scalars(select(ResearchReportSnapshot.report_id).where(ResearchReportSnapshot.target_date == target_date)).all())
+            report_ids = list(dict.fromkeys(snapshot_report_ids))
+            artifacts = {row.report_id: row for row in session.scalars(select(ResearchArtifact).where(ResearchArtifact.report_id.in_(report_ids))).all()} if report_ids else {}
+            analyses = list(session.scalars(select(ResearchAnalysis).where(ResearchAnalysis.report_id.in_(report_ids)).order_by(ResearchAnalysis.report_id, ResearchAnalysis.updated_at.desc(), ResearchAnalysis.id.desc())).all()) if report_ids else []
+            latest_analysis: dict[int, ResearchAnalysis] = {}
+            for row in analyses:
+                latest_analysis.setdefault(row.report_id, row)
+            stages = list(session.scalars(select(ResearchStageRun).where(ResearchStageRun.report_id.in_(report_ids)).order_by(ResearchStageRun.report_id, ResearchStageRun.id.desc())).all()) if report_ids else []
+            latest_stage: dict[tuple[int, str], ResearchStageRun] = {}
+            for row in stages:
+                latest_stage.setdefault((row.report_id, row.stage), row)
+
+            def failed(stage: str, report_id: int) -> bool:
+                return (row := latest_stage.get((report_id, stage))) is not None and row.status.startswith("FAILED")
+
+            pdf_success = sum(self.registered_artifact_path(report_id, "pdf") is not None for report_id in report_ids)
+            parse_success = sum(bool(artifacts.get(report_id) and artifacts[report_id].markdown_path) for report_id in report_ids)
+            analysis_success = sum(row.status == "SUCCESS" for row in latest_analysis.values())
+            digest, outbox = self.digest_visibility(target_date)
+            counts = self.channel_counts(target_date)
+            return {
+                "date": target_date,
+                "metadata_count": len(snapshot_report_ids),
+                "pdf_success": pdf_success,
+                "pdf_failed": sum(failed("PREPARE", report_id) for report_id in report_ids),
+                "parse_success": parse_success,
+                "parse_failed": sum(failed("PARSE", report_id) for report_id in report_ids),
+                "analysis_success": analysis_success,
+                "analysis_failed": sum(row.status.startswith("FAILED") for row in latest_analysis.values()),
+                "digest_status": digest.completeness if digest else "MISSING",
+                "outbox_status": outbox.status if outbox else "MISSING",
+                "sent_at": outbox.sent_at if outbox else None,
+                "channels": {channel: {"count": counts.get(channel, 0)} for channel in ("HOT", "STRATEGY", "FINANCIAL_ENGINEERING")},
+            }
+
+    def visibility_operations(self, target_date: date) -> list[ResearchStageRun]:
+        with self._session() as session:
+            return list(session.scalars(
+                select(ResearchStageRun)
+                .join(ResearchReport, ResearchReport.id == ResearchStageRun.report_id)
+                .where(ResearchReport.publish_date == target_date)
+                .order_by(ResearchStageRun.started_at.desc(), ResearchStageRun.id.desc())
+            ).all())
