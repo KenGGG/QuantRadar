@@ -64,6 +64,24 @@ class ResearchArtifact(ResearchBase):
     parse_quality: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
 
+class ResearchArtifactSource(ResearchBase):
+    """One auditable source component contributing to canonical Markdown."""
+    __tablename__ = "research_artifact_sources"
+    __table_args__ = (UniqueConstraint("report_id", "source_kind", "source_sha256", name="uq_research_artifact_source"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    report_id: Mapped[int] = mapped_column(ForeignKey("research_artifacts.report_id"), nullable=False, index=True)
+    source_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_url: Mapped[str | None] = mapped_column(Text)
+    source_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    markdown_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    extractor: Mapped[str] = mapped_column(String(64), nullable=False)
+    extractor_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_order: Mapped[int] = mapped_column(Integer, nullable=False)
+    relation: Mapped[str] = mapped_column(String(32), nullable=False, default="UNKNOWN")
+    included_in_canonical: Mapped[bool] = mapped_column(nullable=False, default=True)
+    relation_reason: Mapped[str] = mapped_column(Text, nullable=False, default="unclassified")
+
+
 class ResearchStageRun(ResearchBase):
     __tablename__ = "research_stage_runs"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -125,6 +143,9 @@ class ResearchDailyDigest(ResearchBase):
     content_md: Mapped[str] = mapped_column(Text, nullable=False)
     content_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     digest_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    digest_version: Mapped[str] = mapped_column(String(64), nullable=False, default="legacy-flat-v1")
+    digest_profile_hash: Mapped[str | None] = mapped_column(String(64))
+    input_hash: Mapped[str | None] = mapped_column(String(64))
     completeness: Mapped[str] = mapped_column(String(16), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 

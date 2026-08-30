@@ -35,31 +35,44 @@ class AgnesHttpClient:
         *,
         timeout_seconds: int = 180,
         requests_per_minute: int = 19,
+        max_attempts: int = 3,
         session: httpx.Client | None = None,
         clock=time.monotonic,
         sleeper=time.sleep,
     ):
-        if requests_per_minute < 1:
-            raise ValueError("requests_per_minute must be positive")
+        if requests_per_minute < 1 or max_attempts < 1:
+            raise ValueError("requests_per_minute and max_attempts must be positive")
         self.base_url, self.api_key, self.model = base_url.rstrip("/"), api_key, model
         self.session = session or httpx.Client(timeout=httpx.Timeout(timeout_seconds, connect=10.0))
         self._minimum_interval = 60.0 / requests_per_minute
-        self._clock, self._sleeper, self._last_request_at = clock, sleeper, None
+        self._clock, self._sleeper, self._last_request_at, self._max_attempts = clock, sleeper, None, max_attempts
 
     def complete(self, messages: list[dict[str, str]]) -> dict[str, Any]:
-        if self._last_request_at is not None:
-            remaining = self._minimum_interval - (self._clock() - self._last_request_at)
-            if remaining > 0:
-                self._sleeper(remaining)
-        self._last_request_at = self._clock()
-        try:
-            response = self.session.post(
-                f"{self.base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                json={"model": self.model, "messages": messages, "response_format": {"type": "json_object"}},
-            )
-        except (httpx.TimeoutException, httpx.NetworkError) as exc:
-            raise RetryableAgnesError(type(exc).__name__) from exc
+        def wait_for_rate_slot() -> None:
+            if self._last_request_at is not None:
+                remaining = self._minimum_interval - (self._clock() - self._last_request_at)
+                if remaining > 0:
+                    self._sleeper(remaining)
+            self._last_request_at = self._clock()
+
+        failure: Exception | None = None
+        for attempt in range(self._max_attempts):
+            wait_for_rate_slot()
+            try:
+                response = self.session.post(
+                    f"{self.base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                    json={"model": self.model, "messages": messages, "response_format": {"type": "json_object"}},
+                )
+                if response.status_code != 429 and response.status_code < 500:
+                    break
+                failure = RetryableAgnesError(f"HTTP_{response.status_code}")
+            except httpx.TransportError as exc:
+                failure = exc
+            if attempt + 1 < self._max_attempts:
+                self._sleeper(max(2 ** attempt, self._minimum_interval))
+        else:
+            raise RetryableAgnesError(type(failure).__name__ if failure else "Unknown transport failure") from failure
         if response.status_code == 429 or response.status_code >= 500:
             raise RetryableAgnesError(f"HTTP_{response.status_code}")
         if response.status_code >= 400:
@@ -85,7 +98,10 @@ class AgnesAnalyzer:
         ]
         contract = (
             f"{task} Return one JSON object only. "
-            "Required non-empty fields: research_type (MARKET or QUANT), one_line_summary, and evidence. "
+            "Required non-empty fields: research_type (MARKET or QUANT), one_line_summary, "
+            "key_points (a 2-5 item list), core_conclusion, method_or_logic, "
+            "risks_or_limitations, and evidence. Use the literal not_supported for "
+            "method_or_logic or risks_or_limitations only when the source does not state them. "
             "Each evidence item must cite only one of these exact chunk identifiers and hashes: "
             f"{json.dumps(evidence_contract, ensure_ascii=False)}. "
             "Evidence items must include chunk_id and chunk_sha256. Do not invent source identifiers."

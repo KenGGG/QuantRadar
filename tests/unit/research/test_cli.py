@@ -56,8 +56,9 @@ def test_analyze_continues_after_one_report_fails(tmp_path, capsys) -> None:
 
     settings = ResearchSettings(f"sqlite+pysqlite:///{tmp_path / 'research.db'}", tmp_path / "data", tmp_path / "profile")
     store = ResearchStore(settings); store.create_schema()
-    for source_id in ("A" * 32, "B" * 32):
+    for platform_order, source_id in enumerate(("A" * 32, "B" * 32), start=1):
         report = store.upsert_report({"source": "qyj", "source_report_id": source_id, "title": source_id, "publish_date": date(2026, 8, 24), "content_type": "pdf", "source_payload": {}})
+        store.record_snapshot(report.id, date(2026, 8, 24), "HOT", platform_order, source_id)
         path = tmp_path / f"{report.id}.md"; path.write_text("正文", encoding="utf-8")
         store.save_markdown_artifact(report.id, path, source_id.lower() * 2, parser="mineru", parser_version="3.4.4", parse_quality={"status": "PARSE_OK"})
     calls: list[int] = []
@@ -115,6 +116,24 @@ def test_prepare_continues_after_one_report_fails(tmp_path, capsys) -> None:
     output = capsys.readouterr().out
     assert '"prepared": 1' in output
     assert '"failed": 1' in output
+
+
+def test_prepare_records_a_retryable_stage_failure_for_missing_content(tmp_path) -> None:
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.cli import run
+    from quantradar.research.models import ResearchStageRun
+    from quantradar.research.storage import ResearchStore
+
+    settings = ResearchSettings(f"sqlite+pysqlite:///{tmp_path / 'research.db'}", tmp_path / "data", tmp_path / "profile")
+    store = ResearchStore(settings); store.create_schema()
+    report = store.upsert_report({"source": "qyj", "source_report_id": "Z" * 32, "title": "无正文", "publish_date": date(2026, 8, 24), "content_type": "non_pdf", "source_payload": {}})
+    store.record_snapshot(report.id, date(2026, 8, 24), "HOT", 1, "hash")
+
+    assert run(["prepare", "--date", "2026-08-24"], settings=settings) == 0
+    with store._session() as session:
+        stage = session.query(ResearchStageRun).filter_by(report_id=report.id, stage="PREPARE").one()
+    assert stage.status == "FAILED"
+    assert stage.error_code == "RuntimeError"
 
 
 def test_pipeline_invokes_the_resumable_runner(tmp_path, capsys) -> None:

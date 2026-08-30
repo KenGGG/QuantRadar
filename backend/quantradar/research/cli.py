@@ -9,12 +9,13 @@ from pathlib import Path
 from typing import Sequence
 
 from .collector.qyj import QyjCollector
+from .content_sources import build_content_inventory, detect_content_sources
 from .analysis import ANALYSIS_PROMPT_VERSION, analyze_markdown, build_analysis_profile_hash
 from .config import ResearchSettings
 from .delivery import deliver_daily_digest
 from .llm.agnes import AgnesHttpClient
 from .parser.mineru import MineruClient
-from .pipeline import run_pipeline
+from .pipeline import _preparation_input_hash, run_pipeline
 from .operations import ResearchRunLock, write_operation_record
 from .preparation import prepare_report
 from .storage import ResearchStore
@@ -26,6 +27,8 @@ def _parser() -> argparse.ArgumentParser:
     commands.add_parser("health", help="check the configured shared MinerU service")
     collect = commands.add_parser("collect", help="collect QYJ metadata with the persistent headless profile")
     collect.add_argument("--date", type=date.fromisoformat, default=date.today(), help="target date (YYYY-MM-DD)")
+    inventory = commands.add_parser("content-inventory", help="write a redacted source-type inventory for collected snapshots")
+    inventory.add_argument("--date", type=date.fromisoformat, required=True, help="target date (YYYY-MM-DD)")
     prepare = commands.add_parser("prepare", help="download collected PDFs and publish MinerU Markdown")
     prepare.add_argument("--date", type=date.fromisoformat, required=True, help="target date (YYYY-MM-DD)")
     prepare.add_argument("--limit", type=int, default=30, help="maximum reports to prepare")
@@ -76,6 +79,20 @@ def run(
 
     store = ResearchStore(runtime)
     store.create_schema()
+    if args.command == "content-inventory":
+        snapshots = store.list_snapshots(args.date)
+        reports = {report.id: report for report in store.list_reports_for_preparation(args.date, limit=max(len(snapshots), 1))}
+        rows = [(snapshot.channel, snapshot.report_id, reports[snapshot.report_id].title, reports[snapshot.report_id].source_payload) for snapshot in snapshots if snapshot.report_id in reports]
+        inventory = {
+            "target_date": args.date.isoformat(),
+            "channels": build_content_inventory(rows),
+            "reports": [{"channel": channel, "report_id": report_id, "title": title, "sources": [source.kind.value for source in detect_content_sources(payload)]} for channel, report_id, title, payload in rows],
+        }
+        destination = runtime.data_dir / "acceptance" / f"multiformat-content-inventory-{args.date.isoformat()}.json"
+        destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        destination.write_text(json.dumps(inventory, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        print(json.dumps({"path": str(destination), "channels": inventory["channels"]}, ensure_ascii=False, sort_keys=True))
+        return 0
     if args.command == "deliver":
         with ResearchRunLock(runtime.data_dir / "runtime" / "research.lock"):
             result = delivery_fn(store, runtime, args.date)
@@ -85,18 +102,23 @@ def run(
     if args.command == "prepare":
         prepared, failed = 0, 0
         for report in store.list_reports_for_preparation(args.date, args.limit):
+            stage = store.begin_stage(report.id, "PREPARE", _preparation_input_hash(report))
+            if stage.status == "SUCCESS":
+                continue
             try:
-                prepare_fn(store, runtime, report)
+                artifact = prepare_fn(store, runtime, report)
+                store.finish_stage(stage.id, "SUCCESS", output_hash=getattr(artifact, "markdown_sha256", None))
                 prepared += 1
-            except Exception:
+            except Exception as exc:
+                store.finish_stage(stage.id, "FAILED", error_code=type(exc).__name__, error_message=str(exc)[:512])
                 failed += 1
         print(json.dumps({"date": args.date.isoformat(), "prepared": prepared, "failed": failed}, ensure_ascii=False, sort_keys=True))
         return 0
     if args.command == "analyze":
         client = agnes_client_cls(runtime.agnes_base_url, runtime.agnes_api_key, runtime.agnes_model, requests_per_minute=runtime.agnes_rpm)
-        profile_hash = build_analysis_profile_hash(ANALYSIS_PROMPT_VERSION, runtime.agnes_model, "agnes-http-v1", "schema-v1", "chunking-v1")
+        profile_hash = build_analysis_profile_hash(ANALYSIS_PROMPT_VERSION, runtime.agnes_model, "agnes-http-v1", "schema-v2", "chunking-v1")
         analyzed, failed = 0, 0
-        for report, artifact in store.list_markdown_reports(args.date, args.limit):
+        for report, artifact in store.list_markdown_reports(args.date, args.limit, profile_hash):
             markdown = Path(artifact.markdown_path).read_text(encoding="utf-8")
             try:
                 analyze_fn(store, report.id, markdown, profile_hash, runtime.agnes_model, client)

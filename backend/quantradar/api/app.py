@@ -201,7 +201,8 @@ def research_digest(target_date: date) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="Research digest not found")
     return {
         "date": target_date.isoformat(), "content_md": digest.content_md, "completeness": digest.completeness,
-        "digest_hash": digest.digest_hash, "created_at": _research_time(digest.created_at),
+        "digest_hash": digest.digest_hash, "digest_version": digest.digest_version,
+        "content": digest.content_json, "created_at": _research_time(digest.created_at),
         "outbox": None if outbox is None else {"status": outbox.status, "attempt": outbox.attempt, "sent_at": _research_time(outbox.sent_at), "last_error": outbox.last_error},
     }
 

@@ -131,6 +131,7 @@ def test_markdown_artifact_is_persisted_for_the_report_date(store, tmp_path) -> 
         parser_version="3.4.4",
         parse_quality={"status": "PARSE_OK"},
     )
+    store.record_snapshot(report.id, date(2026, 8, 24), "HOT", 1, "snapshot")
 
     rows = store.list_markdown_reports(date(2026, 8, 24), limit=10)
     assert [(row.id, artifact.markdown_sha256, artifact.parser_version) for row, artifact in rows] == [
@@ -146,6 +147,17 @@ def test_reports_for_preparation_are_unique_per_snapshot_date(store) -> None:
     assert [row.id for row in store.list_reports_for_preparation(date(2026, 8, 24), limit=10)] == [report.id]
 
 
+def test_markdown_reports_retry_failed_analysis_from_snapshot_date(store, tmp_path) -> None:
+    report = store.upsert_report(_report_payload())
+    store.record_snapshot(report.id, date(2026, 8, 24), "HOT", 1, "hot")
+    store.save_markdown_artifact(report.id, tmp_path / "report.md", "m" * 64, parser="mineru", parser_version="3.4.4", parse_quality={"status": "PARSE_OK"})
+    store.record_analysis_failure(report.id, "m" * 64, "profile", "model", RuntimeError("temporary"))
+
+    assert [row.id for row, _ in store.list_markdown_reports(date(2026, 8, 24), limit=10, analysis_profile_hash="profile")] == [report.id]
+    store.save_analysis(report.id, "m" * 64, "profile", "model", {"research_type": "MARKET", "summary": "ok"})
+    assert store.list_markdown_reports(date(2026, 8, 24), limit=10, analysis_profile_hash="profile") == []
+
+
 def test_saved_analysis_has_deterministic_result_hash(store) -> None:
     report = store.upsert_report(_report_payload())
     row = store.save_analysis(report.id, "m" * 64, "profile", "model", {"research_type": "MARKET", "summary": "结论"})
@@ -153,7 +165,7 @@ def test_saved_analysis_has_deterministic_result_hash(store) -> None:
     assert row.analysis_hash
     assert len(row.analysis_hash) == 64
     assert row.agnes_version == "agnes-http-v1"
-    assert row.schema_version == "schema-v1"
+    assert row.schema_version == "schema-v2"
     assert row.chunking_version == "chunking-v1"
 
 

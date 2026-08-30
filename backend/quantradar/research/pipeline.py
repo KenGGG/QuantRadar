@@ -28,7 +28,7 @@ class PipelineResult:
 
 
 def _preparation_input_hash(report: ResearchReport) -> str:
-    payload = {"source_report_id": report.source_report_id, "source_payload": report.source_payload}
+    payload = {"source_report_id": report.source_report_id, "source_payload": report.source_payload, "canonical_profile": "containment-v2"}
     return sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
@@ -53,7 +53,7 @@ def run_pipeline(
     runtime_store.create_schema()
     collected = collector_cls(settings, runtime_store).collect(target_date)
     collected_count = sum(len(rows) for rows in collected.values())
-    profile_hash = build_analysis_profile_hash(ANALYSIS_PROMPT_VERSION, settings.agnes_model, "agnes-http-v1", "schema-v1", "chunking-v1")
+    profile_hash = build_analysis_profile_hash(ANALYSIS_PROMPT_VERSION, settings.agnes_model, "agnes-http-v1", "schema-v2", "chunking-v1")
     client = agnes_client_cls(settings.agnes_base_url, settings.agnes_api_key, settings.agnes_model, requests_per_minute=settings.agnes_rpm)
     prepared = prepare_failed = analyzed = analyze_failed = 0
     for report in runtime_store.list_reports_for_preparation(target_date, limit):

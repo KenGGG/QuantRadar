@@ -9,7 +9,7 @@ const FIELD_LABELS: Record<string, string> = {
   authors: "作者", publish_date: "发布日期", category: "分类", industry: "行业", security: "证券",
   source_report_id: "来源研报 ID", pdf_pages: "PDF 页数", platform_pages: "平台页数",
   page_count_match: "页数一致", pdf_sha256: "PDF SHA-256", parser: "解析器", parser_version: "解析器版本",
-  parse_quality: "解析质量", markdown_sha256: "Markdown SHA-256", summary: "摘要", research_type: "研究类型",
+  parse_quality: "解析质量", markdown_sha256: "Markdown SHA-256", summary: "摘要", research_type: "研究类型", one_line_summary: "一句话摘要", key_points: "关键要点", core_conclusion: "核心结论", method_or_logic: "主要方法/逻辑", risks_or_limitations: "风险与局限",
   core_method: "核心方法", key_variables: "关键变量", main_conclusion: "主要结论",
   applicable_market: "适用市场", possible_quantradar_use: "QuantRadar 可用方向", risks_and_limitations: "风险与局限",
   status: "状态", model: "模型", agnes_version: "Agnes 版本", prompt_version: "提示词版本",

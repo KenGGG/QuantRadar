@@ -12,12 +12,12 @@ file records present facts, not plans or chronological logs.
 
 ## Active Product Work
 
-`REPORT_MVP_ENGINEERING_PASS` and `REPORT_MVP_WEB_VISIBILITY_PASS` are
-complete. The current active goal is `REPORT_MVP_7D_LIVE_PASS` observation;
-Research code is frozen. Passed engineering goals:
+`REPORT_MVP_ENGINEERING_PASS`, `REPORT_MVP_WEB_VISIBILITY_PASS`, and the
+merge-blocking `REPORT_MVP_YESTERDAY_DIGEST_PASS` are complete on this branch;
+the branch is pending pull-request merge. The seven-day observation is paused.
 `REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
 `REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`, and
-`REPORT_MVP_OPERATIONS_PASS`. `REPORT_MVP_ENGINEERING_PASS` is complete.
+`REPORT_MVP_OPERATIONS_PASS` are historical completed Goals.
 
 ### Enterprise Alert Research MVP: implemented
 
@@ -43,6 +43,24 @@ Research code is frozen. Passed engineering goals:
   `/data/ken/.cache/quantradar/research/analysis/acceptance/delivery-2026-08-28.json`
   records a successful first send and an idempotent second run that did not
   send again.
+- A versioned Snapshot-scoped 2026-08-29 Digest is persisted with header
+  `QuantRadar 昨日研报摘要 · 2026-08-29`. It independently synthesizes HOT,
+  STRATEGY, and FINANCIAL_ENGINEERING from `ResearchReportSnapshot` members:
+  43 / 7 / 2 collected, with 43 / 7 / 2 successful analyses and no processing
+  exceptions. It does not use
+  `FIXED_INCOME` and it has no silent membership omissions.
+- The new canonical multi-source analysis profile
+  `42f9bd54f5ed247977d02ef2fb1382e30634cecee1bff6a277cfcb64797f1e59` has
+  48 successful analyses, zero pending/retryable/terminal analysis failures,
+  and an idempotent Digest replay that made zero Agnes requests.
+- Canonical source accounting for the 2026-08-29 snapshots is 48 distinct
+  persisted reports and 48 `PARSE_OK` canonical Markdown artifacts. The six
+  records formerly classified as unsupported have real `abstract` embedded
+  HTML and now correctly use that source after their empty PDF attachment was
+  ignored. Components are audited as 33 PDF primary, 19 duplicate HTML
+  excluded, 14 supplementary HTML included, and 15 HTML-only included. The
+  corresponding acceptance manifest is
+  `/data/ken/.cache/quantradar/research/acceptance/yesterday-digest-2026-08-29.json`.
 - Single-instance runtime lock, credential-redacted JSON operation records,
   and verified but not enabled `systemd --user` service/timer templates.
   A real locked 2026-08-28 pipeline rerun collected 99 records, skipped
@@ -61,10 +79,20 @@ Research code is frozen. Passed engineering goals:
   tabs. It renders backend-computed counters, structured Agnes/Evidence/Audit
   details, formatted Markdown, stage summaries, and no Research write actions.
 
-### Enterprise Alert Research MVP: not implemented
+### Merge-gate facts
 
-- `REPORT_MVP_7D_LIVE_PASS` is active but remains false at `0 / 7` real
-  operating days. Historical replay does not advance the count.
+- `MULTIFORMAT_CONTENT_GATE` is `PASS`: all actual 2026-08-29 PDF and
+  embedded-HTML sources completed QYJ metadata → canonical Markdown → quality
+  gate → Agnes → Evidence. The 535 persisted historical QYJ metadata records
+  contain no `mp.weixin.qq.com` source. Therefore
+  `WEIXIN_ADAPTER_IMPLEMENTED=true`, `WEIXIN_QYJ_SAMPLE_OBSERVED=false`,
+  `WEIXIN_PUBLIC_SMOKE_PASS=true`, and
+  `WEIXIN_QYJ_LIVE_VERIFIED=PENDING_FIRST_REAL_SAMPLE`. `url-md 0.2.0` is
+  installed at `/home/ken/.url-md/bin/url-md` (SHA-256
+  `d1227011102c71ba38a8083b6dbb9a9c2670da88019162b6b25ef6a4e5d42616`); its
+  public-Weixin smoke passed, while it is not represented as QYJ live proof.
+- `REPORT_MVP_7D_LIVE_PASS` remains false at `0 / 7` and is paused. Historical
+  replay does not advance the count.
 
 ## Frozen Historical Facts
 
@@ -76,14 +104,13 @@ Research code is frozen. Passed engineering goals:
 
 ## Verification
 
-- CI-equivalent backend: `165 passed, 143 skipped, 0 failed` (`make test`).
-- Research unit suite: `69 passed, 0 failed`.
+- Full backend suite: the prior `make test` result was `327 passed, 1 failed`;
+  the sole failure was a frozen live Kronos MySQL audit timeout. The exact test
+  subsequently passed both on `origin/main` and on this branch, so it is a
+  transient external failure, `research_related=false`, and
+  `research_new_regression=false`.
+- Research unit suite: `91 passed, 0 failed`.
 - Frontend `npm run typecheck`: passed.
-- Frontend `npm run build`: passed; the known 2.16 MB bundle warning remains
+- Frontend `npm run build`: passed; the known 2.19 MB bundle warning remains
   frozen and out of scope.
-- `git diff --check`: passed for the Web visibility change before its commit.
-
-## Current Next Action
-
-Observe seven real operating days. Do not claim `REPORT_MVP_7D_LIVE_PASS`
-before the seventh recorded operating day.
+- `git diff --check`: passed.

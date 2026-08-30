@@ -3,17 +3,43 @@
 from __future__ import annotations
 
 from datetime import date
+from dataclasses import dataclass
 from hashlib import sha256
 import json
 import re
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import Engine, create_engine, func, inspect, select, text
+from sqlalchemy import Engine, and_, create_engine, func, inspect, or_, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import ResearchSettings
-from .models import ResearchAnalysis, ResearchAnalysisChunk, ResearchArtifact, ResearchBase, ResearchDailyDigest, ResearchOutbox, ResearchReport, ResearchReportSnapshot, ResearchStageRun, utcnow
+from .content_sources import ContentKind, detect_content_sources
+from .models import ResearchAnalysis, ResearchAnalysisChunk, ResearchArtifact, ResearchArtifactSource, ResearchBase, ResearchDailyDigest, ResearchOutbox, ResearchReport, ResearchReportSnapshot, ResearchStageRun, utcnow
+
+
+@dataclass(frozen=True)
+class DigestChannelMember:
+    """One persisted Snapshot member and its reusable processing state."""
+
+    snapshot: ResearchReportSnapshot
+    report: ResearchReport
+    artifact: ResearchArtifact | None
+    analysis: ResearchAnalysis | None
+    latest_stage: ResearchStageRun | None
+
+
+def _body_type(payload: dict[str, Any], fallback_content_type: str | None = None) -> str:
+    kinds = {source.kind for source in detect_content_sources(payload)} - {ContentKind.UNKNOWN}
+    if len(kinds) > 1:
+        return "MIXED"
+    if ContentKind.PDF in kinds:
+        return "PDF"
+    if ContentKind.WEIXIN in kinds:
+        return "WEIXIN"
+    if ContentKind.HTML_EMBEDDED in kinds or ContentKind.HTML_URL in kinds:
+        return "HTML"
+    return "PDF" if fallback_content_type == "pdf" else "NO_CONTENT"
 
 
 class ResearchStore:
@@ -25,6 +51,8 @@ class ResearchStore:
     def create_schema(self) -> None:
         ResearchBase.metadata.create_all(self.engine)
         self._upgrade_analysis_schema()
+        self._upgrade_digest_schema()
+        self._upgrade_artifact_source_schema()
 
     def _upgrade_analysis_schema(self) -> None:
         """Additive compatibility migration for Research databases created before Agnes v1."""
@@ -46,6 +74,37 @@ class ResearchStore:
             connection.execute(text("UPDATE research_analyses SET markdown_sha256 = input_hash WHERE markdown_sha256 IS NULL"))
             connection.execute(text("UPDATE research_analyses SET analysis_profile_hash = prompt_version WHERE analysis_profile_hash IS NULL"))
             connection.execute(text("UPDATE research_analyses SET status = 'SUCCESS' WHERE status IS NULL"))
+
+    def _upgrade_digest_schema(self) -> None:
+        """Add digest provenance without invalidating previously delivered rows."""
+        inspector = inspect(self.engine)
+        if "research_daily_digests" not in inspector.get_table_names():
+            return
+        existing = {column["name"] for column in inspector.get_columns("research_daily_digests")}
+        additions = {
+            "digest_version": "VARCHAR(64) DEFAULT 'legacy-flat-v1'",
+            "digest_profile_hash": "VARCHAR(64)",
+            "input_hash": "VARCHAR(64)",
+        }
+        with self.engine.begin() as connection:
+            for name, definition in additions.items():
+                if name not in existing:
+                    connection.execute(text(f"ALTER TABLE research_daily_digests ADD COLUMN {name} {definition}"))
+
+    def _upgrade_artifact_source_schema(self) -> None:
+        inspector = inspect(self.engine)
+        if "research_artifact_sources" not in inspector.get_table_names():
+            return
+        existing = {column["name"] for column in inspector.get_columns("research_artifact_sources")}
+        additions = {
+            "relation": "VARCHAR(32) DEFAULT 'UNKNOWN'",
+            "included_in_canonical": "BOOLEAN DEFAULT TRUE" if self.engine.dialect.name == "postgresql" else "BOOLEAN DEFAULT 1",
+            "relation_reason": "TEXT DEFAULT 'unclassified'",
+        }
+        with self.engine.begin() as connection:
+            for name, definition in additions.items():
+                if name not in existing:
+                    connection.execute(text(f"ALTER TABLE research_artifact_sources ADD COLUMN {name} {definition}"))
 
     def _session(self) -> Session:
         return self._sessions()
@@ -122,6 +181,7 @@ class ResearchStore:
                     "institution": report.institution,
                     "publish_date": report.publish_date,
                     "content_type": report.content_type,
+                    "body_type": _body_type(report.source_payload, report.content_type),
                     "channel": snapshot.channel,
                     "platform_order": snapshot.platform_order,
                     "status": latest_status.get(
@@ -136,6 +196,42 @@ class ResearchStore:
                 }
                 for snapshot, report in rows
             ]
+
+    def list_digest_channel_members(
+        self,
+        target_date: date,
+        channel: str,
+        *,
+        analysis_profile_hash: str | None = None,
+    ) -> list[DigestChannelMember]:
+        """Return every member of a Snapshot channel in QYJ platform order.
+
+        A report may occur in multiple channels; it deliberately appears once in
+        each respective result. Analysis is reusable, whereas channel membership
+        is never deduplicated across Snapshot rows.
+        """
+        if channel not in {"HOT", "STRATEGY", "FINANCIAL_ENGINEERING"}:
+            raise ValueError(f"Unsupported Digest channel: {channel}")
+        with self._session() as session:
+            pairs = list(session.execute(
+                select(ResearchReportSnapshot, ResearchReport)
+                .join(ResearchReport, ResearchReport.id == ResearchReportSnapshot.report_id)
+                .where(ResearchReportSnapshot.target_date == target_date, ResearchReportSnapshot.channel == channel)
+                .order_by(ResearchReportSnapshot.platform_order)
+            ).all())
+            report_ids = [report.id for _, report in pairs]
+            artifacts = {row.report_id: row for row in session.scalars(select(ResearchArtifact).where(ResearchArtifact.report_id.in_(report_ids))).all()} if report_ids else {}
+            analysis_query = select(ResearchAnalysis).where(ResearchAnalysis.report_id.in_(report_ids)) if report_ids else select(ResearchAnalysis).where(text("1=0"))
+            if analysis_profile_hash is not None:
+                analysis_query = analysis_query.where(ResearchAnalysis.analysis_profile_hash == analysis_profile_hash)
+            analyses: dict[int, ResearchAnalysis] = {}
+            for row in session.scalars(analysis_query.order_by(ResearchAnalysis.report_id, ResearchAnalysis.updated_at.desc(), ResearchAnalysis.id.desc())).all():
+                analyses.setdefault(row.report_id, row)
+            stages: dict[int, ResearchStageRun] = {}
+            if report_ids:
+                for row in session.scalars(select(ResearchStageRun).where(ResearchStageRun.report_id.in_(report_ids)).order_by(ResearchStageRun.report_id, ResearchStageRun.id.desc())).all():
+                    stages.setdefault(row.report_id, row)
+            return [DigestChannelMember(snapshot, report, artifacts.get(report.id), analyses.get(report.id), stages.get(report.id)) for snapshot, report in pairs]
 
     def channel_counts(self, target_date: date) -> dict[str, int]:
         with self._session() as session:
@@ -157,7 +253,7 @@ class ResearchStore:
             )
             return list(session.scalars(
                 select(ResearchReport)
-                .where(ResearchReport.id.in_(report_ids), ResearchReport.content_type == "pdf")
+                .where(ResearchReport.id.in_(report_ids))
                 .order_by(ResearchReport.id)
             ).all())
 
@@ -214,7 +310,7 @@ class ResearchStore:
                     status="SUCCESS",
                     analysis_hash=analysis_hash,
                     agnes_version="agnes-http-v1",
-                    schema_version="schema-v1",
+                    schema_version="schema-v2",
                     chunking_version="chunking-v1",
                 )
                 session.add(row)
@@ -224,7 +320,7 @@ class ResearchStore:
                 row.output_json = output_json
                 row.analysis_hash = analysis_hash
                 row.agnes_version = "agnes-http-v1"
-                row.schema_version = "schema-v1"
+                row.schema_version = "schema-v2"
                 row.chunking_version = "chunking-v1"
                 row.status = "SUCCESS"
                 row.last_error = None
@@ -260,14 +356,66 @@ class ResearchStore:
             session.refresh(row)
             return row
 
-    def list_markdown_reports(self, target_date: date, limit: int) -> list[tuple[ResearchReport, ResearchArtifact]]:
+    def save_artifact_sources(self, report_id: int, sources: list[dict[str, Any]]) -> None:
         with self._session() as session:
-            return list(session.execute(
+            for source in sources:
+                exists = session.scalar(select(ResearchArtifactSource.id).where(
+                    ResearchArtifactSource.report_id == report_id,
+                    ResearchArtifactSource.source_kind == source["source_kind"],
+                    ResearchArtifactSource.source_sha256 == source["source_sha256"],
+                ))
+                if exists is None:
+                    session.add(ResearchArtifactSource(report_id=report_id, **source))
+                else:
+                    row = session.get(ResearchArtifactSource, exists)
+                    assert row is not None
+                    row.source_url = source["source_url"]
+                    row.markdown_sha256 = source["markdown_sha256"]
+                    row.extractor = source["extractor"]
+                    row.extractor_version = source["extractor_version"]
+                    row.source_order = source["source_order"]
+                    row.relation = source["relation"]
+                    row.included_in_canonical = source["included_in_canonical"]
+                    row.relation_reason = source["relation_reason"]
+            session.commit()
+
+    def list_artifact_sources(self, report_id: int) -> list[ResearchArtifactSource]:
+        with self._session() as session:
+            return list(session.scalars(select(ResearchArtifactSource).where(ResearchArtifactSource.report_id == report_id).order_by(ResearchArtifactSource.source_order)).all())
+
+    def list_markdown_reports(
+        self,
+        target_date: date,
+        limit: int,
+        analysis_profile_hash: str | None = None,
+    ) -> list[tuple[ResearchReport, ResearchArtifact]]:
+        """Return unique Markdown reports collected in a snapshot date.
+
+        A successful analysis for the requested profile is excluded, while a
+        retryable or terminal failure remains visible for accounting/recovery.
+        """
+        with self._session() as session:
+            report_ids = (
+                select(ResearchReportSnapshot.report_id)
+                .where(ResearchReportSnapshot.target_date == target_date)
+                .distinct()
+            )
+            query = (
                 select(ResearchReport, ResearchArtifact)
                 .join(ResearchArtifact, ResearchArtifact.report_id == ResearchReport.id)
-                .where(ResearchReport.publish_date == target_date, ResearchArtifact.markdown_path.is_not(None))
-                .order_by(ResearchReport.id).limit(limit)
-            ).all())
+                .where(ResearchReport.id.in_(report_ids), ResearchArtifact.markdown_path.is_not(None))
+                .order_by(ResearchReport.id)
+            )
+            if analysis_profile_hash is not None:
+                query = query.outerjoin(
+                    ResearchAnalysis,
+                    and_(
+                        ResearchAnalysis.report_id == ResearchReport.id,
+                        ResearchAnalysis.markdown_sha256 == ResearchArtifact.markdown_sha256,
+                        ResearchAnalysis.analysis_profile_hash == analysis_profile_hash,
+                    ),
+                ).where(or_(ResearchAnalysis.id.is_(None), ResearchAnalysis.status != "SUCCESS"))
+            return list(session.execute(query.limit(limit)).all())
 
     def save_analysis_chunks(self, report_id: int, markdown_sha256: str, chunks) -> None:
         with self._session() as session:

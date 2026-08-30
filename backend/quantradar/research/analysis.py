@@ -15,7 +15,7 @@ from .models import ResearchAnalysis
 from .storage import ResearchStore
 
 
-ANALYSIS_PROMPT_VERSION = "prompt-v2"
+ANALYSIS_PROMPT_VERSION = "prompt-v4-multiformat-canonical"
 
 
 def build_analysis_profile_hash(prompt_version: str, model_name: str, agnes_version: str, schema_version: str, chunking_version: str) -> str:

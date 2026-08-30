@@ -14,6 +14,7 @@ export interface ResearchReport {
   institution: string | null;
   publish_date: string;
   content_type: string;
+  body_type: "PDF" | "WEIXIN" | "HTML" | "MIXED" | "NO_CONTENT";
   channel: ResearchChannel;
   platform_order: number;
   status: string;
@@ -44,7 +45,8 @@ export interface ResearchOverview {
 
 export interface ResearchObservation { engineering_pass: boolean; live_pass: boolean; real_operating_days: number; required_operating_days: number; }
 export interface ResearchDetail { id: number; basic: Record<string, unknown>; artifact: Record<string, unknown> | null; analysis: Record<string, unknown> | null; evidence: Array<Record<string, unknown>>; audit: Record<string, unknown> | null; }
-export interface ResearchDigest { date: string; content_md: string; completeness: string; digest_hash: string; created_at: string; outbox: { status: string; attempt: number; sent_at: string | null; last_error: string | null } | null; }
+export interface ResearchDigestChannel { channel: ResearchChannel; channel_label: string; article_count: number; analyzed_count: number; failed_count: number; overall_summary: string; major_themes: string[]; important_views: string; article_index: Array<{ report_id: number; platform_order: number; title: string; institution: string | null; one_line_summary: string; core_conclusion: string; method_or_logic: string }>; }
+export interface ResearchDigest { date: string; content_md: string; completeness: string; digest_hash: string; digest_version?: string; content?: { channels?: ResearchDigestChannel[]; processing_exceptions?: Array<{ title: string; channel: string; stage: string; reason: string }> }; created_at: string; outbox: { status: string; attempt: number; sent_at: string | null; last_error: string | null } | null; }
 export interface ResearchOperations { date: string; runs: Array<{ stage: string; status: string; attempt: number; started_at: string; finished_at: string | null; runtime_seconds: number | null }>; stages: Record<string, { success: number; failed: number; skipped: number }>; }
 
 export interface PriceRow {

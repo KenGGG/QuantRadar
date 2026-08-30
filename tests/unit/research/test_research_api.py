@@ -36,8 +36,8 @@ def test_research_reports_returns_channel_reports_in_platform_order(monkeypatch,
 
     assert response.status_code == 200
     assert response.json() == {"reports": [
-        {"id": first.id, "title": "策略报告", "institution": "机构甲", "publish_date": "2026-08-24", "content_type": "pdf", "channel": "STRATEGY", "platform_order": 1, "status": "PENDING", "pdf_status": "PENDING", "mineru_status": "PENDING", "agnes_status": "PENDING", "research_value": None, "reproducibility": None},
-        {"id": second.id, "title": "非 PDF 报告", "institution": "机构乙", "publish_date": "2026-08-24", "content_type": "web", "channel": "STRATEGY", "platform_order": 2, "status": "UNSUPPORTED", "pdf_status": "PENDING", "mineru_status": "PENDING", "agnes_status": "PENDING", "research_value": None, "reproducibility": None},
+        {"id": first.id, "title": "策略报告", "institution": "机构甲", "publish_date": "2026-08-24", "content_type": "pdf", "body_type": "PDF", "channel": "STRATEGY", "platform_order": 1, "status": "PENDING", "pdf_status": "PENDING", "mineru_status": "PENDING", "agnes_status": "PENDING", "research_value": None, "reproducibility": None},
+        {"id": second.id, "title": "非 PDF 报告", "institution": "机构乙", "publish_date": "2026-08-24", "content_type": "web", "body_type": "NO_CONTENT", "channel": "STRATEGY", "platform_order": 2, "status": "UNSUPPORTED", "pdf_status": "PENDING", "mineru_status": "PENDING", "agnes_status": "PENDING", "research_value": None, "reproducibility": None},
     ]}
 
 
@@ -104,6 +104,7 @@ def test_research_visibility_endpoints_are_read_only_and_traceable(monkeypatch, 
     client = TestClient(api_module.app)
 
     overview = client.get("/api/research/overview?date=2026-08-24")
+    reports = client.get("/api/research/reports?date=2026-08-24&channel=HOT")
     detail = client.get(f"/api/research/reports/{report.id}")
     pdf_response = client.get(f"/api/research/reports/{report.id}/pdf")
     markdown_response = client.get(f"/api/research/reports/{report.id}/markdown")
@@ -114,6 +115,7 @@ def test_research_visibility_endpoints_are_read_only_and_traceable(monkeypatch, 
     assert overview.status_code == 200
     assert overview.json()["metadata_count"] == 1
     assert overview.json()["channels"]["HOT"]["count"] == 1
+    assert reports.json()["reports"][0]["body_type"] == "PDF"
     assert detail.status_code == 200
     assert detail.json()["analysis"]["summary"] == "结构化摘要"
     assert detail.json()["evidence"][0]["chunk_id"] == "chunk-1"

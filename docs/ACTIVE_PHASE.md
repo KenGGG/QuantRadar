@@ -1,18 +1,39 @@
 # QuantRadar Active Phase
 
-**Milestone:** `REPORT_MVP_7D_LIVE_PASS`
-**Active Goal:** `REPORT_MVP_7D_LIVE_PASS`
-**Status:** OBSERVATION
+**Milestone:** `REPORT_MVP_YESTERDAY_DIGEST_PASS`
+**Active Goal:** `REPORT_MVP_YESTERDAY_DIGEST_PASS`
+**Status:** PASS — pending pull-request merge
+
+`MULTIFORMAT_CONTENT_GATE = PASS`
+
+`REPORT_MVP_YESTERDAY_DIGEST_PASS = PASS`
+
+`REPORT_MVP_7D_LIVE_PASS = false`
 
 ## Scope
 
-The only active work is the real seven-operating-day observation of the frozen
-Enterprise Alert research-report MVP.
+The only active work is correcting the yesterday-three-channel Enterprise
+Alert Daily Digest before merge.
 
 ```text
-QYJ metadata → PDF + quality → MinerU Markdown → Agnes analysis
+QYJ metadata → content-source detection → canonical Markdown + quality → Agnes analysis
 → resumable pipeline → Daily Digest → Feishu Outbox → delivery → operations
 ```
+
+## Merge Gate
+
+`MULTIFORMAT_CONTENT_GATE` is mandatory and is `PASS`.
+No merge to `main` is permitted until the pull request is reviewed and merged. It requires
+an audited, source-accounted canonical Markdown path for every accessible
+QYJ report body (PDF, Weixin, embedded HTML, and public/authenticated HTML)
+in the three formal channels. The real 2026-08-29 inventory is the acceptance
+baseline; unsupported or inaccessible sources must be explicit failures, never
+silently omitted. The acceptance corpus observed PDF and embedded HTML live
+end-to-end. `WEIXIN_ADAPTER_IMPLEMENTED=true`,
+`WEIXIN_QYJ_SAMPLE_OBSERVED=false`,
+`WEIXIN_PUBLIC_SMOKE_PASS=true`, and
+`WEIXIN_QYJ_LIVE_VERIFIED=PENDING_FIRST_REAL_SAMPLE`; the first real QYJ
+Weixin URL is guarded through the normal canonical Markdown pipeline.
 
 ## Frozen
 
@@ -22,9 +43,16 @@ QYJ metadata → PDF + quality → MinerU Markdown → Agnes analysis
 - frontend bundle optimization
 - ETF, live trading, new models, and unrelated product work
 
-All Research code is frozen. The existing WebUI is read-only and may only read
-persisted ResearchStore records and registered artifacts; it must not change
-collection, parsing, Agnes, Digest, Outbox, Feishu, or systemd behavior.
+`REPORT_MVP_7D_LIVE_PASS` is paused. No daily Timer enablement or seven-day
+observation may begin until this branch is merged through its pull request.
+
+The only formal Research channels are:
+
+- `HOT` — 热门研报 — `hotReport=1`, `secondReportType=`.
+- `STRATEGY` — 策略研究 — `secondReportType=10301,10302,10303`.
+- `FINANCIAL_ENGINEERING` — 金融工程 — `secondReportType=10202,10203`.
+
+Do not add or substitute `FIXED_INCOME`; preserve existing channel parameters.
 
 ## Completed Goals
 
@@ -34,6 +62,8 @@ collection, parsing, Agnes, Digest, Outbox, Feishu, or systemd behavior.
 - `REPORT_MVP_DELIVERY_PASS` — `PASS`
 - `REPORT_MVP_OPERATIONS_PASS` — `PASS`
 - `REPORT_MVP_WEB_VISIBILITY_PASS` — `PASS`
+- `MULTIFORMAT_CONTENT_GATE` — `PASS`
+- `REPORT_MVP_YESTERDAY_DIGEST_PASS` — `PASS`
 
 Agnes acceptance includes live QYJ reports across 2026-08-26, 2026-08-27,
 and 2026-08-28; short and chunked-long analysis, traceable Evidence,
@@ -49,15 +79,17 @@ completed stages and writing an operational record.
 
 ## Queued Goals
 
-None. Research engineering is frozen during observation.
+- `REPORT_MVP_7D_LIVE_PASS` — only after the pull request is merged and the
+  merged production baseline is available.
 
 ## Observation Goal
 
-`REPORT_MVP_7D_LIVE_PASS = false`. It requires seven real operating days and
-cannot be claimed during engineering acceptance.
+`REPORT_MVP_7D_LIVE_PASS = false` and paused. It requires seven real operating
+days after the corrected Digest is merged.
 
 ## Completion Rule
 
-`REPORT_MVP_7D_LIVE_PASS = false` until seven real operating days are recorded.
-Historic replay never advances it. Do not begin unrelated development while
-the observation is active.
+The Digest must use `ResearchReportSnapshot(target_date, channel)` as its only
+membership source, account for every snapshot row across every content type,
+synthesize HOT, STRATEGY, and FINANCIAL_ENGINEERING independently, and pass
+both `MULTIFORMAT_CONTENT_GATE` and real 2026-08-29 acceptance before merge.

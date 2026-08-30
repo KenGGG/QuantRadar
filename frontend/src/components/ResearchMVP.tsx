@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Collapse, Descriptions, Drawer, Empty, Select, Space, Spin, Table, Tabs, Tag, Typography } from "antd";
-import { getResearchDigest, getResearchMarkdownUrl, getResearchObservation, getResearchOperations, getResearchOverview, getResearchPdfUrl, getResearchReport, listResearchDates, listResearchReports, type ResearchChannel, type ResearchDetail, type ResearchDigest, type ResearchObservation, type ResearchOperations, type ResearchOverview, type ResearchReport } from "../api";
+import { getResearchDigest, getResearchMarkdownUrl, getResearchObservation, getResearchOperations, getResearchOverview, getResearchPdfUrl, getResearchReport, listResearchDates, listResearchReports, type ResearchChannel, type ResearchDetail, type ResearchDigest, type ResearchDigestChannel, type ResearchObservation, type ResearchOperations, type ResearchOverview, type ResearchReport } from "../api";
 import { researchFieldLabel, researchStageLabel, researchStatusLabel, researchValueLabel } from "./researchLabels";
 
 const CHANNELS: Array<{ key: ResearchChannel; label: string }> = [
   { key: "HOT", label: "热门研报" }, { key: "STRATEGY", label: "策略研究" }, { key: "FINANCIAL_ENGINEERING", label: "金融工程" },
 ];
+const bodyTypeLabel = (value: ResearchReport["body_type"]) => ({ PDF: "PDF", WEIXIN: "微信", HTML: "HTML", MIXED: "混合", NO_CONTENT: "无可读正文" }[value]);
 const stages = ["COLLECT", "DOWNLOAD/PREPARE", "PARSE", "ANALYZE", "DIGEST", "OUTBOX", "FEISHU"];
 
 function statusTag(status?: string | null) {
@@ -21,6 +22,18 @@ function valueText(value: unknown, field?: string): string {
   return researchValueLabel(field, String(value));
 }
 function Markdown({ content }: { content: string }) { return <Typography.Paragraph style={{ whiteSpace: "pre-wrap", lineHeight: 1.8, marginBottom: 0 }}>{content}</Typography.Paragraph>; }
+function DigestChannelCard({ item }: { item: ResearchDigestChannel }) {
+  return <Card title={item.channel_label}>
+    <Typography.Paragraph>昨日共采集 {item.article_count} 篇，成功分析 {item.analyzed_count} 篇，{item.failed_count} 篇待处理。</Typography.Paragraph>
+    <Typography.Title level={5}>栏目概览</Typography.Title><Markdown content={item.overall_summary} />
+    <Typography.Title level={5}>主要研究主题</Typography.Title>{item.major_themes.length ? <ol>{item.major_themes.map((theme) => <li key={theme}>{theme}</li>)}</ol> : <Typography.Text type="secondary">暂无成功分析文章。</Typography.Text>}
+    <Typography.Title level={5}>重要观点与变化</Typography.Title><Markdown content={item.important_views} />
+    <Typography.Title level={5}>文章索引</Typography.Title><Table<ResearchDigestChannel["article_index"][number]> size="small" rowKey={(article) => `${item.channel}-${article.report_id}`} pagination={false} dataSource={item.article_index} columns={[
+      { title: "序号", dataIndex: "platform_order", width: 70 }, { title: "标题", dataIndex: "title" }, { title: "机构", dataIndex: "institution", render: (value) => valueText(value) },
+      { title: "一句话", dataIndex: "one_line_summary" }, { title: "核心观点", dataIndex: "core_conclusion" }, { title: "主要方法/逻辑", dataIndex: "method_or_logic" },
+    ]} />
+  </Card>;
+}
 
 export function ResearchMVP() {
   const [dates, setDates] = useState<string[]>([]);
@@ -78,7 +91,8 @@ export function ResearchMVP() {
       { title: "序号", dataIndex: "platform_order", width: 70 },
       { title: "标题", dataIndex: "title", render: (item, report) => <Typography.Link onClick={() => showDetail(report)}>{item}</Typography.Link> },
       { title: "机构", dataIndex: "institution", width: 130, render: (item) => valueText(item) }, { title: "栏目", dataIndex: "channel", width: 110, render: (item) => CHANNELS.find((channelItem) => channelItem.key === item)?.label || item },
-      { title: "PDF", dataIndex: "pdf_status", width: 90, render: statusTag }, { title: "MinerU", dataIndex: "mineru_status", width: 95, render: statusTag }, { title: "Agnes", dataIndex: "agnes_status", width: 95, render: statusTag },
+      { title: "正文类型", dataIndex: "body_type", width: 100, render: (item) => bodyTypeLabel(item as ResearchReport["body_type"]) },
+      { title: "Source", dataIndex: "pdf_status", width: 90, render: statusTag }, { title: "解析", dataIndex: "mineru_status", width: 95, render: statusTag }, { title: "Agnes", dataIndex: "agnes_status", width: 95, render: statusTag },
       { title: "研究价值", dataIndex: "research_value", width: 100, render: (item) => valueText(item, "research_value") }, { title: "可复现性", dataIndex: "reproducibility", width: 100, render: (item) => valueText(item, "reproducibility") },
       { title: "操作", width: 70, render: (_, report) => <Button type="link" onClick={() => showDetail(report)}>查看</Button> },
     ]} />
@@ -88,7 +102,10 @@ export function ResearchMVP() {
     <Card><Descriptions size="small" column={2} items={[
       { key: "completeness", label: "完整性", children: statusTag(digest.completeness) }, { key: "hash", label: "日报哈希", children: digest.digest_hash }, { key: "created", label: "创建时间", children: digest.created_at },
       { key: "outbox", label: "发件箱", children: digest.outbox ? statusTag(digest.outbox.status) : "—" }, { key: "sent", label: "发送时间", children: digest.outbox?.sent_at || "—" }, { key: "error", label: "最近错误", children: digest.outbox?.last_error || "—" },
-    ]} /></Card><Card title="每日摘要"><Markdown content={digest.content_md} /></Card>
+    ]} /></Card>{digest.content?.channels?.map((item) => <DigestChannelCard key={item.channel} item={item} />)}
+    {digest.content?.processing_exceptions?.length ? <Card title="处理异常"><Table size="small" pagination={false} rowKey={(item) => `${item.channel}-${item.title}`} dataSource={digest.content.processing_exceptions} columns={[
+      { title: "标题", dataIndex: "title" }, { title: "所属栏目", dataIndex: "channel", render: (item) => CHANNELS.find((channelItem) => channelItem.key === item)?.label || item }, { title: "失败阶段", dataIndex: "stage", render: researchStageLabel }, { title: "失败原因", dataIndex: "reason" },
+    ]} /></Card> : null}<Card title="每日摘要（原文）"><Markdown content={digest.content_md} /></Card>
   </Space> : <Empty description="该日期尚无每日摘要" />;
 
   const operationBody = <Space direction="vertical" style={{ width: "100%" }}>

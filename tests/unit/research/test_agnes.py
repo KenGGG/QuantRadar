@@ -2,13 +2,17 @@ from quantradar.research.llm.chunking import SourceChunk
 import httpx
 
 
+def _analysis(summary: str, evidence: list[dict]) -> dict:
+    return {"research_type": "MARKET", "one_line_summary": summary, "key_points": [summary], "core_conclusion": summary, "method_or_logic": "not_supported", "risks_or_limitations": "not_supported", "evidence": evidence}
+
+
 class FakeAgnesClient:
     def __init__(self) -> None:
         self.calls = 0
 
     def complete(self, messages):
         self.calls += 1
-        return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": "ok"}]}
+        return _analysis("结论", [{"chunk_id": "chunk-0001", "chunk_sha256": "ok"}])
 
 
 def test_short_report_calls_client_once_and_validates_evidence() -> None:
@@ -29,7 +33,7 @@ def test_analyzer_supplies_a_structured_analysis_contract_before_markdown() -> N
 
         def complete(self, messages):
             self.messages = messages
-            return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": "ok"}]}
+            return _analysis("结论", [{"chunk_id": "chunk-0001", "chunk_sha256": "ok"}])
 
     client = CapturingClient()
     AgnesAnalyzer(client).analyze_report("# 标题\n正文", [SourceChunk("chunk-0001", "# 标题\n正文", "ok")])
@@ -50,9 +54,9 @@ def test_analyzer_repairs_invalid_evidence_once_before_failing() -> None:
         def complete(self, messages):
             self.calls += 1
             if self.calls == 1:
-                return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "wrong", "chunk_sha256": "wrong"}]}
+                return _analysis("结论", [{"chunk_id": "wrong", "chunk_sha256": "wrong"}])
             self.repair_prompt = messages[0]["content"]
-            return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": "ok"}]}
+            return _analysis("结论", [{"chunk_id": "chunk-0001", "chunk_sha256": "ok"}])
 
     client = RepairingClient()
     result = AgnesAnalyzer(client).analyze_report("正文", [SourceChunk("chunk-0001", "正文", "ok")])
@@ -67,7 +71,7 @@ def test_analyzer_canonicalizes_hash_for_a_known_evidence_chunk() -> None:
 
     class HashMistypingClient:
         def complete(self, messages):
-            return {"research_type": "MARKET", "one_line_summary": "结论", "evidence": [{"chunk_id": "chunk-0001", "chunk_sha256": "model-typo"}]}
+            return _analysis("结论", [{"chunk_id": "chunk-0001", "chunk_sha256": "model-typo"}])
 
     result = AgnesAnalyzer(HashMistypingClient()).analyze_report("正文", [SourceChunk("chunk-0001", "正文", "authoritative-hash")])
 
@@ -95,6 +99,25 @@ def test_http_client_marks_rate_limits_retryable() -> None:
         except RetryableAgnesError:
             return
     assert False, "rate limit must be retryable"
+
+
+def test_http_client_retries_transient_network_disconnect_before_succeeding() -> None:
+    from quantradar.research.llm.agnes import AgnesHttpClient
+
+    calls = 0
+    def handler(_request):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise httpx.RemoteProtocolError("disconnected")
+        return httpx.Response(200, json={"choices": [{"message": {"content": '{"research_type":"MARKET","evidence":[]}'}}]})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as session:
+        client = AgnesHttpClient("https://agnes.example/v1", "secret", "model-x", session=session, sleeper=lambda _delay: None)
+        result = client.complete([{"role": "user", "content": "正文"}])
+
+    assert result["research_type"] == "MARKET"
+    assert calls == 2
 
 
 def test_http_client_accepts_a_long_report_read_timeout() -> None:
