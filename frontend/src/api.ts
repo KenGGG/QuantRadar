@@ -6,6 +6,49 @@ export interface HealthResp {
   environment?: Environment;
 }
 
+export type ResearchChannel = "HOT" | "STRATEGY" | "FINANCIAL_ENGINEERING";
+
+export interface ResearchReport {
+  id: number;
+  title: string;
+  institution: string | null;
+  publish_date: string;
+  content_type: string;
+  body_type: "PDF" | "WEIXIN" | "HTML" | "MIXED" | "NO_CONTENT";
+  channel: ResearchChannel;
+  platform_order: number;
+  status: string;
+  pdf_status: string;
+  mineru_status: string;
+  agnes_status: string;
+  research_value: string | null;
+  reproducibility: string | null;
+}
+
+export interface ResearchOverview {
+  date: string;
+  metadata_count: number;
+  pdf_success: number;
+  pdf_failed: number;
+  parse_success: number;
+  parse_failed: number;
+  analysis_success: number;
+  analysis_failed: number;
+  digest_status: string;
+  outbox_status: string;
+  sent_at: string | null;
+  latest_operation_status: string;
+  runtime_seconds: number | null;
+  channels: Record<ResearchChannel, { count: number }>;
+  observation: ResearchObservation;
+}
+
+export interface ResearchObservation { engineering_pass: boolean; live_pass: boolean; real_operating_days: number; required_operating_days: number; }
+export interface ResearchDetail { id: number; basic: Record<string, unknown>; artifact: Record<string, unknown> | null; analysis: Record<string, unknown> | null; evidence: Array<Record<string, unknown>>; audit: Record<string, unknown> | null; }
+export interface ResearchDigestChannel { channel: ResearchChannel; channel_label: string; article_count: number; analyzed_count: number; failed_count: number; overall_summary: string; major_themes: string[]; important_views: string; article_index: Array<{ report_id: number; platform_order: number; title: string; institution: string | null; one_line_summary: string; core_conclusion: string; method_or_logic: string }>; }
+export interface ResearchDigest { date: string; content_md: string; completeness: string; digest_hash: string; digest_version?: string; content?: { channels?: ResearchDigestChannel[]; processing_exceptions?: Array<{ title: string; channel: string; stage: string; reason: string }> }; created_at: string; outbox: { status: string; attempt: number; sent_at: string | null; last_error: string | null } | null; }
+export interface ResearchOperations { date: string; runs: Array<{ stage: string; status: string; attempt: number; started_at: string; finished_at: string | null; runtime_seconds: number | null }>; stages: Record<string, { success: number; failed: number; skipped: number }>; }
+
 export interface PriceRow {
   date: string;
   [field: string]: string | number | null;
@@ -170,6 +213,30 @@ async function httpJson<T>(input: string, init?: RequestInit): Promise<T> {
 export function getHealth(): Promise<HealthResp> {
   return httpJson<HealthResp>("/api/health");
 }
+
+export function listResearchDates(): Promise<{ dates: string[] }> {
+  return httpJson<{ dates: string[] }>("/api/research/dates");
+}
+
+export function listResearchReports(date: string, channel: ResearchChannel): Promise<{ reports: ResearchReport[] }> {
+  const qs = new URLSearchParams({ date, channel });
+  return httpJson<{ reports: ResearchReport[] }>(`/api/research/reports?${qs.toString()}`);
+}
+
+export function getResearchStatus(date: string): Promise<{ date: string; channels: Record<ResearchChannel, number> }> {
+  return httpJson<{ date: string; channels: Record<ResearchChannel, number> }>(`/api/research/status?date=${encodeURIComponent(date)}`);
+}
+
+export function getResearchOverview(date: string): Promise<ResearchOverview> {
+  return httpJson<ResearchOverview>(`/api/research/overview?date=${encodeURIComponent(date)}`);
+}
+
+export function getResearchReport(id: number): Promise<ResearchDetail> { return httpJson<ResearchDetail>(`/api/research/reports/${id}`); }
+export function getResearchPdfUrl(id: number): string { return `/api/research/reports/${id}/pdf`; }
+export function getResearchMarkdownUrl(id: number): string { return `/api/research/reports/${id}/markdown`; }
+export function getResearchDigest(date: string): Promise<ResearchDigest> { return httpJson<ResearchDigest>(`/api/research/digests/${encodeURIComponent(date)}`); }
+export function getResearchOperations(date: string): Promise<ResearchOperations> { return httpJson<ResearchOperations>(`/api/research/operations?date=${encodeURIComponent(date)}`); }
+export function getResearchObservation(): Promise<ResearchObservation> { return httpJson<ResearchObservation>("/api/research/observation"); }
 
 export function getPrice(params: {
   security: string;

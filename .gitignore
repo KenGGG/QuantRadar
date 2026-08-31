@@ -227,6 +227,9 @@ logs/
 # QuantRadar 运行时数据（实验/快照，非源码）
 experiments/
 
+# Research MVP local runtime state (rate-limit windows, locks, cursors)
+data/runtime/
+
 # Kronos Goal 1 local source and immutable model snapshots (large runtime assets)
 models/kronos/upstream/
 models/kronos/snapshots/

@@ -1,0 +1,10 @@
+[Unit]
+Description=Run QuantRadar Enterprise Alert Research daily
+
+[Timer]
+OnCalendar=*-*-* 00:30:00
+Persistent=true
+Unit=quantradar-research.service
+
+[Install]
+WantedBy=timers.target
