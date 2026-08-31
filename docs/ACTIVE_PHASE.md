@@ -1,8 +1,8 @@
 # QuantRadar Active Phase
 
-**Milestone:** `REPORT_MVP_YESTERDAY_DIGEST_PASS`
-**Active Goal:** `REPORT_MVP_YESTERDAY_DIGEST_PASS`
-**Status:** PASS — pending pull-request merge
+**Milestone:** `REPORT_MVP_7D_LIVE_PASS`
+**Active Goal:** `REPORT_MVP_7D_LIVE_PASS`
+**Status:** ACTIVE
 
 `MULTIFORMAT_CONTENT_GATE = PASS`
 
@@ -12,8 +12,8 @@
 
 ## Scope
 
-The only active work is correcting the yesterday-three-channel Enterprise
-Alert Daily Digest before merge.
+The only active work is observing seven real operating days of the merged
+Enterprise Alert Research MVP.
 
 ```text
 QYJ metadata → content-source detection → canonical Markdown + quality → Agnes analysis
@@ -22,8 +22,7 @@ QYJ metadata → content-source detection → canonical Markdown + quality → A
 
 ## Merge Gate
 
-`MULTIFORMAT_CONTENT_GATE` is mandatory and is `PASS`.
-No merge to `main` is permitted until the pull request is reviewed and merged. It requires
+`MULTIFORMAT_CONTENT_GATE` is mandatory and is `PASS`. It requires
 an audited, source-accounted canonical Markdown path for every accessible
 QYJ report body (PDF, Weixin, embedded HTML, and public/authenticated HTML)
 in the three formal channels. The real 2026-08-29 inventory is the acceptance
@@ -43,8 +42,9 @@ Weixin URL is guarded through the normal canonical Markdown pipeline.
 - frontend bundle optimization
 - ETF, live trading, new models, and unrelated product work
 
-`REPORT_MVP_7D_LIVE_PASS` is paused. No daily Timer enablement or seven-day
-observation may begin until this branch is merged through its pull request.
+The corrected Digest was merged through PR #3. The formal user-level systemd
+timer is enabled for this observation; historic replay does not advance the
+seven-day count.
 
 The only formal Research channels are:
 
@@ -79,17 +79,13 @@ completed stages and writing an operational record.
 
 ## Queued Goals
 
-- `REPORT_MVP_7D_LIVE_PASS` — only after the pull request is merged and the
-  merged production baseline is available.
+None. Do not begin unrelated development during the observation.
 
 ## Observation Goal
 
-`REPORT_MVP_7D_LIVE_PASS = false` and paused. It requires seven real operating
-days after the corrected Digest is merged.
+`REPORT_MVP_7D_LIVE_PASS = false`. It requires seven real operating days after
+the corrected Digest was merged. Historical replay never advances the count.
 
 ## Completion Rule
 
-The Digest must use `ResearchReportSnapshot(target_date, channel)` as its only
-membership source, account for every snapshot row across every content type,
-synthesize HOT, STRATEGY, and FINANCIAL_ENGINEERING independently, and pass
-both `MULTIFORMAT_CONTENT_GATE` and real 2026-08-29 acceptance before merge.
+`REPORT_MVP_7D_LIVE_PASS = false` until seven real operating days are recorded.

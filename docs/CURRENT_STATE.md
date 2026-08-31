@@ -12,9 +12,10 @@ file records present facts, not plans or chronological logs.
 
 ## Active Product Work
 
-`REPORT_MVP_ENGINEERING_PASS`, `REPORT_MVP_WEB_VISIBILITY_PASS`, and the
-merge-blocking `REPORT_MVP_YESTERDAY_DIGEST_PASS` are complete on this branch;
-the branch is pending pull-request merge. The seven-day observation is paused.
+`REPORT_MVP_ENGINEERING_PASS`, `REPORT_MVP_WEB_VISIBILITY_PASS`, and
+`REPORT_MVP_YESTERDAY_DIGEST_PASS` are complete and merged to `main` through
+PR #3 (merge commit `7ba6cff`). The only active goal is
+`REPORT_MVP_7D_LIVE_PASS`; its seven real operating-day observation is active.
 `REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
 `REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`, and
 `REPORT_MVP_OPERATIONS_PASS` are historical completed Goals.
@@ -91,8 +92,9 @@ the branch is pending pull-request merge. The seven-day observation is paused.
   installed at `/home/ken/.url-md/bin/url-md` (SHA-256
   `d1227011102c71ba38a8083b6dbb9a9c2670da88019162b6b25ef6a4e5d42616`); its
   public-Weixin smoke passed, while it is not represented as QYJ live proof.
-- `REPORT_MVP_7D_LIVE_PASS` remains false at `0 / 7` and is paused. Historical
-  replay does not advance the count.
+- `REPORT_MVP_7D_LIVE_PASS` remains false at `0 / 7`. Historical replay does
+  not advance the count. The formal user-level systemd timer is enabled for
+  the observation.
 
 ## Frozen Historical Facts
 
