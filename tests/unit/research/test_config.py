@@ -31,15 +31,19 @@ def test_settings_loads_agnes_and_feishu_secrets_from_environment(tmp_path: Path
     assert settings.feishu_webhook_url == "https://example.test/webhook"
 
 
-def test_settings_loads_project_dotenv_when_started_outside_repository(tmp_path: Path, monkeypatch) -> None:
+def test_settings_loads_environment_when_started_outside_repository(tmp_path: Path, monkeypatch) -> None:
     from quantradar.research.config import ResearchSettings
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.delenv("QUANTRADAR_AGNES_API_KEY", raising=False)
+    monkeypatch.setenv("QUANTRADAR_RESEARCH_DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    monkeypatch.setenv("QUANTRADAR_RESEARCH_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("QUANTRADAR_QYJ_PROFILE_DIR", str(tmp_path / "profile"))
+    monkeypatch.setenv("QUANTRADAR_AGNES_API_KEY", "test-agnes-key")
 
     settings = ResearchSettings.from_env()
 
-    assert settings.agnes_api_key
+    assert settings.database_url == "sqlite+pysqlite:///:memory:"
+    assert settings.agnes_api_key == "test-agnes-key"
 
     with pytest.raises(ValueError, match="absolute"):
         ResearchSettings(
