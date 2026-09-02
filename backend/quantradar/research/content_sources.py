@@ -8,6 +8,9 @@ from typing import Any
 from collections import Counter, defaultdict
 
 
+QYJ_ORIGIN = "https://www.qyyjt.cn"
+
+
 class ContentKind(StrEnum):
     PDF = "PDF"
     WEIXIN = "WEIXIN"
@@ -27,6 +30,14 @@ class ContentSource:
 def detect_content_sources(payload: dict[str, Any]) -> list[ContentSource]:
     """Classify concrete report-body sources without treating QYJ navigation as body."""
     sources: list[ContentSource] = []
+    direct_weixin = any(isinstance(value, str) and "mp.weixin.qq.com/" in value for value in payload.values())
+    if payload.get("icon") == "wx" and not direct_weixin and isinstance(payload.get("pcContentLink"), str):
+        detail_url = payload["pcContentLink"]
+        sources.append(ContentSource(
+            ContentKind.WEIXIN,
+            url=detail_url if detail_url.startswith(("https://", "http://")) else f"{QYJ_ORIGIN}{detail_url}",
+            field_path="pcContentLink",
+        ))
     for index, attachment in enumerate(payload.get("attach") or []):
         if not isinstance(attachment, dict):
             continue

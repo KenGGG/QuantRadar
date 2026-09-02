@@ -33,7 +33,7 @@ def build_search_params(channel: Channel, target_date: date, offset: int, size: 
         "sortKey": "",
         "sortType": "",
         "hotThemeCode": "",
-        "depthOnly": "0",
+        "depthOnly": "1" if channel is Channel.HOT else "0",
         "includeNoAccess": "1",
         "includeWx": "1",
         "size": str(size),
@@ -94,7 +94,7 @@ def normalize_report(payload: dict[str, Any], channel: Channel, platform_order: 
         "category": payload.get("reportType"),
         "industry": payload.get("industry"),
         "security": payload.get("security"),
-        "content_type": "pdf" if attachment else "non_pdf",
+        "content_type": "pdf" if attachment else ("weixin" if payload.get("icon") == "wx" else "non_pdf"),
         "source_payload": payload,
     }
     raw_payload_hash = hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()

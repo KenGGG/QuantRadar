@@ -30,6 +30,16 @@ def test_search_params_use_a_closed_publish_date_range() -> None:
     assert params["publishDate"] == "[2026-08-28,2026-08-28]"
     assert params["from"] == "50"
     assert params["size"] == "20"
+    assert params["depthOnly"] == "1"
+
+
+def test_search_params_only_filters_hot_reports_to_depth() -> None:
+    from quantradar.research.collector.qyj import Channel, build_search_params
+
+    target_date = date(2026, 8, 28)
+
+    assert build_search_params(Channel.STRATEGY, target_date, 0, 20)["depthOnly"] == "0"
+    assert build_search_params(Channel.FINANCIAL_ENGINEERING, target_date, 0, 20)["depthOnly"] == "0"
 
 
 def test_pagination_uses_size_and_from_without_duplicates() -> None:

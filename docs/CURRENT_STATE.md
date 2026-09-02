@@ -26,6 +26,12 @@ PR #3 (merge commit `7ba6cff`). The only active goal is
   analyses, digests, and outbox rows.
 - QYJ collection using the user-authorized persistent browser profile; 364
   real snapshots were collected across 2026-08-26 through 2026-08-28.
+- QYJ intake applies `depthOnly=1` exclusively to HOT, preserves the
+  unfiltered STRATEGY and FINANCIAL_ENGINEERING channels, and each scheduled
+  run backfills yesterday plus the two preceding publication dates before it
+  delivers yesterday's Digest. `icon=wx` records use their authenticated QYJ
+  detail link to obtain canonical Markdown; a login page becomes a failed,
+  recoverable PREPARE stage rather than a false success.
 - Atomic PDF artifacts, shared MinerU Markdown publication, parse-quality
   checks, and 57 real Markdown reports across those three dates.
 - Versioned Agnes HTTP adapter with configured 19 RPM request spacing,

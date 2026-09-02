@@ -21,6 +21,15 @@ def test_detect_content_source_classifies_weixin_html_url_and_unknown() -> None:
     assert detect_content_sources({"title": "仅标题"})[0].kind is ContentKind.UNKNOWN
 
 
+def test_detect_content_source_classifies_qyj_weixin_icon_as_authenticated_weixin() -> None:
+    from quantradar.research.content_sources import ContentKind, detect_content_sources
+
+    source = detect_content_sources({"icon": "wx", "pcContentLink": "/information/researchReport?id=example"})[0]
+
+    assert source.kind is ContentKind.WEIXIN
+    assert source.url == "https://www.qyyjt.cn/information/researchReport?id=example"
+
+
 def test_build_inventory_accounts_for_every_snapshot_member() -> None:
     from quantradar.research.content_sources import ContentKind, build_content_inventory
 

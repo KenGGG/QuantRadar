@@ -16,7 +16,7 @@ The only active work is observing seven real operating days of the merged
 Enterprise Alert Research MVP.
 
 ```text
-QYJ metadata → content-source detection → canonical Markdown + quality → Agnes analysis
+QYJ metadata (yesterday plus two preceding publication days) → content-source detection → canonical Markdown + quality → Agnes analysis
 → resumable pipeline → Daily Digest → Feishu Outbox → delivery → operations
 ```
 
@@ -45,6 +45,12 @@ Weixin URL is guarded through the normal canonical Markdown pipeline.
 The corrected Digest was merged through PR #3. The formal user-level systemd
 timer is enabled for this observation; historic replay does not advance the
 seven-day count.
+
+The observation begins only after the 2026-09-02 intake corrections are
+deployed: `HOT` uses QYJ's `depthOnly=1` filter, each timer run backfills the
+latest three publication dates, and QYJ `icon=wx` records read their
+authenticated detail page before the normal quality and Agnes stages. A QYJ
+login page is a retryable PREPARE failure, never successful content.
 
 The only formal Research channels are:
 

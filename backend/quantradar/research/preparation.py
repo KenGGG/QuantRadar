@@ -15,6 +15,7 @@ from .download.pdf import PdfDownloader
 from .models import ResearchArtifact, ResearchReport
 from .parser.mineru import MineruClient
 from .parser.quality import assess_markdown
+from .qyj_html import QyjHtmlAdapter
 from .storage import ResearchStore
 from .url_markdown import UrlMarkdownAdapter
 
@@ -50,6 +51,7 @@ def prepare_report(
     downloader: Any | None = None,
     mineru: Any | None = None,
     url_markdown: Any | None = None,
+    qyj_html: Any | None = None,
 ) -> ResearchArtifact:
     sources = detect_content_sources(report.source_payload)
     embedded = next((source for source in sources if source.kind is ContentKind.HTML_EMBEDDED), None)
@@ -78,7 +80,11 @@ def prepare_report(
         elif source.kind is ContentKind.HTML_EMBEDDED and source.html is not None:
             components.append({"source_kind": "HTML_EMBEDDED", "source_url": None, "source_sha256": sha256(source.html.encode()).hexdigest(), "body": BeautifulSoup(source.html, "html.parser").get_text("\n", strip=True), "extractor": "qyj-html", "extractor_version": "beautifulsoup4"})
         elif source.kind in {ContentKind.WEIXIN, ContentKind.HTML_URL} and source.url is not None:
-            extracted = (url_markdown or UrlMarkdownAdapter()).extract(source.url)
+            extracted = (
+                (url_markdown or UrlMarkdownAdapter()).extract(source.url)
+                if "mp.weixin.qq.com/" in source.url or source.kind is ContentKind.HTML_URL
+                else (qyj_html or QyjHtmlAdapter(settings)).extract(source.url)
+            )
             components.append({"source_kind": source.kind.value, "source_url": source.url, "source_sha256": sha256(extracted.markdown.encode()).hexdigest(), "body": extracted.markdown, "extractor": extracted.extractor, "extractor_version": extracted.extractor_version})
     if not components:
         detail = ", ".join(source_failures) if source_failures else sources[0].kind.value

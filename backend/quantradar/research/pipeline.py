@@ -65,7 +65,7 @@ def run_pipeline(
                 runtime_store.finish_stage(prepare_stage.id, "SUCCESS", output_hash=artifact.markdown_sha256)
                 prepared += 1
             except Exception as exc:
-                runtime_store.finish_stage(prepare_stage.id, "FAILED", error_code=type(exc).__name__, error_message=str(exc)[:512])
+                runtime_store.finish_stage(prepare_stage.id, "FAILED", error_code=getattr(exc, "code", type(exc).__name__), error_message=str(exc)[:512])
                 prepare_failed += 1
                 continue
         if artifact is None or not artifact.markdown_path or not artifact.markdown_sha256:

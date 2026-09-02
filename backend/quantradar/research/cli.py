@@ -110,7 +110,7 @@ def run(
                 store.finish_stage(stage.id, "SUCCESS", output_hash=getattr(artifact, "markdown_sha256", None))
                 prepared += 1
             except Exception as exc:
-                store.finish_stage(stage.id, "FAILED", error_code=type(exc).__name__, error_message=str(exc)[:512])
+                store.finish_stage(stage.id, "FAILED", error_code=getattr(exc, "code", type(exc).__name__), error_message=str(exc)[:512])
                 failed += 1
         print(json.dumps({"date": args.date.isoformat(), "prepared": prepared, "failed": failed}, ensure_ascii=False, sort_keys=True))
         return 0

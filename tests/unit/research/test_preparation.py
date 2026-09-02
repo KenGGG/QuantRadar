@@ -129,6 +129,26 @@ def test_prepare_report_uses_url_markdown_for_weixin_source(tmp_path) -> None:
     assert "source_kind: weixin" in text
 
 
+def test_prepare_report_uses_authenticated_qyj_page_for_weixin_icon(tmp_path) -> None:
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.preparation import prepare_report
+    from quantradar.research.storage import ResearchStore
+
+    settings = ResearchSettings(f"sqlite+pysqlite:///{tmp_path / 'db.sqlite'}", tmp_path / "data", tmp_path / "profile")
+    store = ResearchStore(settings); store.create_schema()
+    report = store.upsert_report({"source": "qyj", "source_report_id": "W" * 32, "title": "企业预警通微信报告", "publish_date": date(2026, 8, 24), "content_type": "non_pdf", "source_payload": {"icon": "wx", "pcContentLink": "/information/researchReport?id=example"}})
+
+    class Adapter:
+        def extract(self, url):
+            assert url == "https://www.qyyjt.cn/information/researchReport?id=example"
+            return type("Result", (), {"markdown": "# 微信标题\n\n这是一段从已登录企业预警通详情页读取的足够长正文，用于验证微信图标报告可进入统一审计流程。", "extractor": "qyj-authenticated-html", "extractor_version": "playwright"})()
+
+    artifact = prepare_report(store, settings, report, qyj_html=Adapter())
+
+    assert artifact.parser == "qyj-authenticated-html"
+    assert "source_kind: weixin" in Path(artifact.markdown_path).read_text(encoding="utf-8")
+
+
 def test_prepare_report_records_and_merges_multiple_real_sources(tmp_path) -> None:
     from quantradar.research.config import ResearchSettings
     from quantradar.research.preparation import prepare_report
