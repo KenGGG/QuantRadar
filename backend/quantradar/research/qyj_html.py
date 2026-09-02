@@ -19,7 +19,7 @@ class QyjHtmlAdapter:
         with sync_playwright() as playwright:
             context = playwright.chromium.launch_persistent_context(
                 str(self.settings.qyj_profile_dir), executable_path="/usr/bin/google-chrome",
-                headless=True, ignore_default_args=["--enable-automation"],
+                headless=True, ignore_default_args=["--enable-automation", "--password-store=basic", "--use-mock-keychain"],
             )
             try:
                 page = context.pages[0] if context.pages else context.new_page()

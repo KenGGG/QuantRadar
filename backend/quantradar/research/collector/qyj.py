@@ -175,7 +175,7 @@ class QyjCollector:
                 str(self.settings.qyj_profile_dir),
                 executable_path="/usr/bin/google-chrome",
                 headless=True,
-                ignore_default_args=["--enable-automation"],
+                ignore_default_args=["--enable-automation", "--password-store=basic", "--use-mock-keychain"],
             )
             page = context.pages[0] if context.pages else context.new_page()
             page.goto("https://www.qyyjt.cn/report/research", wait_until="domcontentloaded", timeout=60_000)
