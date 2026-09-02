@@ -162,7 +162,7 @@ class QyjCollector:
             return False
         submit.click(no_wait_after=True)
         page.wait_for_timeout(2_000)
-        return True
+        return "/user/login" not in page.url
 
     def _browser_fetch_page(self, channel: Channel, target_date: date, offset: int, size: int) -> dict[str, Any]:
         if self.settings is None:

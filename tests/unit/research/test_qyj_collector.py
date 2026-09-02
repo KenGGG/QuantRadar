@@ -94,6 +94,7 @@ def test_saved_browser_login_submits_without_reading_credentials() -> None:
 
     class FakePage:
         keyboard = FakeKeyboard()
+        url = "https://www.qyyjt.cn/report/research"
 
         def locator(self, selector: str) -> FakeLocator:
             return FakeLocator(selector)
@@ -134,6 +135,7 @@ def test_saved_browser_login_returns_false_when_autofill_is_unavailable() -> Non
 
     class FakePage:
         keyboard = FakeKeyboard()
+        url = "https://www.qyyjt.cn/user/login"
 
         def locator(self, selector: str) -> FakeLocator:
             return FakeLocator(selector)
@@ -143,3 +145,22 @@ def test_saved_browser_login_returns_false_when_autofill_is_unavailable() -> Non
 
     assert QyjCollector._submit_saved_browser_login(FakePage()) is False
     assert events == ["click:#username:{}", "key:ArrowDown", "key:Enter", "wait:250"]
+
+
+def test_saved_browser_login_returns_false_when_submission_stays_on_login_page() -> None:
+    from quantradar.research.collector.qyj import QyjCollector
+
+    class Keyboard:
+        def press(self, _key: str) -> None: pass
+
+    class Locator:
+        def click(self, **_kwargs) -> None: pass
+        def is_enabled(self) -> bool: return True
+
+    class Page:
+        keyboard = Keyboard()
+        url = "https://www.qyyjt.cn/user/login"
+        def locator(self, _selector: str) -> Locator: return Locator()
+        def wait_for_timeout(self, _milliseconds: int) -> None: pass
+
+    assert QyjCollector._submit_saved_browser_login(Page()) is False
