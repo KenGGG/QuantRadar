@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import asyncio
 from datetime import date
 from pathlib import Path
 from typing import Sequence
@@ -40,6 +41,7 @@ def _parser() -> argparse.ArgumentParser:
     pipeline.add_argument("--limit", type=int, default=30, help="maximum reports to prepare and analyze")
     deliver = commands.add_parser("deliver", help="build and send the idempotent daily research digest")
     deliver.add_argument("--date", type=date.fromisoformat, required=True, help="target date (YYYY-MM-DD)")
+    commands.add_parser("notebooklm-policy-runtime-pass", help="run the frozen NotebookLM runtime acceptance path")
     return parser
 
 
@@ -75,6 +77,13 @@ def run(
             "analyzed": result.analyzed,
             "analyze_failed": result.analyze_failed,
         }, ensure_ascii=False, sort_keys=True))
+        return 0
+    if args.command == "notebooklm-policy-runtime-pass":
+        from .notebooklm_runtime import RuntimeSettings, run_policy_runtime_pass
+
+        runtime_settings = RuntimeSettings.from_env(runtime.data_dir)
+        result = asyncio.run(run_policy_runtime_pass(runtime_settings))
+        print(json.dumps(result.as_json(), ensure_ascii=False, sort_keys=True))
         return 0
 
     store = ResearchStore(runtime)
