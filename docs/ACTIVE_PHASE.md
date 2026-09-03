@@ -1,64 +1,67 @@
 # QuantRadar Active Phase
 
-**Milestone:** `REPORT_MVP_7D_LIVE_PASS`
-**Active Goal:** `REPORT_MVP_7D_LIVE_PASS`
+**Milestone:** `QUANTRADAR_RESEARCH_NOTEBOOKLM_PASS`
+**Active Goal:** `NOTEBOOKLM_POLICY_RUNTIME_PASS`
 **Status:** ACTIVE
 
 `MULTIFORMAT_CONTENT_GATE = PASS`
 
 `REPORT_MVP_YESTERDAY_DIGEST_PASS = PASS`
 
-`REPORT_MVP_7D_LIVE_PASS = false`
+`REPORT_MVP_7D_LIVE_PASS = ABORTED_BY_PROVIDER_CUTOVER`
+
+`NOTEBOOKLM_POLICY_RUNTIME_PASS = false`
 
 ## Scope
 
-The only active work is observing seven real operating days of the merged
-Enterprise Alert Research MVP.
+The only active work is the separately approved design and future validation of
+the NotebookLM policy and isolated runtime using explicitly permitted
+non-sensitive inputs.
 
 ```text
-QYJ metadata (yesterday plus two preceding publication days) → content-source detection → canonical Markdown + quality → Agnes analysis
-→ resumable pipeline → Daily Digest → Feishu Outbox → delivery → operations
+one fixed Notebook → exclusive workspace lock → reset
+→ non-sensitive Source → READY → indexed fulltext
+→ explicit-source chat and citations → persist evidence
+→ bounded Conversation/Source cleanup → verify empty workspace
 ```
 
-## Merge Gate
+The frozen architecture is
+`docs/superpowers/specs/2026-09-03-research-notebooklm-synthesis-design.md`.
 
-`MULTIFORMAT_CONTENT_GATE` is mandatory and is `PASS`. It requires
-an audited, source-accounted canonical Markdown path for every accessible
-QYJ report body (PDF, Weixin, embedded HTML, and public/authenticated HTML)
-in the three formal channels. The real 2026-08-29 inventory is the acceptance
-baseline; unsupported or inaccessible sources must be explicit failures, never
-silently omitted. The acceptance corpus observed PDF and embedded HTML live
-end-to-end. `WEIXIN_ADAPTER_IMPLEMENTED=true`,
-`WEIXIN_QYJ_SAMPLE_OBSERVED=false`,
-`WEIXIN_PUBLIC_SMOKE_PASS=true`, and
-`WEIXIN_QYJ_LIVE_VERIFIED=PENDING_FIRST_REAL_SAMPLE`; the first real QYJ
-Weixin URL is guarded through the normal canonical Markdown pipeline.
+The current Goal does not implement the formal QYJ pipeline, upload real QYJ
+data, modify the formal systemd service/timer, or cut over Feishu delivery.
 
-## Frozen
+## Provider-cutover decision
 
-- Kronos Goals 0–2 and Kronos WebUI
-- BulletTrade and its WebUI/backtest paths
-- Qlib research
-- frontend bundle optimization
-- ETF, live trading, new models, and unrelated product work
+The previous Agnes seven-real-operating-day observation was terminated by the
+approved provider-cutover decision without being marked as a product failure:
 
-The corrected Digest was merged through PR #3. The formal user-level systemd
-timer is enabled for this observation; historic replay does not advance the
-seven-day count.
+```text
+REPORT_MVP_7D_LIVE_PASS = ABORTED_BY_PROVIDER_CUTOVER
+```
 
-The observation begins only after the 2026-09-02 intake corrections are
-deployed: `HOT` uses QYJ's `depthOnly=1` filter, each timer run backfills the
-latest three publication dates, and QYJ `icon=wx` records read their
-authenticated detail page before the normal quality and Agnes stages. A QYJ
-login page is a retryable PREPARE failure, never successful content.
+All Agnes code, results, and acceptance evidence remain preserved. The formal
+user-level systemd configuration is unchanged by the architecture-documentation
+change.
 
-The only formal Research channels are:
+## Frozen product boundaries
+
+- Reuse QYJ collection, Snapshot membership, original artifacts, MinerU,
+  Canonical Markdown, source audit, Outbox, Feishu, and the read-only WebUI.
+- Maintain one fixed dedicated Notebook; Sources and Conversations are
+  temporary and QuantRadar remains the permanent source of truth.
+- Do not add a second Notebook, sharding, Notebook archival, RAG, a vector
+  database, an MCP Server, Weixin search, Celery, Redis, or a new task queue.
+- Keep Kronos Goals 0–2, Kronos WebUI, BulletTrade, Qlib, frontend bundle
+  optimization, ETF, live trading, and unrelated models frozen.
+
+The only formal Research channels remain:
 
 - `HOT` — 热门研报 — `hotReport=1`, `secondReportType=`.
 - `STRATEGY` — 策略研究 — `secondReportType=10301,10302,10303`.
 - `FINANCIAL_ENGINEERING` — 金融工程 — `secondReportType=10202,10203`.
 
-Do not add or substitute `FIXED_INCOME`; preserve existing channel parameters.
+Do not add or substitute `FIXED_INCOME`.
 
 ## Completed Goals
 
@@ -73,25 +76,20 @@ Do not add or substitute `FIXED_INCOME`; preserve existing channel parameters.
 
 Agnes acceptance includes live QYJ reports across 2026-08-26, 2026-08-27,
 and 2026-08-28; short and chunked-long analysis, traceable Evidence,
-recoverable retry, and idempotent replay were verified and saved as structured
-runtime evidence.
-
-## Operations Acceptance
-
-Single-instance locking, redacted structured runtime records, and unenabled
-`systemd --user` service/timer units are implemented and verified. The real
-2026-08-28 pipeline rerun collected 99 metadata records while safely skipping
-completed stages and writing an operational record.
+recoverable retry, and idempotent replay remain saved as structured evidence.
 
 ## Queued Goals
 
-None. Do not begin unrelated development during the observation.
+1. `NOTEBOOKLM_SOURCE_SYNC_PASS`
+2. `NOTEBOOKLM_CHANNEL_SYNTHESIS_PASS`
+3. `NOTEBOOKLM_SHADOW_ACCEPTANCE_PASS`
+4. `REPORT_MVP_NOTEBOOKLM_CUTOVER_PASS`
+5. `REPORT_MVP_NOTEBOOKLM_7D_LIVE_PASS`
 
-## Observation Goal
+## Current Goal gate
 
-`REPORT_MVP_7D_LIVE_PASS = false`. It requires seven real operating days after
-the corrected Digest was merged. Historical replay never advances the count.
-
-## Completion Rule
-
-`REPORT_MVP_7D_LIVE_PASS = false` until seven real operating days are recorded.
+`NOTEBOOKLM_POLICY_RUNTIME_PASS = false` until a separately approved
+implementation completes the non-sensitive runtime, fixed-Notebook binding,
+workspace locking/reset, measured capacity, Source READY/fulltext, explicit
+Source-ID chat/citations, bounded Conversation reset, credential redaction, and
+verified Source/Conversation cleanup acceptance.

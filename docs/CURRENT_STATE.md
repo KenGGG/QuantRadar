@@ -5,8 +5,8 @@ file records present facts, not plans or chronological logs.
 
 ## Repository
 
-- Branch: `feat/report-research-mvp`
-- Remote backup: `origin/feat/report-research-mvp`
+- Branch: `docs/research-notebooklm-architecture`
+- Remote backup: `origin/docs/research-notebooklm-architecture`.
 - HEAD: the current commit on this branch (`git rev-parse HEAD`).
 - Local runtime state under `data/runtime/` is ignored and is not source data.
 
@@ -14,11 +14,19 @@ file records present facts, not plans or chronological logs.
 
 `REPORT_MVP_ENGINEERING_PASS`, `REPORT_MVP_WEB_VISIBILITY_PASS`, and
 `REPORT_MVP_YESTERDAY_DIGEST_PASS` are complete and merged to `main` through
-PR #3 (merge commit `7ba6cff`). The only active goal is
-`REPORT_MVP_7D_LIVE_PASS`; its seven real operating-day observation is active.
+PR #3 (merge commit `7ba6cff`). The Agnes seven-day observation was terminated
+by the approved provider-cutover decision and is recorded as
+`REPORT_MVP_7D_LIVE_PASS = ABORTED_BY_PROVIDER_CUTOVER`; this is not a product
+failure. The only active goal is `NOTEBOOKLM_POLICY_RUNTIME_PASS` under
+milestone `QUANTRADAR_RESEARCH_NOTEBOOKLM_PASS`.
 `REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
 `REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`, and
 `REPORT_MVP_OPERATIONS_PASS` are historical completed Goals.
+
+The approved NotebookLM architecture is frozen in
+`docs/superpowers/specs/2026-09-03-research-notebooklm-synthesis-design.md`.
+NotebookLM business code, runtime setup, authentication, and real QYJ uploads
+have not started. The formal systemd service/timer remains unchanged.
 
 ### Enterprise Alert Research MVP: implemented
 
@@ -98,9 +106,9 @@ PR #3 (merge commit `7ba6cff`). The only active goal is
   installed at `/home/ken/.url-md/bin/url-md` (SHA-256
   `d1227011102c71ba38a8083b6dbb9a9c2670da88019162b6b25ef6a4e5d42616`); its
   public-Weixin smoke passed, while it is not represented as QYJ live proof.
-- `REPORT_MVP_7D_LIVE_PASS` remains false at `0 / 7`. Historical replay does
-  not advance the count. The formal user-level systemd timer is enabled for
-  the observation.
+- `REPORT_MVP_7D_LIVE_PASS` ended at `0 / 7` with
+  `ABORTED_BY_PROVIDER_CUTOVER`. Its Agnes evidence remains preserved. A future
+  NotebookLM seven-day observation begins only after formal provider cutover.
 
 ## Frozen Historical Facts
 
