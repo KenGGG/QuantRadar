@@ -5,4 +5,4 @@ Description=QuantRadar Enterprise Alert Research daily pipeline
 Type=oneshot
 WorkingDirectory=/data/Projects/a-stock-research/QuantRadar
 Environment=PYTHONPATH=backend
-ExecStart=/bin/bash -lc 'for days_ago in 1 2 3; do day=$(/bin/date -I -d "$days_ago days ago"); .venv/bin/python -m quantradar.research.cli pipeline --date "$day" --limit 200 || exit $?; done; day=$(/bin/date -I -d yesterday); .venv/bin/python -m quantradar.research.cli deliver --date "$day"'
+ExecStart=/bin/bash -lc 'base_day=$(/bin/date -I -d yesterday); for days_ago in 0 1 2; do day=$(/bin/date -I -d "$base_day - $days_ago days"); .venv/bin/python -m quantradar.research.cli pipeline --date "$day" --limit 200 || exit $?; done; .venv/bin/python -m quantradar.research.cli deliver --date "$base_day"'
