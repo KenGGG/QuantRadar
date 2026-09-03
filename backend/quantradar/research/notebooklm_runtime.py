@@ -56,22 +56,27 @@ WORKER_TIMEOUT_SECONDS = 1_200.0
 WORKER_LOCK_TOKEN_ENV = "QUANTRADAR_NOTEBOOKLM_WORKER_LOCK_TOKEN"
 
 
-def _long_non_sensitive_text(label: str) -> str:
+def _long_non_sensitive_text(label: str, sentinel: str | None = None) -> str:
     paragraph = (
-        f"{label}。本材料为 QuantRadar NotebookLM 政策运行时的非敏感验收样本，"
-        "不包含真实企业预警通内容、账户信息、投资建议或任何生产凭据。"
-        "它用于验证 Source 上传、READY 状态、全文索引质量、显式 Source-ID 问答、"
-        "引用身份映射、会话删除和 Source 删除的完整受控生命周期。"
-        "样本中的事实均为测试用途：系统必须保留本地快照及哈希，在远端 Source 删除后"
-        "仍能复核文本和引用。本段重复描述测试边界，以确保索引正文显著超过质量门槛。"
+        f"{label}. This is a non-sensitive QuantRadar NotebookLM policy-runtime acceptance sample. "
+        "It contains no real QYJ content, account data, investment advice, or production credentials. "
+        "It verifies Source upload, READY state, indexed-content quality, explicit source-id questions, "
+        "citation identity mapping, conversation deletion, and Source deletion in one controlled lifecycle. "
+        "All facts are test-only. QuantRadar retains local snapshots and hashes so text and citations remain "
+        "auditable after remote Sources are removed. This paragraph is repeated to exceed the indexed-text gate."
     )
+    if sentinel:
+        paragraph += f" Verification sentinel: {sentinel}."
     return "\n\n".join(paragraph for _ in range(5))
 
 
-SAMPLE_PDF_TEXT = _long_non_sensitive_text("PDF 验收样本")
-SAMPLE_TEXT_BODY = _long_non_sensitive_text("Text 验收样本")
-SAMPLE_PROBE_TEXT = _long_non_sensitive_text("Backend 探针样本")
-SAMPLE_CAPACITY_TEXT = _long_non_sensitive_text("容量探针样本")
+SAMPLE_PDF_SENTINEL = "QR-PDF-SENTINEL-9F3A"
+SAMPLE_TEXT_SENTINEL = "QR-TEXT-SENTINEL-7C2D"
+SAMPLE_URL_MARKER = "Reserved Top Level DNS Names"
+SAMPLE_PDF_TEXT = _long_non_sensitive_text("PDF acceptance sample", SAMPLE_PDF_SENTINEL)
+SAMPLE_TEXT_BODY = _long_non_sensitive_text("Text acceptance sample", SAMPLE_TEXT_SENTINEL)
+SAMPLE_PROBE_TEXT = _long_non_sensitive_text("Backend probe sample", SAMPLE_TEXT_SENTINEL)
+SAMPLE_CAPACITY_TEXT = _long_non_sensitive_text("Capacity probe sample")
 
 
 def now_iso8601() -> str:
@@ -267,7 +272,26 @@ SENSITIVE_URL_QUERY_KEYS = {
     "pwd",
     "session",
     "cookie",
+    "x-amz-signature",
+    "x-amz-credential",
+    "x-goog-signature",
+    "credential",
+    "api_key",
+    "apikey",
+    "expires",
 }
+RECOVERY_RELIST_DELAYS = (1, 2, 4)
+_recovery_sleep = asyncio.sleep
+INDEXED_ERROR_MARKERS = (
+    "please sign in",
+    "sign in to continue",
+    "login required",
+    "authentication required",
+    "access denied",
+    "unauthorized",
+    "forbidden",
+    "enable javascript",
+)
 
 
 def _sha256_hex(text: str) -> str:
@@ -435,7 +459,7 @@ def _safe_validate_public_url(url: str) -> str:
     host = parsed.hostname.lower()
     if _is_private_host(host):
         raise RuntimePassError("HTML_URL_REJECTED", "Private/localhost URL denied")
-    query = parse_qs(parsed.query or "")
+    query = parse_qs(parsed.query or "", keep_blank_values=True)
     if any(k.lower() in SENSITIVE_URL_QUERY_KEYS for k in query.keys()):
         raise RuntimePassError("HTML_URL_REJECTED", "Sensitive query parameters detected")
     try:
@@ -646,6 +670,10 @@ def _sample_title(kind: str, report_id: int, settings: RuntimeSettings) -> str:
     return f"[QR-{report_id}] {labels[kind]}｜量化测试机构｜2026-09-03"
 
 
+def _expected_marker_for_source(source_kind: str) -> str | None:
+    return {"PDF": SAMPLE_PDF_SENTINEL, "WEIXIN_TEXT": SAMPLE_TEXT_SENTINEL, "HTML_URL": SAMPLE_URL_MARKER}.get(source_kind)
+
+
 def _binding_path(settings: RuntimeSettings) -> Path:
     return settings.data_dir / "notebooklm" / "binding.json"
 
@@ -809,7 +837,13 @@ async def _wait_source_ready(client: Any, notebook_id: str, source_id: str, *, t
     )
 
 
-async def _fetch_fulltext(client: Any, notebook_id: str, source_id: str) -> tuple[str, int, str]:
+async def _fetch_fulltext(
+    client: Any,
+    notebook_id: str,
+    source_id: str,
+    *,
+    expected_marker: str | None = None,
+) -> tuple[str, int, str]:
     text_obj = await client.sources.get_fulltext(notebook_id, source_id, output_format="text")
     content = _strip_frontmatter(_normalize_text(getattr(text_obj, "rendered_content", getattr(text_obj, "content", "")))
     )
@@ -818,6 +852,11 @@ async def _fetch_fulltext(client: Any, notebook_id: str, source_id: str) -> tupl
     title = str(getattr(text_obj, "title", ""))
     if title and len(content) <= len(_normalize_text(title)):
         raise RuntimePassError("INDEXED_CONTENT_INVALID", "Indexed content too short or title-only")
+    lowered = content.lower()
+    if any(marker in lowered for marker in INDEXED_ERROR_MARKERS):
+        raise RuntimePassError("INDEXED_CONTENT_INVALID", "Indexed content is a login or error page")
+    if expected_marker and expected_marker.lower() not in lowered:
+        raise RuntimePassError("INDEXED_CONTENT_INVALID", "Indexed content is missing its required verification marker")
     digest = _sha256_hex(content)
     char_count = len(content)
     return content, char_count, digest
@@ -855,12 +894,12 @@ async def _run_backend_probe(settings: RuntimeSettings, backend: str) -> Backend
             sources: list[Any] = []
             try:
                 probe_samples = [
-                    ("PDF", _sample_title("PDF", 20260901, settings), str(_sample_pdf_path(settings))),
-                    ("WEIXIN_TEXT", _sample_title("WEIXIN_TEXT", 20260902, settings), SAMPLE_PROBE_TEXT),
-                    ("HTML_URL", _sample_title("HTML_URL", 20260903, settings), _preflight_public_url(settings.sample_html_url)),
+                    ("PDF", _sample_title("PDF", 20260901, settings), str(_sample_pdf_path(settings)), SAMPLE_PDF_SENTINEL),
+                    ("WEIXIN_TEXT", _sample_title("WEIXIN_TEXT", 20260902, settings), SAMPLE_PROBE_TEXT, SAMPLE_TEXT_SENTINEL),
+                    ("HTML_URL", _sample_title("HTML_URL", 20260903, settings), _preflight_public_url(settings.sample_html_url), SAMPLE_URL_MARKER),
                 ]
                 results: dict[str, dict[str, Any]] = {}
-                for kind, title, value in probe_samples:
+                for kind, title, value, marker in probe_samples:
                     if kind == "PDF":
                         source = await client.sources.add_file(notebook_id, value, title=title, wait=False)
                     elif kind == "WEIXIN_TEXT":
@@ -871,7 +910,7 @@ async def _run_backend_probe(settings: RuntimeSettings, backend: str) -> Backend
                     ready_source = source if _source_is_ready(source) else await _wait_source_ready(client, notebook_id, source.id, timeout=settings.source_ready_timeout_seconds)
                     if not _source_is_ready(ready_source):
                         raise RuntimePassError("SOURCE_READY_TIMEOUT", f"{kind} probe did not become READY")
-                    _, _, digest = await _fetch_fulltext(client, notebook_id, source.id)
+                    _, _, digest = await _fetch_fulltext(client, notebook_id, source.id, expected_marker=marker)
                     ask_result, conversation_id = await _ask_with_explicit_source(
                         client, notebook_id, source.id, "这条样本是什么？", timeout_seconds=settings.ask_timeout_seconds
                     )
@@ -910,12 +949,40 @@ async def _run_backend_probe(settings: RuntimeSettings, backend: str) -> Backend
         return result
 
 
-async def _capacity_gate(client: Any, notebook_id: str, settings: RuntimeSettings) -> dict[str, int]:
+async def _wait_capacity_sources(client: Any, notebook_id: str, source_ids: list[str], timeout: float) -> dict[str, Any]:
+    """Wait for the complete capacity batch under one total deadline."""
+    started = time.monotonic()
+    if not source_ids:
+        return {"ready_count": 0, "failed_count": 0, "timeout_count": 0, "elapsed_seconds": 0.0}
+    tasks = [asyncio.create_task(_wait_source_ready(client, notebook_id, source_id, timeout=timeout)) for source_id in source_ids]
+    done, pending = await asyncio.wait(tasks, timeout=timeout)
+    for task in pending:
+        task.cancel()
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+    ready_count = failed_count = 0
+    for task in done:
+        try:
+            if _source_is_ready(task.result()):
+                ready_count += 1
+            else:
+                failed_count += 1
+        except Exception:
+            failed_count += 1
+    return {
+        "ready_count": ready_count,
+        "failed_count": failed_count,
+        "timeout_count": len(pending),
+        "elapsed_seconds": round(time.monotonic() - started, 3),
+    }
+
+
+async def _capacity_gate(client: Any, notebook_id: str, settings: RuntimeSettings) -> dict[str, Any]:
     if not settings.source_capacity_probe_enabled:
         raise RuntimePassError("SOURCE_CAP_GATE_REQUIRED", "Capacity Gate is mandatory for NOTEBOOKLM_POLICY_RUNTIME_PASS")
     target = _capacity_target(settings)
     created: list[str] = []
-    source_ids: list[str] = []
+    accounting: dict[str, Any] = {"target": target, "ready_count": 0, "failed_count": 0, "timeout_count": 0, "elapsed_seconds": 0.0}
     try:
         for index in range(target):
             source = await client.sources.add_text(
@@ -924,23 +991,28 @@ async def _capacity_gate(client: Any, notebook_id: str, settings: RuntimeSetting
                 SAMPLE_CAPACITY_TEXT,
             )
             created.append(source.id)
-            source_ids.append(source.id)
-        ready_count = 0
-        for source_id in source_ids:
-            ready_source = await _wait_source_ready(client, notebook_id, source_id, timeout=settings.capacity_gate_timeout_seconds)
-            if not _source_is_ready(ready_source):
-                raise RuntimePassError("SOURCE_CAP_EXCEEDED", "Capacity Source did not reach READY")
-            ready_count += 1
-        for source_id in created:
-            await _delete_source_with_retries(client, notebook_id, source_id)
-        return {"historical_max": settings.historical_max_readable_sources or 0, "margin": settings.source_capacity_margin, "target": target, "ready_count": ready_count}
+        accounting.update(await _wait_capacity_sources(client, notebook_id, created, settings.capacity_gate_timeout_seconds))
+        if accounting["ready_count"] != target:
+            raise RuntimePassError("SOURCE_CAP_EXCEEDED", json.dumps(accounting, sort_keys=True))
+        return {"historical_max": settings.historical_max_readable_sources or 0, "margin": settings.source_capacity_margin, **accounting}
     except Exception as exc:
-        for source_id in source_ids:
+        if isinstance(exc, RuntimePassError) and exc.code == "SOURCE_CAP_EXCEEDED":
+            raise
+        raise RuntimePassError("SOURCE_CAP_EXCEEDED", f"Capacity gate failed: {exc}; accounting={json.dumps(accounting, sort_keys=True)}") from exc
+    finally:
+        cleanup_error: Exception | None = None
+        for source_id in created:
             try:
                 await _delete_source_with_retries(client, notebook_id, source_id)
-            except Exception:
-                pass
-        raise RuntimePassError("SOURCE_CAP_EXCEEDED", f"Capacity gate failed: {exc}") from exc
+            except Exception as exc:
+                cleanup_error = exc
+        try:
+            if await _list_notebook_sources(client, notebook_id):
+                cleanup_error = RuntimePassError("SOURCE_CAP_EXCEEDED", "Capacity cleanup left residual Sources")
+        except Exception as exc:
+            cleanup_error = exc
+        if cleanup_error is not None:
+            raise RuntimePassError("SOURCE_CAP_EXCEEDED", f"Capacity cleanup failed: {cleanup_error}; accounting={json.dumps(accounting, sort_keys=True)}") from cleanup_error
 
 
 def _capacity_target(settings: RuntimeSettings) -> int:
@@ -1008,17 +1080,31 @@ async def _bind_or_create_notebook(
         if intent.get("binding_key") != settings.binding_key or intent.get("notebook_title") != settings.notebook_title:
             raise RuntimePassError("NOTEBOOK_BINDING_MISMATCH", "Recovery intent does not match this fixed Notebook")
 
-    exact_matches = [
-        nb
-        for nb in await client.notebooks.list()
-        if str(getattr(nb, "title", "")) == settings.notebook_title
-    ]
+    async def _exact_matches() -> list[Any]:
+        return [nb for nb in await client.notebooks.list() if str(getattr(nb, "title", "")) == settings.notebook_title]
+
+    exact_matches = await _exact_matches()
     if exact_matches:
         if len(exact_matches) > 1:
             raise RuntimePassError("NOTEBOOK_AMBIGUOUS", "Multiple fixed-title notebooks found")
         notebook_id = exact_matches[0].id
         _save_binding(settings, notebook_id, backend)
+        if intent and intent.get("state") == "CREATE_NOTEBOOK":
+            _clear_intent(settings)
         return notebook_id, False
+
+    if intent and intent.get("state") == "CREATE_NOTEBOOK":
+        for delay in RECOVERY_RELIST_DELAYS:
+            await _recovery_sleep(float(delay))
+            exact_matches = await _exact_matches()
+            if len(exact_matches) > 1:
+                raise RuntimePassError("NOTEBOOK_AMBIGUOUS", "Multiple fixed-title notebooks found during recovery")
+            if len(exact_matches) == 1:
+                notebook_id = exact_matches[0].id
+                _save_binding(settings, notebook_id, backend)
+                _clear_intent(settings)
+                return notebook_id, False
+        raise RuntimePassError("NOTEBOOK_RECOVERY_UNCERTAIN", "Fixed notebook create intent has no visible exact-title notebook")
 
     # The intent remains durable across a timeout or unknown provider error.
     _save_intent(settings, "CREATE_NOTEBOOK", None, backend)
@@ -1079,7 +1165,9 @@ async def _run_single_source_attempt(
         if not _source_is_ready(ready_source):
             raise RuntimePassError("SOURCE_READY_TIMEOUT", "Source not READY")
 
-        content, char_count, digest = await _fetch_fulltext(client, notebook_id, source_id)
+        content, char_count, digest = await _fetch_fulltext(
+            client, notebook_id, source_id, expected_marker=_expected_marker_for_source(source_kind)
+        )
         snapshot = fulltext_dir / f"{source_id}.txt"
         _atomic_write_text(snapshot, content)
 
@@ -1386,9 +1474,13 @@ def run_cli(argv: list[str] | None = None, settings: RuntimeSettings | None = No
         raise RuntimeError(json.dumps(payload, ensure_ascii=False))
 
 
+def runtime_exit_code(result: RuntimePassResult) -> int:
+    return 0 if result.status == "READY" else 1
+
+
 def _run_as_command() -> int:
     value = run_cli(sys.argv[1:])
-    return 0 if isinstance(value, RuntimePassResult) else int(value)
+    return runtime_exit_code(value) if isinstance(value, RuntimePassResult) else int(value)
 
 
 if __name__ == "__main__":

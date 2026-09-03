@@ -79,12 +79,12 @@ def run(
         }, ensure_ascii=False, sort_keys=True))
         return 0
     if args.command == "notebooklm-policy-runtime-pass":
-        from .notebooklm_runtime import RuntimeSettings, run_policy_runtime_pass
+        from .notebooklm_runtime import RuntimeSettings, run_policy_runtime_pass, runtime_exit_code
 
         runtime_settings = RuntimeSettings.from_env(runtime.data_dir)
         result = asyncio.run(run_policy_runtime_pass(runtime_settings))
         print(json.dumps(result.as_json(), ensure_ascii=False, sort_keys=True))
-        return 0
+        return runtime_exit_code(result)
 
     store = ResearchStore(runtime)
     store.create_schema()

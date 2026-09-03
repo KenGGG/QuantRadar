@@ -19,12 +19,16 @@ def test_default_gate_samples_are_indexable_and_traceable(tmp_path: Path) -> Non
 
     assert len("".join(settings.sample_text_body.split())) >= 500
     assert len("".join(settings.sample_pdf_text.split())) >= 500
+    assert settings.sample_pdf_text.isascii()
+    assert runtime.SAMPLE_PDF_SENTINEL in settings.sample_pdf_text
+    assert runtime.SAMPLE_TEXT_SENTINEL in settings.sample_text_body
     assert settings.sample_html_url != "https://example.com"
     assert "[QR-" in runtime._sample_title("PDF", 20260904, settings)
     pdf = runtime._sample_pdf_path(settings)
     contents = pdf.read_bytes()
     assert contents.startswith(b"%PDF-")
     assert b"xref" in contents and b"trailer" in contents and b"%%EOF" in contents
+    assert runtime.SAMPLE_PDF_SENTINEL.encode("ascii") in contents
 
 
 def test_citation_keeps_remote_identity_and_rejects_mismatch() -> None:
@@ -252,6 +256,58 @@ def test_capacity_gate_cannot_be_disabled(tmp_path: Path) -> None:
     assert caught.value.code == "SOURCE_CAP_GATE_REQUIRED"
 
 
+def test_capacity_wait_uses_one_global_deadline(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def slow_ready(*_args: object, **_kwargs: object):
+        await asyncio.sleep(0.05)
+        return SimpleNamespace(status="ready")
+
+    monkeypatch.setattr(runtime, "_wait_source_ready", slow_ready)
+    accounting = asyncio.run(runtime._wait_capacity_sources(SimpleNamespace(), "fixed", ["one", "two", "three"], 0.08))
+    assert accounting["ready_count"] == 3
+    assert accounting["elapsed_seconds"] < 0.12
+
+
+def test_capacity_wait_accounts_for_partial_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def mixed_ready(_client: object, _notebook: str, source_id: str, **_kwargs: object):
+        if source_id == "bad":
+            raise RuntimeError("provider failed")
+        return SimpleNamespace(status="ready")
+
+    monkeypatch.setattr(runtime, "_wait_source_ready", mixed_ready)
+    accounting = asyncio.run(runtime._wait_capacity_sources(SimpleNamespace(), "fixed", ["ready", "bad"], 1))
+    assert accounting["ready_count"] == 1
+    assert accounting["failed_count"] == 1
+    assert accounting["timeout_count"] == 0
+
+
+def test_capacity_gate_cleans_all_sources_after_partial_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    class Sources:
+        def __init__(self) -> None:
+            self.ids: list[str] = []
+
+        async def add_text(self, *_args: object):
+            source_id = f"source-{len(self.ids)}"
+            self.ids.append(source_id)
+            return SimpleNamespace(id=source_id)
+
+        async def delete(self, _notebook_id: str, source_id: str):
+            self.ids.remove(source_id)
+
+        async def list(self, _notebook_id: str):
+            return [SimpleNamespace(id=source_id) for source_id in self.ids]
+
+    async def partial(*_args: object, **_kwargs: object):
+        return {"ready_count": 1, "failed_count": 1, "timeout_count": 0, "elapsed_seconds": 0.1}
+
+    sources = Sources()
+    monkeypatch.setattr(runtime, "_wait_capacity_sources", partial)
+    settings = runtime.RuntimeSettings(data_dir=tmp_path, profile_path=tmp_path / "profile", venv_python=Path("/bin/python"), historical_max_readable_sources=1, source_capacity_margin=1)
+    with pytest.raises(runtime.RuntimePassError) as caught:
+        asyncio.run(runtime._capacity_gate(SimpleNamespace(sources=sources), "fixed", settings))
+    assert caught.value.code == "SOURCE_CAP_EXCEEDED"
+    assert sources.ids == []
+
+
 def test_atomic_fulltext_snapshot_never_writes_final_path_directly(tmp_path: Path) -> None:
     target = tmp_path / "fulltext.txt"
     runtime._atomic_write_text(target, "indexed content")
@@ -304,8 +360,9 @@ def test_backend_probe_rejects_answer_without_citations(tmp_path: Path, monkeypa
         async def add_url(self, *_args: object, **_kwargs: object):
             return SimpleNamespace(id="s3", status="ready")
 
-        async def get_fulltext(self, *_args: object, **_kwargs: object):
-            return SimpleNamespace(content="x" * 500, title="sample")
+        async def get_fulltext(self, _notebook_id: str, source_id: str, **_kwargs: object):
+            marker = {"s1": runtime.SAMPLE_PDF_SENTINEL, "s2": runtime.SAMPLE_TEXT_SENTINEL, "s3": runtime.SAMPLE_URL_MARKER}[source_id]
+            return SimpleNamespace(content=(f"{marker} " + "x" * 500), title="sample")
 
         async def delete(self, *_args: object):
             return None
@@ -332,3 +389,96 @@ def test_backend_probe_rejects_answer_without_citations(tmp_path: Path, monkeypa
     monkeypatch.setattr(runtime, "_preflight_public_url", lambda url: url)
     result = asyncio.run(runtime._run_backend_probe(settings, "web"))
     assert result.error_code == "CITATION_MISSING" and not result.ask_ok
+
+
+def test_runtime_exit_code_requires_ready_status() -> None:
+    assert runtime.runtime_exit_code(runtime.RuntimePassResult(status="READY")) == 0
+    assert runtime.runtime_exit_code(runtime.RuntimePassResult(status="FAILED", error_code="AUTH_REQUIRED")) != 0
+    assert runtime.runtime_exit_code(runtime.RuntimePassResult(status="READY_CANDIDATE")) != 0
+
+
+def test_module_cli_returns_nonzero_for_nonready_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(runtime, "run_cli", lambda _argv: runtime.RuntimePassResult(status="READY"))
+    assert runtime._run_as_command() == 0
+    monkeypatch.setattr(runtime, "run_cli", lambda _argv: runtime.RuntimePassResult(status="FAILED", error_code="AUTH_REQUIRED"))
+    assert runtime._run_as_command() != 0
+
+
+def test_fulltext_rejects_long_login_page_and_requires_expected_marker() -> None:
+    class Sources:
+        async def get_fulltext(self, *_args: object, **_kwargs: object):
+            return SimpleNamespace(content=("Please sign in to continue. " * 30), title="sample")
+
+    with pytest.raises(runtime.RuntimePassError) as caught:
+        asyncio.run(runtime._fetch_fulltext(SimpleNamespace(sources=Sources()), "notebook", "source", expected_marker="QR-TEXT-SENTINEL"))
+    assert caught.value.code == "INDEXED_CONTENT_INVALID"
+
+
+def test_fulltext_requires_pdf_text_and_url_markers() -> None:
+    class Sources:
+        async def get_fulltext(self, *_args: object, **_kwargs: object):
+            return SimpleNamespace(content="real indexed content " * 30, title="sample")
+
+    client = SimpleNamespace(sources=Sources())
+    for marker in (runtime.SAMPLE_PDF_SENTINEL, runtime.SAMPLE_TEXT_SENTINEL, runtime.SAMPLE_URL_MARKER):
+        with pytest.raises(runtime.RuntimePassError) as caught:
+            asyncio.run(runtime._fetch_fulltext(client, "notebook", "source", expected_marker=marker))
+        assert caught.value.code == "INDEXED_CONTENT_INVALID"
+
+
+@pytest.mark.parametrize("marker", [runtime.SAMPLE_PDF_SENTINEL, runtime.SAMPLE_TEXT_SENTINEL, runtime.SAMPLE_URL_MARKER])
+def test_fulltext_accepts_pdf_text_and_url_markers(marker: str) -> None:
+    class Sources:
+        async def get_fulltext(self, *_args: object, **_kwargs: object):
+            return SimpleNamespace(content=(f"{marker} " + "verified indexed content " * 30), title="sample")
+
+    content, char_count, _digest = asyncio.run(
+        runtime._fetch_fulltext(SimpleNamespace(sources=Sources()), "notebook", "source", expected_marker=marker)
+    )
+    assert marker in content and char_count >= runtime.MIN_INDEXED_CHARACTERS
+
+
+def test_create_intent_waits_for_eventual_visibility_without_creating(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    listings = [[], [], [SimpleNamespace(id="recovered", title=runtime.FIXED_NOTEBOOK_TITLE)]]
+
+    class Notebooks:
+        def __init__(self) -> None:
+            self.create_calls = 0
+
+        async def list(self):
+            return listings.pop(0)
+
+        async def create(self, _title: str):
+            self.create_calls += 1
+            raise AssertionError("recovery intent must not create another notebook")
+
+    settings = runtime.RuntimeSettings(data_dir=tmp_path, profile_path=tmp_path / "profile", venv_python=Path("/bin/python"))
+    runtime._save_intent(settings, "CREATE_NOTEBOOK", None, "web")
+    monkeypatch.setattr(runtime, "_recovery_sleep", lambda _seconds: asyncio.sleep(0))
+    notebooks = Notebooks()
+    notebook_id, created = asyncio.run(runtime._bind_or_create_notebook(SimpleNamespace(notebooks=notebooks), settings, "web"))
+    assert notebook_id == "recovered" and not created and notebooks.create_calls == 0
+
+
+def test_create_intent_uncertain_never_creates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    class Notebooks:
+        async def list(self):
+            return []
+
+        async def create(self, _title: str):
+            raise AssertionError("recovery intent must not create another notebook")
+
+    settings = runtime.RuntimeSettings(data_dir=tmp_path, profile_path=tmp_path / "profile", venv_python=Path("/bin/python"))
+    runtime._save_intent(settings, "CREATE_NOTEBOOK", None, "web")
+    monkeypatch.setattr(runtime, "_recovery_sleep", lambda _seconds: asyncio.sleep(0))
+    with pytest.raises(runtime.RuntimePassError) as caught:
+        asyncio.run(runtime._bind_or_create_notebook(SimpleNamespace(notebooks=Notebooks()), settings, "web"))
+    assert caught.value.code == "NOTEBOOK_RECOVERY_UNCERTAIN"
+
+
+@pytest.mark.parametrize("key", ["X-Amz-Signature", "X-Amz-Credential", "X-Goog-Signature", "credential", "api_key", "apikey", "expires"])
+def test_public_url_rejects_signed_url_query_keys(key: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(runtime.socket, "getaddrinfo", lambda *args: [(None, None, None, None, ("8.8.8.8", 0))])
+    with pytest.raises(runtime.RuntimePassError) as caught:
+        runtime._safe_validate_public_url(f"https://public.example/document?{key}=value")
+    assert caught.value.code == "HTML_URL_REJECTED"
