@@ -6,7 +6,7 @@ import {
   FileSearchOutlined,
   CodeOutlined,
 } from "@ant-design/icons";
-import { getHealth, type HealthResp } from "./api";
+import { getHealth, type RunRecord, type HealthResp } from "./api";
 import { DataStatus } from "./components/DataStatus";
 import { StrategyWorkbench } from "./components/StrategyWorkbench";
 import { RunExplorer } from "./components/RunExplorer";
@@ -21,13 +21,15 @@ type TabKey = "data" | "research" | "strategy" | "runs" | "experiments";
 
 export function App() {
   const [health, setHealth] = useState<HealthResp | null>(null);
-  const [tab, setTab] = useState<TabKey>("data");
+  const [tab, setTab] = useState<TabKey>("strategy");
   const [loading, setLoading] = useState(true);
   const [viewRunId, setViewRunId] = useState<string | null>(null);
 
+  const [restoreRun, setRestoreRun] = useState<RunRecord | null>(null);
+  const editRun = (run: RunRecord) => { setRestoreRun(run); setViewRunId(null); setTab("strategy"); };
+
   const openReport = (runId: string) => {
     setViewRunId(runId);
-    setTab("strategy");
   };
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export function App() {
           theme="dark"
           mode="inline"
           selectedKeys={[tab]}
-          onClick={(e) => setTab(e.key as TabKey)}
+          onClick={(e) => { setViewRunId(null); setTab(e.key as TabKey); }}
           items={[
             { key: "data", icon: <ApiOutlined />, label: "数据状态" },
             { key: "research", icon: <FileSearchOutlined />, label: "研报" },
@@ -70,15 +72,17 @@ export function App() {
             <div style={{ textAlign: "center", marginTop: 80 }}>
               <Spin tip="连接后端中..." />
             </div>
-          ) : viewRunId ? (
-            <ReportPage runId={viewRunId} onBack={() => setViewRunId(null)} />
           ) : (
             <>
-              {tab === "data" && <DataStatus />}
-              {tab === "research" && <ResearchMVP />}
-              {tab === "strategy" && <StrategyWorkbench onOpenReport={openReport} />}
-              {tab === "runs" && <RunExplorer onOpenReport={openReport} />}
-              {tab === "experiments" && <ExperimentCompare />}
+              <div style={{ display: tab === "strategy" && !viewRunId ? "block" : "none" }}>
+                <StrategyWorkbench onOpenReport={openReport} restoreRun={restoreRun} />
+              </div>
+              {viewRunId ? <ReportPage key={viewRunId} runId={viewRunId} onBack={() => setViewRunId(null)} onEdit={editRun} /> : <>
+                {tab === "data" && <DataStatus />}
+                {tab === "research" && <ResearchMVP />}
+                {tab === "runs" && <RunExplorer onOpenReport={openReport} onEdit={editRun} />}
+                {tab === "experiments" && <ExperimentCompare />}
+              </>}
             </>
           )}
         </Content>

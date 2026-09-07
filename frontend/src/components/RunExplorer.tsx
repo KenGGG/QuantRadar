@@ -12,9 +12,10 @@ const statusColor: Record<string, string> = {
 };
 
 export function RunExplorer({
-  onOpenReport,
+  onOpenReport, onEdit,
 }: {
   onOpenReport: (runId: string) => void;
+  onEdit: (run: RunRecord) => void;
 }) {
   const [security, setSecurity] = useState("600519.XSHG");
   const [start, setStart] = useState("2023-01-03");
@@ -119,6 +120,7 @@ export function RunExplorer({
           {selected && (
             <>
               <Space style={{ marginBottom: 8 }}>
+                <Button onClick={() => onEdit(selected)}>恢复源码与配置</Button>
                 <Tag color={statusColor[selected.status] ?? "default"}>{selected.status}</Tag>
                 {selected.status === "SUCCESS" && (
                   <Button type="link" size="small" onClick={() => onOpenReport(selected.run_id)}>

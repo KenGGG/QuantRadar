@@ -37,13 +37,15 @@ const statusColor: Record<string, string> = {
  */
 export function ReportPage({
   runId,
-  onBack,
+  onBack, onEdit,
 }: {
   runId: string;
   onBack: () => void;
+  onEdit: (run: RunRecord) => void;
 }) {
   const [run, setRun] = useState<RunRecord | null>(null);
   const [arts, setArts] = useState<RunArtifactsResp | null>(null);
+  const [logText, setLogText] = useState<string | null>(null);
   const [which, setWhich] = useState<"full" | "standard">("standard");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +73,7 @@ export function ReportPage({
   }
 
   if (error) {
-    return <Alert type="error" showIcon message={error} />;
+    return <Space direction="vertical"><Alert type="error" showIcon message={error} /><Button onClick={onBack}>← 返回</Button></Space>;
   }
 
   if (!run) {
@@ -87,7 +89,16 @@ export function ReportPage({
             <Alert type="error" showIcon message="回测失败" description={<pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{run.error}</pre>} />
           )}
           {run.status !== "FAILED" && <Text type="secondary">后台回测执行中，请稍后刷新或返回重新打开。</Text>}
-          <Button onClick={onBack}>← 返回</Button>
+          <Button onClick={async () => {
+            try {
+              const response = await fetch(getRunArtifactUrl(runId, "backtest.log"));
+              if (!response.ok) throw new Error(`日志读取失败 ${response.status}`);
+              setLogText(await response.text());
+            } catch (e) { setLogText(String(e)); }
+          }}>查看日志</Button>
+          {logText !== null && <pre style={{ maxHeight: 400, overflow: "auto", whiteSpace: "pre-wrap" }}>{logText}</pre>}
+          <Button onClick={() => onEdit(run)}>恢复源码与配置</Button>
+          <Button onClick={onBack}>← 返回继续编辑</Button>
         </Space>
       </Card>
     );
@@ -114,10 +125,23 @@ export function ReportPage({
           <Button type={which === "full" ? "primary" : "default"} onClick={() => setWhich("full")}>
             详细报告
           </Button>
-          <Button onClick={onBack}>← 返回</Button>
+          <Button onClick={async () => {
+            try {
+              const response = await fetch(getRunArtifactUrl(runId, "backtest.log"));
+              if (!response.ok) throw new Error(`日志读取失败 ${response.status}`);
+              setLogText(await response.text());
+            } catch (e) { setLogText(String(e)); }
+          }}>查看日志</Button>
+          <Button onClick={() => onEdit(run)}>恢复源码与配置</Button>
+          <Button onClick={onBack}>← 返回继续编辑</Button>
         </Space>
       </Row>
 
+      {logText !== null && <Card title="回测日志" extra={<Button onClick={() => setLogText(null)}>关闭日志</Button>}>
+        <pre style={{ maxHeight: 400, overflow: "auto", whiteSpace: "pre-wrap" }}>{logText}</pre>
+      </Card>}
+      {arts && !arts.artifacts.some(a => a.name === (which === "standard" ? "standard_report.html" : "report.html") && (a.size || 0) > 0) &&
+        <Alert type="error" showIcon message="运行记录为 SUCCESS，但所选报告文件缺失，请检查产物或恢复配置重新运行" />}
       {/* BulletTrade 原生 HTML 报告（直接嵌入，不重算指标） */}
       <Card size="small" style={{ marginBottom: 12 }}>
         <iframe

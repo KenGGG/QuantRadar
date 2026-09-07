@@ -323,3 +323,9 @@ export function getSnapshotLoad(path: string): Promise<Snapshot> {
   qs.set("path", path);
   return httpJson<Snapshot>(`/api/snapshot/load?${qs.toString()}`);
 }
+
+export interface StrategyRecord { id: number; name: string; source: string; strategy_hash: string; created_at: string; }
+export function listStrategies(): Promise<{ strategies: StrategyRecord[] }> { return httpJson("/api/strategies"); }
+export function saveStrategy(name: string, source: string): Promise<StrategyRecord> {
+  return httpJson("/api/strategies", { method: "POST", body: JSON.stringify({ name, source }) });
+}

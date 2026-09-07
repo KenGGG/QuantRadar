@@ -43,6 +43,13 @@ def default_runs_dir() -> str:
     return os.path.join(repo_root, "runs")
 
 
+def require_report_artifacts(run_dir: str) -> None:
+    required = ("report.html", "standard_report.html", "metrics.json", "daily_records.csv", "backtest.log", "strategy.py")
+    missing = [name for name in required if not os.path.isfile(os.path.join(run_dir, name)) or os.path.getsize(os.path.join(run_dir, name)) == 0]
+    if missing:
+        raise ValueError("回测报告产物缺失或为空：" + ", ".join(missing))
+
+
 def _write_builtin_strategy(path: str, security: str, amount: int) -> None:
     """内置 Buy&Hold 策略文件（对指定标的建仓并持有）。"""
     code = (
@@ -93,10 +100,10 @@ def run_unified_backtest(
     extras = payload.get("extras") or {}
     strategy_name = payload.get("strategy_name") or "user_strategy"
 
-    if fq not in ("none", "pre", "qfq", "post", "hfq"):
+    if fq not in ("none", "pre", "qfq"):
         raise ValueError(
             f"run_unified_backtest: 不支持的复权方式 fq={fq!r}；"
-            f"支持 none / pre / qfq / post / hfq"
+            f"支持 none / pre / qfq；不支持后复权撮合"
         )
 
     # 1) 版本化策略文件（用户源码或内置 Buy&Hold）
@@ -132,6 +139,7 @@ def run_unified_backtest(
                 benchmark=benchmark,
                 log_file=log_file,
                 extras=extras,
+                use_real_price=_use_real_price,
             )
         finally:
             set_option("use_real_price", _prev)
@@ -139,6 +147,9 @@ def run_unified_backtest(
     dr = results.get("daily_records")
     if dr is None or getattr(dr, "empty", False) or len(dr) == 0:
         raise ValueError("回测未产出任何交易日记录（检查区间/数据/策略）")
+    effective_benchmark = (results.get("meta") or {}).get("benchmark")
+    if effective_benchmark and ("benchmark_value" not in dr.columns or dr["benchmark_value"].isna().any()):
+        raise ValueError(f"基准 {effective_benchmark} 在回测区间缺少行情，不能生成零收益基准报告；请选择本地已覆盖的基准")
 
     # 3) BulletTrade 原生报告（report.html + CSV + metrics.json + PNG）
     generate_report(
@@ -151,20 +162,20 @@ def run_unified_backtest(
 
     # 4) 聚宽风格标准化报告（standard_report.html）
     standard_report_html = os.path.join(run_dir, "standard_report.html")
-    try:
-        generate_cli_report(
-            input_dir=run_dir,
-            output_path=standard_report_html,
-            fmt="html",
-            title=strategy_name,
-        )
-    except Exception as exc:  # 标准报告失败不阻断（report.html 仍可用）
-        log.warning("标准报告生成失败（report.html 仍可用）：%s", exc)
+    generate_cli_report(
+        input_dir=run_dir,
+        output_path=standard_report_html,
+        fmt="html",
+        title=strategy_name,
+    )
+    require_report_artifacts(run_dir)
 
     # 5) QuantRadar 附加审计快照（不替代 BulletTrade 原生 metrics）
+    with open(strategy_path, encoding="utf-8") as source_file:
+        strategy_source = source_file.read()
     snapshot = build_snapshot_from_results(
         results,
-        strategy_source=code,
+        strategy_source=strategy_source,
         config={
             "security": security if not code else None,
             "initial_cash": initial_cash,

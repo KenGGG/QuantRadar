@@ -1,0 +1,55 @@
+{
+  "original_run_id": "run_7b7102d652db481f9997b8a9a8806c57",
+  "steps": [
+    "从历史报告点击策略菜单，仍保留编辑草稿和123456资金",
+    "改变草稿后恢复历史，浏览器重新提交的源码及全部配置与原运行逐字段一致；重新运行成功",
+    "键盘输入故意失败策略，提交后页面显示FAILED及具体异常，未显示成功报告入口"
+  ],
+  "recovered_submission": {
+    "run_id": "run_01a6bdfc8b7440c390bcc0ac7e76f762",
+    "status": "PENDING",
+    "config": {
+      "security": null,
+      "start_date": "2023-01-03",
+      "end_date": "2023-03-31",
+      "initial_cash": 500000.0,
+      "frequency": "day",
+      "amount": 100,
+      "benchmark": "000300.XSHG",
+      "fq": "none",
+      "extras": null,
+      "has_code": true,
+      "strategy_name": "买入持有 浏览器验收",
+      "strategy_id": 98,
+      "strategy_hash": "bda1fca2e6171c50cb43e6edc4daba02609fbd8597fd4a26e129dbcbc8726531",
+      "run_dir": "/data/Projects/a-stock-research/QuantRadar/runs/run_01a6bdfc8b7440c390bcc0ac7e76f762",
+      "report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_01a6bdfc8b7440c390bcc0ac7e76f762/report.html",
+      "standard_report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_01a6bdfc8b7440c390bcc0ac7e76f762/standard_report.html",
+      "strategy_source": "def initialize(context):\n    context.security = '600519.XSHG'\n\ndef handle_data(context, data):\n    if not context.portfolio.positions:\n        order_target(context.security, 100)\n        log.info('买入持有：建仓')\n\n# browser saved edit"
+    }
+  },
+  "failed_submission": {
+    "run_id": "run_08f92fa97def4a8baeb9c218dd509430",
+    "status": "PENDING",
+    "config": {
+      "security": null,
+      "start_date": "2023-01-03",
+      "end_date": "2023-03-31",
+      "initial_cash": 500000.0,
+      "frequency": "day",
+      "amount": 100,
+      "benchmark": "000300.XSHG",
+      "fq": "none",
+      "extras": null,
+      "has_code": true,
+      "strategy_name": "买入持有 浏览器验收",
+      "strategy_id": 99,
+      "strategy_hash": "dcbfb0bda1129a9bfa04fa11fe60308abc9e73cf2d68676f760cc8b1c9026c4b",
+      "run_dir": "/data/Projects/a-stock-research/QuantRadar/runs/run_08f92fa97def4a8baeb9c218dd509430",
+      "report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_08f92fa97def4a8baeb9c218dd509430/report.html",
+      "standard_report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_08f92fa97def4a8baeb9c218dd509430/standard_report.html",
+      "strategy_source": "def initialize(context):\n    context.security = '600519.XSHG'\n\ndef handle_data(context, data):\n    if not context.portfolio.positions:\n        order_target(context.security, 100)\n        log.info('买入持有：建仓')\n\n# browser saved edit\nraise RuntimeError('browser_expected_failure')"
+    }
+  },
+  "browser_workflow": "PASS"
+}

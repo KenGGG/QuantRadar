@@ -210,7 +210,9 @@ def _build_summary_rows(
     if not end_date and not df.empty:
         end_date = df.index.max().strftime("%Y-%m-%d")
 
-    initial_value = float(df["total_value"].iloc[0]) if not df.empty else None
+    initial_value = meta.get("initial_total_value")
+    if initial_value is None:
+        initial_value = float(df["total_value"].iloc[0]) if not df.empty else None
     final_value = float(df["total_value"].iloc[-1]) if not df.empty else None
     trading_days = len(df)
     runtime_seconds = meta.get("runtime_seconds")
@@ -491,6 +493,10 @@ def _format_metric_value(key: str, value: Any) -> str:
     if value is None:
         return "-"
     if isinstance(value, (int, float)):
+        if "天数" in key or "次数" in key:
+            return f"{value:.0f}"
+        if "比" in key:
+            return f"{value:.2f}"
         if any(token in key for token in ("收益", "波动", "回撤", "率")) and "比率" not in key:
             return f"{value:.2f}%"
         if "比率" in key or "比" in key:

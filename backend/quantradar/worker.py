@@ -71,14 +71,16 @@ def _gen_run_id() -> str:
 def _payload_from_record(rec: Dict[str, Any]) -> Dict[str, Any]:
     """从落库运行记录重建回测 payload（用于重启恢复）。"""
     cfg = rec.get("config") or {}
-    code = None
+    code = cfg.get("strategy_source")
     sid = rec.get("strategy_id")
-    if sid is not None:
+    if code is None and sid is not None:
         try:
             s = get_strategy(sid)
             code = s.source if s is not None else None
         except Exception:
             code = None
+    if cfg.get("has_code") and not code:
+        raise ValueError("历史策略源码缺失，无法恢复回测")
     return {
         "code": code,
         "security": cfg.get("security"),

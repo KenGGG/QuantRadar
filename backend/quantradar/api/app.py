@@ -393,6 +393,34 @@ def backtest_strategy(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
 # ---------------------- 异步回测（Worker + PostgreSQL） ----------------------
 
 
+@app.get("/api/strategies")
+def strategies_list(limit: int = Query(100, ge=1, le=500)):
+    from quantradar.storage import list_strategies
+    return {"strategies": list_strategies(limit)}
+
+
+@app.post("/api/strategies")
+def strategies_save(payload: Dict[str, Any] = Body(...)):
+    import hashlib
+    from quantradar.storage import save_strategy
+    name, source = payload.get("name"), payload.get("source")
+    if not isinstance(name, str) or not name.strip() or len(name) > 255:
+        raise HTTPException(400, "策略名称不能为空且不能超过 255 字符")
+    if not isinstance(source, str) or not source.strip():
+        raise HTTPException(400, "策略源码不能为空")
+    # 每次保存新增不可变版本，历史运行绑定的源码不会被编辑覆盖。
+    return save_strategy(name.strip(), source, hashlib.sha256(source.encode()).hexdigest()).to_dict()
+
+
+@app.get("/api/strategies/{strategy_id}")
+def strategies_get(strategy_id: int):
+    from quantradar.storage import get_strategy
+    item = get_strategy(strategy_id)
+    if item is None:
+        raise HTTPException(404, "策略版本不存在")
+    return item.to_dict()
+
+
 @app.post("/api/backtest/async")
 def backtest_async(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
     """提交异步回测：立即返回 run_id + PENDING，后台 Worker 执行并落库 PostgreSQL。
@@ -400,6 +428,25 @@ def backtest_async(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
     复用 quantradar.worker.submit（内部复用 run_backtest -> BulletTrade）。
     未配置 QUANT_RADAR_PG_URL 时返回 503（不硬编码凭证）。
     """
+    import datetime
+    import math
+    try:
+        start = datetime.date.fromisoformat(payload.get("start_date") or "")
+        end = datetime.date.fromisoformat(payload.get("end_date") or "")
+        cash = float(payload.get("initial_cash", 500000))
+        amount = float(payload.get("amount", 100))
+        if start > end or not math.isfinite(cash) or cash <= 0:
+            raise ValueError("日期区间或初始资金无效")
+        if not math.isfinite(amount) or amount <= 0 or not amount.is_integer():
+            raise ValueError("目标股数必须为正整数")
+        if payload.get("frequency", "day") != "day":
+            raise ValueError("本地 WebUI 仅支持日频 day")
+        if payload.get("fq", "none") not in ("none", "pre", "qfq"):
+            raise ValueError("回测仅支持原始价 none 和前复权 pre/qfq；不支持后复权撮合")
+        if "code" in payload and (not isinstance(payload["code"], str) or not payload["code"].strip()):
+            raise ValueError("策略源码不能为空")
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(400, str(exc))
     try:
         return get_worker().submit(
             payload={

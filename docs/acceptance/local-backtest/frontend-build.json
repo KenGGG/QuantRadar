@@ -1,0 +1,22 @@
+{
+  "frontend/dist/index.html": {
+    "bytes": 414,
+    "sha256": "f8a7657bf890c5f0c2e6846091368112deb0506f5aa397170febfdf1c1825ee5"
+  },
+  "frontend/dist/assets/editor.worker-C7zlFRnD.js": {
+    "bytes": 273516,
+    "sha256": "b73a57fb03e9eb5b7d45ee79113d91c72b54943c658211b865e79ca3a5184fea"
+  },
+  "frontend/dist/assets/index-TNfBz93i.css": {
+    "bytes": 79900,
+    "sha256": "c7f82f9c2ba7dd68036acb0f2e3bd88968f9a0d366c0edee07521c7a67d4802e"
+  },
+  "frontend/dist/assets/python-BYtA0UcZ.js": {
+    "bytes": 3720,
+    "sha256": "3d1cd56d60df014e893bbaf74ed5ca0d8338140c99379010fa55a2973afae06e"
+  },
+  "frontend/dist/assets/index-DNW9PIla.js": {
+    "bytes": 4885360,
+    "sha256": "47dbb08f3d6485354c05d54e8b1b7c4fdc964de2286dcf14fca66ad85947ab58"
+  }
+}

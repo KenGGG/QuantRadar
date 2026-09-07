@@ -1,0 +1,473 @@
+{
+  "url": "http://127.0.0.1:7231/",
+  "runs": [
+    {
+      "sample": "buyhold",
+      "run_id": "run_7b7102d652db481f9997b8a9a8806c57",
+      "status": "SUCCESS",
+      "version": "5118bd4ec9a082b45eacd0422b40e0452d3124c3",
+      "config": {
+        "security": null,
+        "start_date": "2023-01-03",
+        "end_date": "2023-03-31",
+        "initial_cash": 500000.0,
+        "frequency": "day",
+        "amount": 100,
+        "benchmark": "000300.XSHG",
+        "fq": "none",
+        "extras": null,
+        "has_code": true,
+        "strategy_name": "买入持有 浏览器验收",
+        "strategy_id": 97,
+        "strategy_hash": "bda1fca2e6171c50cb43e6edc4daba02609fbd8597fd4a26e129dbcbc8726531",
+        "run_dir": "/data/Projects/a-stock-research/QuantRadar/runs/run_7b7102d652db481f9997b8a9a8806c57",
+        "report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_7b7102d652db481f9997b8a9a8806c57/report.html",
+        "standard_report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_7b7102d652db481f9997b8a9a8806c57/standard_report.html",
+        "strategy_source": "def initialize(context):\n    context.security = '600519.XSHG'\n\ndef handle_data(context, data):\n    if not context.portfolio.positions:\n        order_target(context.security, 100)\n        log.info('买入持有：建仓')\n\n# browser saved edit"
+      },
+      "result_hash": "6de9bc767429c3cacf0e635d83e23052b2716a7f872465b748c9d95f8b643aaa",
+      "data_environment": {
+        "bullettrade_commit": "be0451b",
+        "dolt_commit": "rlr4k90ir2ok2tggb2nflr83qntc5q2t",
+        "latest_data_date": "2026-08-18 00:00:00",
+        "provider": "investment_data",
+        "provider_version": "1.0.0",
+        "quantradar_commit": "5118bd4ec9a082b45eacd0422b40e0452d3124c3",
+        "schema_hash": "027b659df35924aa"
+      },
+      "records": 59,
+      "trades": 1,
+      "positions": 59,
+      "traded_securities": [
+        "600519.XSHG"
+      ],
+      "metrics": {
+        "策略收益": 1.72,
+        "策略年化收益": 7.51,
+        "基准收益": 4.19,
+        "基准年化收益": 19.01,
+        "累计超额收益": -2.47,
+        "策略波动率": 7.43,
+        "最大回撤": -3.54,
+        "最大回撤区间": "2023-01-16 至 2023-03-20",
+        "最大回撤持续天数": 49,
+        "夏普比率": 0.4717,
+        "索提诺比率": 0.661,
+        "Calmar比率": 2.1211,
+        "下行波动率": 5.31,
+        "日胜率": 43.1,
+        "日盈利天数": 25,
+        "日亏损天数": 33,
+        "交易胜率": 0.0,
+        "交易盈利次数": 0,
+        "交易亏损次数": 0,
+        "盈亏比": 0.0,
+        "交易天数": 59,
+        "胜率": 0.0,
+        "收益回撤比": 2.1211
+      },
+      "artifacts": {
+        "instrument_pnl.png": {
+          "bytes": 77801,
+          "sha256": "7d574e987b314dc3fff216c7975e56ad6148758882f7a858a46f5417ccbad010"
+        },
+        "risk_metrics.csv": {
+          "bytes": 651,
+          "sha256": "57c8d86da46b84c0040f7f10670ba73d4cacacaeab2c70f097c52ea7b2051b47"
+        },
+        "metrics.json": {
+          "bytes": 1212,
+          "sha256": "8b1e043cbc6c0ad0e3f98c713f220d54c8a0ac1c14d300e88ca0f3f4a62b46c7"
+        },
+        "annual_returns.csv": {
+          "bytes": 47,
+          "sha256": "c7d637514bbf2d3fa4e4dac6956f314a1515c2b42b8fe18aea73fdeb732915da"
+        },
+        "positions.png": {
+          "bytes": 268214,
+          "sha256": "ec44a6fb3a607bf206713d75fe00542627c97d72105b87b84739805d978bd494"
+        },
+        "monthly_returns_heatmap.png": {
+          "bytes": 102945,
+          "sha256": "102b76ed473feb2d1890aa3040571450db50077cec5cf8a8a1a9e3d6f6b1dfb6"
+        },
+        "backtest_results.png": {
+          "bytes": 1165932,
+          "sha256": "568a1a787f4fa295e77b9009000ab4f46161ab1609a6d015047895a44cb5bb3a"
+        },
+        "trades.csv": {
+          "bytes": 149,
+          "sha256": "edd37e6f8c53d665a91a72ecae7354e2718d5a56fc10dd3310f22072d041aa7e"
+        },
+        "report.html": {
+          "bytes": 424337,
+          "sha256": "08d625fb579b1cb6e59605ce677a40ffe8b611cfe0fae9bd625eafe5751ab084"
+        },
+        "daily_positions.csv": {
+          "bytes": 10378,
+          "sha256": "897f4694a1ec1f3633cc01ec65e65f31e68acbe29459c227e01b3d566101e260"
+        },
+        "strategy.py": {
+          "bytes": 242,
+          "sha256": "bda1fca2e6171c50cb43e6edc4daba02609fbd8597fd4a26e129dbcbc8726531"
+        },
+        "open_counts.png": {
+          "bytes": 74046,
+          "sha256": "001581b7b2ef97ab78002dc89eb454a5dd71b06f58e819751872f0164d9069fc"
+        },
+        "annual_returns.png": {
+          "bytes": 72973,
+          "sha256": "c0f232a511ce78c05987d4c9611994556a88c1b619b4c571f45053e3253d7cff"
+        },
+        "calendar.html": {
+          "bytes": 297159,
+          "sha256": "088809c18ce38ad05a40caa62ff295773935a49ffb1c774dfaca4cea3dae18a7"
+        },
+        "instrument_pnl.csv": {
+          "bytes": 48,
+          "sha256": "36634c2beb7894a903de7a61edd416509326b4a8936eaccc653dae53a911188f"
+        },
+        "monthly_returns.csv": {
+          "bytes": 146,
+          "sha256": "f57c78af9c9fa3f0a4d5e859abccf2bfb592a720ff2d3fd106b6dd6a53acb1a4"
+        },
+        "daily_records.csv": {
+          "bytes": 9600,
+          "sha256": "7e5ac5fca8099acebd17d75cd061b8dfb1296c8493d867a49d6c9320223aebe6"
+        },
+        "standard_report.html": {
+          "bytes": 391634,
+          "sha256": "cf526d33552b67d3656fdfda8ec098ae1354ae74f6f5aecd698c1eb77427b56f"
+        },
+        "snapshot.json": {
+          "bytes": 1398,
+          "sha256": "9fd1e683e69c69d756fe93028b3c47adcf94b2319d6a1652e52978d80b79aec7"
+        },
+        "backtest.log": {
+          "bytes": 30424,
+          "sha256": "3fac74b1662f33c3e147ff53d41e202b332e04d413e244478435ac9b4d00e7c5"
+        },
+        "open_counts.csv": {
+          "bytes": 45,
+          "sha256": "f1ad483a38152540d89ffc2cd1b1afea865a0e5f67e87d3c084d7f033a72fa5e"
+        }
+      }
+    },
+    {
+      "sample": "dma",
+      "run_id": "run_6cbee38d026e49e3914f89598092334a",
+      "status": "SUCCESS",
+      "version": "5118bd4ec9a082b45eacd0422b40e0452d3124c3",
+      "config": {
+        "security": null,
+        "start_date": "2023-02-01",
+        "end_date": "2023-02-28",
+        "initial_cash": 600000.0,
+        "frequency": "day",
+        "amount": 100,
+        "benchmark": "600519.XSHG",
+        "fq": "none",
+        "extras": null,
+        "has_code": true,
+        "strategy_name": "双均线 浏览器验收",
+        "strategy_id": 95,
+        "strategy_hash": "2febb8be14803fc3796ad1b3290dd13d711ae30b53e5829f9a770062588b8c03",
+        "run_dir": "/data/Projects/a-stock-research/QuantRadar/runs/run_6cbee38d026e49e3914f89598092334a",
+        "report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_6cbee38d026e49e3914f89598092334a/report.html",
+        "standard_report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_6cbee38d026e49e3914f89598092334a/standard_report.html",
+        "strategy_source": "def initialize(context):\n    context.security = '600519.XSHG'\n\ndef handle_data(context, data):\n    prices = get_price(context.security, end_date=context.previous_date,\n                       count=20, fields=['close'], frequency='daily', fq='none')\n    if len(prices) < 20:\n        return\n    fast = prices['close'].tail(5).mean()\n    slow = prices['close'].mean()\n    order_target(context.security, 100 if fast > slow else 0)\n    log.info('双均线 fast=%s slow=%s' % (fast, slow))\n\n# browser saved edit"
+      },
+      "result_hash": "0a41bbc7eeb4bbed5b41f0558d32c1c3fe7d5125a4c6ac8bacd512adf3863737",
+      "data_environment": {
+        "bullettrade_commit": "be0451b",
+        "dolt_commit": "rlr4k90ir2ok2tggb2nflr83qntc5q2t",
+        "latest_data_date": "2026-08-18 00:00:00",
+        "provider": "investment_data",
+        "provider_version": "1.0.0",
+        "quantradar_commit": "5118bd4ec9a082b45eacd0422b40e0452d3124c3",
+        "schema_hash": "027b659df35924aa"
+      },
+      "records": 20,
+      "trades": 4,
+      "positions": 9,
+      "traded_securities": [
+        "600519.XSHG"
+      ],
+      "metrics": {
+        "策略收益": -1.95,
+        "策略年化收益": -21.78,
+        "基准收益": -1.69,
+        "基准年化收益": -19.22,
+        "累计超额收益": -0.25,
+        "策略波动率": 3.59,
+        "最大回撤": -2.18,
+        "最大回撤区间": "2023-02-01 至 2023-02-24",
+        "最大回撤持续天数": 19,
+        "夏普比率": -7.1869,
+        "索提诺比率": -11.2683,
+        "Calmar比率": -10.0069,
+        "下行波动率": 2.29,
+        "日胜率": 15.79,
+        "日盈利天数": 3,
+        "日亏损天数": 7,
+        "交易胜率": 0.0,
+        "交易盈利次数": 0,
+        "交易亏损次数": 2,
+        "盈亏比": 0.0,
+        "交易天数": 20,
+        "胜率": 0.0,
+        "收益回撤比": -10.0069
+      },
+      "artifacts": {
+        "instrument_pnl.png": {
+          "bytes": 83482,
+          "sha256": "0bdaff346ca31929719eba10d4b6c1f6b9268d3c1009ad6a5b603ddb96de86e2"
+        },
+        "risk_metrics.csv": {
+          "bytes": 673,
+          "sha256": "4fd17101f84b7780c2ab07e18218c2553514dbb3af8e21ab918d4f28abe994d0"
+        },
+        "metrics.json": {
+          "bytes": 1226,
+          "sha256": "4451a9a9b7be11edd3abd7d49b91cb141999f3c1184c100a7242c5ca63d51684"
+        },
+        "annual_returns.csv": {
+          "bytes": 48,
+          "sha256": "e1016e5dfbd8fe08320292ac42c3380f8910391c1fc80b46864d093b70d1d20a"
+        },
+        "positions.png": {
+          "bytes": 288345,
+          "sha256": "b1990c6f9af33fb861e9d680e8e1062e0865dc5b635c2222222b5f353cb30fe1"
+        },
+        "monthly_returns_heatmap.png": {
+          "bytes": 105620,
+          "sha256": "806a6fbee98b8ef119274204c7817c1d056d5f75c417dccaf9a4ca1eb3649096"
+        },
+        "backtest_results.png": {
+          "bytes": 927719,
+          "sha256": "0aed4605ea4dc9259fe471b56106afcf733ef4fb468d8e79007b13c9224a7021"
+        },
+        "trades.csv": {
+          "bytes": 388,
+          "sha256": "250c024455aa6053a9c879efee8a028128247111e05dc6399402c27035f1a07c"
+        },
+        "report.html": {
+          "bytes": 391373,
+          "sha256": "3fafc02edd7ed6ec071613dba0bea35bb0e77f7f11696f7209991dbed9c8ccf5"
+        },
+        "daily_positions.csv": {
+          "bytes": 1797,
+          "sha256": "06a2378fb3e69a6688158d7204685678f06871e8ae5f68988420f3e4c387e087"
+        },
+        "strategy.py": {
+          "bytes": 505,
+          "sha256": "2febb8be14803fc3796ad1b3290dd13d711ae30b53e5829f9a770062588b8c03"
+        },
+        "open_counts.png": {
+          "bytes": 81858,
+          "sha256": "7f1fd5c16b72c0c53101c56b37480870fbc908e69b9b2c4d8690db8bcb28a2a0"
+        },
+        "annual_returns.png": {
+          "bytes": 73068,
+          "sha256": "18164142bff39dafe6f3c7c27e1f6c992cfd2fcb34d8065893c6fb66baa7f7e6"
+        },
+        "calendar.html": {
+          "bytes": 321902,
+          "sha256": "e39a5afec7d355cb6557dc999e0e28e71c54f5bfa6e02a84f4032401a1113f09"
+        },
+        "instrument_pnl.csv": {
+          "bytes": 62,
+          "sha256": "5e68c7b04550c6baaf28dd497ea3a5ae4d95e74145149237b923860d808fe223"
+        },
+        "monthly_returns.csv": {
+          "bytes": 109,
+          "sha256": "2b0cfdb136ee13b6e558eb42ae39db98657c5d2364948e666a7304bfe0ba4ae1"
+        },
+        "daily_records.csv": {
+          "bytes": 3381,
+          "sha256": "5be29544ce555f3074082bf027d4522d622c8ad4bfb0995d4a8440762c57dfac"
+        },
+        "standard_report.html": {
+          "bytes": 345452,
+          "sha256": "41c3aece811060bb1e11dc43ffd5aef34aa02c5906861d0b93dbe1174d4d483b"
+        },
+        "snapshot.json": {
+          "bytes": 1397,
+          "sha256": "52361f6400656801c54830f85ea2eeb972a0aac9a459a29b40993ff4686524d2"
+        },
+        "backtest.log": {
+          "bytes": 15131,
+          "sha256": "274c661e788b96cf9cd777da2f721a7c853f88a7eb60163fb7607c9cc9cb9559"
+        },
+        "open_counts.csv": {
+          "bytes": 45,
+          "sha256": "38d6a60dec86399c99bca828d018c8825ec5cea329129ad539ad2b4dddb5e944"
+        }
+      }
+    },
+    {
+      "sample": "rebalance",
+      "run_id": "run_a92e8261d7bd4f1894313c4cfcccf07a",
+      "status": "SUCCESS",
+      "version": "5118bd4ec9a082b45eacd0422b40e0452d3124c3",
+      "config": {
+        "security": null,
+        "start_date": "2023-01-03",
+        "end_date": "2023-01-31",
+        "initial_cash": 900000.0,
+        "frequency": "day",
+        "amount": 100,
+        "benchmark": "000300.XSHG",
+        "fq": "pre",
+        "extras": null,
+        "has_code": true,
+        "strategy_name": "多股票定期再平衡 浏览器验收",
+        "strategy_id": 93,
+        "strategy_hash": "3ffb8552b68084b2e1b68446a53b97feec7ab2cc323b3bb7850012caabbb6793",
+        "run_dir": "/data/Projects/a-stock-research/QuantRadar/runs/run_a92e8261d7bd4f1894313c4cfcccf07a",
+        "report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_a92e8261d7bd4f1894313c4cfcccf07a/report.html",
+        "standard_report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_a92e8261d7bd4f1894313c4cfcccf07a/standard_report.html",
+        "strategy_source": "def initialize(context):\n    context.securities = ['600519.XSHG', '000001.XSHE', '000002.XSHE']\n    run_weekly(rebalance, weekday=1, time='open')\n\ndef rebalance(context):\n    target = context.portfolio.total_value * 0.3\n    for security in context.securities:\n        order_target_value(security, target)\n    log.info('每周再平衡：三只股票各30%，保留现金支付费用')\n\n# browser saved edit"
+      },
+      "result_hash": "922a21f7095424d051ff022ba9278e45ed0b4394a58aa7ac7c0a18f98d28a6ab",
+      "data_environment": {
+        "bullettrade_commit": "be0451b",
+        "dolt_commit": "rlr4k90ir2ok2tggb2nflr83qntc5q2t",
+        "latest_data_date": "2026-08-18 00:00:00",
+        "provider": "investment_data",
+        "provider_version": "1.0.0",
+        "quantradar_commit": "5118bd4ec9a082b45eacd0422b40e0452d3124c3",
+        "schema_hash": "027b659df35924aa"
+      },
+      "records": 16,
+      "trades": 7,
+      "positions": 48,
+      "traded_securities": [
+        "000001.XSHE",
+        "000002.XSHE",
+        "600519.XSHG"
+      ],
+      "metrics": {
+        "策略收益": 5.51,
+        "策略年化收益": 131.31,
+        "基准收益": 6.92,
+        "基准年化收益": 184.39,
+        "累计超额收益": -1.4,
+        "策略波动率": 14.55,
+        "最大回撤": -1.48,
+        "最大回撤区间": "2023-01-16 至 2023-01-31",
+        "最大回撤持续天数": 6,
+        "夏普比率": 8.7521,
+        "索提诺比率": 10.4852,
+        "Calmar比率": 88.7017,
+        "下行波动率": 12.14,
+        "日胜率": 46.67,
+        "日盈利天数": 7,
+        "日亏损天数": 8,
+        "交易胜率": 100.0,
+        "交易盈利次数": 3,
+        "交易亏损次数": 0,
+        "盈亏比": "Infinity",
+        "交易天数": 16,
+        "胜率": 100.0,
+        "收益回撤比": 88.7017
+      },
+      "artifacts": {
+        "instrument_pnl.png": {
+          "bytes": 102318,
+          "sha256": "4a52774849d1b783108ccb360c18f252925f375d77aa884b0a75fe5a875f10d5"
+        },
+        "risk_metrics.csv": {
+          "bytes": 669,
+          "sha256": "f53832582769ebd12e751fc56110ca1a4f2661ceabb0e490a545eb9518fcf0c6"
+        },
+        "metrics.json": {
+          "bytes": 1230,
+          "sha256": "11394f1afb731403835f83467259c437ee62e9e2151f8575f4d3f1867cdceade"
+        },
+        "annual_returns.csv": {
+          "bytes": 46,
+          "sha256": "c0a5316b9fb95b35c8fced0c013bdd5f637ff570460b0d1cd048118a04086592"
+        },
+        "positions.png": {
+          "bytes": 257594,
+          "sha256": "ab5f061af481e4e3a857e94b63bbd07c383f4d7f8b422f9f7e4ecd1f7419e126"
+        },
+        "monthly_returns_heatmap.png": {
+          "bytes": 102901,
+          "sha256": "90d1c9ea1430914a8f1bbc8552a49830b245c593f06f36e1c9d448ddd3003d59"
+        },
+        "backtest_results.png": {
+          "bytes": 894542,
+          "sha256": "ea892318b087e04591351632384aebe6c4d2df2bd2faaf68131ac82b4ffff4f7"
+        },
+        "trades.csv": {
+          "bytes": 586,
+          "sha256": "65ef24fbf9a2b92b44a24bb58a61cf5ec4c119941629af14a0b1e1a027ebf38e"
+        },
+        "report.html": {
+          "bytes": 411430,
+          "sha256": "0314c10c4f3790c729f966bc287b1a3fb605b82eb64e1e7817f4bd4e2b7b2c01"
+        },
+        "daily_positions.csv": {
+          "bytes": 9343,
+          "sha256": "4926ebe4b1e3c885f25f60a2972ca03eb0d791944cbec875645b65c64bd9341d"
+        },
+        "strategy.py": {
+          "bytes": 406,
+          "sha256": "3ffb8552b68084b2e1b68446a53b97feec7ab2cc323b3bb7850012caabbb6793"
+        },
+        "open_counts.png": {
+          "bytes": 96663,
+          "sha256": "3ad06ab166ee090cb153d4b97deac8903f61dd291cf2f50198df70cc6184690c"
+        },
+        "annual_returns.png": {
+          "bytes": 77396,
+          "sha256": "5f9e9984c710e11c0e3c9cb4184828cb4ca95fd69272c1184940837035158205"
+        },
+        "calendar.html": {
+          "bytes": 324621,
+          "sha256": "c89c684f457fdfb8700937920b0b9bc3803a11eeeadcaab08230d4dea653632b"
+        },
+        "instrument_pnl.csv": {
+          "bytes": 98,
+          "sha256": "a68eb0d1b09c61b8d85701176d60e2e90317560073dbfc4a6c31e30ee098c69b"
+        },
+        "monthly_returns.csv": {
+          "bytes": 107,
+          "sha256": "c5994fb96e92589aa187388abbe0a13882ab6776f674ef6fe680ed9e5f7ee6c9"
+        },
+        "daily_records.csv": {
+          "bytes": 3050,
+          "sha256": "7f9646dc40fbaf55b799ec34004697d52b69638b8e85a8382b526161cc8725ca"
+        },
+        "standard_report.html": {
+          "bytes": 346387,
+          "sha256": "b479191904a4dafb4c88350d47d4ce3e07d3b81bace4a888e0ed59a89ae31f7f"
+        },
+        "snapshot.json": {
+          "bytes": 1410,
+          "sha256": "dfb4881fe47d20d9797cb2197dc7d6f095b82832e1faba6de2f3f0af00f49221"
+        },
+        "backtest.log": {
+          "bytes": 11162,
+          "sha256": "84223db33bf1916936af8c7803effbc45aa02e958ef69c59f455b57b8ee84628"
+        },
+        "open_counts.csv": {
+          "bytes": 75,
+          "sha256": "cc3fbcb57677a592618b40ad514d4048cc37d005af195f5b618d3bada309aace"
+        }
+      }
+    }
+  ],
+  "recovery": {
+    "run_id": "run_01a6bdfc8b7440c390bcc0ac7e76f762",
+    "result_hash": "6de9bc767429c3cacf0e635d83e23052b2716a7f872465b748c9d95f8b643aaa",
+    "same_result_hash": true
+  },
+  "expected_failure": {
+    "run_id": "run_08f92fa97def4a8baeb9c218dd509430",
+    "status": "FAILED",
+    "error": "RuntimeError: browser_expected_failure\n"
+  }
+}

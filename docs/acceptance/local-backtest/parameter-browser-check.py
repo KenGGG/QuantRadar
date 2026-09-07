@@ -1,0 +1,40 @@
+import json,csv
+from pathlib import Path
+from playwright.sync_api import sync_playwright,expect
+out=Path('docs/acceptance/local-backtest')
+with sync_playwright() as p:
+ b=p.chromium.launch()
+ page=b.new_page(viewport={'width':1600,'height':1100})
+ page.goto('http://127.0.0.1:7231/')
+ page.get_by_text('内置 Buy&Hold',exact=True).click()
+ page.get_by_label('标的',exact=True).fill('000001.XSHE')
+ page.get_by_label('目标股数',exact=True).fill('200')
+ page.get_by_label('初始资金',exact=True).fill('100000')
+ page.get_by_label('结束日期',exact=True).fill('2023-01-06')
+ page.get_by_label('结束日期',exact=True).press('Enter')
+ with page.expect_response(lambda r:r.url.endswith('/api/backtest/async')) as response:
+  page.get_by_role('button',name='运行 Buy&Hold 回测').click()
+ good=response.value.json()
+ page.get_by_role('button',name='打开完整回测报告 →').wait_for(timeout=120000)
+ page.get_by_role('button',name='打开完整回测报告 →').click()
+ frame=page.frame_locator('iframe')
+ expect(frame.locator('body')).to_contain_text('100,000.00')
+ page.screenshot(path=str(out/'builtin-parameters.png'),full_page=True)
+ trades=list(csv.DictReader((Path(good['config']['run_dir'])/'trades.csv').open(encoding='utf-8-sig')))
+ assert trades[0]['标的']=='000001.XSHE' and float(trades[0]['数量'])==200
+ page.get_by_role('button',name='← 返回继续编辑').click()
+ page.get_by_label('基准',exact=True).fill('000001.XSHG')
+ page.get_by_label('起始日期',exact=True).fill('2023-02-01')
+ page.get_by_label('起始日期',exact=True).press('Enter')
+ page.get_by_label('结束日期',exact=True).fill('2023-02-03')
+ page.get_by_label('结束日期',exact=True).press('Enter')
+ with page.expect_response(lambda r:r.url.endswith('/api/backtest/async')) as response:
+  page.get_by_role('button',name='运行 Buy&Hold 回测').click()
+ bad=response.value.json()
+ page.get_by_text('回测失败',exact=True).wait_for(timeout=60000)
+ expect(page.locator('body')).to_contain_text('缺少行情')
+ page.screenshot(path=str(out/'missing-benchmark.png'),full_page=True)
+ assert not page.get_by_role('button',name='打开完整回测报告 →').count()
+ (out/'parameter-checks.json').write_text(json.dumps({'builtin':good,'native_trades':trades,'missing_benchmark':bad,'browser_workflow':'PASS'},ensure_ascii=False,indent=2))
+ print('PASS builtin security/amount/cash/dates and missing benchmark failure',good['run_id'],bad['run_id'])
+ b.close()

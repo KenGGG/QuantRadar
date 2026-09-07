@@ -1,6 +1,28 @@
 from datetime import date
 
 
+def test_notebooklm_policy_cli_returns_zero_only_for_ready(tmp_path, monkeypatch, capsys) -> None:
+    from quantradar.research.config import ResearchSettings
+    from quantradar.research.cli import run
+    from quantradar.research import notebooklm_runtime
+
+    settings = ResearchSettings("sqlite+pysqlite://", tmp_path / "data", tmp_path / "profile")
+    monkeypatch.setattr(notebooklm_runtime.RuntimeSettings, "from_env", classmethod(lambda _cls, data_dir: notebooklm_runtime.RuntimeSettings(data_dir=data_dir, profile_path=tmp_path / "profile", venv_python=tmp_path / "python")))
+
+    async def ready(_settings):
+        return notebooklm_runtime.RuntimePassResult(status="READY")
+
+    monkeypatch.setattr(notebooklm_runtime, "run_policy_runtime_pass", ready)
+    assert run(["notebooklm-policy-runtime-pass"], settings=settings) == 0
+    assert '"status": "READY"' in capsys.readouterr().out
+
+    async def failed(_settings):
+        return notebooklm_runtime.RuntimePassResult(status="FAILED", error_code="AUTH_REQUIRED")
+
+    monkeypatch.setattr(notebooklm_runtime, "run_policy_runtime_pass", failed)
+    assert run(["notebooklm-policy-runtime-pass"], settings=settings) != 0
+
+
 def test_health_reports_shared_mineru_version(tmp_path, capsys) -> None:
     from quantradar.research.config import ResearchSettings
     from quantradar.research.cli import run
