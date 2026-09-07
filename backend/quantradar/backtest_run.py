@@ -147,6 +147,9 @@ def run_unified_backtest(
     dr = results.get("daily_records")
     if dr is None or getattr(dr, "empty", False) or len(dr) == 0:
         raise ValueError("回测未产出任何交易日记录（检查区间/数据/策略）")
+    effective_benchmark = (results.get("meta") or {}).get("benchmark")
+    if effective_benchmark and ("benchmark_value" not in dr.columns or dr["benchmark_value"].isna().any()):
+        raise ValueError(f"基准 {effective_benchmark} 在回测区间缺少行情，不能生成零收益基准报告；请选择本地已覆盖的基准")
 
     # 3) BulletTrade 原生报告（report.html + CSV + metrics.json + PNG）
     generate_report(

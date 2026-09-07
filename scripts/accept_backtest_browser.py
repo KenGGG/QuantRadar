@@ -41,7 +41,7 @@ with sync_playwright() as p:
     page.locator('.monaco-editor textarea').wait_for(timeout=60000)
     page.get_by_label('初始资金', exact=True).fill({'buyhold': '500000', 'dma': '600000', 'rebalance': '900000'}[key])
     if key == 'dma':
-        page.get_by_label('基准', exact=True).fill('000001.XSHG')
+        page.get_by_label('基准', exact=True).fill('600519.XSHG')
         page.get_by_label('起始日期', exact=True).fill('2023-02-01')
         page.get_by_label('起始日期', exact=True).press('Enter')
         page.get_by_label('结束日期', exact=True).fill('2023-02-28')

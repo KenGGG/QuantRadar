@@ -78,3 +78,18 @@ def test_infinite_native_metrics_remain_json_serializable():
     metrics = _to_native({'盈亏比': float('inf'), 'negative': np.float64('-inf'), 'missing': float('nan')})
     assert metrics == {'盈亏比': 'Infinity', 'negative': '-Infinity', 'missing': None}
     json.dumps(metrics, allow_nan=False)
+
+
+def test_missing_benchmark_cannot_produce_success_report(tmp_path, monkeypatch):
+    import pandas as pd
+    import pytest
+    from quantradar.backtest_run import run_unified_backtest
+    monkeypatch.setattr('quantradar.bootstrap.bootstrap_investment_data', lambda **kw: None)
+    monkeypatch.setattr('bullet_trade.core.engine.create_backtest', lambda **kw: {
+        'daily_records': pd.DataFrame({'total_value': [500000]}),
+        'meta': {'benchmark': '000001.XSHG'},
+    })
+    # If this reaches report generation, missing benchmark was silently accepted.
+    monkeypatch.setattr('bullet_trade.core.analysis.generate_report', lambda *a, **kw: pytest.fail('missing benchmark accepted'))
+    with pytest.raises(ValueError, match='基准.*缺少'):
+        run_unified_backtest('missing_benchmark', {'benchmark': '000001.XSHG'}, runs_dir=str(tmp_path))
