@@ -1,0 +1,62 @@
+{
+  "builtin": {
+    "run_id": "run_2bf2f3c554184bb5b2d72e32d5c812a7",
+    "status": "PENDING",
+    "config": {
+      "security": "000001.XSHE",
+      "start_date": "2023-01-03",
+      "end_date": "2023-01-06",
+      "initial_cash": 100000.0,
+      "frequency": "day",
+      "amount": 200,
+      "benchmark": "000300.XSHG",
+      "fq": "none",
+      "extras": null,
+      "has_code": false,
+      "strategy_name": "买入持有",
+      "strategy_id": null,
+      "strategy_hash": null,
+      "run_dir": "/data/Projects/a-stock-research/QuantRadar/runs/run_2bf2f3c554184bb5b2d72e32d5c812a7",
+      "report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_2bf2f3c554184bb5b2d72e32d5c812a7/report.html",
+      "standard_report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_2bf2f3c554184bb5b2d72e32d5c812a7/standard_report.html",
+      "strategy_source": null
+    }
+  },
+  "native_trades": [
+    {
+      "时间": "2023-01-03 09:30:00",
+      "标的": "000001.XSHE",
+      "数量": "200",
+      "价格": "13.22",
+      "金额": "2644.0",
+      "手续费": "5.0",
+      "印花税": "0.0",
+      "总费用": "5.0",
+      "方向": "买入"
+    }
+  ],
+  "missing_benchmark": {
+    "run_id": "run_988be4ddfb084ab6a9a29ce852b55f63",
+    "status": "PENDING",
+    "config": {
+      "security": "000001.XSHE",
+      "start_date": "2023-02-01",
+      "end_date": "2023-02-03",
+      "initial_cash": 100000.0,
+      "frequency": "day",
+      "amount": 200,
+      "benchmark": "000001.XSHG",
+      "fq": "none",
+      "extras": null,
+      "has_code": false,
+      "strategy_name": "买入持有",
+      "strategy_id": null,
+      "strategy_hash": null,
+      "run_dir": "/data/Projects/a-stock-research/QuantRadar/runs/run_988be4ddfb084ab6a9a29ce852b55f63",
+      "report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_988be4ddfb084ab6a9a29ce852b55f63/report.html",
+      "standard_report_html": "/data/Projects/a-stock-research/QuantRadar/runs/run_988be4ddfb084ab6a9a29ce852b55f63/standard_report.html",
+      "strategy_source": null
+    }
+  },
+  "browser_workflow": "PASS"
+}

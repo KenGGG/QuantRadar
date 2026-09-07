@@ -17,9 +17,9 @@ file records present facts, not plans or chronological logs.
 PR #3 (merge commit `7ba6cff`). The Agnes seven-day observation was terminated
 by the approved provider-cutover decision and is recorded as
 `REPORT_MVP_7D_LIVE_PASS = ABORTED_BY_PROVIDER_CUTOVER`; this is not a product
-failure. The only active goal is `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS` under
-milestone `QUANTRADAR_LOCAL_BACKTEST_WEBUI_PASS`. Backtest WebUI development
-is unfrozen; browser acceptance has not passed. NotebookLM development is paused.
+failure. `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS` and milestone
+`QUANTRADAR_LOCAL_BACKTEST_WEBUI_PASS` are complete. There is no active or queued
+Goal. NotebookLM development is paused.
 `REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
 `REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`, and
 `REPORT_MVP_OPERATIONS_PASS` are historical completed Goals.
@@ -27,6 +27,30 @@ is unfrozen; browser acceptance has not passed. NotebookLM development is paused
 The approved NotebookLM architecture is frozen in
 `docs/superpowers/specs/2026-09-03-research-notebooklm-synthesis-design.md`.
 NotebookLM runtime code exists, including pre-auth gates; its goal has not passed. The formal systemd service/timer remains unchanged.
+
+### Local daily backtest WebUI: browser accepted
+
+- Runtime version: `5118bd4ec9a082b45eacd0422b40e0452d3124c3`, served at
+  `http://127.0.0.1:7231/` by FastAPI; the built React/Monaco assets are local.
+- Browser strategy version save/reopen, report return with draft preservation,
+  historical source/config restoration, menu navigation, explicit task errors,
+  and actual page parameter effects are verified.
+- Buy-and-hold: 59 daily records / 1 trade / 59 position rows. DMA: 20 / 4 / 9.
+  Three-stock weekly rebalance: 16 / 7 / 48. All ran through the existing
+  PostgreSQL Worker, InvestmentDataProvider and BulletTrade using local data.
+- Restored historical rerun has the same result hash. Deliberate source failure
+  and missing benchmark data display FAILED with an error, not a successful report.
+- Native report initial capital/units and engine price-mode propagation are fixed.
+  Missing/empty required report artifacts prevent SUCCESS. Infinite native metrics
+  retain their meaning as JSON strings for PostgreSQL/API serialization.
+- Actual operations, screenshots, run IDs, artifact hashes and constraints:
+  [browser acceptance](acceptance/local-backtest/README.md),
+  [manifest](acceptance/local-backtest/manifest.json).
+- Local trusted single-user daily backtests only; no minute/live/post-adjusted
+  execution or full-market/complete JoinQuant compatibility claim. Detailed native
+  interactive chart assets still use CDN; the standard report embeds its images.
+- Current targeted regression suite: 16 passed. Frontend build passed. Research
+  daily service/timer configuration was not changed or re-accepted in this milestone.
 
 ### Enterprise Alert Research MVP: implemented
 
@@ -113,13 +137,13 @@ NotebookLM runtime code exists, including pre-auth gates; its goal has not passe
 ## Frozen Historical Facts
 
 - BulletTrade WebUI/backtest has native report artifacts, reproducible snapshots,
-  async worker recovery, and CI coverage. Its browser workflow is not yet accepted
-  and development is unfrozen by the current goal.
+  async worker recovery, and CI coverage. Its supported daily browser workflow
+  is accepted in the completed WebUI milestone.
 - Qlib research hardening and OOS tooling are complete historical work.
 - Kronos Goals 0–2 have recorded data-audit, GPU-runtime, and pipeline
   evidence. Their data/real-assist limitations remain recorded.
 
-## Verification
+## Historical verification (preceding research milestone)
 
 - Full backend suite: the prior `make test` result was `327 passed, 1 failed`;
   the sole failure was a frozen live Kronos MySQL audit timeout. The exact test

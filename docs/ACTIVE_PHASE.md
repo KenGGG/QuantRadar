@@ -1,8 +1,9 @@
 # QuantRadar Active Phase
 
 **Milestone:** `QUANTRADAR_LOCAL_BACKTEST_WEBUI_PASS`
-**Active Goal:** `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS`
-**Status:** ACTIVE
+**Active Goal:** `NONE`
+**Completed Goal:** `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS`
+**Status:** COMPLETE
 
 ## 唯一目标与授权范围
 
@@ -26,7 +27,15 @@
    测试通过、脚本成功或生成报告文件均不能单独判定交付。
 5. 达标后更新 CURRENT_STATE 和本文件，提交 commit。里程碑完成后停止。
 
-`LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS = false`
+`LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS = PASS`
+
+验收日期：2026-09-07。实际部署代码：`5118bd4ec9a082b45eacd0422b40e0452d3124c3`。
+三个样例均完成浏览器键盘编辑、保存/刷新重开、配置、真实回测、原生报告、
+成交、持仓、日志和历史恢复。另验证改变草稿后恢复重跑结果哈希一致、
+菜单导航、故意失败及缺基准失败提示、内置标的/股数/资金/日期实际生效。
+证据与限制见 [浏览器交付记录](acceptance/local-backtest/README.md)
+和 [运行清单](acceptance/local-backtest/manifest.json)。
+里程碑已完成，无下一排队 Goal。
 
 ## Queued Goals
 
