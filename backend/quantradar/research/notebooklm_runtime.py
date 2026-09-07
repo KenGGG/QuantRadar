@@ -1283,6 +1283,22 @@ def _worker_environment(root: Path, worker_lock_token: str | None = None) -> dic
     return env
 
 
+def runtime_exit_code(result: RuntimePassResult) -> int:
+    return 0 if result.status == "READY" else 1
+
+
+def _read_worker_result(response: Path) -> RuntimePassResult | None:
+    if not response.is_file():
+        return None
+    try:
+        data = json.loads(response.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("worker result is not a JSON object")
+        return RuntimePassResult(**data)
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise RuntimePassError("WORKER_FAILED", "worker result is missing or invalid") from exc
+
+
 def run_policy_runtime_pass_via_worker(settings: RuntimeSettings) -> RuntimePassResult:
     try:
         ensure_runtime_locked(settings)
@@ -1301,15 +1317,14 @@ def run_policy_runtime_pass_via_worker(settings: RuntimeSettings) -> RuntimePass
                 completed = subprocess.run(command, env=_worker_environment(root, worker_lock_token), text=True, capture_output=True, timeout=settings.worker_timeout_seconds)
             except subprocess.TimeoutExpired as exc:
                 raise RuntimePassError("WORKER_TIMEOUT", "NotebookLM worker exceeded its bounded runtime") from exc
-            if completed.returncode != 0:
+            worker_result = _read_worker_result(response)
+            if worker_result is None:
                 err = _redact_for_log((completed.stderr or completed.stdout or "notebooklm worker failed").strip())
                 raise RuntimePassError("WORKER_FAILED", str(err))
-            if not response.is_file():
-                raise RuntimePassError("WORKER_FAILED", "worker did not produce a result file")
-            data = json.loads(response.read_text(encoding="utf-8"))
-            if not isinstance(data, dict):
-                raise RuntimePassError("WORKER_FAILED", "worker result is not a JSON object")
-            return RuntimePassResult(**data)
+            expected_exit = runtime_exit_code(worker_result)
+            if completed.returncode != expected_exit:
+                raise RuntimePassError("WORKER_CONTRACT_VIOLATION", "worker exit code does not match its structured result status")
+            return worker_result
     except RuntimePassError as exc:
         _record_worker_failure(settings, exc)
         raise
@@ -1447,7 +1462,7 @@ def _run_worker_mode(request: Path, result: Path) -> int:
     )
     result_obj = asyncio.run(run_policy_runtime_pass(settings, use_inline=True, workspace_lock_held=True))
     _safe_write_json(result, result_obj.as_json())
-    return 0
+    return runtime_exit_code(result_obj)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -1472,10 +1487,6 @@ def run_cli(argv: list[str] | None = None, settings: RuntimeSettings | None = No
     except RuntimePassError as exc:
         payload = {"goal": NOTEBOOKLM_RUNTIME_GOAL, "status": "FAILED", "error_code": exc.code, "error": exc.detail}
         raise RuntimeError(json.dumps(payload, ensure_ascii=False))
-
-
-def runtime_exit_code(result: RuntimePassResult) -> int:
-    return 0 if result.status == "READY" else 1
 
 
 def _run_as_command() -> int:

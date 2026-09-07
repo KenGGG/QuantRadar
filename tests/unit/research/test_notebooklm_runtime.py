@@ -404,6 +404,78 @@ def test_module_cli_returns_nonzero_for_nonready_result(monkeypatch: pytest.Monk
     assert runtime._run_as_command() != 0
 
 
+@pytest.mark.parametrize(("status", "expected_exit"), [("READY", 0), ("FAILED", 1)])
+def test_worker_mode_writes_structured_result_before_status_exit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status: str, expected_exit: int
+) -> None:
+    settings = runtime.RuntimeSettings(data_dir=tmp_path, profile_path=tmp_path / "profile", venv_python=Path("/bin/python"), use_worker=False)
+    request = tmp_path / "request.json"
+    result_path = tmp_path / "result.json"
+    payload = settings.to_request_payload()
+    payload["worker_lock_token"] = "worker-lock-token"
+    runtime._write_private_worker_json(request, payload)
+    monkeypatch.setenv(runtime.WORKER_LOCK_TOKEN_ENV, "worker-lock-token")
+
+    async def completed(*_args: object, **_kwargs: object):
+        return runtime.RuntimePassResult(status=status, error_code=("AUTH_REQUIRED" if status == "FAILED" else None))
+
+    monkeypatch.setattr(runtime, "run_policy_runtime_pass", completed)
+    assert runtime._run_worker_mode(request, result_path) == expected_exit
+    persisted = json.loads(result_path.read_text(encoding="utf-8"))
+    assert persisted["status"] == status
+    if status == "FAILED":
+        assert persisted["error_code"] == "AUTH_REQUIRED"
+
+
+def test_parent_preserves_nonzero_worker_failed_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = runtime.RuntimeSettings(data_dir=tmp_path, profile_path=tmp_path / "profile", venv_python=Path("/bin/python"))
+    monkeypatch.setattr(runtime, "ensure_runtime_locked", lambda _settings: None)
+
+    def nonzero_worker(command: list[str], **_kwargs: object):
+        result_path = Path(command[command.index("--result") + 1])
+        runtime._safe_write_json(result_path, runtime.RuntimePassResult(status="FAILED", error_code="AUTH_REQUIRED", pipeline_error_code="AUTH_REQUIRED").as_json())
+        return SimpleNamespace(returncode=1, stdout="", stderr="")
+
+    monkeypatch.setattr(runtime.subprocess, "run", nonzero_worker)
+    result = runtime.run_policy_runtime_pass_via_worker(settings)
+    assert result.status == "FAILED"
+    assert result.error_code == result.pipeline_error_code == "AUTH_REQUIRED"
+
+
+@pytest.mark.parametrize("payload", [None, "{not-json"])
+def test_parent_reports_worker_failed_only_without_valid_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, payload: str | None) -> None:
+    settings = runtime.RuntimeSettings(data_dir=tmp_path, profile_path=tmp_path / "profile", venv_python=Path("/bin/python"))
+    monkeypatch.setattr(runtime, "ensure_runtime_locked", lambda _settings: None)
+
+    def crashed_worker(command: list[str], **_kwargs: object):
+        if payload is not None:
+            Path(command[command.index("--result") + 1]).write_text(payload, encoding="utf-8")
+        return SimpleNamespace(returncode=1, stdout="", stderr="worker crashed")
+
+    monkeypatch.setattr(runtime.subprocess, "run", crashed_worker)
+    with pytest.raises(runtime.RuntimePassError) as caught:
+        runtime.run_policy_runtime_pass_via_worker(settings)
+    assert caught.value.code == "WORKER_FAILED"
+
+
+@pytest.mark.parametrize(("status", "returncode"), [("READY", 1), ("FAILED", 0)])
+def test_parent_rejects_worker_exit_contract_mismatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status: str, returncode: int
+) -> None:
+    settings = runtime.RuntimeSettings(data_dir=tmp_path, profile_path=tmp_path / "profile", venv_python=Path("/bin/python"))
+    monkeypatch.setattr(runtime, "ensure_runtime_locked", lambda _settings: None)
+
+    def inconsistent_worker(command: list[str], **_kwargs: object):
+        result_path = Path(command[command.index("--result") + 1])
+        runtime._safe_write_json(result_path, runtime.RuntimePassResult(status=status).as_json())
+        return SimpleNamespace(returncode=returncode, stdout="", stderr="")
+
+    monkeypatch.setattr(runtime.subprocess, "run", inconsistent_worker)
+    with pytest.raises(runtime.RuntimePassError) as caught:
+        runtime.run_policy_runtime_pass_via_worker(settings)
+    assert caught.value.code == "WORKER_CONTRACT_VIOLATION"
+
+
 def test_fulltext_rejects_long_login_page_and_requires_expected_marker() -> None:
     class Sources:
         async def get_fulltext(self, *_args: object, **_kwargs: object):
