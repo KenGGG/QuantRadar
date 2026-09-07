@@ -17,16 +17,16 @@ file records present facts, not plans or chronological logs.
 PR #3 (merge commit `7ba6cff`). The Agnes seven-day observation was terminated
 by the approved provider-cutover decision and is recorded as
 `REPORT_MVP_7D_LIVE_PASS = ABORTED_BY_PROVIDER_CUTOVER`; this is not a product
-failure. The only active goal is `NOTEBOOKLM_POLICY_RUNTIME_PASS` under
-milestone `QUANTRADAR_RESEARCH_NOTEBOOKLM_PASS`.
+failure. The only active goal is `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS` under
+milestone `QUANTRADAR_LOCAL_BACKTEST_WEBUI_PASS`. Backtest WebUI development
+is unfrozen; browser acceptance has not passed. NotebookLM development is paused.
 `REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
 `REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`, and
 `REPORT_MVP_OPERATIONS_PASS` are historical completed Goals.
 
 The approved NotebookLM architecture is frozen in
 `docs/superpowers/specs/2026-09-03-research-notebooklm-synthesis-design.md`.
-NotebookLM business code, runtime setup, authentication, and real QYJ uploads
-have not started. The formal systemd service/timer remains unchanged.
+NotebookLM runtime code exists, including pre-auth gates; its goal has not passed. The formal systemd service/timer remains unchanged.
 
 ### Enterprise Alert Research MVP: implemented
 
@@ -112,8 +112,9 @@ have not started. The formal systemd service/timer remains unchanged.
 
 ## Frozen Historical Facts
 
-- BulletTrade WebUI/backtest is sealed with native report artifacts,
-  reproducible snapshots, async worker recovery, and CI coverage.
+- BulletTrade WebUI/backtest has native report artifacts, reproducible snapshots,
+  async worker recovery, and CI coverage. Its browser workflow is not yet accepted
+  and development is unfrozen by the current goal.
 - Qlib research hardening and OOS tooling are complete historical work.
 - Kronos Goals 0–2 have recorded data-audit, GPU-runtime, and pipeline
   evidence. Their data/real-assist limitations remain recorded.

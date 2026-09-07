@@ -1,95 +1,39 @@
 # QuantRadar Active Phase
 
-**Milestone:** `QUANTRADAR_RESEARCH_NOTEBOOKLM_PASS`
-**Active Goal:** `NOTEBOOKLM_POLICY_RUNTIME_PASS`
+**Milestone:** `QUANTRADAR_LOCAL_BACKTEST_WEBUI_PASS`
+**Active Goal:** `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS`
 **Status:** ACTIVE
 
-`MULTIFORMAT_CONTENT_GATE = PASS`
+## 唯一目标与授权范围
 
-`REPORT_MVP_YESTERDAY_DIGEST_PASS = PASS`
+交付聚宽式本地日频回测 WebUI：浏览器管理、编辑和保存策略，配置参数，
+使用本地 investment_data 经 InvestmentDataProvider 和 BulletTrade 回测，
+查看收益、持仓、成交、日志，并恢复历史源码与配置继续编辑。
+解除本目标所需 React、FastAPI、Worker、PostgreSQL、Provider、BulletTrade 开发冻结。
+复用现有引擎、任务体系和原生报告，不新增第二套实现或指标计算。
 
-`REPORT_MVP_7D_LIVE_PASS = ABORTED_BY_PROVIDER_CUTOVER`
+研报保持现有每日运行，只修必要故障。NotebookLM 后续目标暂停；Qlib、Kronos、
+新数据源、ETF、实盘及其他扩展不在本轮范围。不得以 Qlib 成熟、全市场数据或
+研报七日观察为前置条件，推迟已支持范围的交付。
 
-`NOTEBOOKLM_POLICY_RUNTIME_PASS = false`
+## 执行与验收门禁
 
-## Scope
+1. 先在本地实际部署版本用浏览器走主流程，记录第一个失败或无法完成的操作。
+2. 沿流程逐项修复：保存重开、报告后编辑、历史源码/配置恢复、报告与成功状态
+   一致、菜单导航、任务失败提示、页面参数实际生效。
+3. 买入持有、双均线、多股票定期再平衡三个样例完成浏览器端到端验收。
+4. 保存实际操作路径、部署版本、运行 ID、页面与原生结果证据及不支持范围。
+   测试通过、脚本成功或生成报告文件均不能单独判定交付。
+5. 达标后更新 CURRENT_STATE 和本文件，提交 commit。里程碑完成后停止。
 
-The only active work is the separately approved design and future validation of
-the NotebookLM policy and isolated runtime using explicitly permitted
-non-sensitive inputs.
-
-```text
-one fixed Notebook → exclusive workspace lock → reset
-→ non-sensitive Source → READY → indexed fulltext
-→ explicit-source chat and citations → persist evidence
-→ bounded Conversation/Source cleanup → verify empty workspace
-```
-
-The frozen architecture is
-`docs/superpowers/specs/2026-09-03-research-notebooklm-synthesis-design.md`.
-
-The current Goal does not implement the formal QYJ pipeline, upload real QYJ
-data, modify the formal systemd service/timer, or cut over Feishu delivery.
-
-## Provider-cutover decision
-
-The previous Agnes seven-real-operating-day observation was terminated by the
-approved provider-cutover decision without being marked as a product failure:
-
-```text
-REPORT_MVP_7D_LIVE_PASS = ABORTED_BY_PROVIDER_CUTOVER
-```
-
-All Agnes code, results, and acceptance evidence remain preserved. The formal
-user-level systemd configuration is unchanged by the architecture-documentation
-change.
-
-## Frozen product boundaries
-
-- Reuse QYJ collection, Snapshot membership, original artifacts, MinerU,
-  Canonical Markdown, source audit, Outbox, Feishu, and the read-only WebUI.
-- Maintain one fixed dedicated Notebook; Sources and Conversations are
-  temporary and QuantRadar remains the permanent source of truth.
-- Do not add a second Notebook, sharding, Notebook archival, RAG, a vector
-  database, an MCP Server, Weixin search, Celery, Redis, or a new task queue.
-- Keep Kronos Goals 0–2, Kronos WebUI, BulletTrade, Qlib, frontend bundle
-  optimization, ETF, live trading, and unrelated models frozen.
-
-The only formal Research channels remain:
-
-- `HOT` — 热门研报 — `hotReport=1`, `secondReportType=`.
-- `STRATEGY` — 策略研究 — `secondReportType=10301,10302,10303`.
-- `FINANCIAL_ENGINEERING` — 金融工程 — `secondReportType=10202,10203`.
-
-Do not add or substitute `FIXED_INCOME`.
-
-## Completed Goals
-
-- `REPORT_MVP_BASELINE_PASS` — `PASS`
-- `REPORT_MVP_AGNES_PASS` — `PASS`
-- `REPORT_MVP_PIPELINE_RESUME_PASS` — `PASS`
-- `REPORT_MVP_DELIVERY_PASS` — `PASS`
-- `REPORT_MVP_OPERATIONS_PASS` — `PASS`
-- `REPORT_MVP_WEB_VISIBILITY_PASS` — `PASS`
-- `MULTIFORMAT_CONTENT_GATE` — `PASS`
-- `REPORT_MVP_YESTERDAY_DIGEST_PASS` — `PASS`
-
-Agnes acceptance includes live QYJ reports across 2026-08-26, 2026-08-27,
-and 2026-08-28; short and chunked-long analysis, traceable Evidence,
-recoverable retry, and idempotent replay remain saved as structured evidence.
+`LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS = false`
 
 ## Queued Goals
 
-1. `NOTEBOOKLM_SOURCE_SYNC_PASS`
-2. `NOTEBOOKLM_CHANNEL_SYNTHESIS_PASS`
-3. `NOTEBOOKLM_SHADOW_ACCEPTANCE_PASS`
-4. `REPORT_MVP_NOTEBOOKLM_CUTOVER_PASS`
-5. `REPORT_MVP_NOTEBOOKLM_7D_LIVE_PASS`
+无。本轮只有上述 Goal；不自动恢复研报、Qlib 或 Kronos 队列。
 
-## Current Goal gate
+## 历史状态
 
-`NOTEBOOKLM_POLICY_RUNTIME_PASS = false` until a separately approved
-implementation completes the non-sensitive runtime, fixed-Notebook binding,
-workspace locking/reset, measured capacity, Source READY/fulltext, explicit
-Source-ID chat/citations, bounded Conversation reset, credential redaction, and
-verified Source/Conversation cleanup acceptance.
+此前研报已完成能力与证据保留于 CURRENT_STATE 及历史 Git 文档。
+`REPORT_MVP_7D_LIVE_PASS = ABORTED_BY_PROVIDER_CUTOVER` 保持原结论。
+NotebookLM 原 `NOTEBOOKLM_POLICY_RUNTIME_PASS` 未验收，暂停而非判定通过。

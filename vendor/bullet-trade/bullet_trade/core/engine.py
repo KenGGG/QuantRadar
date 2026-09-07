@@ -115,6 +115,7 @@ class BacktestEngine:
         after_trading_end: Optional[Callable] = None,
         process_initialize: Optional[Callable] = None,
         data_session_config: Optional[Dict[str, Any]] = None,
+        use_real_price: Optional[bool] = None,
     ):
         """
         初始化回测引擎
@@ -138,6 +139,7 @@ class BacktestEngine:
             process_initialize: 实盘初始化函数
             data_session_config: 回测数据会话配置，仅用于回测内的临时性能优化
         """
+        self.use_real_price = use_real_price
         self.strategy_file = strategy_file
         self.start_date = pd.to_datetime(start_date) if start_date else None
         self.end_date = pd.to_datetime(end_date) if end_date else None
@@ -670,6 +672,8 @@ class BacktestEngine:
 
         # 加载策略
         self.load_strategy()
+        if self.use_real_price is not None:
+            set_option("use_real_price", self.use_real_price)
 
         # 注意：load_strategy 内部会调用 reset_settings()，需要重新注入频率配置
         set_option("backtest_frequency", self.frequency)
@@ -2722,6 +2726,7 @@ def create_backtest(
     initial_positions: Optional[List[Dict[str, Any]]] = None,
     algorithm_id: Optional[str] = None,
     data_session_config: Optional[Dict[str, Any]] = None,
+    use_real_price: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """
     创建并运行回测
@@ -2751,6 +2756,7 @@ def create_backtest(
         initial_positions=initial_positions,
         algorithm_id=algorithm_id,
         data_session_config=data_session_config,
+        use_real_price=use_real_price,
     )
 
     return engine.run()

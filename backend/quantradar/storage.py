@@ -289,6 +289,11 @@ def get_run(run_id: str, session=None) -> Optional[Dict[str, Any]]:
             s.close()
 
 
+def list_strategies(limit: int = 100):
+    with get_session() as session:
+        return [item.to_dict() for item in session.query(Strategy).order_by(Strategy.id.desc()).limit(limit)]
+
+
 def get_strategy(strategy_id: int, session=None) -> Optional[Strategy]:
     """按 id 取策略记录（含源码）；不存在返回 None。"""
     own = session is None

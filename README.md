@@ -4,13 +4,13 @@
 
 核心理念：以 [investment_data](https://github.com/chenditc/investment_data)（Dolt 只读事实源）为唯一数据真相，回测核心复用项目内 `vendor/bullet-trade` 的撮合/账户/组合会计，所有实验结果通过 Snapshot 指纹固化，保证可复现、防未来函数。
 
-> 状态：**QUANTRADAR_FUNCTIONAL_V1_PASS ✅**（功能型 V1 达成；严谨研究型 V1 加固进行中，见 docs/ACTIVE_PHASE.md）
+> 当前交付：**本地日频回测 WebUI 浏览器验收进行中，尚未交付验收**，见 [ACTIVE_PHASE](docs/ACTIVE_PHASE.md)。历史功能门禁不代表用户主流程已验收。
 
 ---
 
 ## 一、能力矩阵（功能型 V1）
 
-> 状态：**QUANTRADAR_FUNCTIONAL_V1_PASS ✅**（功能闭环可用）。原 `QUANTRADAR_V1_PASS` 已降级为
+> 状态：**QUANTRADAR_FUNCTIONAL_V1_PASS ✅**（历史工程门禁；浏览器主流程待本轮验收）。原 `QUANTRADAR_V1_PASS` 已降级为
 > 功能型——严谨研究型 V1（数据层完整性、复权口径统一、多模型/参数寻优、样本外稳健性）尚待后续阶段。
 
 | 标志 | 含义 |

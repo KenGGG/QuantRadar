@@ -14,6 +14,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+import math
 import os
 import uuid
 from types import SimpleNamespace
@@ -34,7 +35,12 @@ def _to_native(value: Any, ndigits: int = 6) -> Any:
     if isinstance(value, (int,)) and not isinstance(value, bool):
         return int(value)
     if isinstance(value, (float,)):
-        return round(float(value), ndigits) if value == value else None  # NaN -> None
+        if math.isnan(value):
+            return None
+        if math.isinf(value):
+            # 保留 BulletTrade 无亏损时的无限盈亏比含义，PostgreSQL/HTTP JSON 不允许裸 Infinity。
+            return "Infinity" if value > 0 else "-Infinity"
+        return round(float(value), ndigits)
     if hasattr(value, "item"):  # numpy scalar
         try:
             v = value.item()
