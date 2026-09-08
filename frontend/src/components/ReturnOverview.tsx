@@ -15,8 +15,8 @@ export const ReturnOverview = memo(function ReturnOverview({ data, compact = fal
     if (!element) return;
     const observer = new ResizeObserver(() => {
       if (!element.clientWidth) return;
-      returnsChart.current?.getEchartsInstance()?.resize();
-      assetsChart.current?.getEchartsInstance()?.resize();
+      returnsChart.current?.getEchartsInstance()?.resize({ width: "auto", height: "auto" });
+      assetsChart.current?.getEchartsInstance()?.resize({ width: "auto", height: "auto" });
     });
     observer.observe(element);
     return () => observer.disconnect();

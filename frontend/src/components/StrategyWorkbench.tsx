@@ -10,6 +10,7 @@ import {
   Select,
 } from "antd";
 import Editor from "@monaco-editor/react";
+import type { editor } from "monaco-editor";
 import {
   listStrategies, saveStrategy, type StrategyRecord,
   submitAsync,
@@ -37,7 +38,13 @@ export function StrategyWorkbench({
   onRunChange: (runId: string) => void;
 }) {
   const [mode, setMode] = useState<"builtin" | "user">("user");
-  const [code, setCode] = useState(SAMPLES.buyhold.source);
+  const codeRef = useRef(SAMPLES.buyhold.source);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const setCode = (source: string) => {
+    codeRef.current = source;
+    editorRef.current?.setValue(source);
+  };
+  const currentCode = () => editorRef.current?.getValue() ?? codeRef.current;
   const [name, setName] = useState("买入持有");
   const [strategies, setStrategies] = useState<StrategyRecord[]>([]);
   const [saved, setSaved] = useState("");
@@ -96,7 +103,7 @@ export function StrategyWorkbench({
   const onSave = async () => {
     setSaving(true); setError(null);
     try {
-      const item = await saveStrategy(name, code);
+      const item = await saveStrategy(name, currentCode());
       setStrategies((await listStrategies()).strategies);
       setSaved(`已保存版本 #${item.id}：${item.name}`);
     } catch (e) { setError(String(e)); }
@@ -149,7 +156,7 @@ export function StrategyWorkbench({
       strategy_name: name, amount, extras,
     };
     const payload: BacktestPayload =
-      mode === "user" ? { ...base, code } : { ...base, security };
+      mode === "user" ? { ...base, code: currentCode() } : { ...base, security };
     submitAsync(payload)
       .then((r) => {
         setRun({ run_id: r.run_id, status: "PENDING", config: r.config });
@@ -189,8 +196,9 @@ export function StrategyWorkbench({
         <span className="save-state" role="status">{saved || "编辑后请保存版本"}</span>
       </div>
       {mode === "builtin" && <div className="builtin-note">内置模式使用右侧标的和股数生成策略；切换自定义源码可编辑当前代码。</div>}
-      <div className="code-editor"><Editor height="100%" defaultLanguage="python" theme="vs-dark" value={code}
-        onChange={v => { setCode(v ?? ""); setSaved(""); }}
+      <div className="code-editor"><Editor height="100%" defaultLanguage="python" theme="vs-dark" defaultValue={codeRef.current}
+        onMount={instance => { editorRef.current = instance; if (instance.getValue() !== codeRef.current) instance.setValue(codeRef.current); }}
+        onChange={v => { codeRef.current = v ?? ""; setSaved(""); }}
         options={{ readOnly: mode === "builtin", minimap: { enabled: false }, fontSize: 14, automaticLayout: true, scrollBeyondLastLine: false, padding: { top: 12 } }} /></div>
       <div className="editor-footer"><span>Python3</span><span>UTF-8 · JoinQuant 兼容语法</span></div>
     </section>
