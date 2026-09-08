@@ -297,6 +297,18 @@ export function getRunArtifacts(runId: string): Promise<RunArtifactsResp> {
   return httpJson<RunArtifactsResp>(`/api/backtest/runs/${encodeURIComponent(runId)}/artifacts`);
 }
 
+export interface ReportTable { columns: string[]; rows: Record<string, string>[]; available: boolean; }
+export interface NativeReportData {
+  metrics: Record<string, string | number | null>;
+  meta: Record<string, unknown>;
+  daily: ReportTable;
+  trades: ReportTable;
+  positions: ReportTable;
+}
+export function getRunReportData(runId: string): Promise<NativeReportData> {
+  return httpJson(`/api/backtest/runs/${encodeURIComponent(runId)}/report-data`);
+}
+
 export function getRunReportUrl(runId: string, which: "full" | "standard" = "standard"): string {
   return `/api/backtest/runs/${encodeURIComponent(runId)}/report?which=${which}`;
 }

@@ -1,9 +1,18 @@
 # QuantRadar Active Phase
 
 **Milestone:** `QUANTRADAR_LOCAL_BACKTEST_WEBUI_PASS`
-**Active Goal:** `NONE`
+**Active Goal:** `JOINQUANT_LAYOUT_BROWSER_ACCEPTANCE_PASS`
 **Completed Goal:** `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS`
-**Status:** COMPLETE
+**Status:** IN_PROGRESS
+
+## 当前布局改版（2026-09-08）
+
+按用户提供的两张聚宽截图调整现有全部 WebUI 的布局与视觉：深蓝横向导航、
+策略标题与页签、左源码右参数/收益/日志的编辑工作台，以及左详情导航右指标图表的报告页。
+保留 QuantRadar 品牌及现有数据、研报、运行和实验功能；不加入截图中的未支持业务。
+复用原生指标和 CSV 展示，不新增指标计算。浏览器复核三个样例、保存重开、
+报告后继续编辑、历史恢复、失败提示、各菜单及窄屏布局，保存改版截图与运行证据。
+首次操作阻断：本地 7231 端口不可连接；恢复现有服务后继续验收。
 
 ## 唯一目标与授权范围
 
@@ -35,7 +44,7 @@
 菜单导航、故意失败及缺基准失败提示、内置标的/股数/资金/日期实际生效。
 证据与限制见 [浏览器交付记录](acceptance/local-backtest/README.md)
 和 [运行清单](acceptance/local-backtest/manifest.json)。
-里程碑已完成，无下一排队 Goal。
+上述为上一版主流程证据；当前截图布局改版尚未验收。
 
 ## Queued Goals
 

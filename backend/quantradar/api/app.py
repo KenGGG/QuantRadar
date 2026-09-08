@@ -13,6 +13,8 @@
 from __future__ import annotations
 
 import os
+import csv
+import json
 import subprocess
 import tempfile
 from datetime import date
@@ -553,6 +555,32 @@ def backtest_run_artifacts(run_id: str) -> Dict[str, Any]:
         "report_url": f"/api/backtest/runs/{run_id}/report?which=full",
         "standard_report_url": f"/api/backtest/runs/{run_id}/report?which=standard",
     }
+
+
+@app.get("/api/backtest/runs/{run_id}/report-data")
+def backtest_run_report_data(run_id: str) -> Dict[str, Any]:
+    """Read native BulletTrade outputs for the WebUI; never calculate metrics here."""
+    from quantradar.snapshot import _to_native
+
+    run_dir = Path(_run_dir_of(run_id))
+    required = ("report.html", "standard_report.html", "metrics.json", "daily_records.csv")
+    missing = [name for name in required if not (run_dir / name).is_file() or not (run_dir / name).stat().st_size]
+    if missing:
+        raise HTTPException(status_code=409, detail=f"回测报告产物缺失：{', '.join(missing)}")
+    try:
+        data = _to_native(json.loads((run_dir / "metrics.json").read_text(encoding="utf-8")))
+        tables = {}
+        for key, filename in (("daily", "daily_records.csv"), ("trades", "trades.csv"), ("positions", "daily_positions.csv")):
+            path = run_dir / filename
+            if not path.is_file():
+                tables[key] = {"columns": [], "rows": [], "available": False}
+                continue  # Native reporting omits tables when there are no trades/positions.
+            with path.open(encoding="utf-8-sig", newline="") as stream:
+                reader = csv.DictReader(stream)
+                tables[key] = {"columns": reader.fieldnames or [], "rows": list(reader), "available": True}
+        return {"metrics": data.get("metrics", {}), "meta": data.get("meta", {}), **tables}
+    except (ValueError, OSError, csv.Error) as exc:
+        raise HTTPException(status_code=409, detail=f"回测报告读取失败：{exc}") from exc
 
 
 # 常见产物扩展名 -> media type（供查看/下载时正确渲染）

@@ -3,17 +3,11 @@ import dayjs from "dayjs";
 import {
   Alert,
   Button,
-  Card,
-  Col,
   DatePicker,
   Input,
   InputNumber,
   Radio,
-  Row,
   Select,
-  Space,
-  Spin,
-  Typography,
 } from "antd";
 import Editor from "@monaco-editor/react";
 import {
@@ -24,7 +18,8 @@ import {
   type BacktestPayload,
 } from "../api";
 
-const { Text } = Typography;
+import { ReturnOverview } from "./ReturnOverview";
+import { getRunReportData, getRunArtifactUrl, type NativeReportData } from "../api";
 
 import { SAMPLES } from "../strategySamples";
 
@@ -34,10 +29,12 @@ const FQ_OPTIONS = [
 ];
 
 export function StrategyWorkbench({
-  onOpenReport, restoreRun,
+  onOpenReport, restoreRun, onNameChange, onRunChange,
 }: {
   onOpenReport: (runId: string) => void;
   restoreRun: RunRecord | null;
+  onNameChange: (name: string) => void;
+  onRunChange: (runId: string) => void;
 }) {
   const [mode, setMode] = useState<"builtin" | "user">("user");
   const [code, setCode] = useState(SAMPLES.buyhold.source);
@@ -56,11 +53,30 @@ export function StrategyWorkbench({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState<RunRecord | null>(null);
+  const [data, setData] = useState<NativeReportData | null>(null);
+  const [log, setLog] = useState("");
+  const [consoleTab, setConsoleTab] = useState("log");
+  useEffect(() => { onNameChange(name); }, [name, onNameChange]);
+  useEffect(() => {
+    setData(null); setLog("");
+    if (!run) return;
+    onRunChange(run.run_id);
+    if (run.status !== "SUCCESS" && run.status !== "FAILED") return;
+    let active = true;
+    if (run.status === "SUCCESS") getRunReportData(run.run_id).then(d => { if (active) setData(d); }).catch(e => { if (active) setError(String(e)); });
+    fetch(getRunArtifactUrl(run.run_id, "backtest.log")).then(async r => {
+      if (!r.ok) throw new Error(`日志暂不可用 (${r.status})`);
+      return r.text();
+    }).then(text => { if (active) setLog(text); }).catch(e => { if (active) setLog(String(e)); });
+    return () => { active = false; };
+  }, [run?.run_id, run?.status, onRunChange]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollGeneration = useRef(0);
 
   useEffect(() => { listStrategies().then(r => setStrategies(r.strategies)).catch(e => setError(String(e))); }, []);
   useEffect(() => {
     if (!restoreRun) return;
+    stopPoll(); setLoading(false); setRun(restoreRun);
     const cfg = restoreRun.config || {};
     if (cfg.has_code && !cfg.strategy_source) { setError("历史源码缺失，无法恢复"); return; }
     setMode(cfg.has_code ? "user" : "builtin");
@@ -72,6 +88,10 @@ export function StrategyWorkbench({
     setBenchmark(String(cfg.benchmark || "")); setFq(String(cfg.fq || "none"));
     setExtras((cfg.extras as Record<string, unknown>) || null);
     setSaved(`已恢复历史源码与配置：${restoreRun.run_id}`); setError(null);
+    if (["PENDING", "RUNNING"].includes(restoreRun.status)) {
+      setLoading(true);
+      poll(restoreRun.run_id);
+    }
   }, [restoreRun]);
   const onSave = async () => {
     setSaving(true); setError(null);
@@ -84,6 +104,7 @@ export function StrategyWorkbench({
   };
 
   const stopPoll = () => {
+    pollGeneration.current += 1;
     if (timer.current) {
       clearInterval(timer.current);
       timer.current = null;
@@ -93,9 +114,11 @@ export function StrategyWorkbench({
   const poll = useCallback(
     (runId: string) => {
       stopPoll();
+      const generation = pollGeneration.current;
       timer.current = setInterval(async () => {
         try {
           const rec = await getRun(runId);
+          if (generation !== pollGeneration.current) return;
           setRun(rec);
           if (rec.status === "SUCCESS" || rec.status === "FAILED") {
             stopPoll();
@@ -103,11 +126,12 @@ export function StrategyWorkbench({
 
           }
         } catch (e) {
+          if (generation !== pollGeneration.current) return;
           setError(`状态查询失败，将继续重试：${String(e)}`);
         }
       }, 1500);
     },
-    [onOpenReport]
+    []
   );
 
   const onRun = () => {
@@ -140,119 +164,63 @@ export function StrategyWorkbench({
   // 组件卸载时停止轮询
   useEffect(() => stopPoll, []);
 
-  return (
-    <Row gutter={12}>
-      <Col xs={24} lg={11}>
-        <Card size="small" title="策略编辑器（JoinQuant 兼容）" style={{ marginBottom: 12 }}>
-          <Space wrap style={{ marginBottom: 8 }}>
-            <Input aria-label="策略名称" value={name} onChange={e => setName(e.target.value)} style={{ width: 170 }} />
-            <Button onClick={onSave} loading={saving} disabled={mode !== "user"}>保存策略版本</Button>
-            <select aria-label="打开策略版本" value="" onChange={e => {
-              const item = strategies.find(s => s.id === Number(e.target.value));
-              if (item) { setCode(item.source); setName(item.name); setMode("user"); setSaved(`已打开版本 #${item.id}`); }
-            }}>
-              <option value="">打开已保存策略…</option>
-              {strategies.map(s => <option key={s.id} value={s.id}>{s.name} · #{s.id}</option>)}
-            </select>
-            <select aria-label="载入样例" value="" onChange={e => {
-              const sample = SAMPLES[e.target.value as keyof typeof SAMPLES];
-              if (sample) { setCode(sample.source); setName(sample.name); setMode("user"); setSaved(""); }
-            }}>
-              <option value="">载入样例…</option>
-              {Object.entries(SAMPLES).map(([key, s]) => <option key={key} value={key}>{s.name}</option>)}
-            </select>
-          </Space>
-          {saved && <Alert type="success" message={saved} style={{ marginBottom: 8 }} />}
-          <Space style={{ marginBottom: 8 }}>
-            <Radio.Group
-              value={mode}
-              onChange={(e) => setMode(e.target.value)}
-              optionType="button"
-              buttonStyle="solid"
-              options={[
-                { label: "内置 Buy&Hold", value: "builtin" },
-                { label: "自定义源码", value: "user" },
-              ]}
-            />
-          </Space>
-          {mode === "builtin" && <Text type="secondary">内置模式按下方标的与目标股数生成策略；此处源码只用于自定义模式。</Text>}
-          <div style={{ border: "1px solid #d9d9d9", borderRadius: 6, overflow: "hidden" }}>
-            <Editor
-              height="340px"
-              defaultLanguage="python"
-              theme="vs-dark"
-              value={code}
-              onChange={(v) => setCode(v ?? "")}
-              options={{ readOnly: mode === "builtin", minimap: { enabled: false }, fontSize: 13 }}
-            />
-          </div>
-        </Card>
-        <Card size="small" title="回测参数">
-          <Row gutter={8} align="middle">
-            <Col>
-              <Text type="secondary">标的</Text>
-              <Input
-                aria-label="标的" value={security}
-                onChange={(e) => setSecurity(e.target.value)}
-                style={{ width: 170, marginLeft: 8 }}
-                disabled={mode === "user"}
-              />
-            </Col>
-            <Col>
-              <Text type="secondary" style={{ marginLeft: 8 }}>起</Text>
-              <DatePicker aria-label="起始日期" value={start ? dayjs(start) : null} onChange={(d) => setStart(d ? d.format("YYYY-MM-DD") : "")} style={{ marginLeft: 4 }} />
-            </Col>
-            <Col>
-              <Text type="secondary" style={{ marginLeft: 8 }}>止</Text>
-              <DatePicker aria-label="结束日期" value={end ? dayjs(end) : null} onChange={(d) => setEnd(d ? d.format("YYYY-MM-DD") : "")} style={{ marginLeft: 4 }} />
-            </Col>
-          </Row>
-          <Row gutter={8} align="middle" style={{ marginTop: 8 }}>
-            <Col>
-              <Text type="secondary">初始资金</Text>
-              <InputNumber aria-label="初始资金" value={cash} min={10000} step={10000} onChange={(v) => setCash(v ?? 500000)} style={{ marginLeft: 4, width: 130 }} />
-            </Col>
-            <Col>
-              <Text type="secondary" style={{ marginLeft: 8 }}>Benchmark</Text>
-              <Input aria-label="基准" value={benchmark} onChange={(e) => setBenchmark(e.target.value)} placeholder="000300.XSHG" style={{ width: 140, marginLeft: 4 }} />
-            </Col>
-            <Col>
-              <Text type="secondary" style={{ marginLeft: 8 }}>复权</Text>
-              <Select value={fq} onChange={setFq} options={FQ_OPTIONS} style={{ width: 130, marginLeft: 4 }} />
-            </Col>
-          </Row>
-          {mode === "builtin" && <div>目标股数 <InputNumber aria-label="目标股数" value={amount} min={100} step={100} onChange={v => setAmount(v || 100)} /></div>}
-          <Text type="secondary">日频；复权控制引擎行情口径，策略显式 get_price(fq=…) 以源码为准。源码内 set_benchmark 会覆盖页面基准。</Text>
-          <Button type="primary" loading={loading} onClick={onRun} style={{ marginTop: 12 }}>
-            {mode === "user" ? "运行策略回测" : "运行 Buy&Hold 回测"}
-          </Button>
-        </Card>
-      </Col>
-      <Col xs={24} lg={13}>
-        <Card size="small" title="提交状态">
-          {loading && (
-            <div style={{ textAlign: "center", padding: 40 }}>
-              <Spin tip="后台回测执行中（真实数据，复用 BulletTrade 原生报告）..." />
-            </div>
-          )}
-          {!loading && !run && <Text type="secondary">填写策略与参数后点击运行；完成后点击打开完整回测报告，返回可继续编辑。</Text>}
-          {!loading && run && (
-            <Space direction="vertical" style={{ width: "100%" }}>
-              <Text>run_id：<Text copyable>{run.run_id}</Text></Text>
-              <Text>状态：{run.status}</Text>
-              {run.status === "SUCCESS" && (
-                <Button type="link" onClick={() => onOpenReport(run.run_id)}>
-                  打开完整回测报告 →
-                </Button>
-              )}
-              {run.status === "FAILED" && run.error && (
-                <Alert type="error" showIcon message="回测失败" description={<pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{run.error}</pre>} />
-              )}
-            </Space>
-          )}
-          {error && <Alert type="error" showIcon message={error} style={{ marginTop: 12 }} />}
-        </Card>
-      </Col>
-    </Row>
-  );
+  return <div className="strategy-workbench">
+    <section className="editor-pane" aria-label="策略编辑器">
+      <div className="editor-toolbar">
+        <Input aria-label="策略名称" value={name} onChange={e => { setName(e.target.value); setSaved(""); }} style={{ width: 155 }} />
+        <Button onClick={onSave} loading={saving} disabled={mode !== "user"}>保存策略版本</Button>
+        <select aria-label="打开策略版本" value="" onChange={e => {
+          const item = strategies.find(s => s.id === Number(e.target.value));
+          if (item) { setCode(item.source); setName(item.name); setMode("user"); setSaved(`已打开版本 #${item.id}`); }
+        }}>
+          <option value="">打开已保存策略…</option>
+          {strategies.map(s => <option key={s.id} value={s.id}>{s.name} · #{s.id}</option>)}
+        </select>
+        <select aria-label="载入样例" value="" onChange={e => {
+          const sample = SAMPLES[e.target.value as keyof typeof SAMPLES];
+          if (sample) { setCode(sample.source); setName(sample.name); setMode("user"); setSaved(""); }
+        }}>
+          <option value="">载入样例…</option>
+          {Object.entries(SAMPLES).map(([key, s]) => <option key={key} value={key}>{s.name}</option>)}
+        </select>
+      </div>
+      <div className="editor-mode">
+        <Radio.Group size="small" value={mode} onChange={e => setMode(e.target.value)} options={[{ label: "自定义源码", value: "user" }, { label: "内置 Buy&Hold", value: "builtin" }]} />
+        <span className="save-state" role="status">{saved || "编辑后请保存版本"}</span>
+      </div>
+      {mode === "builtin" && <div className="builtin-note">内置模式使用右侧标的和股数生成策略；切换自定义源码可编辑当前代码。</div>}
+      <div className="code-editor"><Editor height="100%" defaultLanguage="python" theme="vs-dark" value={code}
+        onChange={v => { setCode(v ?? ""); setSaved(""); }}
+        options={{ readOnly: mode === "builtin", minimap: { enabled: false }, fontSize: 14, automaticLayout: true, scrollBeyondLastLine: false, padding: { top: 12 } }} /></div>
+      <div className="editor-footer"><span>Python3</span><span>UTF-8 · JoinQuant 兼容语法</span></div>
+    </section>
+    <section className="preview-pane" aria-label="回测工作区">
+      <div className="backtest-toolbar">
+        <DatePicker aria-label="起始日期" value={start ? dayjs(start) : null} onChange={d => setStart(d ? d.format("YYYY-MM-DD") : "")} />
+        <span>至</span>
+        <DatePicker aria-label="结束日期" value={end ? dayjs(end) : null} onChange={d => setEnd(d ? d.format("YYYY-MM-DD") : "")} />
+        <label className="cash-field">¥ <InputNumber aria-label="初始资金" value={cash} min={1} step={10000} onChange={v => setCash(v ?? 0)} /></label>
+        <span className="frequency-label">每天</span>
+        <Button type="primary" loading={loading} onClick={onRun}>{mode === "user" ? "运行策略回测" : "运行 Buy&Hold 回测"}</Button>
+      </div>
+      <div className="secondary-toolbar">
+        <label>基准 <Input aria-label="基准" value={benchmark} onChange={e => setBenchmark(e.target.value)} placeholder="不使用基准" /></label>
+        <label>复权 <Select aria-label="复权" value={fq} onChange={setFq} options={FQ_OPTIONS} /></label>
+        {mode === "builtin" && <><label>标的 <Input aria-label="标的" value={security} onChange={e => setSecurity(e.target.value)} /></label><label>目标股数 <InputNumber aria-label="目标股数" value={amount} min={100} step={100} onChange={v => setAmount(v || 100)} /></label></>}
+        <span className="parameter-note" title="策略内 set_benchmark 会覆盖页面基准；显式 get_price(fq=…) 以源码为准。">源码设置优先 ⓘ</span>
+      </div>
+      <div className="preview-result">
+        {error && <Alert type="error" showIcon message={error} closable onClose={() => setError(null)} />}
+        {run?.status === "FAILED" && <Alert type="error" showIcon message="回测失败" description={run.error} />}
+        <ReturnOverview data={data} compact />
+        <div className="run-status" role="status"><span>{loading ? "回测执行中…" : run ? `状态：${run.status} · ${run.run_id}` : "就绪 · 等待运行"}</span>
+          {run?.status === "SUCCESS" && <Button type="link" onClick={() => onOpenReport(run.run_id)}>打开完整回测报告 →</Button>}
+        </div>
+      </div>
+      <div className="console-pane">
+        <div className="console-tabs"><button className={consoleTab === "log" ? "active" : ""} onClick={() => setConsoleTab("log")}>日志</button><button className={consoleTab === "error" ? "active" : ""} onClick={() => setConsoleTab("error")}>错误{run?.status === "FAILED" ? " · 1" : ""}</button><span>{run ? "本次回测输出" : "运行输出"}</span></div>
+        <pre className="console-output">{consoleTab === "error" ? (error || run?.error || "暂无错误") : log || (loading ? "正在执行回测，完成后显示完整日志…" : "等待策略运行…")}</pre>
+      </div>
+    </section>
+  </div>;
 }

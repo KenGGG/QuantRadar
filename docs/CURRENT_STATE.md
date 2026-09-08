@@ -5,8 +5,8 @@ file records present facts, not plans or chronological logs.
 
 ## Repository
 
-- Branch: `docs/research-notebooklm-architecture`
-- Remote backup: `origin/docs/research-notebooklm-architecture`.
+- Branch: `main`
+- Remote backup: `origin/main` (baseline `3c87bb2`).
 - HEAD: the current commit on this branch (`git rev-parse HEAD`).
 - Local runtime state under `data/runtime/` is ignored and is not source data.
 
@@ -18,8 +18,9 @@ PR #3 (merge commit `7ba6cff`). The Agnes seven-day observation was terminated
 by the approved provider-cutover decision and is recorded as
 `REPORT_MVP_7D_LIVE_PASS = ABORTED_BY_PROVIDER_CUTOVER`; this is not a product
 failure. `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS` and milestone
-`QUANTRADAR_LOCAL_BACKTEST_WEBUI_PASS` are complete. There is no active or queued
-Goal. NotebookLM development is paused.
+`QUANTRADAR_LOCAL_BACKTEST_WEBUI_PASS` passed for the previous layout. The active
+Goal is `JOINQUANT_LAYOUT_BROWSER_ACCEPTANCE_PASS`; screenshot-based layout changes
+are not yet browser accepted. NotebookLM development is paused.
 `REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
 `REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`, and
 `REPORT_MVP_OPERATIONS_PASS` are historical completed Goals.

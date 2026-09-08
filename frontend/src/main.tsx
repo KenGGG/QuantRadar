@@ -16,7 +16,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ConfigProvider
       locale={zhCN}
-      theme={{ token: { colorPrimary: "#2563eb", borderRadius: 8 } }}
+      theme={{ token: { colorPrimary: "#285fa8", borderRadius: 2, fontSize: 13, colorBorder: "#d6dce3", colorText: "#24354b" } }}
     >
       <App />
     </ConfigProvider>

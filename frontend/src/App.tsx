@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
-import { Layout, Menu, Spin, Typography } from "antd";
-import {
-  ApiOutlined,
-  ExperimentOutlined,
-  FileSearchOutlined,
-  CodeOutlined,
-} from "@ant-design/icons";
+import { Button, Menu, Spin } from "antd";
+import { BarChartOutlined, CodeOutlined, HistoryOutlined } from "@ant-design/icons";
 import { getHealth, type RunRecord, type HealthResp } from "./api";
 import { DataStatus } from "./components/DataStatus";
 import { StrategyWorkbench } from "./components/StrategyWorkbench";
@@ -14,79 +9,52 @@ import { ExperimentCompare } from "./components/ExperimentCompare";
 import { ReportPage } from "./components/ReportPage";
 import { ResearchMVP } from "./components/ResearchMVP";
 
-const { Sider, Content, Header } = Layout;
-const { Title, Text } = Typography;
-
 type TabKey = "data" | "research" | "strategy" | "runs" | "experiments";
+const labels = { strategy: "策略回测", runs: "运行记录", data: "数据状态", research: "研报", experiments: "实验对比" };
 
 export function App() {
   const [health, setHealth] = useState<HealthResp | null>(null);
   const [tab, setTab] = useState<TabKey>("strategy");
   const [loading, setLoading] = useState(true);
   const [viewRunId, setViewRunId] = useState<string | null>(null);
-
+  const [lastRunId, setLastRunId] = useState<string | null>(null);
+  const [name, setName] = useState("买入持有");
   const [restoreRun, setRestoreRun] = useState<RunRecord | null>(null);
-  const editRun = (run: RunRecord) => { setRestoreRun(run); setViewRunId(null); setTab("strategy"); };
-
-  const openReport = (runId: string) => {
-    setViewRunId(runId);
-  };
-
+  const navigate = (key: TabKey) => { setViewRunId(null); setTab(key); };
+  const editRun = (run: RunRecord) => { setRestoreRun({ ...run }); navigate("strategy"); };
+  const openReport = (runId: string) => { setLastRunId(runId); setViewRunId(runId); setTab("strategy"); };
   useEffect(() => {
-    getHealth()
-      .then(setHealth)
-      .catch(() => setHealth(null))
-      .finally(() => setLoading(false));
+    getHealth().then(setHealth).catch(() => setHealth(null)).finally(() => setLoading(false));
   }, []);
 
-  return (
-    <Layout style={{ minHeight: "100vh" }}>
-      <Sider theme="dark" width={220} breakpoint="lg" collapsedWidth={0}>
-        <div className="app-logo">量子雷达 · QuantRadar</div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[tab]}
-          onClick={(e) => { setViewRunId(null); setTab(e.key as TabKey); }}
-          items={[
-            { key: "data", icon: <ApiOutlined />, label: "数据状态" },
-            { key: "research", icon: <FileSearchOutlined />, label: "研报" },
-            { key: "strategy", icon: <CodeOutlined />, label: "策略回测" },
-            { key: "runs", icon: <FileSearchOutlined />, label: "运行记录" },
-            { key: "experiments", icon: <ExperimentOutlined />, label: "实验对比" },
-          ]}
-        />
-      </Sider>
-      <Layout>
-        <Header style={{ background: "#fff", paddingInline: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Title level={4} style={{ margin: 0 }}>
-            本地真实数据 · 可审计 · 可复现 的 A 股量化研究平台
-          </Title>
-          <Text type="secondary">
-            数据源：{health ? health.provider : "未连接"}
-            {health?.environment?.quantradar_commit ? ` · commit ${health.environment.quantradar_commit.slice(0, 8)}` : ""}
-          </Text>
-        </Header>
-        <Content className="content-pad">
-          {loading ? (
-            <div style={{ textAlign: "center", marginTop: 80 }}>
-              <Spin tip="连接后端中..." />
-            </div>
-          ) : (
-            <>
-              <div style={{ display: tab === "strategy" && !viewRunId ? "block" : "none" }}>
-                <StrategyWorkbench onOpenReport={openReport} restoreRun={restoreRun} />
-              </div>
-              {viewRunId ? <ReportPage key={viewRunId} runId={viewRunId} onBack={() => setViewRunId(null)} onEdit={editRun} /> : <>
-                {tab === "data" && <DataStatus />}
-                {tab === "research" && <ResearchMVP />}
-                {tab === "runs" && <RunExplorer onOpenReport={openReport} onEdit={editRun} />}
-                {tab === "experiments" && <ExperimentCompare />}
-              </>}
-            </>
-          )}
-        </Content>
-      </Layout>
-    </Layout>
-  );
+  return <div className="app-shell">
+    <header className="global-header">
+      <a className="app-logo" href="#" onClick={e => { e.preventDefault(); navigate("strategy"); }}><span className="logo-bars"><i /><i /><i /></span>QuantRadar</a>
+      <Menu theme="dark" mode="horizontal" selectedKeys={[tab]} onClick={e => navigate(e.key as TabKey)}
+        items={Object.entries(labels).map(([key, label]) => ({ key, label }))} />
+      <span className="connection" title={health?.provider || "未连接"}><i className={health ? "online" : "offline"} />本地研究</span>
+    </header>
+    <div className="workspace-header">
+      <div className="workspace-title"><CodeOutlined /><span>{viewRunId ? "回测详情" : tab === "strategy" ? name : labels[tab]}</span><small>{tab === "strategy" ? "Python3 · 日频" : "QuantRadar 研究平台"}</small></div>
+      {(tab === "strategy" || tab === "runs") ? <nav className="workspace-tabs" aria-label="策略工作区">
+        <button className={tab === "strategy" && !viewRunId ? "active" : ""} onClick={() => navigate("strategy")}>编辑策略</button>
+        <button disabled={!lastRunId} className={viewRunId ? "active" : ""} onClick={() => lastRunId && openReport(lastRunId)}><BarChartOutlined /> 回测详情</button>
+        <button className={tab === "runs" ? "active" : ""} onClick={() => navigate("runs")}><HistoryOutlined /> 回测列表</button>
+      </nav> : <span className="version-note">{health?.environment?.quantradar_commit?.slice(0, 8)}</span>}
+    </div>
+    <main>
+      {loading ? <div className="loading-pane"><Spin tip="连接后端中…" /></div> : <>
+        {!health && <div className="connection-error">后端连接失败，请检查本地服务。<Button size="small" onClick={() => location.reload()}>重新连接</Button></div>}
+        <div style={{ display: tab === "strategy" && !viewRunId ? "block" : "none" }}>
+          <StrategyWorkbench onOpenReport={openReport} restoreRun={restoreRun} onNameChange={setName} onRunChange={setLastRunId} />
+        </div>
+        {viewRunId ? <ReportPage key={viewRunId} runId={viewRunId} onBack={() => navigate("strategy")} onEdit={editRun} /> : <div className={tab === "strategy" ? "" : "page-content"}>
+          {tab === "data" && <DataStatus />}
+          {tab === "research" && <ResearchMVP />}
+          {tab === "runs" && <RunExplorer onOpenReport={openReport} onEdit={editRun} />}
+          {tab === "experiments" && <ExperimentCompare />}
+        </div>}
+      </>}
+    </main>
+  </div>;
 }

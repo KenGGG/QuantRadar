@@ -1,10 +1,32 @@
 """Workflow regressions; browser acceptance separately uses real PostgreSQL/Dolt."""
 import hashlib
+import json
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+
+
+def test_web_report_data_preserves_native_values_and_csv(tmp_path, monkeypatch):
+    import importlib
+    api = importlib.import_module("quantradar.api.app")
+    monkeypatch.setattr(api, "_run_dir_of", lambda _: str(tmp_path))
+    for name in ("report.html", "standard_report.html"):
+        (tmp_path / name).write_text("<html>native</html>")
+    (tmp_path / "metrics.json").write_text(json.dumps({"metrics": {"策略收益": 1.72, "盈亏比": float("inf")}, "meta": {"benchmark": "000300.XSHG"}}))
+    (tmp_path / "daily_records.csv").write_text('date,returns_pct\n2023-01-03,-0.07679999999999909\n', encoding="utf-8-sig")
+    (tmp_path / "trades.csv").write_text('时间,标的,备注\n2023-01-03,600519.XSHG,"带逗号,的文本"\n', encoding="utf-8-sig")
+    client = TestClient(api.app)
+    response = client.get("/api/backtest/runs/native/report-data")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["metrics"] == {"策略收益": 1.72, "盈亏比": "Infinity"}
+    assert data["daily"]["rows"][0]["returns_pct"] == "-0.07679999999999909"
+    assert data["trades"]["rows"][0]["备注"] == "带逗号,的文本"
+    assert data["positions"]["available"] is False
+    (tmp_path / "report.html").unlink()
+    assert client.get("/api/backtest/runs/native/report-data").status_code == 409
 
 
 def test_save_reopen_strategy_versions(monkeypatch):
