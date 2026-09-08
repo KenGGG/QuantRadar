@@ -39,7 +39,9 @@ with sync_playwright() as p:
         page.locator(".monaco-editor").click()
         page.keyboard.press("Control+End")
         page.keyboard.press("Enter")
-        page.keyboard.type("# joinquant layout browser edit")
+        page.keyboard.type("# joinquant layout browser edit", delay=40)
+        expect(page.locator(".view-lines")).to_contain_text("# joinquant layout browser edit")
+        page.get_by_label("策略名称").focus()
         with page.expect_response(lambda r: r.url.endswith("/api/strategies") and r.request.method == "POST") as response:
             page.get_by_role("button", name="保存策略版本", exact=True).click()
         saved = response.value.json()
