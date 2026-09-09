@@ -1,60 +1,35 @@
 # QuantRadar Active Phase
 
-**Milestone:** `QUANTRADAR_LOCAL_BACKTEST_WEBUI_PASS`
-**Active Goal:** `JOINQUANT_LAYOUT_BROWSER_ACCEPTANCE_PASS`
-**Completed Goal:** `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS`
-**Status:** PASS
-
-## 当前布局改版（2026-09-08）
-
-按用户提供的两张聚宽截图调整现有全部 WebUI 的布局与视觉：深蓝横向导航、
-策略标题与页签、左源码右参数/收益/日志的编辑工作台，以及左详情导航右指标图表的报告页。
-保留 QuantRadar 品牌及现有数据、研报、运行和实验功能；不加入截图中的未支持业务。
-复用原生指标和 CSV 展示，不新增指标计算。浏览器复核三个样例、保存重开、
-报告后继续编辑、历史恢复、失败提示、各菜单及窄屏布局，保存改版截图与运行证据。
-用户于 2026-09-09 明确确认聚宽式 WebUI 布局改版验收通过。
-`JOINQUANT_LAYOUT_BROWSER_ACCEPTANCE_PASS = PASS`。本轮布局工作结束，不再扩展。
-验收依据见 [用户验收记录](acceptance/local-backtest/layout-user-acceptance.md)。
+**Milestone:** `QUANTRADAR_DATAHUB_V1_PASS`
+**Active Goal:** `DATAHUB_REPRODUCIBLE_PIT_V1_PASS`
+**Completed Goal:** `JOINQUANT_LAYOUT_BROWSER_ACCEPTANCE_PASS`
+**Status:** IN_PROGRESS
 
 ## 唯一目标与授权范围
 
-交付聚宽式本地日频回测 WebUI：浏览器管理、编辑和保存策略，配置参数，
-使用本地 investment_data 经 InvestmentDataProvider 和 BulletTrade 回测，
-查看收益、持仓、成交、日志，并恢复历史源码与配置继续编辑。
-解除本目标所需 React、FastAPI、Worker、PostgreSQL、Provider、BulletTrade 开发冻结。
-复用现有引擎、任务体系和原生报告，不新增第二套实现或指标计算。
+用户于 2026-09-09 批准 DataHub V1，并明确确认 WebUI 布局验收通过。
+WebUI 收尾提交 `ec608d8`；布局工作结束，不继续扩展。
+DataHub 完整范围与验收契约见
+[批准需求](superpowers/specs/2026-09-09-datahub-v1.md)。
 
-研报保持现有每日运行，只修必要故障。NotebookLM 后续目标暂停；Qlib、Kronos、
-新数据源、ETF、实盘及其他扩展不在本轮范围。不得以 Qlib 成熟、全市场数据或
-研报七日观察为前置条件，推迟已支持范围的交付。
+只补沪深 A 股历史估值 PE_TTM/PB_MRQ/PS_TTM/PCF_NCF_TTM、申万一级行业历史、
+含退市股票的生命周期。复用 investment_data 的 turn/is_st/tradestatus。
+基础库只读，补充数据仅写 /data/quantradar_data Dolt；PostgreSQL 仅存应用状态。
+固定源代码与原始结果；按数据集标记 PIT_STATUS，不把历史回填冒充严格 PIT。
+以原子 release manifest 固定两个库的 commit，所有研究/回测实际按锁定版本查询。
 
-## 执行与验收门禁
+## Sequential Gates（仅一个 Active Goal）
 
-1. 先在本地实际部署版本用浏览器走主流程，记录第一个失败或无法完成的操作。
-2. 沿流程逐项修复：保存重开、报告后编辑、历史源码/配置恢复、报告与成功状态
-   一致、菜单导航、任务失败提示、页面参数实际生效。
-3. 买入持有、双均线、多股票定期再平衡三个样例完成浏览器端到端验收。
-4. 保存实际操作路径、部署版本、运行 ID、页面与原生结果证据及不支持范围。
-   测试通过、脚本成功或生成报告文件均不能单独判定交付。
-5. 达标后更新 CURRENT_STATE 和本文件，提交 commit。里程碑完成后停止。
+- Gate 0 IN_PROGRESS：只读现有库审计，三个来源本机真实取数，记录边界。
+- Gate 1 PENDING：最小 DataHub 闭环及三个数据集。
+- Gate 2 PENDING：backfill/sync/audit/release 与固定版本读取。
+- Gate 3 PENDING：复用数据状态页面，CLI，20:00 Asia/Shanghai systemd timer。
+- Gate 4 PENDING：十二项真实验收，特别是更新后旧 release 重跑结果 hash 一致。
 
-`LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS = PASS`
-
-验收日期：2026-09-07。实际部署代码：`5118bd4ec9a082b45eacd0422b40e0452d3124c3`。
-三个样例均完成浏览器键盘编辑、保存/刷新重开、配置、真实回测、原生报告、
-成交、持仓、日志和历史恢复。另验证改变草稿后恢复重跑结果哈希一致、
-菜单导航、故意失败及缺基准失败提示、内置标的/股数/资金/日期实际生效。
-证据与限制见 [浏览器交付记录](acceptance/local-backtest/README.md)
-和 [运行清单](acceptance/local-backtest/manifest.json)。
-上述为上一版主流程证据；当前截图布局改版按 2026-09-09 用户明确验收结论通过。
+按 Gate 0→4 顺序执行；普通错误自行修复；不因任务规模或普通测试失败停止。
+通过后更新 CURRENT_STATE 和本文件、提交证据与代码，然后停止。
 
 ## Queued Goals
 
-用户已授权收尾提交后启动 `DATAHUB_REPRODUCIBLE_PIT_V1_PASS`，作为唯一下一目标。
-不自动恢复研报、Qlib 或 Kronos 队列。
-
-## 历史状态
-
-此前研报已完成能力与证据保留于 CURRENT_STATE 及历史 Git 文档。
-`REPORT_MVP_7D_LIVE_PASS = ABORTED_BY_PROVIDER_CUTOVER` 保持原结论。
-NotebookLM 原 `NOTEBOOKLM_POLICY_RUNTIME_PASS` 未验收，暂停而非判定通过。
+无。不自动进入 FactorLab、AI 策略复现或下一批数据扩展。
+NotebookLM、Qlib、Kronos 原暂停状态保持。

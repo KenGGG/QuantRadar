@@ -22,6 +22,7 @@ failure. `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS` and milestone
 Goal `JOINQUANT_LAYOUT_BROWSER_ACCEPTANCE_PASS` passed by explicit user acceptance
 on 2026-09-09. Layout work is closed; see
 [acceptance record](acceptance/local-backtest/layout-user-acceptance.md).
+The sole active Goal is `DATAHUB_REPRODUCIBLE_PIT_V1_PASS`.
 NotebookLM development is paused.
 `REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
 `REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`, and
