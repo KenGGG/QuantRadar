@@ -3,7 +3,7 @@
 **Milestone:** `QUANTRADAR_LOCAL_BACKTEST_WEBUI_PASS`
 **Active Goal:** `JOINQUANT_LAYOUT_BROWSER_ACCEPTANCE_PASS`
 **Completed Goal:** `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS`
-**Status:** IN_PROGRESS
+**Status:** PASS
 
 ## 当前布局改版（2026-09-08）
 
@@ -12,7 +12,9 @@
 保留 QuantRadar 品牌及现有数据、研报、运行和实验功能；不加入截图中的未支持业务。
 复用原生指标和 CSV 展示，不新增指标计算。浏览器复核三个样例、保存重开、
 报告后继续编辑、历史恢复、失败提示、各菜单及窄屏布局，保存改版截图与运行证据。
-首次操作阻断：本地 7231 端口不可连接；恢复现有服务后继续验收。
+用户于 2026-09-09 明确确认聚宽式 WebUI 布局改版验收通过。
+`JOINQUANT_LAYOUT_BROWSER_ACCEPTANCE_PASS = PASS`。本轮布局工作结束，不再扩展。
+验收依据见 [用户验收记录](acceptance/local-backtest/layout-user-acceptance.md)。
 
 ## 唯一目标与授权范围
 
@@ -44,11 +46,12 @@
 菜单导航、故意失败及缺基准失败提示、内置标的/股数/资金/日期实际生效。
 证据与限制见 [浏览器交付记录](acceptance/local-backtest/README.md)
 和 [运行清单](acceptance/local-backtest/manifest.json)。
-上述为上一版主流程证据；当前截图布局改版尚未验收。
+上述为上一版主流程证据；当前截图布局改版按 2026-09-09 用户明确验收结论通过。
 
 ## Queued Goals
 
-无。本轮只有上述 Goal；不自动恢复研报、Qlib 或 Kronos 队列。
+用户已授权收尾提交后启动 `DATAHUB_REPRODUCIBLE_PIT_V1_PASS`，作为唯一下一目标。
+不自动恢复研报、Qlib 或 Kronos 队列。
 
 ## 历史状态
 

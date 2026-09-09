@@ -19,8 +19,10 @@ by the approved provider-cutover decision and is recorded as
 `REPORT_MVP_7D_LIVE_PASS = ABORTED_BY_PROVIDER_CUTOVER`; this is not a product
 failure. `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS` and milestone
 `QUANTRADAR_LOCAL_BACKTEST_WEBUI_PASS` passed for the previous layout. The active
-Goal is `JOINQUANT_LAYOUT_BROWSER_ACCEPTANCE_PASS`; screenshot-based layout changes
-are not yet browser accepted. NotebookLM development is paused.
+Goal `JOINQUANT_LAYOUT_BROWSER_ACCEPTANCE_PASS` passed by explicit user acceptance
+on 2026-09-09. Layout work is closed; see
+[acceptance record](acceptance/local-backtest/layout-user-acceptance.md).
+NotebookLM development is paused.
 `REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
 `REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`, and
 `REPORT_MVP_OPERATIONS_PASS` are historical completed Goals.
