@@ -101,7 +101,7 @@ class InvestmentDataConnection:
                     "WHERE TABLE_SCHEMA = %s AND TABLE_NAME IN "
                     "(%s,%s,%s,%s,%s)",
                     (
-                        self._config.database,
+                        db,
                         "ts_trade_day_calendar",
                         "ts_a_stock_list",
                         "ts_index_weight",

@@ -28,6 +28,7 @@ import uuid
 from typing import Any, Dict, Optional
 
 from quantradar.backtest import _FQ_LOCK
+from quantradar.audit import collect_audit_env
 from quantradar.snapshot import _to_native, build_snapshot_from_results, write_snapshot_json
 
 log = logging.getLogger(__name__)
@@ -122,14 +123,30 @@ def run_unified_backtest(
     from bullet_trade.reporting import generate_cli_report
     from bullet_trade.core.settings import get_settings, set_option
 
-    from quantradar.bootstrap import bootstrap_investment_data
+    from quantradar.bootstrap import bootstrap_data_release, bootstrap_investment_data
 
     # 2) 复权口径（全局线程安全临界区）+ 激活只读 InvestmentDataProvider + 原生回测
     with _FQ_LOCK:
         _prev = get_settings().options.get("use_real_price", False)
         set_option("use_real_price", _use_real_price)
         try:
-            bootstrap_investment_data(set_active=True, overwrite=True)
+            release_id = payload.get("release_id")
+            try:
+                scope = bootstrap_data_release(release_id)
+            except FileNotFoundError:
+                if release_id is not None:
+                    raise
+                scope = None
+                bootstrap_investment_data(set_active=True, overwrite=True)
+            audit_env = collect_audit_env()
+            if scope is not None:
+                audit_env["data_release"] = {
+                    "release_id": scope.release_id,
+                    "base_commit": scope.manifest["base_commit"],
+                    "supplemental_commit": scope.manifest["supplemental_commit"],
+                    "schema_version": scope.manifest["schema_version"],
+                }
+                audit_env["dolt_commit"] = scope.manifest["base_commit"]
             results = create_backtest(
                 strategy_file=strategy_path,
                 start_date=start_date,
@@ -189,6 +206,7 @@ def run_unified_backtest(
             "strategy_name": strategy_name,
         },
         fq=fq,
+        audit_env=audit_env,
     )
     snapshot = write_snapshot_json(os.path.join(run_dir, "snapshot.json"), snapshot)
 

@@ -93,6 +93,7 @@ def _payload_from_record(rec: Dict[str, Any]) -> Dict[str, Any]:
         "fq": cfg.get("fq", "none"),
         "strategy_name": cfg.get("strategy_name"),
         "extras": cfg.get("extras"),
+        "release_id": cfg.get("release_id"),
     }
 
 
@@ -115,6 +116,10 @@ class BacktestWorker:
 
         init_db()
         run_id = _gen_run_id()
+        from .config import load_datahub_config
+        from .datahub.reader import ReleaseReader
+        release = ReleaseReader(load_datahub_config()).resolve(payload.get("release_id"))
+        payload = dict(payload, release_id=release.release_id)
 
         # 审计链：用户策略源码持久化到 strategies 表，回测运行绑定 strategy_id。
         code = payload.get("code")
@@ -139,6 +144,9 @@ class BacktestWorker:
             "strategy_name": payload.get("strategy_name"),
             "strategy_id": strategy_id,
             "strategy_hash": _hash_source(code) if code else None,
+            "release_id": release.release_id,
+            "base_commit": release.manifest["base_commit"],
+            "supplemental_commit": release.manifest["supplemental_commit"],
             # 产物目录与报告路径（供 /runs/{id}/report 与 /artifacts 定位文件，不入数据库大文件）
             "run_dir": os.path.join(default_runs_dir(), run_id),
             "report_html": os.path.join(default_runs_dir(), run_id, "report.html"),

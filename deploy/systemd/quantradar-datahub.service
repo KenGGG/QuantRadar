@@ -1,0 +1,12 @@
+[Unit]
+Description=QuantRadar DataHub staged update
+After=network-online.target
+Wants=network-online.target
+Requires=quantradar-datahub-dolt.service
+After=quantradar-datahub-dolt.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/data/Projects/a-stock-research/QuantRadar
+EnvironmentFile=-/data/quantradar_data/datahub.env
+ExecStart=/bin/sh -c '/data/Projects/a-stock-research/QuantRadar/.venv/bin/python -m quantradar.datahub.cli update --end "$$(date +%%F)"'

@@ -26,7 +26,14 @@ dependencies = [
     "httpx>=0.28.1",
     "playwright>=1.50,<2",
     "pytest>=8.0",
+    "baostock==0.9.3",
+    "xlrd>=2.0.2",
+    "requests>=2.31",
+    "akshare==1.18.94",
 ]
+
+[project.scripts]
+quantradar-data = "quantradar.datahub.cli:main"
 
 [project.optional-dependencies]
 # 测试依赖（make setup 一并安装）

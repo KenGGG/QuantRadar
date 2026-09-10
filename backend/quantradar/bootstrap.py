@@ -22,11 +22,21 @@ from bullet_trade.data import (
     set_data_provider,
 )
 
-from .config import InvestmentDataConfig, load_investment_data_config
+from .config import DataHubConfig, InvestmentDataConfig, load_datahub_config, load_investment_data_config
 from .providers.investment_data.connection import InvestmentDataConnectionError
 from .providers.investment_data.provider import InvestmentDataProvider
 
 PROVIDER_NAME = "investment_data"
+
+
+def bootstrap_data_release(release_id: Optional[str] = None, *, config: Optional[DataHubConfig] = None):
+    """Resolve one immutable paired release and activate its base Dolt commit."""
+    from .datahub.reader import ReleaseReader
+
+    reader = ReleaseReader(config or load_datahub_config())
+    scope = reader.resolve(release_id)
+    bootstrap_investment_data(reader.base_config(scope), set_active=True, overwrite=True)
+    return scope
 
 
 def investment_data_factory(_bullet_trade_config: Optional[dict] = None) -> InvestmentDataProvider:

@@ -43,6 +43,65 @@ class InvestmentDataConfig:
         }
 
 
+@dataclass(frozen=True)
+class DataHubConfig:
+    """Locations and read endpoints for the versioned supplemental data store."""
+
+    base_database: str = "investment_data"
+    supplemental_database: str = "quantradar_data"
+    base_host: str = "127.0.0.1"
+    base_port: int = 3307
+    supplemental_host: str = "127.0.0.1"
+    supplemental_port: int = 3308
+    user: str = "root"
+    password: str = ""
+    supplemental_repo: str = "/data/quantradar_data"
+    release_root: str = "/data/quantradar_data/releases"
+    raw_root: str = "/data/quantradar_data/raw-artifacts"
+    journal_root: str = "/data/quantradar_data/journals"
+    sw_ca_bundle: str | None = None
+    baostock_host: str | None = None
+    fetch_workers: int = 1
+    connect_timeout: float = 5.0
+    read_timeout: float = 120.0
+
+
+def load_datahub_config() -> DataHubConfig:
+    """Load DataHub settings without ever reusing the base database for writes."""
+
+    def _int(key: str, default: int) -> int:
+        try:
+            return int(os.environ.get(key, default))
+        except ValueError:
+            return default
+
+    def _float(key: str, default: float) -> float:
+        try:
+            return float(os.environ.get(key, default))
+        except ValueError:
+            return default
+
+    return DataHubConfig(
+        base_database=os.environ.get("DATAHUB_BASE_DATABASE", "investment_data"),
+        supplemental_database=os.environ.get("DATAHUB_SUPPLEMENTAL_DATABASE", "quantradar_data"),
+        base_host=os.environ.get("DATAHUB_BASE_HOST", "127.0.0.1"),
+        base_port=_int("DATAHUB_BASE_PORT", 3307),
+        supplemental_host=os.environ.get("DATAHUB_SUPPLEMENTAL_HOST", "127.0.0.1"),
+        supplemental_port=_int("DATAHUB_SUPPLEMENTAL_PORT", 3308),
+        user=os.environ.get("DATAHUB_USER", "root"),
+        password=os.environ.get("DATAHUB_PASSWORD", ""),
+        supplemental_repo=os.environ.get("DATAHUB_SUPPLEMENTAL_REPO", "/data/quantradar_data"),
+        release_root=os.environ.get("DATAHUB_RELEASE_ROOT", "/data/quantradar_data/releases"),
+        raw_root=os.environ.get("DATAHUB_RAW_ROOT", "/data/quantradar_data/raw-artifacts"),
+        journal_root=os.environ.get("DATAHUB_JOURNAL_ROOT", "/data/quantradar_data/journals"),
+        sw_ca_bundle=os.environ.get("DATAHUB_SW_CA_BUNDLE") or None,
+        baostock_host=os.environ.get("DATAHUB_BAOSTOCK_HOST") or None,
+        fetch_workers=max(1, _int("DATAHUB_FETCH_WORKERS", 1)),
+        connect_timeout=_float("DATAHUB_CONNECT_TIMEOUT", 5.0),
+        read_timeout=_float("DATAHUB_READ_TIMEOUT", 120.0),
+    )
+
+
 def load_investment_data_config() -> InvestmentDataConfig:
     """从环境变量加载 InvestmentDataConfig；未设置时使用本地默认值。
 

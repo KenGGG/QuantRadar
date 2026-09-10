@@ -1,0 +1,10 @@
+[Unit]
+Description=Attempt QuantRadar DataHub update at 20:00 China time
+
+[Timer]
+OnCalendar=*-*-* 20:00:00 Asia/Shanghai
+Persistent=true
+Unit=quantradar-datahub.service
+
+[Install]
+WantedBy=timers.target

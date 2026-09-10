@@ -22,7 +22,49 @@ failure. `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS` and milestone
 Goal `JOINQUANT_LAYOUT_BROWSER_ACCEPTANCE_PASS` passed by explicit user acceptance
 on 2026-09-09. Layout work is closed; see
 [acceptance record](acceptance/local-backtest/layout-user-acceptance.md).
-The sole active Goal is `DATAHUB_REPRODUCIBLE_PIT_V1_PASS`.
+The sole active Goal is `DATAHUB_INGESTION_MVP_PASS`; the former
+`DATAHUB_REPRODUCIBLE_PIT_V1_PASS` and
+`DATAHUB_GOVERNED_REPRODUCIBLE_V1_PASS` are superseded and are not PASS
+results. MVP permits explicit `PARTIAL` releases with coverage and gaps; the
+later Research Coverage Goal owns complete 2016 and delisted-security coverage.
+Gate 0 is complete: `investment_data` was audited read-only at Dolt commit
+`dje7kjb4gb27khhfmqncnfhf00n9igcg`, and real probes of the three approved
+source interfaces established the documented `PARTIAL` PIT limitations. The
+facts and boundaries are in [DataHub V1 evidence](acceptance/datahub-v1/README.md).
+`/data/quantradar_data` is now owned by `ken:ken` (mode `0750`) and has an
+empty independent Dolt repository served locally at `127.0.0.1:3308` by the
+enabled user service `quantradar-datahub-dolt.service`. The limited real
+validation release is `Rb60ab5f94b2a612b`; it pairs base commit
+`dje7kjb4gb27khhfmqncnfhf00n9igcg` with supplemental commit
+`4qrt5p86jdqpp4l2b0sm8d2r0o2fn7em`. The timer unit is installed but disabled until the DataHub branch
+is integrated into the service working tree. BaoStock real requests are
+suspended. Its former probes, `10002007` and `10001011` failures, 623
+incomplete unpublished shards, journal, raw hashes, and error evidence are
+frozen and excluded from canonical data and releases. `current_release`
+remains the limited validation release; no DataHub V1 acceptance claim is
+made. V1 valuation canonical semantics are `pe_ttm`, `pb_mrq`, `ps_ttm`, and
+`pcf_ocf_ttm`: the old planned `pcf_ncf_ttm` is not a semantic alias and is
+out of scope.
+The governed Eastmoney MVP completed real interruption/resume and targeted
+repair acceptance, then expanded through a 500-symbol stage. The current
+remaining-universe process is running serially under the shared Governor.
+At the last verified status it had 976 `COMPLETE`, 123 `NOT_COVERED`, 3
+`FAILED`, and 3,813 `PENDING` shards. No new DataHub release has been
+published.
+The first governed Eastmoney A0 probe of required date `2016-01-04` returned
+`success=false`, `code=9201`, `message=返回数据为空`, and `result=null` after
+one controlled retry. Its rejected 89-byte response is content-addressed as
+`ea6528a2204b61a7ee34683a73ca00f8afdc86aadf3f765d4dae39bbfb19dbe7`; the
+acceptance record is `acceptance/datahub-v1/eastmoney-a0-2026-09-09.json`.
+This historical source limitation is recorded as `PARTIAL`; it does not block
+the approved ingestion MVP or its later release gates.
+Under the later approved Source Qualification revision, Eastmoney official
+per-symbol qualification also failed: 600519 and 000001 start at 2018-01-02,
+and delisted 600005 failed. SSE lifecycle qualification succeeded, including
+600005 in 159 delisted rows, but both SZSE qualification calls failed with TLS
+EOF. The complete records and source gap report are in
+`acceptance/datahub-v1/`; no valuation or complete lifecycle source is approved
+for complete historical coverage; those facts remain explicit `PARTIAL` gaps.
 NotebookLM development is paused.
 `REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
 `REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`, and
@@ -159,3 +201,7 @@ NotebookLM runtime code exists, including pre-auth gates; its goal has not passe
 - Frontend `npm run build`: passed; the known 2.19 MB bundle warning remains
   frozen and out of scope.
 - `git diff --check`: passed.
+
+## 7231 数据状态页面事实
+
+正式端口已加载 datahub-v1 页面，任务 / Governor / 正式覆盖 / 折叠诊断分层展示；浏览器与 45 项 DataHub 单测通过。详情见 [布局验收](acceptance/datahub-v1/webui-7231-layout.md)。002504 的 SDK `NoneType` 解析异常曾错误打开 circuit，现已作为 `SYMBOL_DATA_ERROR` 审计并解除 false-positive cooldown；worker 正在从 `PENDING` 串行恢复。控制与发布完整验收未完成，Goal 仍为 IN_PROGRESS。
