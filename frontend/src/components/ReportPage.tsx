@@ -30,6 +30,7 @@ export function ReportPage({ runId, onBack, onEdit }: { runId: string; onBack: (
   const [data, setData] = useState<NativeReportData | null>(null);
   const [section, setSection] = useState("overview");
   const [text, setText] = useState("");
+  const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -58,15 +59,34 @@ export function ReportPage({ runId, onBack, onEdit }: { runId: string; onBack: (
   }, [runId, run?.status]);
 
   useEffect(() => {
-    if (section !== "log" && section !== "source") return;
+    const running = run?.status === "RUNNING";
+    if (!running && section !== "log" && section !== "source") return;
     let active = true;
-    setText("加载中…");
-    fetch(getRunArtifactUrl(runId, section === "log" ? "backtest.log" : "strategy.py")).then(async r => {
-      if (!r.ok) throw new Error(`文件读取失败 ${r.status}`);
-      return r.text();
-    }).then(t => { if (active) setText(t); }).catch(e => { if (active) setText(String(e)); });
-    return () => { active = false; };
-  }, [runId, section]);
+    setProgress("");
+    const refresh = async () => {
+      try {
+        const r = await fetch(getRunArtifactUrl(runId, "backtest.log"), {
+          headers: { Range: "bytes=-65536" }, cache: "no-store",
+        });
+        if (!r.ok) throw new Error(`日志读取失败 ${r.status}`);
+        const log = await r.text();
+        if (!active) return;
+        const matches = [...log.matchAll(/交易日: (\d{4}-\d{2}-\d{2}) \((\d+)\/(\d+)\)/g)];
+        const latest = matches[matches.length - 1];
+        if (latest) setProgress(`正在计算 ${latest[1]} · 第 ${latest[2]} / ${latest[3]} 个交易日（${(100 * Number(latest[2]) / Number(latest[3])).toFixed(1)}%）`);
+        if (section === "log") setText(log);
+      } catch (e) { if (active && section === "log") setText(String(e)); }
+    };
+    if (running || section === "log") void refresh();
+    if (section === "source") {
+      fetch(getRunArtifactUrl(runId, "strategy.py")).then(async r => {
+        if (!r.ok) throw new Error(`文件读取失败 ${r.status}`);
+        return r.text();
+      }).then(t => { if (active) setText(t); }).catch(e => { if (active) setText(String(e)); });
+    }
+    const timer = running ? setInterval(() => void refresh(), 5000) : undefined;
+    return () => { active = false; clearInterval(timer); };
+  }, [runId, section, run?.status]);
 
   const cfg = run?.config || {};
   const env = run?.snapshot?.environment;
@@ -83,7 +103,7 @@ export function ReportPage({ runId, onBack, onEdit }: { runId: string; onBack: (
         {loading && <div className="loading-pane"><Spin /></div>}
         {error && <Alert type="error" showIcon message="报告不可用" description={error} />}
         {run?.status === "FAILED" && <Alert type="error" showIcon message="回测失败" description={run.error} />}
-        {run && ["RUNNING", "PENDING"].includes(run.status) && <Alert type="info" message="回测执行中，完成后自动加载报告" />}
+        {run && ["RUNNING", "PENDING"].includes(run.status) && <Alert type="info" message={run.status === "PENDING" ? "回测排队中" : "回测执行中，完成后自动加载报告"} description={progress || (run.status === "RUNNING" ? "正在准备行情与回测环境…" : undefined)} />}
         {section === "overview" && data && <ReturnOverview data={data} />}
         {(["trades", "positions", "daily"] as string[]).includes(section) && data && <NativeTable data={data[section as "trades" | "positions" | "daily"]} />}
         {(section === "log" || section === "source") && <pre className="report-console">{text}</pre>}

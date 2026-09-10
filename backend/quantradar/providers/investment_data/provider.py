@@ -781,10 +781,14 @@ class InvestmentDataProvider(DataProvider):
 
         result = price_df
         if limit_cols:
-            # 涨跌停表按相同窗口取全量（忽略 count），再对齐到价格表日期索引
-            limit_df = self._fetch_table_cols(
-                _LIMIT_TABLE, limit_cols, internal_symbol, start, end, None, False
-            )
+            # 只读取实际价格窗口；count 查询不能退化为上市以来全部涨跌停历史。
+            if price_df.empty:
+                limit_df = pd.DataFrame(columns=limit_cols, index=price_df.index, dtype=float)
+            else:
+                limit_df = self._fetch_table_cols(
+                    _LIMIT_TABLE, limit_cols, internal_symbol,
+                    _fmt_date(price_df.index.min()), _fmt_date(price_df.index.max()), None, False
+                )
             limit_df = limit_df.reindex(price_df.index)
             result = price_df.join(limit_df, how="left")
 
