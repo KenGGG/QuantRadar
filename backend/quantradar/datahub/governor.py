@@ -83,6 +83,19 @@ class RequestGovernor:
     def status(self) -> dict:
         return self._load()
 
+    def observed_status(self) -> dict:
+        """Expose only counters visible outside an opaque public SDK."""
+        ledger = self._load()
+        return {
+            **ledger,
+            "sdk_attempts_opaque": int(ledger.get("sdk_invocations", 0)),
+            "observed_http_attempts": int(ledger.get("actual_http_attempts", 0)),
+            "observed_403": int(ledger.get("403", 0)),
+            "observed_429": int(ledger.get("429", 0)),
+            "observed_remote_disconnected": int(ledger.get("RemoteDisconnected", 0)),
+            "observed_timeout": int(ledger.get("timeout", 0)),
+        }
+
     def resolve_false_positive(self, *, symbol: str, reason: str) -> dict:
         """Clear an invalid local cooldown while retaining the original evidence."""
         ledger = self._load()

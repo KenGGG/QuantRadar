@@ -29,6 +29,22 @@ from .governor import RequestGovernor, CircuitOpen
 from .mvp import AkshareValuationFetcher, ShardRunner
 
 
+def canonical_sh_sz_security_master(
+    base_rows: Iterable[dict[str, Any]], lifecycle_rows: Iterable[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Use the immutable base pool, adding only SH/SZ lifecycle records absent from it."""
+    master: dict[str, dict[str, Any]] = {}
+    for row in base_rows:
+        symbol = str(row.get("symbol") or "")
+        if len(symbol) == 9 and symbol[:6].isdigit() and symbol.endswith((".SH", ".SZ")):
+            master[symbol] = dict(row)
+    for row in lifecycle_rows:
+        symbol = str(row.get("symbol") or "")
+        if symbol not in master and len(symbol) == 9 and symbol[:6].isdigit() and symbol.endswith((".SH", ".SZ")):
+            master[symbol] = dict(row)
+    return [master[symbol] for symbol in sorted(master)]
+
+
 def _fetch_valuation_batch(host: str | None, symbols: list[str], start_date: str, end_date: str) -> list[tuple[str, FetchedRows]]:
     """Runs in its own process because the vendor SDK owns global socket state."""
     return list(BaostockAdapter(host=host).valuations(symbols, start_date, end_date))
@@ -58,6 +74,28 @@ class JsonlRows:
             for line in handle:
                 if line.strip():
                     yield json.loads(line)
+
+    def __len__(self) -> int:
+        return self.count
+
+
+class ShardJsonlRows:
+    """Repeatable per-symbol staging view used to publish without loading all rows."""
+
+    def __init__(self, root: Path, units: dict[str, dict[str, Any]]) -> None:
+        self.root = root
+        self.units = {symbol: dict(unit) for symbol, unit in units.items() if unit.get("status") == "COMPLETE"}
+        self.count = sum(int(unit.get("row_count") or 0) for unit in self.units.values())
+
+    def __iter__(self):
+        for symbol in sorted(self.units):
+            path = self.root / f"{symbol}.jsonl"
+            if not path.is_file():
+                raise RuntimeError(f"completed shard has no staging file: {symbol}")
+            with path.open(encoding="utf-8") as handle:
+                for line in handle:
+                    if line.strip():
+                        yield json.loads(line)
 
     def __len__(self) -> int:
         return self.count
@@ -95,13 +133,14 @@ class DataHubService:
         with self._updater_lock(), governor.operation_lock():
             runner.restore_circuit_aborts()
             journal.begin_job(total_shards=len(symbols[:limit] if limit else symbols), resume=resume)
+            journal.ensure_pending(symbols[:limit] if limit else symbols, reason="canonical SH/SZ security master")
             journal.phase("download", "RUNNING")
             result = runner.run(symbols, resume=resume, limit=limit)
             journal.heartbeat(phase="download", current_shard=None, pid=os.getpid())
             journal.phase("download", "FAILED" if result["failed"] else "PAUSED" if runner.stop_requested or any(
                 unit.get("status") == "PENDING" for unit in journal.data["units"].values()
             ) else "DONE")
-        result["governor"] = governor.status()
+        result["governor"] = governor.observed_status()
         result["journal"] = str(journal.path)
         return result
 
@@ -112,13 +151,13 @@ class DataHubService:
                   ("COMPLETE", "FAILED", "LEGAL_EMPTY", "NOT_COVERED", "PENDING", "RUNNING")}
         heartbeat, phase = journal.data.get("heartbeat") or {}, (journal.data.get("phases") or {}).get("download", {}).get("status")
         control = journal.data.get("control") or {}
-        governor = RequestGovernor(Path(self.config.supplemental_repo) / "governance", "eastmoney").status()
+        governor = RequestGovernor(Path(self.config.supplemental_repo) / "governance", "eastmoney").observed_status()
         if control.get("pause_requested"):
             status = "PAUSED" if phase == "PAUSED" else "PAUSING"
         elif governor.get("circuit_open"):
             status = "COOLDOWN"
         elif phase == "DONE": status = "COMPLETED"
-        elif phase == "FAILED": status = "FAILED"
+        elif phase == "FAILED": status = "COMPLETED" if not states["PENDING"] and not states["RUNNING"] else "FAILED"
         elif phase == "PAUSED": status = "PAUSED"
         elif phase == "RUNNING" or heartbeat.get("current_shard"): status = "RUNNING"
         else: status = "IDLE"
@@ -178,6 +217,7 @@ class DataHubService:
         path = Path(self.config.supplemental_repo) / "staging" / "valuation_daily-mvp" / "gap_report.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        journal.record_audit(report)
         return {**report, "path": str(path)}
 
     def mvp_repair(self, *, dataset: str) -> dict[str, Any]:
@@ -188,7 +228,8 @@ class DataHubService:
         runner = ShardRunner(Path(self.config.supplemental_repo) / "staging" / "valuation_daily-mvp", journal, AkshareValuationFetcher(governor), self.raw)
         with self._updater_lock(), governor.operation_lock():
             result = runner.repair_failed()
-        return {**result, "governor": governor.status()}
+            journal.record_repair(result)
+        return {**result, "governor": governor.observed_status()}
 
     def resolve_false_positive_circuit(self, *, symbol: str, dataset: str = "valuation_daily") -> dict[str, Any]:
         """Record a local parse failure, then clear only its wrongly-opened circuit."""
@@ -224,18 +265,11 @@ class DataHubService:
                                  details={"result": result, "selected": selected, "governor": governor.status()})
         return {"outcome": "HEALTHY" if healthy else "UNHEALTHY", "result": result, "selected": selected, "governor": governor.status()}
 
-    def _staged_valuations(self) -> list[dict[str, Any]]:
+    def _staged_valuations(self) -> ShardJsonlRows:
         journal = UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json")
         root = Path(self.config.supplemental_repo) / "staging" / "valuation_daily-mvp" / "valuation_daily"
-        rows: list[dict[str, Any]] = []
-        for symbol, unit in sorted(journal.data["units"].items()):
-            if unit.get("status") != "COMPLETE":
-                continue
-            path = root / f"{symbol}.jsonl"
-            if not path.is_file():
-                raise RuntimeError(f"completed shard has no staging file: {symbol}")
-            rows.extend(json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
-        if not rows:
+        rows = ShardJsonlRows(root, journal.data["units"])
+        if not len(rows):
             raise RuntimeError("no completed valuation staging rows")
         return rows
 
@@ -284,15 +318,54 @@ class DataHubService:
             raise RuntimeError("base lifecycle query produced no Shanghai/Shenzhen securities")
         return rows
 
+    def _security_master_path(self) -> Path:
+        return Path(self.config.supplemental_repo) / "security-master" / "sh_sz.json"
+
+    def _supplemental_lifecycle_candidates(self) -> list[dict[str, Any]]:
+        connection = self._connection()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT symbol, list_date, delist_date, status, source, raw_sha256, adapter_version, fetched_at, available_date, pit_status FROM qr_security_lifecycle")
+                return list(cursor.fetchall())
+        finally:
+            connection.close()
+
+    def refresh_security_master(self) -> dict[str, Any]:
+        """Build a governed ingestion pool; it is metadata, not a fourth formal dataset."""
+        base = self._base_lifecycle(persist_raw=False)
+        candidates = self._supplemental_lifecycle_candidates()
+        rows = canonical_sh_sz_security_master(base, candidates)
+        base_symbols = {row["symbol"] for row in base}
+        delta = [row for row in rows if row["symbol"] not in base_symbols]
+        payload = {"generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                   "base_commit": self._base_commit(), "scope": "SH/SZ A shares; supplemental lifecycle candidates remain PARTIAL",
+                   "base_symbol_count": len(base), "delta_symbol_count": len(delta), "symbol_count": len(rows), "records": rows}
+        path = self._security_master_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str), encoding="utf-8")
+        os.replace(temporary, path)
+        pending_created = UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json").ensure_pending(
+            [row["symbol"] for row in delta], reason="canonical SH/SZ security-master delta"
+        )
+        return {key: payload[key] for key in ("base_commit", "base_symbol_count", "delta_symbol_count", "symbol_count", "scope")} | {"path": str(path), "pending_created": pending_created}
+
     def valuation_universe(self) -> list[str]:
-        """Approved SH/SZ universe from the immutable base listing table."""
-        return sorted(row["symbol"] for row in self._base_lifecycle())
+        """Canonical SH/SZ ingestion pool, never described as an all-market universe."""
+        path = self._security_master_path()
+        if path.is_file():
+            data = json.loads(path.read_text(encoding="utf-8"))
+            return [str(row["symbol"]) for row in data.get("records", [])]
+        return sorted(row["symbol"] for row in self._base_lifecycle(persist_raw=False))
 
     def mvp_publish(self) -> dict[str, Any]:
         """Audit staged MVP data then atomically publish a partial paired-Dolt release."""
         gaps = self.mvp_gaps(dataset="valuation_daily")
-        if gaps["failed"] or gaps["pending_symbols"]:
-            raise RuntimeError("quality gate failed: valuation has FAILED or pending shards")
+        if gaps["pending_symbols"]:
+            raise RuntimeError("quality gate failed: valuation has pending shards")
+        journal = UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json")
+        if gaps["failed"] and not journal.data.get("repair_attempts"):
+            raise RuntimeError("quality gate failed: FAILED shards require a targeted repair before PARTIAL publication")
         valuation, industry, lifecycle = self._staged_valuations(), self._existing_industries(), self._base_lifecycle()
         writer_connection = self._connection()
         try:
@@ -376,7 +449,7 @@ class DataHubService:
         journal = UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json")
         units = journal.data.get("units", {})
         states = [item.get("status") for item in units.values()]
-        governor = RequestGovernor(Path(self.config.supplemental_repo) / "governance", "eastmoney").status()
+        governor = RequestGovernor(Path(self.config.supplemental_repo) / "governance", "eastmoney").observed_status()
         return {"dataset": "valuation_daily", "completed": states.count("COMPLETE"), "failed": states.count("FAILED"),
                 "legal_empty": states.count("LEGAL_EMPTY"), "not_covered": states.count("NOT_COVERED"),
                 "pending": states.count("PENDING") + states.count("RUNNING"), "heartbeat": journal.data.get("heartbeat"),

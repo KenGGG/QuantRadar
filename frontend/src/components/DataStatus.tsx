@@ -170,10 +170,11 @@ export function DataStatus() {
           <Descriptions.Item label="Circuit">{job ? (job.governor.circuit_open ? "OPEN / COOLDOWN" : "CLOSED") : "—"}</Descriptions.Item>
           <Descriptions.Item label="冷却至">{timeLabel(job?.governor.cooldown_until as string)}</Descriptions.Item>
           <Descriptions.Item label="累计逻辑请求">{metric(job?.governor.logical_requests)}</Descriptions.Item>
-          <Descriptions.Item label="HTTP attempts（可观察）">{metric(job?.governor.actual_http_attempts)}</Descriptions.Item>
-          <Descriptions.Item label="403 / 429">{metric(job?.governor["403"])} / {metric(job?.governor["429"])}</Descriptions.Item>
-          <Descriptions.Item label="RemoteDisconnected">{metric(job?.governor.RemoteDisconnected)}</Descriptions.Item>
-          <Descriptions.Item label="Timeout">{metric(job?.governor.timeout)}</Descriptions.Item>
+          <Descriptions.Item label="SDK 调用次数（HTTP 不透明）">{metric(job?.governor.sdk_attempts_opaque)}</Descriptions.Item>
+          <Descriptions.Item label="可观察 HTTP attempts">{metric(job?.governor.observed_http_attempts)}</Descriptions.Item>
+          <Descriptions.Item label="observed 403 / 429">{metric(job?.governor.observed_403)} / {metric(job?.governor.observed_429)}</Descriptions.Item>
+          <Descriptions.Item label="observed RemoteDisconnected">{metric(job?.governor.observed_remote_disconnected)}</Descriptions.Item>
+          <Descriptions.Item label="observed timeout">{metric(job?.governor.observed_timeout)}</Descriptions.Item>
           <Descriptions.Item label="连续受影响股票">{Array.isArray(job?.governor.consecutive_affected_symbols) ? job?.governor.consecutive_affected_symbols.length : "—"}</Descriptions.Item>
           <Descriptions.Item label="最近错误" span={3}><Text type="secondary">{(() => { const last = job?.governor.last_error as Record<string, unknown> | undefined; return last ? `${metric(last.symbol)} · ${metric(last.category)} · ${metric(last.message)}` : "—"; })()}</Text></Descriptions.Item>
         </Descriptions>

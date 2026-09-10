@@ -106,6 +106,26 @@ class UpdateJournal:
         self.data["units"][unit] = {"status": "PENDING", "reason": str(reason), "updated_at": datetime.now(timezone.utc).isoformat()}
         self._save()
 
+    def ensure_pending(self, units: list[str], *, reason: str) -> int:
+        """Persist only newly discovered shards; terminal work is immutable here."""
+        added = 0
+        for unit in units:
+            if unit not in self.data["units"]:
+                self.data["units"][unit] = {"status": "PENDING", "reason": str(reason),
+                                            "updated_at": datetime.now(timezone.utc).isoformat()}
+                added += 1
+        if added:
+            self._save()
+        return added
+
+    def record_repair(self, result: dict[str, Any]) -> None:
+        self.data.setdefault("repair_attempts", []).append({"at": datetime.now(timezone.utc).isoformat(), "result": result})
+        self._save()
+
+    def record_audit(self, report: dict[str, Any]) -> None:
+        self.data.setdefault("audits", []).append({"at": datetime.now(timezone.utc).isoformat(), "report": report})
+        self._save()
+
     def gap(self, unit: str, status: str, reason: str) -> None:
         if status not in {"LEGAL_EMPTY", "NOT_COVERED"}:
             raise ValueError("gap status must be LEGAL_EMPTY or NOT_COVERED")

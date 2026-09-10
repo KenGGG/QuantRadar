@@ -30,6 +30,7 @@ def _parser() -> argparse.ArgumentParser:
     repair = commands.add_parser("repair")
     repair.add_argument("--dataset", required=True, choices=("valuation_daily", "sw_industry_history", "security_lifecycle"))
     commands.add_parser("publish")
+    commands.add_parser("security-master")
     resolve = commands.add_parser("resolve-false-positive-circuit")
     resolve.add_argument("--symbol", required=True)
     probe = commands.add_parser("health-probe")
@@ -60,6 +61,8 @@ def main(argv: list[str] | None = None) -> int:
             result = service.mvp_repair(dataset=args.dataset)
         elif args.command == "publish":
             result = service.mvp_publish()
+        elif args.command == "security-master":
+            result = service.refresh_security_master()
         elif args.command == "resolve-false-positive-circuit":
             result = service.resolve_false_positive_circuit(symbol=args.symbol)
         elif args.command == "health-probe":

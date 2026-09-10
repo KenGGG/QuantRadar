@@ -74,6 +74,37 @@ def test_request_governor_records_sdk_invocation_without_claiming_opaque_http_at
     assert governor.call("valuation_daily/600519", lambda: "ok", max_attempts=1, http_attempts_known=False) == "ok"
     assert governor.status()["sdk_invocations"] == 1
     assert governor.status()["actual_http_attempts"] == 0
+    observed = governor.observed_status()
+    assert observed["sdk_attempts_opaque"] == 1
+    assert observed["observed_http_attempts"] == 0
+    assert observed["observed_403"] == 0
+
+
+def test_canonical_security_master_adds_only_delta_records():
+    from quantradar.datahub.service import canonical_sh_sz_security_master
+
+    base = [{"symbol": "600000.SH", "list_date": "1999-11-10", "source": "investment_data"}]
+    lifecycle = [
+        {"symbol": "600000.SH", "list_date": "1999-11-10", "source": "baostock"},
+        {"symbol": "688999.SH", "list_date": "2023-01-03", "source": "baostock"},
+        {"symbol": "430001.BJ", "list_date": "2023-01-03", "source": "baostock"},
+    ]
+
+    master = canonical_sh_sz_security_master(base, lifecycle)
+
+    assert [row["symbol"] for row in master] == ["600000.SH", "688999.SH"]
+    assert master[0]["source"] == "investment_data"
+    assert master[1]["source"] == "baostock"
+
+
+def test_journal_creates_pending_entries_without_overwriting_completed(tmp_path):
+    from quantradar.datahub.store import UpdateJournal
+
+    journal = UpdateJournal(tmp_path / "journal.json")
+    journal.complete("600000.SH", raw_sha256="a" * 64, row_count=1)
+    assert journal.ensure_pending(["600000.SH", "688999.SH"], reason="security master delta") == 1
+    assert journal.data["units"]["600000.SH"]["status"] == "COMPLETE"
+    assert journal.data["units"]["688999.SH"]["status"] == "PENDING"
 
 
 def test_shard_runner_defers_the_remaining_shards_when_governor_circuit_opens(tmp_path):
