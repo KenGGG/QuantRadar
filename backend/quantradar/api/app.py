@@ -24,6 +24,7 @@ import pandas as pd
 from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from pymysql.err import OperationalError
 
 from quantradar.backtest import run_backtest
 from quantradar.bootstrap import bootstrap_investment_data
@@ -279,8 +280,11 @@ def datahub_job() -> Dict[str, Any]:
 @app.post("/api/datahub/job/start")
 def datahub_job_start(payload: Dict[str, Any] = Body(default={})) -> Dict[str, Any]:
     from quantradar.datahub.service import DataHubService
-    return DataHubService().start_job(dataset=str(payload.get("dataset", "valuation_daily")),
-                                      limit=int(payload.get("limit", 0)), resume=bool(payload.get("resume", True)))
+    try:
+        return DataHubService().start_job(dataset=str(payload.get("dataset", "valuation_daily")),
+                                          limit=int(payload.get("limit", 0)), resume=bool(payload.get("resume", True)))
+    except OperationalError as exc:
+        raise HTTPException(status_code=503, detail=f"investment_data unavailable: {exc}") from exc
 
 
 @app.post("/api/datahub/job/pause")
@@ -298,8 +302,11 @@ def datahub_job_stop() -> Dict[str, Any]:
 @app.post("/api/datahub/job/resume")
 def datahub_job_resume(payload: Dict[str, Any] = Body(default={})) -> Dict[str, Any]:
     from quantradar.datahub.service import DataHubService
-    return DataHubService().start_job(dataset=str(payload.get("dataset", "valuation_daily")),
-                                      limit=int(payload.get("limit", 0)), resume=True)
+    try:
+        return DataHubService().start_job(dataset=str(payload.get("dataset", "valuation_daily")),
+                                          limit=int(payload.get("limit", 0)), resume=True)
+    except OperationalError as exc:
+        raise HTTPException(status_code=503, detail=f"investment_data unavailable: {exc}") from exc
 
 
 @app.get("/api/datahub/gaps")

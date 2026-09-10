@@ -355,6 +355,22 @@ def test_datahub_cli_exposes_mvp_resume_limit_gap_repair_and_publish_commands():
     assert _parser().parse_args(["publish"]).command == "publish"
 
 
+def test_datahub_start_reports_unavailable_base_source_as_503(monkeypatch):
+    from fastapi import HTTPException
+    from pymysql.err import OperationalError
+    from quantradar.api.app import datahub_job_start
+    from quantradar.datahub.service import DataHubService
+
+    def unavailable(*_args, **_kwargs):
+        raise OperationalError(2003, "Can't connect to MySQL server")
+
+    monkeypatch.setattr(DataHubService, "start_job", unavailable)
+    with pytest.raises(HTTPException) as error:
+        datahub_job_start({})
+    assert error.value.status_code == 503
+    assert "investment_data unavailable" in str(error.value.detail)
+
+
 def test_mvp_shard_runner_persists_completed_and_repairs_only_failed_shards(tmp_path):
     from quantradar.datahub.mvp import ShardRunner
     from quantradar.datahub.store import UpdateJournal
