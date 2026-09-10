@@ -82,6 +82,10 @@ class UpdateJournal:
         self.data["control"] = {"pause_requested": False, "stop_requested": False}
         self._save()
 
+    def set_total_shards(self, total_shards: int) -> None:
+        self.data.setdefault("job", {})["total_shards"] = int(total_shards)
+        self._save()
+
     def request_pause(self, *, stop: bool = False) -> None:
         self.data.setdefault("control", {}).update({"pause_requested": True, "stop_requested": bool(stop),
                                                        "requested_at": datetime.now(timezone.utc).isoformat()})

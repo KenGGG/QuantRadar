@@ -152,14 +152,17 @@ class DataHubService:
         heartbeat, phase = journal.data.get("heartbeat") or {}, (journal.data.get("phases") or {}).get("download", {}).get("status")
         control = journal.data.get("control") or {}
         governor = RequestGovernor(Path(self.config.supplemental_repo) / "governance", "eastmoney").observed_status()
+        worker_alive = bool(heartbeat.get("pid") and Path(f"/proc/{heartbeat['pid']}").exists())
         if control.get("pause_requested"):
             status = "PAUSED" if phase == "PAUSED" else "PAUSING"
+        elif worker_alive or heartbeat.get("current_shard"):
+            status = "RUNNING"
         elif governor.get("circuit_open"):
             status = "COOLDOWN"
         elif phase == "DONE": status = "COMPLETED"
         elif phase == "FAILED": status = "COMPLETED" if not states["PENDING"] and not states["RUNNING"] else "FAILED"
         elif phase == "PAUSED": status = "PAUSED"
-        elif phase == "RUNNING" or heartbeat.get("current_shard"): status = "RUNNING"
+        elif phase == "RUNNING": status = "RUNNING"
         else: status = "IDLE"
         # Older in-flight jobs predate the controller metadata.  Attach them to
         # the immutable base pool once so their UI percentage is never a false
@@ -184,7 +187,7 @@ class DataHubService:
                 "elapsed_seconds": round(elapsed, 1), "processing_rate": rate,
                 "estimated_remaining_seconds": round((total - processed) / rate, 1) if rate else None,
                 "governor": governor, "control": control,
-                "worker_alive": bool(heartbeat.get("pid") and Path(f"/proc/{heartbeat['pid']}").exists())}
+                "worker_alive": worker_alive}
 
     def _stage_coverage(self, journal: UpdateJournal) -> dict[str, Any]:
         dates = [(row.get("first_date"), row.get("last_date")) for row in journal.data.get("units", {}).values() if row.get("status") == "COMPLETE"]
@@ -345,9 +348,9 @@ class DataHubService:
         temporary = path.with_suffix(".tmp")
         temporary.write_text(json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str), encoding="utf-8")
         os.replace(temporary, path)
-        pending_created = UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json").ensure_pending(
-            [row["symbol"] for row in delta], reason="canonical SH/SZ security-master delta"
-        )
+        journal = UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json")
+        pending_created = journal.ensure_pending([row["symbol"] for row in delta], reason="canonical SH/SZ security-master delta")
+        journal.set_total_shards(len(rows))
         return {key: payload[key] for key in ("base_commit", "base_symbol_count", "delta_symbol_count", "symbol_count", "scope")} | {"path": str(path), "pending_created": pending_created}
 
     def valuation_universe(self) -> list[str]:
