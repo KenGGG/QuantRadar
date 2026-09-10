@@ -42,7 +42,19 @@ def canonical_sh_sz_security_master(
         symbol = str(row.get("symbol") or "")
         if symbol not in master and len(symbol) == 9 and symbol[:6].isdigit() and symbol.endswith((".SH", ".SZ")):
             master[symbol] = dict(row)
-    return [master[symbol] for symbol in sorted(master)]
+    generated_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    records = []
+    for symbol in sorted(master):
+        row = dict(master[symbol])
+        row["symbol"] = symbol
+        row["exchange"] = symbol.rsplit(".", 1)[-1]
+        row["first_seen_date"] = row.get("first_seen_date") or generated_at[:10]
+        row["quality_status"] = row.get("quality_status") or row.get("pit_status") or "PARTIAL"
+        row["provenance"] = {
+            key: row.get(key) for key in ("source", "raw_sha256", "adapter_version", "fetched_at", "available_date", "pit_status")
+        }
+        records.append(row)
+    return records
 
 
 def _fetch_valuation_batch(host: str | None, symbols: list[str], start_date: str, end_date: str) -> list[tuple[str, FetchedRows]]:
@@ -340,9 +352,10 @@ class DataHubService:
         rows = canonical_sh_sz_security_master(base, candidates)
         base_symbols = {row["symbol"] for row in base}
         delta = [row for row in rows if row["symbol"] not in base_symbols]
+        version = hashlib.sha256(json.dumps(rows, ensure_ascii=False, sort_keys=True, default=str).encode()).hexdigest()
         payload = {"generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                    "base_commit": self._base_commit(), "scope": "SH/SZ A shares; supplemental lifecycle candidates remain PARTIAL",
-                   "base_symbol_count": len(base), "delta_symbol_count": len(delta), "symbol_count": len(rows), "records": rows}
+                   "version": version, "base_symbol_count": len(base), "delta_symbol_count": len(delta), "symbol_count": len(rows), "records": rows}
         path = self._security_master_path()
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(".tmp")
@@ -351,7 +364,7 @@ class DataHubService:
         journal = UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json")
         pending_created = journal.ensure_pending([row["symbol"] for row in delta], reason="canonical SH/SZ security-master delta")
         journal.set_total_shards(len(rows))
-        return {key: payload[key] for key in ("base_commit", "base_symbol_count", "delta_symbol_count", "symbol_count", "scope")} | {"path": str(path), "pending_created": pending_created}
+        return {key: payload[key] for key in ("base_commit", "version", "base_symbol_count", "delta_symbol_count", "symbol_count", "scope")} | {"path": str(path), "pending_created": pending_created}
 
     def valuation_universe(self) -> list[str]:
         """Canonical SH/SZ ingestion pool, never described as an all-market universe."""
