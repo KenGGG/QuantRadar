@@ -31,7 +31,7 @@ class AdapterParseError(RuntimeError):
         super().__init__(f"{symbol} {function}: {type(exception).__name__}: {exception}")
 
     def metadata(self) -> dict[str, str]:
-        return {"symbol": self.symbol, "exception_type": self.exception_type, "exception_message": str(self),
+        return {"symbol": self.symbol, "category": "SYMBOL_DATA_ERROR", "exception_type": self.exception_type, "exception_message": str(self),
                 "adapter": self.function, "adapter_version": self.adapter_version,
                 "request_started_at": self.request_started_at, "request_finished_at": self.request_finished_at,
                 "raw_status": self.raw_status}

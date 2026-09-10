@@ -141,6 +141,21 @@ class UpdateJournal:
         self.data["units"][unit] = {"status": "FAILED", "error": str(error), **metadata}
         self._save()
 
+    def classify_unclassified_symbol_errors(self) -> int:
+        """Upgrade legacy SDK parse records without changing their shard result."""
+        changed = 0
+        for detail in self.data.get("units", {}).values():
+            if detail.get("status") != "FAILED" or detail.get("category"):
+                continue
+            error = str(detail.get("error", ""))
+            if "NoneType" in error or detail.get("exception_type") in {"TypeError", "KeyError", "AttributeError"}:
+                detail["category"] = "SYMBOL_DATA_ERROR"
+                detail.setdefault("raw_status", "UNAVAILABLE_SDK_EXCEPTION")
+                changed += 1
+        if changed:
+            self._save()
+        return changed
+
     def completed_units(self) -> set[str]:
         return {name for name, detail in self.data["units"].items() if detail["status"] == "COMPLETE"}
 

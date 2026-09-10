@@ -345,6 +345,15 @@ def test_update_journal_keeps_health_probe_evidence(tmp_path):
     assert UpdateJournal(tmp_path / "journal.json").data["health_probes"][-1]["outcome"] == "HEALTHY"
 
 
+def test_update_journal_backfills_missing_symbol_error_categories(tmp_path):
+    from quantradar.datahub.store import UpdateJournal
+
+    journal = UpdateJournal(tmp_path / "journal.json")
+    journal.fail("002504.SZ", "'NoneType' object is not subscriptable", exception_type="TypeError")
+    assert journal.classify_unclassified_symbol_errors() == 1
+    assert journal.data["units"]["002504.SZ"]["category"] == "SYMBOL_DATA_ERROR"
+
+
 def test_datahub_cli_exposes_mvp_resume_limit_gap_repair_and_publish_commands():
     from quantradar.datahub.cli import _parser
 
@@ -448,6 +457,17 @@ def test_adapter_parse_error_fails_one_shard_without_opening_the_upstream_circui
     assert governor.status()["circuit_open"] is False
     assert governor.status()["shard_failure_streak"] == 1
     assert governor.status()["upstream_failure_streak"] == 0
+
+
+def test_shard_runner_persists_adapter_parse_errors_as_symbol_data_errors(tmp_path):
+    from quantradar.datahub.mvp import AdapterParseError, ShardRunner
+    from quantradar.datahub.store import UpdateJournal
+
+    error = AdapterParseError(symbol="002504.SZ", function="akshare.stock_value_em", adapter_version="test",
+                              exception=TypeError("NoneType"), started_at="t0", finished_at="t1")
+    journal = UpdateJournal(tmp_path / "journal.json")
+    ShardRunner(tmp_path / "stage", journal, lambda _: (_ for _ in ()).throw(error)).run(["002504.SZ"])
+    assert journal.data["units"]["002504.SZ"]["category"] == "SYMBOL_DATA_ERROR"
 
 
 def test_governor_opens_only_for_distinct_source_wide_failures(tmp_path):
