@@ -499,12 +499,19 @@ class DataHubService:
                 for table, date_col in (("qr_valuation_daily", "trade_date"), ("qr_sw_industry_history", "effective_from"), ("qr_security_lifecycle", "list_date")):
                     cursor.execute(f"SELECT COUNT(*) AS row_count, MIN({date_col}) AS first_date, MAX({date_col}) AS latest_date, COUNT(DISTINCT symbol) AS stocks, SUM(pit_status <> 'PASS') AS partial_rows FROM {table}")
                     output[table] = cursor.fetchone()
+                cursor.execute("SHOW COLUMNS FROM qr_valuation_daily")
+                valuation_columns = {str(row["Field"]) for row in cursor.fetchall()}
+                pcf_column = "pcf_ocf_ttm" if "pcf_ocf_ttm" in valuation_columns else "pcf_ncf_ttm" if "pcf_ncf_ttm" in valuation_columns else None
+                if not pcf_column:
+                    raise RuntimeError("valuation release has neither pcf_ocf_ttm nor legacy pcf_ncf_ttm")
                 cursor.execute(
                     "SELECT SUM(pe_ttm IS NULL) AS pe_ttm, SUM(pb_mrq IS NULL) AS pb_mrq, "
-                    "SUM(ps_ttm IS NULL) AS ps_ttm, SUM(pcf_ocf_ttm IS NULL) AS pcf_ocf_ttm "
-                    "FROM qr_valuation_daily"
+                    f"SUM(ps_ttm IS NULL) AS ps_ttm, SUM({pcf_column} IS NULL) AS {pcf_column} FROM qr_valuation_daily"
                 )
                 output["qr_valuation_daily"]["source_nulls"] = cursor.fetchone()
+                if pcf_column == "pcf_ncf_ttm":
+                    output["qr_valuation_daily"]["source_nulls"]["pcf_ocf_ttm"] = None
+                    output["qr_valuation_daily"]["pcf_semantics"] = "LEGACY_PCF_NCF_TTM: not equivalent to current Pcf OCF TTM"
                 cursor.execute(
                     "SELECT COUNT(*) AS conflicts FROM qr_sw_industry_history AS earlier "
                     "JOIN qr_sw_industry_history AS later ON earlier.symbol = later.symbol "
@@ -517,9 +524,12 @@ class DataHubService:
                 cursor.execute(
                     "SELECT symbol, COUNT(*) AS observed_rows, SUM(pe_ttm IS NOT NULL) AS pe_ttm, "
                     "SUM(pb_mrq IS NOT NULL) AS pb_mrq, SUM(ps_ttm IS NOT NULL) AS ps_ttm, "
-                    "SUM(pcf_ocf_ttm IS NOT NULL) AS pcf_ocf_ttm FROM qr_valuation_daily GROUP BY symbol"
+                    f"SUM({pcf_column} IS NOT NULL) AS {pcf_column} FROM qr_valuation_daily GROUP BY symbol"
                 )
                 valuation_rows = {row["symbol"]: row for row in cursor.fetchall()}
+                if pcf_column == "pcf_ncf_ttm":
+                    for row in valuation_rows.values():
+                        row["pcf_ocf_ttm"] = 0
                 cursor.execute("SELECT symbol, list_date, delist_date FROM qr_security_lifecycle")
                 lifecycle_rows = list(cursor.fetchall())
                 output["qr_valuation_daily"]["coverage"] = self._valuation_coverage(
