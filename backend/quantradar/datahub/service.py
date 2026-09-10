@@ -382,6 +382,10 @@ class DataHubService:
         journal = UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json")
         if gaps["failed"] and not journal.data.get("repair_attempts"):
             raise RuntimeError("quality gate failed: FAILED shards require a targeted repair before PARTIAL publication")
+        master_path = self._security_master_path()
+        if not master_path.is_file():
+            raise RuntimeError("quality gate failed: canonical security master is missing")
+        master = json.loads(master_path.read_text(encoding="utf-8"))
         valuation, industry, lifecycle = self._staged_valuations(), self._existing_industries(), self._base_lifecycle()
         writer_connection = self._connection()
         try:
@@ -395,6 +399,10 @@ class DataHubService:
                                                          "failed_symbols": gaps["failed"]},
                                     "sw_industry_history": {"quality_status": "PARTIAL"},
                                     "security_lifecycle": {"quality_status": "PARTIAL", "provenance": "BASE_EXISTING"}},
+                    release_metadata={"canonical_universe_version": master.get("version"),
+                                      "canonical_universe_symbols": master.get("symbol_count"),
+                                      "valuation_gap_counts": {key: gaps[key] for key in ("completed", "failed", "not_covered", "legal_empty", "total_shards")},
+                                      "valuation_pit_status": "PARTIAL"},
                 )
             UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json").publish(manifest["release_id"])
             return manifest

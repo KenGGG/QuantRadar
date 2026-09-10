@@ -21,7 +21,7 @@ class ReleaseStore:
         return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
     def publish(
-        self, *, base_commit: str, supplemental_commit: str, datasets: dict[str, Any], source_adapters: dict[str, str], schema_version: str = "datahub-v1"
+        self, *, base_commit: str, supplemental_commit: str, datasets: dict[str, Any], source_adapters: dict[str, str], schema_version: str = "datahub-v1", metadata: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         if not base_commit:
             raise ValueError("base_commit is required")
@@ -33,6 +33,7 @@ class ReleaseStore:
             "schema_version": schema_version,
             "datasets": datasets,
             "source_adapters": source_adapters,
+            "metadata": metadata or {},
         }
         release_id = "R" + hashlib.sha256(self._canonical(identity)).hexdigest()[:16]
         manifest = {**identity, "release_id": release_id, "published_at": datetime.now(timezone.utc).isoformat()}

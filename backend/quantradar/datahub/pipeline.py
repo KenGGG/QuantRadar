@@ -48,7 +48,8 @@ class DataHubPipeline:
             finally:
                 fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
-    def publish(self, datasets: dict[str, Callable[[], Iterable[dict[str, Any]]]], *, extra_metadata: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
+    def publish(self, datasets: dict[str, Callable[[], Iterable[dict[str, Any]]]], *, extra_metadata: dict[str, dict[str, Any]] | None = None,
+                release_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
         expected = ("valuation_daily", "sw_industry_history", "security_lifecycle")
         missing = [name for name in expected if name not in datasets]
         if missing:
@@ -107,6 +108,7 @@ class DataHubPipeline:
                 supplemental_commit=supplemental_commit,
                 datasets=metadata,
                 source_adapters={"a-stock-data": "2012ce7cd0e75d379c5e6cbd3115514f300f3bc8"},
+                metadata=release_metadata,
             )
 
     @staticmethod
