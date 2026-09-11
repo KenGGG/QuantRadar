@@ -24,7 +24,7 @@ from .adapters import BaostockAdapter, FetchedRows, SwIndustryAdapter
 from .dolt import SupplementalStore
 from .pipeline import DataHubPipeline
 from .release import ReleaseStore
-from .store import RawStore, UpdateJournal
+from .store import RawStore, UpdateJournal, _atomic_json
 from .governor import RequestGovernor, CircuitOpen
 from .mvp import AkshareValuationFetcher, ShardRunner
 
@@ -118,6 +118,38 @@ class DataHubService:
         self.config = config or load_datahub_config()
         self.releases = ReleaseStore(self.config.release_root)
         self.raw = RawStore(self.config.raw_root)
+
+    def base_inventory(self, release_id: str | None = None) -> dict[str, Any]:
+        """Scan the base material actually visible to one immutable release."""
+        from .inventory import scan_base
+        manifest = self.releases.resolve(release_id)
+        base_commit = manifest["base_commit"]
+        connection = pymysql.connect(
+            host=self.config.base_host, port=self.config.base_port, user=self.config.user, password=self.config.password,
+            database=f"{self.config.base_database}/{base_commit}", connect_timeout=self.config.connect_timeout,
+            read_timeout=max(self.config.read_timeout, 300), charset="utf8mb4", cursorclass=DictCursor,
+        )
+        try:
+            with connection.cursor() as cursor:
+                inventory = scan_base(cursor)
+        finally:
+            connection.close()
+        report = {"release_id": manifest["release_id"], "base_commit": base_commit,
+                  "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **inventory}
+        _atomic_json(Path(self.config.supplemental_repo) / "base_inventory.json", report)
+        return report
+
+    def strategy_gap_plan(self, start: str, end: str, release_id: str | None = None) -> dict[str, Any]:
+        """Persist the actual strategy window before any source routing is considered."""
+        from .inventory import build_gap_plan
+        inventory = self.base_inventory(release_id)
+        plan = build_gap_plan(inventory["domains"], start=start, end=end, requirements={
+            "price": "base-final-price-v1", "trade_status": "base-bao-daily-v1",
+        })
+        report = {"release_id": inventory["release_id"], "base_commit": inventory["base_commit"],
+                  "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **plan}
+        _atomic_json(Path(self.config.supplemental_repo) / "gap_plan.json", report)
+        return report
 
     @contextmanager
     def _updater_lock(self):

@@ -7,7 +7,7 @@
 - Development branch: `main`. DataHub feature work and the launcher change are merged into main.
 - The Web process at `127.0.0.1:7231` serves the main checkout.
 - Old worktrees remain available for reference. Local runtime and browser scratch files are not source data.
-- Latest completed goal: `DATAHUB_DAILY_UPDATE_REMEDIATION_PASS`.
+- Active DataHub goal: `DATAHUB_V2_HISTORICAL_REUSE_AND_INCREMENTAL_REPAIR`; V1 remediation remains a completed prerequisite.
 - Current verification and source limitations: [2026-09-11 remediation evidence](acceptance/datahub-remediation-2026-09-11/README.md).
 
 ## DataHub facts

@@ -1,0 +1,43 @@
+version: datahub-v2-2026-09-11
+contracts:
+  base-final-price-v1:
+    upstream: UPSTREAM_MERGED
+    storage: investment_data.final_a_stock_eod_price
+    fields: [open, high, low, close, volume, amount]
+    units: {volume: hand, amount: thousand_yuan}
+    status: VALID
+    source_evidence: table_and_pinned_commit
+  base-ts-price-v1:
+    upstream: tushare_via_investment_data
+    storage: investment_data.ts_a_stock_eod_price
+    fields: [open, high, low, close, volume, amount]
+    units: {volume: hand, amount: thousand_yuan}
+    status: VALID
+    source_evidence: table_and_pinned_commit
+  base-bao-daily-v1:
+    upstream: baostock_via_investment_data
+    storage: investment_data.bao_a_stock_eod_info
+    fields: [open, high, low, close, volume, amount, turn, tradestatus, is_st]
+    units: {volume: hand, amount: thousand_yuan}
+    status: PARTIAL
+    source_evidence: table_and_pinned_commit
+  eastmoney-valuation-v1:
+    upstream: eastmoney:RPT_VALUEANALYSIS_DET
+    adapter: akshare.stock_value_em@1.18.94
+    fields: [pe_ttm, pb_mrq, ps_ttm, pcf_ocf_ttm]
+    status: PARTIAL
+    source_evidence: raw_receipt_and_candidate_check
+  akshare-tencent-price-v1:
+    upstream: tencent
+    adapter: akshare.stock_zh_a_hist_tx
+    fields: [open, high, low, close, volume, amount]
+    status: UNKNOWN
+    source_evidence: qualification_required
+    constraints: [raw_unadjusted_only, record_sdk_and_http_attempts]
+  baostock-daily-v2:
+    upstream: baostock
+    adapter: baostock.query_history_k_data_plus
+    fields: [open, high, low, close, volume, amount, turn, tradestatus, is_st, pe_ttm, pb_mrq, ps_ttm]
+    status: FROZEN
+    source_evidence: access_recovery_required
+    constraints: [single_session, stop_on_10001011, no_ncf_to_ocf_mapping]
