@@ -69,6 +69,17 @@ def low_beta_status_coverage_outcome(missing_dates: list[str], base_price_last_d
     return "UNRESOLVED"
 
 
+def group_trade_status_candidates_by_day(rows: Iterable[dict[str, Any]]) -> dict[str, dict[str, str]]:
+    """Map requested external symbols by day for partition-pruned base reads."""
+    from ..providers.investment_data.symbols import normalize_stock_symbol
+
+    grouped: dict[str, dict[str, str]] = {}
+    candidates = sorted({(str(row["trade_date"])[:10], str(row["symbol"])) for row in rows})
+    for day, external in candidates:
+        grouped.setdefault(day, {})[normalize_stock_symbol(external)] = external
+    return grouped
+
+
 class JsonlRows:
     """Repeatable disk staging for a full valuation backfill without RAM growth."""
 
@@ -636,15 +647,9 @@ class DataHubService:
         publication.  A supplemental record may fill an absent date, but must
         never compete with a status observation already present in the base.
         """
-        from ..providers.investment_data.symbols import normalize_stock_symbol
-
-        candidates = {
-            (str(row["trade_date"])[:10], str(row["symbol"]))
-            for row in rows
-        }
-        if not candidates:
+        grouped = group_trade_status_candidates_by_day(rows)
+        if not grouped:
             return set()
-        internal = [(day, normalize_stock_symbol(symbol), symbol) for day, symbol in candidates]
         connection = pymysql.connect(
             host=self.config.base_host, port=self.config.base_port, user=self.config.user, password=self.config.password,
             database=f"{self.config.base_database}/{base_commit}", connect_timeout=self.config.connect_timeout,
@@ -653,21 +658,23 @@ class DataHubService:
         found: set[tuple[str, str]] = set()
         try:
             with connection.cursor() as cursor:
-                # Keep every SELECT bounded.  Candidate batches are normally
-                # small, while retry queues can contain many securities.
-                for offset in range(0, len(internal), 500):
-                    chunk = internal[offset:offset + 500]
-                    marks = ", ".join(["(%s, %s)"] * len(chunk))
-                    cursor.execute(
-                        "SELECT tradedate, symbol FROM bao_a_stock_eod_info "
-                        f"WHERE (tradedate, symbol) IN ({marks})",
-                        tuple(value for day, symbol, _ in chunk for value in (day, symbol)),
-                    )
-                    external_by_internal = {(day, internal_symbol): external for day, internal_symbol, external in chunk}
-                    for item in cursor.fetchall():
-                        key = (str(item["tradedate"])[:10], str(item["symbol"]))
-                        if key in external_by_internal:
-                            found.add((key[0], external_by_internal[key]))
+                # Equality on tradedate lets Dolt prune to one daily partition.
+                # The old row-constructor IN scan touched every partition.
+                for day, external_by_internal in grouped.items():
+                    internal_symbols = sorted(external_by_internal)
+                    for offset in range(0, len(internal_symbols), 500):
+                        chunk = internal_symbols[offset:offset + 500]
+                        marks = ", ".join(["%s"] * len(chunk))
+                        cursor.execute(
+                            "SELECT tradedate, symbol FROM bao_a_stock_eod_info "
+                            f"WHERE tradedate=%s AND symbol IN ({marks})",
+                            (day, *chunk),
+                        )
+                        for item in cursor.fetchall():
+                            internal_symbol = str(item["symbol"])
+                            external = external_by_internal.get(internal_symbol)
+                            if external:
+                                found.add((day, external))
         finally:
             connection.close()
         return found

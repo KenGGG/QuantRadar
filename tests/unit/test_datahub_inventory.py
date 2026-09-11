@@ -218,6 +218,21 @@ def test_low_beta_missing_status_is_not_covered_only_after_base_price_ends():
     assert low_beta_status_coverage_outcome(["2025-03-31"], "2025-04-01") == "UNRESOLVED"
 
 
+def test_trade_status_candidates_are_grouped_by_day_for_partition_reads():
+    from quantradar.datahub.service import group_trade_status_candidates_by_day
+
+    grouped = group_trade_status_candidates_by_day([
+        {"trade_date": "2023-08-31T00:00:00", "symbol": "600519.SH"},
+        {"trade_date": "2023-08-31", "symbol": "000001.SZ"},
+        {"trade_date": "2023-09-01", "symbol": "600519.SH"},
+    ])
+
+    assert grouped == {
+        "2023-08-31": {"SH600519": "600519.SH", "SZ000001": "000001.SZ"},
+        "2023-09-01": {"SH600519": "600519.SH"},
+    }
+
+
 def test_work_queue_is_idempotent_and_rotates_all_three_queues(tmp_path):
     from quantradar.datahub.work_queue import DataHubWorkQueue
 
