@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Any
+from typing import Any, Callable
 
 
 _PRICE_FIELDS = {"tradedate", "symbol", "open", "high", "low", "close", "volume", "amount"}
@@ -137,3 +137,38 @@ def build_gap_plan(domains: dict[str, dict[str, Any]], *, start: str, end: str, 
         strategy_gap.append({"domain": domain, "range": {"start": gap_start, "end": end}, "state": "UNKNOWN", "source_contract_id": contract})
     return {"strategy_window": {"start": start, "end": end}, "satisfied_by_base": satisfied, "strategy_gap": strategy_gap,
             "current_update": [], "historical_repair": []}
+
+
+def monthly_status_dependencies(
+    trade_days: list[str], *, start: str, end: str, constituents_for: Callable[[str], list[str]],
+) -> list[dict[str, Any]]:
+    """Return only the status keys a monthly, previous-day strategy actually reads.
+
+    ``trade_days`` must be the fixed release's ordered exchange calendar.
+    The constituent callback stays explicit because each strategy can use a
+    different point-in-time universe.  No network source is selected here.
+    """
+    days = sorted({str(day)[:10] for day in trade_days})
+    first_by_month: dict[str, str] = {}
+    for day in days:
+        if start <= day <= end:
+            first_by_month.setdefault(day[:7], day)
+    result: list[dict[str, Any]] = []
+    for rebalance in first_by_month.values():
+        position = days.index(rebalance)
+        if not position:
+            continue
+        status_date = days[position - 1]
+        symbols = sorted(set(constituents_for(status_date)))
+        if not symbols:
+            continue
+        # The rebalance date is the immediately following observed exchange
+        # date.  It is the useful upper boundary when auditing a prior-day
+        # status result.
+        after = rebalance
+        before = days[position - 2] if position > 1 else None
+        result.append({
+            "rebalance_date": rebalance, "status_date": status_date, "symbols": symbols,
+            "boundary_check": {"before": before, "after": after},
+        })
+    return result

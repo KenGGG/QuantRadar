@@ -112,6 +112,23 @@ def test_gap_plan_uses_base_coverage_before_scheduling_network_work():
     assert plan["satisfied_by_base"] == ["price"]
 
 
+def test_monthly_status_dependencies_use_previous_trade_day_and_exact_constituents():
+    from quantradar.datahub.inventory import monthly_status_dependencies
+
+    dependencies = monthly_status_dependencies(
+        ["2023-06-29", "2023-06-30", "2023-07-03", "2023-07-04", "2023-08-01"],
+        start="2023-07-01", end="2023-08-01",
+        constituents_for=lambda day: ["600000.SH"] if day == "2023-06-30" else ["000001.SZ", "600000.SH"],
+    )
+
+    assert dependencies == [
+        {"rebalance_date": "2023-07-03", "status_date": "2023-06-30", "symbols": ["600000.SH"],
+         "boundary_check": {"before": "2023-06-29", "after": "2023-07-03"}},
+        {"rebalance_date": "2023-08-01", "status_date": "2023-07-04", "symbols": ["000001.SZ", "600000.SH"],
+         "boundary_check": {"before": "2023-07-03", "after": "2023-08-01"}},
+    ]
+
+
 def test_service_persists_strategy_gap_plan(tmp_path, monkeypatch):
     from quantradar.config import DataHubConfig
     from quantradar.datahub.service import DataHubService
