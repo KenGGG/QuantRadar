@@ -126,7 +126,35 @@ def test_service_persists_strategy_gap_plan(tmp_path, monkeypatch):
     plan = service.strategy_gap_plan("2020-01-01", "2026-08-31")
     assert plan["release_id"] == "R1"
     assert plan["strategy_gap"][0]["domain"] == "trade_status"
+    assert plan["work_orders"][0]["status"] == "ENQUEUED"
+    assert plan["queue_status"]["strategy"]["PENDING"] == 1
     assert (tmp_path / "gap_plan.json").is_file()
+
+
+def test_work_queue_is_idempotent_and_rotates_all_three_queues(tmp_path):
+    from quantradar.datahub.work_queue import DataHubWorkQueue
+
+    queue = DataHubWorkQueue(tmp_path / "work-queue.json")
+    def task(name):
+        return {"source_contract_id": "contract", "domain": name, "range": {"start": "2023-09-01", "end": "2023-09-01"},
+                "gap_reason": "test", "gap_fingerprint": name}
+    assert queue.enqueue("current", task("current"))["status"] == "ENQUEUED"
+    assert queue.enqueue("strategy", task("strategy"))["status"] == "ENQUEUED"
+    assert queue.enqueue("historical", task("historical"))["status"] == "ENQUEUED"
+    assert queue.enqueue("current", task("current"))["status"] == "NO_CHANGE"
+    assert [queue.claim_next()["queue"] for _ in range(3)] == ["current", "strategy", "historical"]
+
+
+def test_work_queue_blocks_a_pending_task_superseded_by_a_new_source_contract(tmp_path):
+    from quantradar.datahub.work_queue import DataHubWorkQueue
+
+    queue = DataHubWorkQueue(tmp_path / "work-queue.json")
+    base = {"domain": "trade_status", "range": {"start": "2023-09-01", "end": "2023-09-01"}, "gap_reason": "test", "gap_fingerprint": "same"}
+    old = queue.enqueue("strategy", {**base, "source_contract_id": "old"})["task"]
+    new = queue.enqueue("strategy", {**base, "source_contract_id": "new"})["task"]
+    tasks = {task["task_id"]: task for task in queue.status()["tasks"]}
+    assert tasks[old["task_id"]]["status"] == "BLOCKED"
+    assert tasks[old["task_id"]]["superseded_by"] == new["task_id"]
 
 
 def test_baostock_bundle_keeps_status_and_never_maps_ncf_to_ocf():

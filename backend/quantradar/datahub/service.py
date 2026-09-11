@@ -146,8 +146,24 @@ class DataHubService:
         plan = build_gap_plan(inventory["domains"], start=start, end=end, requirements={
             "price": "base-final-price-v1", "trade_status": "base-bao-daily-v1",
         })
+        from .work_queue import DataHubWorkQueue
+        queue = DataHubWorkQueue(Path(self.config.supplemental_repo) / "work-queue.json")
+        planned = []
+        for gap in plan["strategy_gap"]:
+            fingerprint = hashlib.sha256(json.dumps({"base_commit": inventory["base_commit"], **gap}, sort_keys=True).encode()).hexdigest()
+            # The base contract identifies the missing material.  The work
+            # order identifies the separately qualified source that may fill it.
+            source_contract = "baostock-daily-v2" if gap["domain"] == "trade_status" else gap["source_contract_id"]
+            planned.append(queue.enqueue("strategy", {
+                "source_contract_id": source_contract, "base_source_contract_id": gap["source_contract_id"], "domain": gap["domain"], "fields": [], "symbols": [],
+                "range": gap["range"], "gap_reason": "fixed-release strategy coverage gap", "gap_fingerprint": fingerprint,
+                "boundary_check": {"before": gap["range"]["start"], "after": gap["range"]["end"]},
+                "budget": {"network_attempts": "UNKNOWN_UNTIL_SOURCE_SELECTED"},
+                "source_health": "QUALIFIED_SAMPLED" if source_contract == "baostock-daily-v2" else "UNASSESSED",
+            }))
         report = {"release_id": inventory["release_id"], "base_commit": inventory["base_commit"],
-                  "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **plan}
+                  "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **plan,
+                  "work_orders": planned, "queue_status": queue.status()["counts"]}
         _atomic_json(Path(self.config.supplemental_repo) / "gap_plan.json", report)
         return report
 
