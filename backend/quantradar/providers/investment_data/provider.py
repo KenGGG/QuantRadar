@@ -513,13 +513,16 @@ class InvestmentDataProvider(DataProvider):
         start = _fmt_date(start_date)
         end = _fmt_date(end_date)
 
+        jq_to_internal = {
+            to_joinquant_symbol(normalize_stock_symbol(s)): normalize_stock_symbol(s)
+            for s in security_list
+        }
+        raw = self._fetch_table_cols_many(
+            _INFO_TABLE, [field], list(jq_to_internal.values()), start, end, count, fill_paused=False
+        )
         per_sec: Dict[str, "pd.Series"] = {}
-        for s in security_list:
-            internal = normalize_stock_symbol(s)
-            jq = to_joinquant_symbol(internal)
-            df_sec = self._fetch_table_cols(
-                _INFO_TABLE, [field], internal, start, end, count, fill_paused=False
-            )
+        for jq, internal in jq_to_internal.items():
+            df_sec = raw[internal]
             if df_sec.empty:
                 per_sec[jq] = pd.Series(dtype="float64")
             else:
@@ -643,13 +646,25 @@ class InvestmentDataProvider(DataProvider):
             )
 
         ordered_jq = list(jq_to_internal.keys())
-        per_security: Dict[str, pd.DataFrame] = {}
-        for jq, internal in jq_to_internal.items():
-            df = self._fetch_raw_price(
-                internal, price_cols, limit_cols, need_paused,
+        if len(jq_to_internal) > 1 and not limit_cols:
+            raw_prices = self._fetch_raw_prices_many(
+                list(jq_to_internal.values()), price_cols, need_paused,
                 start_date, end_date, count, fill_paused,
                 adj_mode=adj_mode, pre_factor_ref_date=pre_factor_ref_date,
             )
+        else:
+            raw_prices = {
+                internal: self._fetch_raw_price(
+                    internal, price_cols, limit_cols, need_paused,
+                    start_date, end_date, count, fill_paused,
+                    adj_mode=adj_mode, pre_factor_ref_date=pre_factor_ref_date,
+                )
+                for internal in jq_to_internal.values()
+            }
+
+        per_security: Dict[str, pd.DataFrame] = {}
+        for jq, internal in jq_to_internal.items():
+            df = raw_prices[internal]
             if drop_volume and "volume" in df.columns:
                 df = df.drop(columns=["volume"])
             if rename_back:
@@ -738,6 +753,126 @@ class InvestmentDataProvider(DataProvider):
                 cal_idx = pd.DatetimeIndex([pd.Timestamp(d).normalize() for d in cal])
                 df = df.reindex(cal_idx)
         return df
+
+    def _fetch_table_cols_many(
+        self,
+        table: str,
+        cols: List[str],
+        internal_symbols: List[str],
+        start: Optional[str],
+        end: Optional[str],
+        count: Optional[int],
+        fill_paused: bool,
+    ) -> Dict[str, pd.DataFrame]:
+        """Fetch one constrained daily window per symbol in one SQL statement.
+
+        ``ROW_NUMBER`` preserves the public ``count`` contract: with an end bound it
+        selects each symbol's latest N rows; with a start bound it selects its first N.
+        """
+        symbols = list(dict.fromkeys(internal_symbols))
+        empty = lambda: pd.DataFrame(  # noqa: E731 - keeps identical empty schemas
+            {c: pd.Series(dtype="float64") for c in cols}, index=pd.DatetimeIndex([])
+        )
+        if not cols or not symbols:
+            return {symbol: empty() for symbol in symbols}
+
+        col_sql = ", ".join(cols)
+        placeholders = ", ".join(["%s"] * len(symbols))
+        where = [f"symbol IN ({placeholders})"]
+        args: List[Any] = list(symbols)
+        if start:
+            where.append("tradedate >= %s")
+            args.append(start)
+        if end:
+            where.append("tradedate <= %s")
+            args.append(end)
+        predicate = " AND ".join(where)
+        if count is None:
+            sql = (
+                f"SELECT symbol, tradedate, {col_sql} FROM {table} "
+                f"WHERE {predicate} ORDER BY symbol ASC, tradedate ASC"
+            )
+        elif int(count) == 1:
+            aggregate = "MIN" if start else "MAX"
+            sql = (
+                f"SELECT source.symbol, source.tradedate, {', '.join('source.' + c for c in cols)} "
+                f"FROM {table} AS source JOIN ("
+                f"SELECT symbol, {aggregate}(tradedate) AS tradedate FROM {table} "
+                f"WHERE {predicate} GROUP BY symbol"
+                f") AS latest ON source.symbol = latest.symbol AND source.tradedate = latest.tradedate "
+                f"ORDER BY source.symbol ASC, source.tradedate ASC"
+            )
+        else:
+            direction = "ASC" if start else "DESC"
+            sql = (
+                f"SELECT symbol, tradedate, {col_sql} FROM ("
+                f"SELECT symbol, tradedate, {col_sql}, "
+                f"ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY tradedate {direction}) AS rn "
+                f"FROM {table} WHERE {predicate}"
+                f") AS ranked WHERE rn <= %s ORDER BY symbol ASC, tradedate ASC"
+            )
+            args.append(int(count))
+        rows = self._connection.query(sql, args)
+        grouped: Dict[str, List[Dict[str, Any]]] = {symbol: [] for symbol in symbols}
+        for row in rows:
+            grouped[row["symbol"]].append(row)
+
+        calendar_index = None
+        if fill_paused and start and end:
+            cal = self.get_trade_days(start, end)
+            if cal:
+                calendar_index = pd.DatetimeIndex([pd.Timestamp(d).normalize() for d in cal])
+
+        result: Dict[str, pd.DataFrame] = {}
+        for symbol, symbol_rows in grouped.items():
+            if not symbol_rows:
+                result[symbol] = empty()
+                continue
+            dates = pd.to_datetime([r["tradedate"] for r in symbol_rows])
+            frame = pd.DataFrame(
+                {c: [float(r[c]) if r[c] is not None else float("nan") for r in symbol_rows] for c in cols},
+                index=pd.DatetimeIndex(dates),
+            )
+            if calendar_index is not None:
+                frame = frame.reindex(calendar_index)
+            result[symbol] = frame
+        return result
+
+    def _fetch_raw_prices_many(
+        self,
+        internal_symbols: List[str],
+        price_cols: List[str],
+        need_paused: bool,
+        start_date: Optional[Union[str, datetime]],
+        end_date: Optional[Union[str, datetime]],
+        count: Optional[int],
+        fill_paused: bool,
+        adj_mode: Optional[str] = None,
+        pre_factor_ref_date: Optional[Union[str, datetime]] = None,
+    ) -> Dict[str, pd.DataFrame]:
+        """Batch counterpart of the no-limit-table path in ``_fetch_raw_price``."""
+        fetch_cols = list(price_cols)
+        drop_adjclose = adj_mode is not None and "adjclose" not in fetch_cols
+        drop_close = adj_mode is not None and "close" not in fetch_cols
+        if drop_adjclose:
+            fetch_cols.append("adjclose")
+        if drop_close:
+            fetch_cols.append("close")
+        result = self._fetch_table_cols_many(
+            _PRICE_TABLE, fetch_cols, internal_symbols,
+            _fmt_date(start_date), _fmt_date(end_date), count, fill_paused,
+        )
+        for frame in result.values():
+            if need_paused:
+                volume = frame["volume"] if "volume" in frame.columns else pd.Series(0.0, index=frame.index)
+                frame["paused"] = volume.fillna(0) == 0
+            if adj_mode and "adjclose" in frame.columns:
+                self._apply_adjustment(frame, adj_mode, pre_factor_ref_date)
+                if drop_adjclose:
+                    frame.drop(columns=["adjclose"], inplace=True)
+                if drop_close:
+                    frame.drop(columns=["close"], inplace=True)
+        return result
 
     def _fetch_raw_price(
         self,
