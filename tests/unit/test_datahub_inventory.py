@@ -178,7 +178,7 @@ def test_low_beta_status_collection_archives_raw_and_stages_only_requested_keys(
                                            raw_root=str(tmp_path / "raw"), journal_root=str(tmp_path / "journals")))
     monkeypatch.setattr(service, "low_beta_status_plan", lambda *_args, **_kwargs: {
         "release_id": "R1", "base_commit": "base", "tasks": [{"symbols": ["600519.SH"], "range": {"start": "2023-08-31", "end": "2023-08-31"}}],
-        "key_count": 1, "symbol_count": 1,
+        "plan_fingerprint": "a" * 64, "key_count": 1, "symbol_count": 1,
     })
     row = {"trade_date": "2023-08-31", "symbol": "600519.SH", "tradestatus": 1, "is_st": 0, "turn": 0.1,
            "source": "baostock", "raw_sha256": hashlib.sha256(b"raw").hexdigest(), "adapter_version": "test", "fetched_at": "now",
@@ -195,6 +195,20 @@ def test_low_beta_status_collection_archives_raw_and_stages_only_requested_keys(
     assert result["staged_rows"] == 1
     assert (tmp_path / "supp" / "staging" / "low-beta-status" / "600519.SH.jsonl").is_file()
     assert service.raw.read(__import__("hashlib").sha256(b"raw").hexdigest()) == b"raw"
+
+
+def test_low_beta_status_plan_fingerprint_changes_with_required_dates(tmp_path, monkeypatch):
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.service import DataHubService
+
+    service = DataHubService(DataHubConfig(supplemental_repo=str(tmp_path), release_root=str(tmp_path / "releases")))
+    monkeypatch.setattr(service.releases, "resolve", lambda release_id=None: {"release_id": "R1", "base_commit": "base"})
+    monkeypatch.setattr(service, "_low_beta_status_dependencies", lambda start, end, base_commit: [
+        {"rebalance_date": end, "status_date": start, "symbols": ["600519.SH"], "boundary_check": {"before": None, "after": end}},
+    ])
+    first = service.low_beta_status_plan("2023-08-31", "2023-09-01")
+    second = service.low_beta_status_plan("2023-09-01", "2023-09-02")
+    assert first["plan_fingerprint"] != second["plan_fingerprint"]
 
 
 def test_work_queue_is_idempotent_and_rotates_all_three_queues(tmp_path):

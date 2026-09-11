@@ -224,13 +224,18 @@ class DataHubService:
                 "gap_fingerprint": fingerprint, "boundary_check": dependency["boundary_check"],
                 "budget": {"network_attempts": "ONE_BAOSTOCK_QUERY_PER_SYMBOL"}, "source_health": "QUALIFIED_SAMPLED",
             })
+        plan_fingerprint = hashlib.sha256(json.dumps({
+            "release_id": manifest["release_id"], "base_commit": manifest["base_commit"],
+            "tasks": [{key: task[key] for key in ("range", "symbols", "gap_fingerprint")} for task in tasks],
+        }, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
         return {"release_id": manifest["release_id"], "base_commit": manifest["base_commit"],
                 "strategy": "low-beta-strict-monthly", "window": {"start": start, "end": end}, "tasks": tasks,
+                "plan_fingerprint": plan_fingerprint,
                 "key_count": sum(len(task["symbols"]) for task in tasks),
                 "symbol_count": len({symbol for task in tasks for symbol in task["symbols"]})}
 
-    def _low_beta_status_journal(self) -> UpdateJournal:
-        return UpdateJournal(Path(self.config.journal_root) / "low-beta-status-repair.json")
+    def _low_beta_status_journal(self, plan: dict[str, Any]) -> UpdateJournal:
+        return UpdateJournal(Path(self.config.journal_root) / f"low-beta-status-{plan['plan_fingerprint'][:16]}.json")
 
     def collect_low_beta_status(self, start: str, end: str, *, release_id: str | None = None, limit: int = 0) -> dict[str, Any]:
         """Collect only strict low-Beta status dependencies into durable staging.
@@ -245,7 +250,7 @@ class DataHubService:
             for task in plan["tasks"] for symbol in task["symbols"]
         }
         symbols = sorted({symbol for _, symbol in wanted})
-        journal = self._low_beta_status_journal()
+        journal = self._low_beta_status_journal(plan)
         journal.start("low-beta-status-repair", dataset="trade_status_daily")
         journal.ensure_pending(symbols, reason="strict low-beta monthly status dependency")
         selected = [symbol for symbol in symbols if journal.data["units"].get(symbol, {}).get("status") != "COMPLETE"]
@@ -295,9 +300,10 @@ class DataHubService:
         return {"status": "COMPLETE" if not failed and completed == len(selected) else "PARTIAL", "completed": completed,
                 "failed": failed, "staged_rows": staged_rows, "remaining": len(symbols) - len(journal.completed_units()), "plan": plan}
 
-    def publish_low_beta_status(self) -> dict[str, Any]:
+    def publish_low_beta_status(self, start: str, end: str, *, release_id: str | None = None) -> dict[str, Any]:
         """Publish the staged low-Beta repair only when every planned symbol completed."""
-        journal = self._low_beta_status_journal()
+        plan = self.low_beta_status_plan(start, end, release_id)
+        journal = self._low_beta_status_journal(plan)
         units = journal.data["units"]
         incomplete = sorted(symbol for symbol, detail in units.items() if detail.get("status") != "COMPLETE")
         if incomplete:

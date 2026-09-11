@@ -49,7 +49,10 @@ def _parser() -> argparse.ArgumentParser:
     low_beta_collect.add_argument("--end", required=True)
     low_beta_collect.add_argument("--release")
     low_beta_collect.add_argument("--limit", type=int, default=0)
-    commands.add_parser("publish-low-beta-status")
+    low_beta_publish = commands.add_parser("publish-low-beta-status")
+    low_beta_publish.add_argument("--start", required=True)
+    low_beta_publish.add_argument("--end", required=True)
+    low_beta_publish.add_argument("--release")
     return parser
 
 
@@ -114,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "collect-low-beta-status":
             result = service.collect_low_beta_status(args.start, args.end, release_id=args.release, limit=args.limit)
         elif args.command == "publish-low-beta-status":
-            result = service.publish_low_beta_status()
+            result = service.publish_low_beta_status(args.start, args.end, release_id=args.release)
     except Exception as exc:
         print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
         return 1
