@@ -1,0 +1,28 @@
+{
+  "checked_at": "2026-09-09",
+  "python_executable": "/data/Projects/a-stock-research/QuantRadar/.venv/bin/python",
+  "baostock_version": "0.9.3",
+  "baostock_module": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/baostock/__init__.py",
+  "endpoint": {
+    "host": "public-api.baostock.com",
+    "ipv4": ["198.18.1.15"],
+    "tcp_10030": "connected",
+    "login": {"error_code": "0", "error_msg": "success"},
+    "valuation_probe": {
+      "symbol": "sh.600519",
+      "start_date": "2026-09-01",
+      "end_date": "2026-09-08",
+      "error_code": "0",
+      "rows": 6,
+      "fields": ["peTTM", "pbMRQ", "psTTM", "pcfNcfTTM", "turn", "tradestatus", "isST"]
+    }
+  },
+  "diagnostic_only_endpoint": {
+    "host": "www.baostock.com",
+    "ipv4": ["198.18.1.11"],
+    "tcp_10030": "connected",
+    "production_use": false,
+    "reason": "No official fallback designation was found."
+  },
+  "conclusion": "BAOSTOCK_DIAGNOSTIC_PASS"
+}

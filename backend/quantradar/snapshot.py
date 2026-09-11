@@ -203,6 +203,8 @@ def build_snapshot(
                 str(asof),
                 str(env.get("dolt_commit")),
                 str(env.get("provider_version")),
+                str((env.get("data_release") or {}).get("release_id")),
+                str((env.get("data_release") or {}).get("supplemental_commit")),
             ]
         ).encode("utf-8")
     ).hexdigest()
@@ -241,6 +243,7 @@ def build_snapshot_from_results(
     config: Optional[Dict[str, Any]] = None,
     fq: Optional[str] = None,
     connection: Optional[Any] = None,
+    audit_env: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """从 BulletTrade `create_backtest` 返回的 `results` 字典构建审计快照 manifest。
 
@@ -300,7 +303,7 @@ def build_snapshot_from_results(
     cfg.setdefault("fq", fq)
 
     metrics = compute_metrics(records)
-    env = collect_audit_env(connection)
+    env = audit_env if audit_env is not None else collect_audit_env(connection)
     c_hash = config_hash(cfg)
     s_hash = strategy_hash(strategy_source, cfg)
     snapshot_hash = hashlib.sha256(
@@ -311,6 +314,8 @@ def build_snapshot_from_results(
                 str(asof),
                 str(env.get("dolt_commit")),
                 str(env.get("provider_version")),
+                str((env.get("data_release") or {}).get("release_id")),
+                str((env.get("data_release") or {}).get("supplemental_commit")),
             ]
         ).encode("utf-8")
     ).hexdigest()

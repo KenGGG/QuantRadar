@@ -1,0 +1,13 @@
+[Unit]
+Description=QuantRadar supplemental Dolt SQL server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/data/quantradar_data
+ExecStart=/usr/local/bin/dolt sql-server -H 127.0.0.1 -P 3308
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

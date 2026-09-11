@@ -1,0 +1,31 @@
+{
+  "dataset": "valuation_daily",
+  "source": "eastmoney",
+  "adapter": "akshare.stock_value_em",
+  "adapter_version": "akshare-1.18.94",
+  "upstream": "RPT_VALUEANALYSIS_DET",
+  "qualification_status": "FAIL",
+  "historical_start": "2018-01-02",
+  "historical_end": "2026-09-09",
+  "supports_delisted": false,
+  "required_fields": {
+    "pe_ttm": "PE(TTM)",
+    "pb_mrq": "市净率",
+    "ps_ttm": "市销率",
+    "pcf_ocf_ttm": "市现率"
+  },
+  "precision": "AKShare DataFrame preserves returned numeric values; raw upstream HTTP payload and its exact attempt count are opaque to this public API.",
+  "request_pattern": "one serial stock_value_em(symbol) SDK invocation per symbol; no DataHub outer retry",
+  "rate_limit_observed": false,
+  "approved_backfill_mode": "BLOCKED",
+  "approved_incremental_mode": "NOT_EVALUATED",
+  "pit_status": "PARTIAL",
+  "samples": [
+    {"symbol": "600519", "row_count": 2109, "first_date": "2018-01-02", "last_date": "2026-09-09", "duplicate_date_count": 0, "sdk_output_sha256": "cdd1fc857066ded5c802cc461c74d05696d2b3cc322d27b2d70ce3923a4a71cf"},
+    {"symbol": "000001", "row_count": 2109, "first_date": "2018-01-02", "last_date": "2026-09-09", "duplicate_date_count": 0, "sdk_output_sha256": "6d6a2437dad5ad84d8b4b4ebcce5164a34f5ba69fb49da1596a4a7177caf1f0a"},
+    {"symbol": "688981", "row_count": 1494, "first_date": "2020-07-16", "last_date": "2026-09-09", "duplicate_date_count": 0, "sdk_output_sha256": "e35bc751d9cc552c5fe01089327c2033b88e4af54516293d8deba4247b7a1c85"},
+    {"symbol": "600005", "status": "FAIL", "error": "TypeError: 'NoneType' object is not subscriptable"}
+  ],
+  "governor": {"logical_requests": 4, "sdk_invocations": 4, "actual_http_attempts": "UNKNOWN_SDK_INTERNAL_RETRY", "outer_retry": 0},
+  "evidence_hash": "cdd1fc857066ded5c802cc461c74d05696d2b3cc322d27b2d70ce3923a4a71cf"
+}

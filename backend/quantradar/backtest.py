@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from bullet_trade.core.settings import get_settings, set_option
 
 from quantradar.snapshot import _to_native, build_snapshot
+from quantradar.audit import collect_audit_env
 
 # 保护 bullet_trade 全局 use_real_price 设置在「设置 → 回测 → 还原」临界区内的线程安全。
 # 单进程内回测本就基本串行；此锁避免 Worker 多线程并发提交时复权口径互相串扰。
@@ -85,6 +86,7 @@ def run_backtest(
     extras: Optional[Dict[str, Any]] = None,
     benchmark: Optional[str] = None,
     fq: str = "none",
+    release_id: Optional[str] = None,
 ) -> Tuple[Any, Dict[str, Any]]:
     """运行一次真实回测，返回 (engine, snapshot)。
 
@@ -101,7 +103,7 @@ def run_backtest(
     """
     from bullet_trade.core.engine import BacktestEngine
 
-    from quantradar.bootstrap import bootstrap_investment_data
+    from quantradar.bootstrap import bootstrap_data_release, bootstrap_investment_data
 
     _fq = (fq or "none").lower()
     if _fq not in ("none", "pre", "qfq", "post", "hfq"):
@@ -119,7 +121,23 @@ def run_backtest(
         _prev_real_price = get_settings().options.get("use_real_price", False)
         set_option("use_real_price", _use_real_price)
         try:
-            bootstrap_investment_data(set_active=True, overwrite=True)
+            try:
+                scope = bootstrap_data_release(release_id)
+            except FileNotFoundError:
+                if release_id is not None:
+                    raise
+                # Legacy direct callers are retained until the first DataHub release exists.
+                scope = None
+                bootstrap_investment_data(set_active=True, overwrite=True)
+            audit_env = collect_audit_env()
+            if scope is not None:
+                audit_env["data_release"] = {
+                    "release_id": scope.release_id,
+                    "base_commit": scope.manifest["base_commit"],
+                    "supplemental_commit": scope.manifest["supplemental_commit"],
+                    "schema_version": scope.manifest["schema_version"],
+                }
+                audit_env["dolt_commit"] = scope.manifest["base_commit"]
 
             if code:
                 tmp = tempfile.NamedTemporaryFile(
@@ -144,6 +162,7 @@ def run_backtest(
                 snapshot = build_snapshot(
                     engine, extras=extras, strategy_source=code,
                     security=security, amount=amount, benchmark=benchmark, fq=_fq,
+                    audit_env=audit_env,
                 )
                 return engine, _attach_details(snapshot, engine)
 
@@ -170,6 +189,7 @@ def run_backtest(
             snapshot = build_snapshot(
                 engine, extras=extras, strategy_source=None,
                 security=sec, amount=amount, benchmark=benchmark, fq=_fq,
+                audit_env=audit_env,
             )
             return engine, _attach_details(snapshot, engine)
         finally:

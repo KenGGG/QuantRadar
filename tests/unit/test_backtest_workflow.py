@@ -105,8 +105,14 @@ def test_infinite_native_metrics_remain_json_serializable():
 def test_missing_benchmark_cannot_produce_success_report(tmp_path, monkeypatch):
     import pandas as pd
     import pytest
+    from types import SimpleNamespace
     from quantradar.backtest_run import run_unified_backtest
-    monkeypatch.setattr('quantradar.bootstrap.bootstrap_investment_data', lambda **kw: None)
+    monkeypatch.setattr(
+        'quantradar.bootstrap.bootstrap_data_release',
+        lambda _release_id=None: SimpleNamespace(
+            release_id='R-test', manifest={'base_commit': 'base-test', 'supplemental_commit': 'supp-test', 'schema_version': 'datahub-v1'}
+        ),
+    )
     monkeypatch.setattr('bullet_trade.core.engine.create_backtest', lambda **kw: {
         'daily_records': pd.DataFrame({'total_value': [500000]}),
         'meta': {'benchmark': '000001.XSHG'},

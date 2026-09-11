@@ -1,0 +1,33 @@
+{
+  "gate": "A0",
+  "status": "BLOCKED",
+  "source": "eastmoney:RPT_VALUEANALYSIS_DET",
+  "trade_date": "2016-01-04",
+  "request": {
+    "filter": "(TRADE_DATE='2016-01-04')",
+    "pagination": "pageSize=10000, pageNumber=1"
+  },
+  "response": {
+    "success": false,
+    "code": 9201,
+    "message": "返回数据为空",
+    "result": null,
+    "raw_sha256": "ea6528a2204b61a7ee34683a73ca00f8afdc86aadf3f765d4dae39bbfb19dbe7",
+    "raw_bytes": 89,
+    "raw_store": "/data/quantradar_data/raw-artifacts/raw/ea6528a2204b61a7ee34683a73ca00f8afdc86aadf3f765d4dae39bbfb19dbe7"
+  },
+  "governor": {
+    "upstream": "eastmoney",
+    "concurrency": 1,
+    "logical_requests": 2,
+    "actual_http_attempts": 3,
+    "retry": 1,
+    "schema_invalid": 2,
+    "success": 1,
+    "failure": 1,
+    "rate_limit_403": 0,
+    "rate_limit_429": 0,
+    "note": "The first request occurred before empty-result classification moved inside the Governor and is retained as an HTTP-only success. The second logical request used the final policy, made one controlled retry, recorded two schema-invalid responses, and persisted the rejected raw response."
+  },
+  "conclusion": "The required 2016 date-slice baseline did not return a data result. No field semantics, pagination completeness, delisted-security coverage, lifecycle extraction, backfill, Dolt mutation, manifest publication, or release switch was attempted."
+}

@@ -4,7 +4,7 @@
 接口：
     GET  /api/health            健康检查 + provider 状态（含最新数据日期）
     GET  /api/price             透传 provider.get_price（真实行情）
-    POST /api/data/pull         在本地 Dolt 仓库执行 dolt pull 更新数据
+    POST /api/datahub/update    运行 DataHub staged update（仅 manifest 成功后发布）
     POST /api/backtest          运行真实回测，返回 summary + 结果快照（可复现指纹）
     POST /api/snapshot/save     保存快照 JSON
     GET  /api/snapshot/load     读取快照 JSON
@@ -15,7 +15,6 @@ from __future__ import annotations
 import os
 import csv
 import json
-import subprocess
 import tempfile
 from datetime import date
 from pathlib import Path
@@ -25,6 +24,7 @@ import pandas as pd
 from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from pymysql.err import OperationalError
 
 from quantradar.backtest import run_backtest
 from quantradar.bootstrap import bootstrap_investment_data
@@ -40,9 +40,6 @@ _DIST_PATH = os.path.normpath(
 )
 _DIST_DIR = os.path.dirname(_DIST_PATH)
 _ASSETS_DIR = os.path.join(_DIST_DIR, "assets")
-
-# investment_data 的本地 Dolt 仓库目录（dolt pull 在此执行）；可用环境变量覆盖。
-_DOLT_REPO_DIR = os.environ.get("QUANTRADAR_DOLT_REPO", "/data/investment_data")
 
 _SNAPSHOT_DIR = os.environ.get(
     "QUANT_RADAR_SNAPSHOT_DIR",
@@ -265,44 +262,103 @@ def health() -> Dict[str, Any]:
     }
 
 
+@app.get("/api/datahub/status")
+def datahub_status() -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    try:
+        return DataHubService().status()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"DataHub unavailable: {exc}")
+
+
+@app.get("/api/datahub/job")
+def datahub_job() -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    return DataHubService().job_status()
+
+
+@app.post("/api/datahub/job/start")
+def datahub_job_start(payload: Dict[str, Any] = Body(default={})) -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    try:
+        return DataHubService().start_job(dataset=str(payload.get("dataset", "valuation_daily")),
+                                          limit=int(payload.get("limit", 0)), resume=bool(payload.get("resume", True)))
+    except OperationalError as exc:
+        raise HTTPException(status_code=503, detail=f"investment_data unavailable: {exc}") from exc
+
+
+@app.post("/api/datahub/job/pause")
+def datahub_job_pause() -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    return DataHubService().pause_job()
+
+
+@app.post("/api/datahub/job/stop")
+def datahub_job_stop() -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    return DataHubService().pause_job(stop=True)
+
+
+@app.post("/api/datahub/job/resume")
+def datahub_job_resume(payload: Dict[str, Any] = Body(default={})) -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    try:
+        return DataHubService().start_job(dataset=str(payload.get("dataset", "valuation_daily")),
+                                          limit=int(payload.get("limit", 0)), resume=True)
+    except OperationalError as exc:
+        raise HTTPException(status_code=503, detail=f"investment_data unavailable: {exc}") from exc
+
+
+@app.get("/api/datahub/gaps")
+def datahub_gaps() -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    return DataHubService().mvp_gaps()
+
+
+@app.post("/api/datahub/repair")
+def datahub_repair() -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    try:
+        return DataHubService().start_repair()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/api/datahub/audit")
+def datahub_audit() -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    return DataHubService().mvp_gaps()
+
+
+@app.post("/api/datahub/publish")
+def datahub_publish() -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    return DataHubService().mvp_publish()
+
+
+@app.post("/api/datahub/update")
+def datahub_update(payload: Dict[str, Any] = Body(default={})) -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    try:
+        service = DataHubService()
+        action = payload.get("action", "update")
+        if action in {"update", "resume"}:
+            result = service.mvp_backfill(dataset="valuation_daily", symbols=payload.get("symbols") or service.valuation_universe(), resume=True, limit=int(payload.get("limit", 0)))
+        elif action == "audit" or action == "gaps":
+            result = service.mvp_gaps(dataset="valuation_daily")
+        elif action == "publish":
+            result = service.mvp_publish()
+        else:
+            raise ValueError(f"unsupported DataHub action: {action}")
+        return {"ok": True, "message": action, "result": result}
+    except Exception as exc:
+        return {"ok": False, "message": str(exc)}
+
+
 @app.post("/api/data/pull")
 def pull_data() -> Dict[str, Any]:
-    """更新 investment_data：在本地 Dolt 仓库目录执行 `dolt pull`（拉取 origin 最新数据）。
-
-    仅拉取，不做 merge/commit 等额外写操作；失败时将 dolt 输出原样返回前端。
-    目录默认 /data/investment_data，可用 QUANTRADAR_DOLT_REPO 覆盖。
-    """
-    from quantradar.audit import collect_audit_env
-
-    try:
-        proc = subprocess.run(
-            ["dolt", "pull"],
-            cwd=_DOLT_REPO_DIR,
-            capture_output=True,
-            text=True,
-            timeout=600,
-        )
-        ok = proc.returncode == 0
-        message = (proc.stdout + proc.stderr).strip() or ("dolt pull 成功" if ok else "dolt pull 失败")
-        result: Dict[str, Any] = {
-            "ok": ok,
-            "returncode": proc.returncode,
-            "message": message[-2000:],
-        }
-        if ok:
-            # 拉取成功后刷新审计环境（最新数据日期/dolt_commit 同步）
-            try:
-                prov = _ensure_provider()
-                result["environment"] = collect_audit_env()
-            except Exception:
-                pass
-        return result
-    except FileNotFoundError:
-        return {"ok": False, "returncode": -1, "message": f"未找到 dolt 命令（仓库目录：{_DOLT_REPO_DIR}）"}
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "returncode": -1, "message": "dolt pull 超时（>600s）"}
-    except Exception as e:  # noqa: BLE001 - 将任意异常透传给前端
-        return {"ok": False, "returncode": -1, "message": str(e)}
+    """Compatibility endpoint: DataHub replaces direct writes to investment_data."""
+    return datahub_update({"mode": "sync"})
 
 
 @app.get("/", response_class=HTMLResponse)

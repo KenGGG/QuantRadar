@@ -263,9 +263,56 @@ export interface PullResp {
   environment?: Environment;
 }
 
+export interface DataHubDataset {
+  name: string;
+  version?: string;
+  pit_status?: string;
+  row_count?: number;
+  rows?: number;
+  first_date?: string;
+  latest_date?: string;
+  stocks?: number;
+  partial_rows?: number;
+  source?: string[];
+  source_nulls?: Record<string, number | null>;
+  coverage?: Record<string, unknown>;
+  conflicts?: number;
+  delisted_stocks?: number;
+  history_revision_count?: number;
+}
+
+export interface DataHubStatus {
+  current_release: { release_id: string; base_commit: string; supplemental_commit: string } | null;
+  datasets: DataHubDataset[];
+  last_success?: string | null;
+  last_failure?: { failures?: Record<string, string> } | null;
+  audit_error?: string;
+  operational?: { completed: number; failed: number; legal_empty: number; not_covered: number; pending: number; heartbeat?: { last_heartbeat?: string }; request_ledger?: Record<string, unknown> };
+}
+
+export interface DataHubJob {
+  retry_progress?: { total: number; processed: number; recovered: number; failed: number; active: boolean } | null;
+  job_id?: string; worker_alive?: boolean;
+  status: "IDLE" | "RUNNING" | "PAUSING" | "PAUSED" | "COOLDOWN" | "FAILED" | "COMPLETED" | "AUDITING" | "PUBLISHING" | "PUBLISHED";
+  dataset: string; total_shards: number; processed_shards: number; progress_percentage: number;
+  counts: Record<string, number>; current_shard?: string | null; rows_downloaded: number;
+  coverage: { coverage_start?: string | null; coverage_end?: string | null };
+  last_heartbeat?: string | null; elapsed_seconds: number; processing_rate: number;
+  estimated_remaining_seconds?: number | null; governor: Record<string, unknown>;
+}
+export function getDataHubJob(): Promise<DataHubJob> { return httpJson<DataHubJob>("/api/datahub/job"); }
+export function dataHubJobAction(action: "start" | "pause" | "resume" | "stop" | "audit" | "gaps" | "repair" | "publish"): Promise<unknown> {
+  const path = action === "audit" ? "/api/datahub/audit" : action === "gaps" ? "/api/datahub/gaps" : action === "repair" ? "/api/datahub/repair" : action === "publish" ? "/api/datahub/publish" : `/api/datahub/job/${action}`;
+  return httpJson<unknown>(path, { method: action === "gaps" ? "GET" : "POST", body: action === "start" || action === "resume" ? JSON.stringify({ dataset: "valuation_daily", resume: true }) : undefined });
+}
+
+export function getDataHubStatus(): Promise<DataHubStatus> {
+  return httpJson<DataHubStatus>("/api/datahub/status");
+}
+
 /** 在本地 Dolt 仓库执行 dolt pull 更新 investment_data。 */
 export function pullData(): Promise<PullResp> {
-  return httpJson<PullResp>("/api/data/pull", { method: "POST" });
+  return httpJson<PullResp>("/api/datahub/update", { method: "POST", body: JSON.stringify({ action: "update" }) });
 }
 
 export function runBacktest(payload: BacktestPayload): Promise<BacktestResp> {

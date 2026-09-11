@@ -1,0 +1,15 @@
+[Unit]
+Description=QuantRadar WebUI
+After=network.target quantradar-investment-data-dolt.service
+Requires=quantradar-investment-data-dolt.service
+
+[Service]
+Type=simple
+WorkingDirectory=/data/Projects/a-stock-research/QuantRadar
+EnvironmentFile=-/data/Projects/a-stock-research/QuantRadar/.env
+ExecStart=/data/Projects/a-stock-research/QuantRadar/.venv/bin/uvicorn quantradar.api.app:app --app-dir /data/Projects/a-stock-research/QuantRadar/.worktrees/datahub-v1/backend --host 127.0.0.1 --port 7231
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=QuantRadar read-only investment_data Dolt SQL server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/data/investment_data
+ExecStart=/usr/local/bin/dolt sql-server --readonly -H 127.0.0.1 -P 3307
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

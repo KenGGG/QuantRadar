@@ -68,14 +68,17 @@ export function StrategyWorkbench({
     setData(null); setLog("");
     if (!run) return;
     onRunChange(run.run_id);
-    if (run.status !== "SUCCESS" && run.status !== "FAILED") return;
     let active = true;
     if (run.status === "SUCCESS") getRunReportData(run.run_id).then(d => { if (active) setData(d); }).catch(e => { if (active) setError(String(e)); });
-    fetch(getRunArtifactUrl(run.run_id, "backtest.log")).then(async r => {
+    const refreshLog = () => fetch(getRunArtifactUrl(run.run_id, "backtest.log"), {
+      headers: { Range: "bytes=-65536" }, cache: "no-store",
+    }).then(async r => {
       if (!r.ok) throw new Error(`日志暂不可用 (${r.status})`);
       return r.text();
     }).then(text => { if (active) setLog(text); }).catch(e => { if (active) setLog(String(e)); });
-    return () => { active = false; };
+    void refreshLog();
+    const logTimer = ["RUNNING", "PENDING"].includes(run.status) ? setInterval(refreshLog, 5000) : undefined;
+    return () => { active = false; clearInterval(logTimer); };
   }, [run?.run_id, run?.status, onRunChange]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollGeneration = useRef(0);
@@ -223,11 +226,12 @@ export function StrategyWorkbench({
         <ReturnOverview data={data} compact />
         <div className="run-status" role="status"><span>{loading ? "回测执行中…" : run ? `状态：${run.status} · ${run.run_id}` : "就绪 · 等待运行"}</span>
           {run?.status === "SUCCESS" && <Button type="link" onClick={() => onOpenReport(run.run_id)}>打开完整回测报告 →</Button>}
+          {run && ["RUNNING", "PENDING"].includes(run.status) && <Button type="link" onClick={() => onOpenReport(run.run_id)}>查看实时进度 →</Button>}
         </div>
       </div>
       <div className="console-pane">
         <div className="console-tabs"><button className={consoleTab === "log" ? "active" : ""} onClick={() => setConsoleTab("log")}>日志</button><button className={consoleTab === "error" ? "active" : ""} onClick={() => setConsoleTab("error")}>错误{run?.status === "FAILED" ? " · 1" : ""}</button><span>{run ? "本次回测输出" : "运行输出"}</span></div>
-        <pre className="console-output">{consoleTab === "error" ? (error || run?.error || "暂无错误") : log || (loading ? "正在执行回测，完成后显示完整日志…" : "等待策略运行…")}</pre>
+        <pre className="console-output">{consoleTab === "error" ? (error || run?.error || "暂无错误") : log || (loading ? "正在准备回测，日志将自动刷新…" : "等待策略运行…")}</pre>
       </div>
     </section>
   </div>;

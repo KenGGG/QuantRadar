@@ -1,0 +1,24 @@
+{
+  "dataset": "security_lifecycle",
+  "source": "sse+szse",
+  "adapter": "AKShare official exchange functions",
+  "adapter_version": "akshare-1.18.94",
+  "qualification_status": "FAIL",
+  "historical_start": "1990-12-19 (SSE observed)",
+  "historical_end": "2026-09-07 (SSE listed); 2026-07-06 (SSE delisted)",
+  "supports_delisted": "PARTIAL: SSE PASS; SZSE unavailable",
+  "required_fields": {"symbol": "observed", "exchange": "adapter provenance", "list_date": "observed in SSE outputs", "delist_date": "observed in SSE delist output", "status": "derivable after both exchanges qualify"},
+  "precision": "AKShare DataFrame output artifact hashes retained; direct exchange HTTP payload is not exposed by the public functions.",
+  "request_pattern": "one serial SDK call per exchange list/delist endpoint; no DataHub outer retry",
+  "rate_limit_observed": false,
+  "approved_backfill_mode": "BLOCKED",
+  "approved_incremental_mode": "NOT_EVALUATED",
+  "pit_status": "PARTIAL",
+  "sse": {
+    "main_list": {"rows": 1701, "duplicates": 0, "hash": "4193b57a827b0342ec9357b7a02b19abfd42d2f39bcd41fb0ea9452c29916c2e"},
+    "star_list": {"rows": 616, "duplicates": 0, "hash": "fa7a95e8d46e7eea3dd5744ce2f2e8437bcd069a66738844f06c208035fd75b4"},
+    "delist": {"rows": 159, "duplicates": 0, "contains_600005": true, "hash": "72bf23f2bf0c5edc6bd585ad1434a6da010a22a1122af967e2f5d47c3ad4b0d0"}
+  },
+  "szse": {"listed": "FAIL: SSLEOFError", "delist": "FAIL: SSLEOFError", "logical_requests": 2, "actual_http_attempts": 2, "outer_retry": 0},
+  "evidence_hash": "72bf23f2bf0c5edc6bd585ad1434a6da010a22a1122af967e2f5d47c3ad4b0d0"
+}

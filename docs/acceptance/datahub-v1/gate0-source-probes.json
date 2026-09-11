@@ -1,0 +1,34 @@
+{
+  "fetched_on": "2026-09-09",
+  "a_stock_data_reference_commit": "2012ce7cd0e75d379c5e6cbd3115514f300f3bc8",
+  "pit_status": "PARTIAL",
+  "probes": {
+    "baostock_valuation_history": {
+      "raw_sha256": [
+        "aa740083eb8d93a3a8e76ae6bbbaac9f3a6e70a0b9cb6aa347979fa04aad5b83",
+        "5df41e3a3129d6f795530b726bb58f10dd484306e40f771d9313da5ea2ba2b89",
+        "a65e8bd1e478f9fade1a011f41f1059d977887c57efc59818dca41fb897323f3",
+        "dc4181414534c25816bce8e28205f52375130664af6369fef9ce20c049e0a791"
+      ],
+      "samples": {"600519": {"rows": 2596, "first": "2016-01-04", "last": "2026-09-08"}, "600005_delisted": {"rows": 270, "first": "2016-01-04", "last": "2017-02-14"}, "688981_post_2016_ipo": {"rows": 1493, "first": "2020-07-16", "last": "2026-09-08"}},
+      "limitation": "No historic publication or availability date was returned."
+    },
+    "baostock_stock_basic": {
+      "raw_sha256": "3a368f5275511d32ec6f8db2bc8b4abd3ed862cf0af001cbb4176e1894ed5811",
+      "all_rows": 8945,
+      "sh_sz_a_rows": 5553,
+      "delisted": 337,
+      "latest_ipo": "2026-09-07",
+      "limitation": "A current fetch does not establish historical availability."
+    },
+    "sw_industry_history": {
+      "raw_sha256": "31e29a08c0c46ac05271fa82b484a0bb356cf3cc612f4abaea751157c34fc465",
+      "bytes": 1164800,
+      "rows": 12909,
+      "stocks": 5918,
+      "earliest_effective": "1990-01-01",
+      "latest_effective": "2026-09-02",
+      "limitation": "update_date is not a publication date; it predates effective_date in four rows."
+    }
+  }
+}

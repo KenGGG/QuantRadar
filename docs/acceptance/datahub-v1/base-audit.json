@@ -1,0 +1,459 @@
+{
+  "commit": "dje7kjb4gb27khhfmqncnfhf00n9igcg",
+  "started_at": "2026-09-09T08:19:52.715065+00:00",
+  "tables": {
+    "ts_a_stock_list": {
+      "columns": [
+        {
+          "Field": "ts_code",
+          "Type": "varchar(100)",
+          "Null": "NO",
+          "Key": "PRI",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "symbol",
+          "Type": "varchar(100)",
+          "Null": "NO",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "exchange",
+          "Type": "varchar(100)",
+          "Null": "NO",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "list_date",
+          "Type": "date",
+          "Null": "NO",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "delist_date",
+          "Type": "date",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        }
+      ],
+      "summary": {
+        "first_date": "1990-12-10",
+        "latest_date": "2022-07-18",
+        "rows_count": 5023
+      }
+    },
+    "final_a_stock_eod_price": {
+      "columns": [
+        {
+          "Field": "tradedate",
+          "Type": "date",
+          "Null": "NO",
+          "Key": "PRI",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "symbol",
+          "Type": "varchar(100)",
+          "Null": "NO",
+          "Key": "PRI",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "high",
+          "Type": "double",
+          "Null": "NO",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "low",
+          "Type": "double",
+          "Null": "NO",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "open",
+          "Type": "double",
+          "Null": "NO",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "close",
+          "Type": "double",
+          "Null": "NO",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "adjclose",
+          "Type": "double",
+          "Null": "NO",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "volume",
+          "Type": "double",
+          "Null": "NO",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "amount",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        }
+      ],
+      "summary": {
+        "first_date": "1990-12-19",
+        "latest_date": "2026-09-08",
+        "rows_count": 18437822
+      }
+    },
+    "bao_a_stock_eod_info": {
+      "columns": [
+        {
+          "Field": "tradedate",
+          "Type": "date",
+          "Null": "NO",
+          "Key": "PRI",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "open",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "high",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "low",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "close",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "preclose",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "volume",
+          "Type": "int",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "amount",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "turn",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "tradestatus",
+          "Type": "int",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "is_st",
+          "Type": "int",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "adjclose",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "adjpreclose",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "adjfactor",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "symbol",
+          "Type": "varchar(100)",
+          "Null": "NO",
+          "Key": "PRI",
+          "Default": null,
+          "Extra": ""
+        }
+      ],
+      "summary": {
+        "first_date": "1990-12-19",
+        "latest_date": "2023-06-09",
+        "rows_count": 14342735,
+        "2016_onward_existing_rows": {
+          "denominator": 6911355,
+          "stocks": 5095,
+          "null_turn": 176628.0,
+          "null_is_st": 0.0,
+          "null_tradestatus": 0.0,
+          "paused_rows": 176725.0
+        }
+      }
+    },
+    "ts_index_weight": {
+      "columns": [
+        {
+          "Field": "index_code",
+          "Type": "varchar(100)",
+          "Null": "NO",
+          "Key": "PRI",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "stock_code",
+          "Type": "varchar(100)",
+          "Null": "NO",
+          "Key": "PRI",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "trade_date",
+          "Type": "date",
+          "Null": "NO",
+          "Key": "PRI",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "weight",
+          "Type": "double",
+          "Null": "NO",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        }
+      ],
+      "summary": {
+        "first_date": "2005-04-08",
+        "latest_date": "2026-07-31",
+        "rows_count": 2399436
+      }
+    },
+    "final_a_stock_limit": {
+      "columns": [
+        {
+          "Field": "tradedate",
+          "Type": "date",
+          "Null": "NO",
+          "Key": "PRI",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "symbol",
+          "Type": "varchar(100)",
+          "Null": "NO",
+          "Key": "PRI",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "pre_close",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "up_limit",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "down_limit",
+          "Type": "double",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        }
+      ],
+      "summary": {
+        "first_date": "1996-12-16",
+        "latest_date": "2023-06-12",
+        "rows_count": 14057413
+      }
+    },
+    "ts_trade_day_calendar": {
+      "columns": [
+        {
+          "Field": "id",
+          "Type": "int",
+          "Null": "NO",
+          "Key": "PRI",
+          "Default": null,
+          "Extra": "auto_increment"
+        },
+        {
+          "Field": "exchange",
+          "Type": "varchar(255)",
+          "Null": "NO",
+          "Key": "MUL",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "date",
+          "Type": "date",
+          "Null": "NO",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "is_open",
+          "Type": "binary(1)",
+          "Null": "NO",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        }
+      ],
+      "summary": {
+        "first_date": "1990-12-19",
+        "latest_date": "2026-12-31",
+        "rows_count": 13162
+      }
+    }
+  },
+  "queries": [
+    "SELECT MIN(list_date) AS first_date,MAX(list_date) AS latest_date,COUNT(*) AS rows_count FROM ts_a_stock_list AS OF 'dje7kjb4gb27khhfmqncnfhf00n9igcg'",
+    "SELECT MIN(tradedate) AS first_date,MAX(tradedate) AS latest_date,COUNT(*) AS rows_count FROM final_a_stock_eod_price AS OF 'dje7kjb4gb27khhfmqncnfhf00n9igcg'",
+    "SELECT MIN(tradedate) AS first_date,MAX(tradedate) AS latest_date,COUNT(*) AS rows_count FROM bao_a_stock_eod_info AS OF 'dje7kjb4gb27khhfmqncnfhf00n9igcg'",
+    "SELECT MIN(trade_date) AS first_date,MAX(trade_date) AS latest_date,COUNT(*) AS rows_count FROM ts_index_weight AS OF 'dje7kjb4gb27khhfmqncnfhf00n9igcg'",
+    "SELECT MIN(tradedate) AS first_date,MAX(tradedate) AS latest_date,COUNT(*) AS rows_count FROM final_a_stock_limit AS OF 'dje7kjb4gb27khhfmqncnfhf00n9igcg'",
+    "SELECT MIN(date) AS first_date,MAX(date) AS latest_date,COUNT(*) AS rows_count FROM ts_trade_day_calendar AS OF 'dje7kjb4gb27khhfmqncnfhf00n9igcg'"
+  ],
+  "ended_at": "2026-09-09T08:20:40.559140+00:00",
+  "base_head_unchanged": true,
+  "additional_checks": {
+    "master": {
+      "sql": "SELECT COUNT(*) n,SUM(delist_date IS NOT NULL) delisted FROM ts_a_stock_list AS OF 'dje7kjb4gb27khhfmqncnfhf00n9igcg'",
+      "rows": [
+        {
+          "n": 5023,
+          "delisted": 189.0
+        }
+      ]
+    },
+    "turn_null_reason": {
+      "sql": "SELECT tradestatus,COUNT(*) n,SUM(turn IS NULL) null_turn FROM bao_a_stock_eod_info AS OF 'dje7kjb4gb27khhfmqncnfhf00n9igcg' WHERE tradedate>='2016-01-01' GROUP BY tradestatus",
+      "rows": [
+        {
+          "tradestatus": 1,
+          "n": 6734630,
+          "null_turn": 57.0
+        },
+        {
+          "tradestatus": 0,
+          "n": 176725,
+          "null_turn": 176571.0
+        }
+      ]
+    },
+    "index_300": {
+      "sql": "SELECT MIN(trade_date) first_date,MAX(trade_date) latest_date,COUNT(DISTINCT trade_date) snapshots FROM ts_index_weight AS OF 'dje7kjb4gb27khhfmqncnfhf00n9igcg' WHERE index_code='000300.SH'",
+      "rows": [
+        {
+          "first_date": "2020-01-02",
+          "latest_date": "2022-07-01",
+          "snapshots": 61
+        }
+      ]
+    },
+    "recent_price_stock_count": {
+      "sql": "SELECT tradedate,COUNT(DISTINCT symbol) stocks FROM final_a_stock_eod_price AS OF 'dje7kjb4gb27khhfmqncnfhf00n9igcg' WHERE tradedate='2026-09-08' GROUP BY tradedate",
+      "rows": [
+        {
+          "tradedate": "2026-09-08",
+          "stocks": 5554
+        }
+      ]
+    }
+  }
+}
