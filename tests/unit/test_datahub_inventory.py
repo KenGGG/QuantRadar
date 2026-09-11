@@ -142,3 +142,15 @@ def test_baostock_bundle_keeps_status_and_never_maps_ncf_to_ocf():
     assert rows["trade_status"][0] == {"trade_date": "2023-09-01", "symbol": "600519.SH", "tradestatus": 1, "is_st": 0, "turn": 0.12}
     assert rows["valuation"][0]["pcf_ncf_ttm"] == 2142.3
     assert "pcf_ocf_ttm" not in rows["valuation"][0]
+
+
+def test_status_patch_only_fills_missing_base_values():
+    import pandas as pd
+    from quantradar.providers.investment_data.provider import overlay_status_patch
+
+    base = pd.DataFrame({"is_st": [0.0, float("nan")], "tradestatus": [1.0, float("nan")]}, index=pd.to_datetime(["2023-06-09", "2023-06-12"]))
+    patched = overlay_status_patch(base, [{"trade_date": "2023-06-09", "is_st": 1, "tradestatus": 0}, {"trade_date": "2023-06-12", "is_st": 0, "tradestatus": 1}])
+
+    assert patched.loc["2023-06-09", "is_st"] == 0
+    assert patched.loc["2023-06-12", "is_st"] == 0
+    assert patched.loc["2023-06-12", "tradestatus"] == 1

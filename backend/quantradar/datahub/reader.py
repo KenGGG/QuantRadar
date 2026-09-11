@@ -117,6 +117,24 @@ class SupplementalReader:
         )
         return rows[0] if rows else None
 
+    def trade_status(self, symbols: list[str], start_date: str | None, end_date: str | None, count: int | None) -> dict[str, list[dict[str, Any]]]:
+        if not symbols:
+            return {}
+        marks = ",".join(["%s"] * len(symbols))
+        where, values = [f"symbol IN ({marks})"], list(symbols)
+        if start_date:
+            where.append("trade_date >= %s"); values.append(start_date)
+        if end_date:
+            where.append("trade_date <= %s"); values.append(end_date)
+        rows = self._query("SELECT symbol, trade_date, tradestatus, is_st, turn FROM qr_trade_status_daily WHERE " + " AND ".join(where) + " ORDER BY symbol, trade_date", tuple(values))
+        grouped = {symbol: [] for symbol in symbols}
+        for row in rows:
+            grouped.setdefault(row["symbol"], []).append(row)
+        if count is not None:
+            for symbol in grouped:
+                grouped[symbol] = grouped[symbol][-int(count):]
+        return grouped
+
     def _query(self, sql: str, args: tuple[Any, ...]) -> list[dict[str, Any]]:
         connection = self._connect()
         try:

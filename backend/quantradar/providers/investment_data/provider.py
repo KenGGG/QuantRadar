@@ -61,6 +61,26 @@ _INFO_TABLE = "bao_a_stock_eod_info"
 # already shares.  Keep this explicit: a SH/SZ suffix alone never proves that
 # a security is an index.
 _NATIVE_SHARE_VOLUME_INDEXES = {"SH000300", "SZ399300"}
+
+
+def overlay_status_patch(base: pd.DataFrame, rows: list[dict[str, Any]]) -> pd.DataFrame:
+    """Fill only absent base status cells from a release-pinned patch."""
+    if not rows:
+        return base
+    patch = pd.DataFrame(rows)
+    if patch.empty:
+        return base
+    patch.index = pd.to_datetime(patch.pop("trade_date"))
+    result = base.copy()
+    for field in ("is_st", "tradestatus"):
+        if field not in patch.columns:
+            continue
+        values = patch[field].reindex(result.index)
+        if field not in result.columns:
+            result[field] = values
+        else:
+            result[field] = result[field].where(result[field].notna(), values)
+    return result
 _INFO_DATE_COL = "tradedate"
 _INFO_ST_FIELDS = {"is_st", "tradestatus"}
 # 除权日识别阈值：正常交易日 preclose == 前一日 close；preclose 明显偏低即发生权益变动。
@@ -549,6 +569,12 @@ class InvestmentDataProvider(DataProvider):
                 _INFO_TABLE, ["is_st", "tradestatus"], list(jq_to_internal.values()),
                 start, end, count, fill_paused=False,
             )
+            reader = getattr(self, "_supplemental_reader", None)
+            scope = getattr(self, "_release_scope", None)
+            datasets = getattr(scope, "manifest", {}).get("datasets", {}) if scope is not None else {}
+            if reader is not None and datasets.get("trade_status_daily"):
+                patches = reader.trade_status(list(jq_to_internal.values()), start, end, count)
+                raw = {symbol: overlay_status_patch(frame, patches.get(symbol, [])) for symbol, frame in raw.items()}
             cached = {
                 extra_field: {
                     internal: frame[[extra_field]].copy()
