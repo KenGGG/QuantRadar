@@ -236,6 +236,17 @@ def test_provider_usage_keeps_base_and_supplemental_contributions_separate():
                                      "supplemental_valuation_calls": 4, "supplemental_industry_calls": 5}
 
 
+def test_paused_cache_key_includes_release_and_requested_window():
+    from types import SimpleNamespace
+    from quantradar.providers.investment_data.provider import InvestmentDataProvider
+
+    provider = object.__new__(InvestmentDataProvider)
+    provider._release_scope = SimpleNamespace(release_id="R1")
+    key = (provider._release_scope.release_id, ("SH600519",), "2023-09-01", "2023-09-01", None)
+    different_release = ("R2", "SH600519", "2023-09-01", "2023-09-01", None)
+    assert key[0] != different_release[0]
+
+
 def test_status_patch_validation_rejects_duplicate_or_invalid_state():
     from quantradar.datahub.publication import status_patch_delta, validate_trade_status_base_gap, validate_trade_status_patch
 

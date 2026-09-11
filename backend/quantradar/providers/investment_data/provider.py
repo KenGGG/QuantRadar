@@ -223,6 +223,7 @@ class InvestmentDataProvider(DataProvider):
         self._connection = InvestmentDataConnection(self._config)
         self._price_units = 'joinquant-shares-yuan-v2'
         self._extras_cache: Dict[tuple, Dict[str, Dict[str, pd.DataFrame]]] = {}
+        self._paused_cache: Dict[tuple, Dict[str, pd.Series]] = {}
         self._data_usage = {"price_calls": 0, "price_symbols": set(), "status_calls": 0,
                             "status_patch_rows": 0, "valuation_calls": 0, "industry_calls": 0}
 
@@ -791,11 +792,16 @@ class InvestmentDataProvider(DataProvider):
             }
         paused = {}
         if need_paused:
-            self._data_usage["status_calls"] += 1
-            paused = self._paused_from_trade_status_many(
-                list(jq_to_internal.values()), start_date, end_date, count,
-                {symbol: raw_prices[symbol].index for symbol in jq_to_internal.values()},
-            )
+            scope = getattr(self, "_release_scope", None)
+            cache_key = (getattr(scope, "release_id", None), tuple(jq_to_internal.values()), _fmt_date(start_date), _fmt_date(end_date), count)
+            paused = self._paused_cache.get(cache_key, {})
+            if not paused:
+                self._data_usage["status_calls"] += 1
+                paused = self._paused_from_trade_status_many(
+                    list(jq_to_internal.values()), start_date, end_date, count,
+                    {symbol: raw_prices[symbol].index for symbol in jq_to_internal.values()},
+                )
+                self._paused_cache[cache_key] = paused
 
         per_security: Dict[str, pd.DataFrame] = {}
         for jq, internal in jq_to_internal.items():
