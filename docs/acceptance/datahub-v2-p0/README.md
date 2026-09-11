@@ -33,9 +33,13 @@ overlap.
 
 The actual historical low-Beta run uses 2020-01-01 through 2026-08-31.
 Price coverage satisfies this window from the selected base table and creates
-no network work.  The precise unresolved status range is 2023-06-10 through
-2026-08-31, marked `UNKNOWN` under `base-bao-daily-v1`; it has not been
-silently treated as tradable, normal, or downloaded.
+no network work. The broad range-level status gap is 2023-06-10 through
+2026-08-31, marked `UNKNOWN` under `base-bao-daily-v1`; it is not a claim that
+every stock and date in that interval lacks data. Later P3 work filled the
+11,400 exact low-Beta dependency keys with a released BaoStock patch. The
+remaining broad range stays unknown until a strategy asks for specific keys.
 
-This is P0 evidence only. AKShare Tencent price and a recovered BaoStock route
-remain unqualified, so neither has been used to alter a published release.
+This is P0 inventory evidence. AKShare Tencent price remains only
+`QUALIFIED_SAMPLED` and has not altered a published release. BaoStock has since
+been used only for the separately accepted low-Beta status patch; it is not a
+claim of whole-market status completeness.
