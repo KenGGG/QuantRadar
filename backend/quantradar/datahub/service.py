@@ -246,14 +246,41 @@ class DataHubService:
             "release_id": manifest["release_id"], "base_commit": manifest["base_commit"],
             "tasks": [{key: task[key] for key in ("range", "symbols", "gap_fingerprint")} for task in tasks],
         }, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+        scope_fingerprint = hashlib.sha256(json.dumps({
+            "base_commit": manifest["base_commit"],
+            "tasks": [{key: task[key] for key in ("source_contract_id", "range", "symbols", "gap_fingerprint")} for task in tasks],
+        }, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
         return {"release_id": manifest["release_id"], "base_commit": manifest["base_commit"],
                 "strategy": "low-beta-strict-monthly", "window": {"start": start, "end": end}, "tasks": tasks,
-                "plan_fingerprint": plan_fingerprint,
+                "plan_fingerprint": plan_fingerprint, "scope_fingerprint": scope_fingerprint,
                 "key_count": sum(len(task["symbols"]) for task in tasks),
                 "symbol_count": len({symbol for task in tasks for symbol in task["symbols"]})}
 
     def _low_beta_status_journal(self, plan: dict[str, Any]) -> UpdateJournal:
-        return UpdateJournal(Path(self.config.journal_root) / f"low-beta-status-{plan['plan_fingerprint'][:16]}.json")
+        """Keep completed work reusable when only the release pointer changes."""
+        root = Path(self.config.journal_root)
+        scope = plan.get("scope_fingerprint")
+        if not scope:
+            return UpdateJournal(root / f"low-beta-status-{plan['plan_fingerprint'][:16]}.json")
+        path = root / f"low-beta-status-scope-{scope[:16]}.json"
+        if path.is_file():
+            return UpdateJournal(path)
+        expected = {symbol for task in plan["tasks"] for symbol in task["symbols"]}
+        terminal = {"COMPLETE", "NOT_COVERED", "LEGAL_EMPTY"}
+        legacy_paths = [root / f"low-beta-status-{plan['plan_fingerprint'][:16]}.json", *sorted(root.glob("low-beta-status-*.json"))]
+        for legacy in legacy_paths:
+            if not legacy.is_file() or legacy == path:
+                continue
+            try:
+                data = json.loads(legacy.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            units = data.get("units", {})
+            if set(units) != expected or not all(detail.get("status") in terminal for detail in units.values()):
+                continue
+            _atomic_json(path, {**data, "scope_fingerprint": scope, "migrated_from": legacy.name})
+            break
+        return UpdateJournal(path)
 
     def _base_price_last_dates(self, symbols: list[str], base_commit: str) -> dict[str, str | None]:
         from ..providers.investment_data.symbols import normalize_stock_symbol

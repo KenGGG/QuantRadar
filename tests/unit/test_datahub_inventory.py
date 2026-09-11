@@ -211,6 +211,30 @@ def test_low_beta_status_plan_fingerprint_changes_with_required_dates(tmp_path, 
     assert first["plan_fingerprint"] != second["plan_fingerprint"]
 
 
+def test_low_beta_status_journal_reuses_completed_scope_after_release_changes(tmp_path, monkeypatch):
+    import json
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.service import DataHubService
+
+    service = DataHubService(DataHubConfig(supplemental_repo=str(tmp_path), release_root=str(tmp_path / "releases"), journal_root=str(tmp_path / "journals")))
+    monkeypatch.setattr(service, "_low_beta_status_dependencies", lambda *_args: [
+        {"rebalance_date": "2023-09-01", "status_date": "2023-08-31", "symbols": ["600519.SH"],
+         "boundary_check": {"before": "2023-08-30", "after": "2023-09-01"}},
+    ])
+    monkeypatch.setattr(service.releases, "resolve", lambda release_id=None: {"release_id": release_id or "R2", "base_commit": "base"})
+    old = service.low_beta_status_plan("2023-09-01", "2023-09-01", "R1")
+    old_path = tmp_path / "journals" / f"low-beta-status-{old['plan_fingerprint'][:16]}.json"
+    old_path.parent.mkdir(parents=True)
+    old_path.write_text(json.dumps({"units": {"600519.SH": {"status": "COMPLETE", "raw_sha256": "a" * 64}}, "operation_id": "low-beta-status-repair"}))
+
+    new = service.low_beta_status_plan("2023-09-01", "2023-09-01", "R2")
+    journal = service._low_beta_status_journal(new)
+
+    assert old["plan_fingerprint"] != new["plan_fingerprint"]
+    assert journal.data["units"]["600519.SH"]["status"] == "COMPLETE"
+    assert journal.data["migrated_from"] == old_path.name
+
+
 def test_low_beta_missing_status_is_not_covered_only_after_base_price_ends():
     from quantradar.datahub.service import low_beta_status_coverage_outcome
 
