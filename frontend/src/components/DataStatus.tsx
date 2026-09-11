@@ -26,9 +26,10 @@ export function DataStatus() {
   const running = data?.update.status === 'RUNNING' || data?.job.worker_alive;
   const release = data?.release;
   const base = data?.base_coverage?.base_commit === release?.base_commit ? data?.base_coverage?.datasets : undefined;
+  const statusPatch = release?.datasets.trade_status_daily;
   const rows = [
     { key: 'price', name: '行情', source: '基础库 · final 行情', published: base?.['行情'], downloaded: undefined, status: base?.['行情'] ? '可用 · 日频' : '待检查', dateLabel: '' },
-    { key: 'status', name: 'ST / 停牌', source: '基础库 · BaoStock 历史表', published: base?.['ST / 停牌'], downloaded: undefined, status: base?.['ST / 停牌'] ? '部分可用 · 注意日期' : '待检查', dateLabel: '' },
+    { key: 'status', name: 'ST / 停牌', source: statusPatch ? `基础库 · BaoStock 历史表；补充补丁 ${fmt(statusPatch.row_count)} 行（${statusPatch.first_date}）` : '基础库 · BaoStock 历史表', published: base?.['ST / 停牌'], downloaded: undefined, status: base?.['ST / 停牌'] ? '部分可用 · 注意日期' : '待检查', dateLabel: '' },
     { key: 'valuation_daily', name: '估值', source: '补充库 · 东方财富', published: release?.datasets.valuation_daily, downloaded: data?.job.counts.complete, status: release?.datasets.valuation_daily?.source?.some(s => s.includes('baostock')) ? '旧口径 · 新接口不可用' : release?.datasets.valuation_daily ? '部分可用' : '未发布', dateLabel: '' },
     { key: 'sw_industry_history', name: '行业', source: '补充库 · 申万', published: release?.datasets.sw_industry_history, downloaded: undefined, status: release?.datasets.sw_industry_history ? '部分可用 · 一级行业' : '未发布', dateLabel: '' },
     { key: 'security_lifecycle', name: '基础资料', source: '基础库 · Tushare 名录', published: release?.datasets.security_lifecycle, downloaded: undefined, status: release?.datasets.security_lifecycle ? '部分可用' : '未发布', dateLabel: '上市日期范围' },
