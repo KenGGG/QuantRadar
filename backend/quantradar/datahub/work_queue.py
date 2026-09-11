@@ -86,6 +86,20 @@ class DataHubWorkQueue:
             return dict(task)
         return None
 
+    def finish(self, task_id: str, status: str, *, evidence: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Persist a terminal outcome; retryability stays explicit in the task."""
+        if status not in TERMINAL:
+            raise ValueError(f"terminal status required: {status}")
+        data = self._load()
+        task = data["tasks"].get(task_id)
+        if task is None:
+            raise KeyError(task_id)
+        if task.get("status") in TERMINAL:
+            return {"status": "NO_CHANGE", "task": task}
+        task.update(status=status, updated_at=datetime.now(timezone.utc).isoformat(), evidence=evidence or {})
+        self._save(data)
+        return {"status": status, "task": task}
+
     def status(self) -> dict[str, Any]:
         data = self._load()
         counts = {queue: {state: 0 for state in ("PENDING", "RUNNING", *sorted(TERMINAL))} for queue in QUEUES}

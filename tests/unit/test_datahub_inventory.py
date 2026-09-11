@@ -157,6 +157,19 @@ def test_work_queue_blocks_a_pending_task_superseded_by_a_new_source_contract(tm
     assert tasks[old["task_id"]]["superseded_by"] == new["task_id"]
 
 
+def test_work_queue_persists_terminal_evidence_and_never_reopens_it(tmp_path):
+    from quantradar.datahub.work_queue import DataHubWorkQueue
+
+    queue = DataHubWorkQueue(tmp_path / "work-queue.json")
+    task = queue.enqueue("historical", {"source_contract_id": "contract", "domain": "trade_status",
+                                         "range": {"start": "2023-09-01", "end": "2023-09-01"},
+                                         "gap_reason": "test", "gap_fingerprint": "one"})["task"]
+    assert queue.claim_next()["task_id"] == task["task_id"]
+    finished = queue.finish(task["task_id"], "QUARANTINED", evidence={"reason": "source conflict"})
+    assert finished["task"]["evidence"] == {"reason": "source conflict"}
+    assert queue.finish(task["task_id"], "COMPLETE")["status"] == "NO_CHANGE"
+
+
 def test_baostock_bundle_keeps_status_and_never_maps_ncf_to_ocf():
     from quantradar.datahub.sources import normalize_baostock_daily_bundle
 
