@@ -55,7 +55,11 @@ def validate_trade_status_base_gap(rows: list[dict], base_keys: set[tuple[str, s
 
 def status_patch_delta(rows: list[dict], existing: dict[tuple[str, str], dict]) -> dict:
     """Split an idempotent retry from a conflicting rewrite attempt."""
-    comparable = ("tradestatus", "is_st", "turn", "source", "raw_sha256", "adapter_version", "source_contract_id", "available_date", "pit_status")
+    # A full-range source receipt and a one-day receipt legitimately have
+    # different byte hashes for the same observation.  Keep the first raw
+    # receipt immutable; only a change to the state or source contract is a
+    # publication conflict.
+    comparable = ("tradestatus", "is_st", "turn", "source", "adapter_version", "source_contract_id", "available_date", "pit_status")
 
     def value(row: dict, field: str):
         if field != "source_contract_id":
