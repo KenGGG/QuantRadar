@@ -204,6 +204,36 @@ def test_baostock_bundle_keeps_status_and_never_maps_ncf_to_ocf():
     assert "pcf_ocf_ttm" not in rows["valuation"][0]
 
 
+def test_baostock_daily_bundles_emit_auditable_status_rows(monkeypatch):
+    from contextlib import contextmanager
+    from quantradar.datahub.adapters import BaostockAdapter
+
+    class Result:
+        error_code = "0"
+        error_msg = ""
+        fields = ["date", "code", "open", "high", "low", "close", "volume", "amount", "turn", "tradestatus", "isST"]
+        def __init__(self): self.used = False
+        def next(self):
+            if self.used: return False
+            self.used = True
+            return True
+        def get_row_data(self): return ["2023-08-31", "sh.600519", "1", "1", "1", "1", "100", "1000", "0.1", "1", "0"]
+
+    class Client:
+        def query_history_k_data_plus(self, *_args, **_kwargs): return Result()
+
+    adapter = BaostockAdapter()
+    @contextmanager
+    def fake_session():
+        yield Client()
+    monkeypatch.setattr(adapter, "_session", fake_session)
+    symbol, fetched = next(adapter.daily_bundles(["600519.SH"], "2023-08-31", "2023-08-31"))
+    assert symbol == "600519.SH"
+    assert fetched.dataset == "trade_status_daily"
+    assert fetched.rows[0]["source_contract_id"] == "baostock-daily-v2"
+    assert fetched.rows[0]["symbol"] == "600519.SH"
+
+
 def test_baostock_pe_pb_ps_candidate_does_not_require_or_create_ocf(tmp_path):
     import hashlib
     import json

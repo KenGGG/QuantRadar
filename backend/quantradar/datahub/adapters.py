@@ -20,7 +20,7 @@ import pandas as pd
 import requests
 
 from .governor import RequestGovernor
-from .sources import build_sw_level_one_intervals, normalize_eastmoney_valuation_rows, normalize_lifecycle_row, normalize_valuation_rows
+from .sources import build_sw_level_one_intervals, normalize_baostock_daily_bundle, normalize_eastmoney_valuation_rows, normalize_lifecycle_row, normalize_valuation_rows
 
 
 ASTOCK_DATA_COMMIT = "2012ce7cd0e75d379c5e6cbd3115514f300f3bc8"
@@ -237,6 +237,30 @@ class BaostockAdapter:
                     raw_bytes=raw_bytes,
                     rows=normalize_valuation_rows(raw_rows, source=self.source, raw_sha256=hashlib.sha256(raw_bytes).hexdigest(), fetched_at=fetched_at, adapter_version=ADAPTER_VERSION),
                     source=self.source,
+                    fetched_at=fetched_at,
+                )
+
+    def daily_bundles(self, symbols: Iterable[str], start_date: str, end_date: str):
+        """Fetch one raw daily response per security and emit status candidates only."""
+        fields = "date,code,open,high,low,close,volume,amount,turn,tradestatus,isST"
+        with self._session() as bs:
+            for symbol in symbols:
+                raw_rows = self._rows(
+                    bs.query_history_k_data_plus(
+                        _baostock_code(symbol), fields, start_date=start_date,
+                        end_date=end_date, frequency="d", adjustflag="3",
+                    )
+                )
+                raw_bytes = pd.DataFrame(raw_rows).to_csv(index=False).encode("utf-8")
+                raw_sha256 = hashlib.sha256(raw_bytes).hexdigest()
+                fetched_at = _fetched_at()
+                bundle = normalize_baostock_daily_bundle(
+                    raw_rows, raw_sha256=raw_sha256, fetched_at=fetched_at,
+                    adapter_version=ADAPTER_VERSION,
+                )
+                yield symbol, FetchedRows(
+                    dataset="trade_status_daily", raw_bytes=raw_bytes,
+                    rows=bundle["trade_status"], source=self.source,
                     fetched_at=fetched_at,
                 )
 
