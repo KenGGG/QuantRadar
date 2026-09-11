@@ -6,6 +6,25 @@ from unittest.mock import patch
 import pytest
 
 
+def test_datahub_overview_release_excludes_per_symbol_audit_metadata():
+    from quantradar.api.app import _overview_release
+
+    summary = _overview_release({
+        "release_id": "R1", "base_commit": "base", "supplemental_commit": "supp",
+        "published_at": "2026-09-11T00:00:00Z", "datasets": {"valuation_daily": {"row_count": 2}},
+        "source_adapters": {"valuation": ["eastmoney"]},
+        "metadata": {"quality": "PASS", "pit": "PARTIAL", "isolated": {"000001.SZ": "SYMBOL_DATA_ERROR"},
+                     "shard_hashes": {"000001.SZ": "a" * 64}},
+    })
+
+    assert summary == {
+        "release_id": "R1", "base_commit": "base", "supplemental_commit": "supp",
+        "published_at": "2026-09-11T00:00:00Z", "datasets": {"valuation_daily": {"row_count": 2}},
+        "source_adapters": {"valuation": ["eastmoney"]},
+        "metadata": {"quality": "PASS", "pit": "PARTIAL"},
+    }
+
+
 def test_request_governor_persists_one_retry_and_opens_circuit_across_restart(tmp_path):
     from quantradar.datahub.governor import CircuitOpen, RequestGovernor
 

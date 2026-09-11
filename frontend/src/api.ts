@@ -302,12 +302,12 @@ export interface DataHubJob {
 }
 export function getDataHubJob(): Promise<DataHubJob> { return httpJson<DataHubJob>("/api/datahub/job"); }
 export interface DataHubOverview {
-  release: { release_id: string; base_commit: string; supplemental_commit?: string; published_at: string; datasets: Record<string, DataHubDataset> } | null;
+  release: { release_id: string; base_commit: string; supplemental_commit?: string; published_at: string; datasets: Record<string, DataHubDataset>; source_adapters?: Record<string, string[]>; metadata?: Record<string, unknown> } | null;
   base_coverage: { base_commit: string; datasets: Record<string, DataHubDataset> } | null;
   update: { status: string; job_id?: string; target_as_of?: string; stages: Record<string, { status: string; reason?: string; accepted?: number; isolated?: number }>; error?: string };
   job: DataHubJob;
   candidate: { candidate_id: string; quality: string; coverage: string; row_count: number } | null;
-  issues: { reason: string; count: number; symbols: string[] }[];
+  issues: { reason: string; count: number }[];
   base_inventory?: { release_id: string; base_commit: string; domains: Record<string, { state: string; selected_table?: string; reusable_tables?: string[]; coverage?: DataHubDataset }> } | null;
   gap_plan?: { strategy_window: { start: string; end: string }; satisfied_by_base: string[]; strategy_gap: { domain: string; range: { start: string; end: string }; state: string; source_contract_id: string }[] } | null;
   work_queue?: { counts: Record<string, Record<string, number>> } | null;

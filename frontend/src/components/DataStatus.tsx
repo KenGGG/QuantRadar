@@ -64,7 +64,7 @@ export function DataStatus() {
       {data?.job.worker_alive && <Typography.Paragraph>当前股票：{data.job.current_shard ?? '等待响应'}</Typography.Paragraph>}
     </Card>
     <Card title="需要关注的问题">
-      <Table rowKey="reason" pagination={false} size="small" dataSource={issues} expandable={{ expandedRowRender: r => <Typography.Paragraph copyable>{r.symbols.join('、') || '请运行检查生成明细'}</Typography.Paragraph> }} columns={[
+      <Table rowKey="reason" pagination={false} size="small" dataSource={issues} columns={[
         { title: '问题', render: (_, r) => reasons[r.reason] ?? r.reason }, { title: '股票数', dataIndex: 'count' }, { title: '处理', render: () => '保留隔离；不计入新版本可用范围' },
       ]} locale={{ emptyText: data?.candidate ? '本次检查无隔离项' : '尚未生成候选检查报告' }} />
     </Card>

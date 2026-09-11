@@ -262,6 +262,34 @@ def health() -> Dict[str, Any]:
     }
 
 
+def _overview_release(manifest: Dict[str, Any] | None) -> Dict[str, Any] | None:
+    """Keep the four-second status poll small; symbol-level audit stays in /gaps."""
+    if manifest is None:
+        return None
+    metadata = manifest.get("metadata", {})
+    return {
+        key: manifest.get(key)
+        for key in ("release_id", "base_commit", "supplemental_commit", "published_at", "datasets", "source_adapters")
+    } | {
+        "metadata": {
+            key: metadata[key]
+            for key in ("quality", "coverage", "pit", "publication_policy", "rules_not_checked")
+            if key in metadata
+        }
+    }
+
+
+def _candidate_issues(candidate: Dict[str, Any] | None, *, include_symbols: bool) -> List[Dict[str, Any]]:
+    issues: Dict[str, List[str]] = {}
+    for symbol, reason in (candidate or {}).get("isolated", {}).items():
+        key = reason if isinstance(reason, str) else "QUALITY_FAILURE"
+        issues.setdefault(key, []).append(symbol)
+    return [
+        {"reason": reason, "count": len(symbols), **({"symbols": symbols} if include_symbols else {})}
+        for reason, symbols in issues.items()
+    ]
+
+
 @app.get("/api/datahub/status")
 def datahub_status() -> Dict[str, Any]:
     from quantradar.datahub.service import DataHubService
@@ -288,16 +316,11 @@ def datahub_overview() -> Dict[str, Any]:
     except FileNotFoundError:
         manifest = None
     candidate = saved('candidate-check.json')
-    issues = {}
-    if candidate:
-        for symbol, reason in candidate['isolated'].items():
-            key = reason if isinstance(reason, str) else 'QUALITY_FAILURE'
-            issues.setdefault(key, []).append(symbol)
-    return {'release': manifest, 'base_coverage': saved('base-coverage.json'), 'base_inventory': saved('base_inventory.json'), 'gap_plan': saved('gap_plan.json'),
+    return {'release': _overview_release(manifest), 'base_coverage': saved('base-coverage.json'), 'base_inventory': saved('base_inventory.json'), 'gap_plan': saved('gap_plan.json'),
             'work_queue': DataHubWorkQueue(root / 'work-queue.json').status(),
             'update': DailyUpdate(service).status(), 'job': service.job_status(),
             'candidate': {k: candidate[k] for k in ('candidate_id', 'quality', 'coverage', 'row_count')} if candidate else None,
-            'issues': [{'reason': reason, 'count': len(symbols), 'symbols': symbols} for reason, symbols in issues.items()]}
+            'issues': _candidate_issues(candidate, include_symbols=False)}
 
 
 @app.post('/api/datahub/update-all')
@@ -350,8 +373,14 @@ def datahub_job_resume(payload: Dict[str, Any] = Body(default={})) -> Dict[str, 
 
 @app.get("/api/datahub/gaps")
 def datahub_gaps() -> Dict[str, Any]:
-    overview = datahub_overview()
-    return {'candidate': overview['candidate'], 'issues': overview['issues']}
+    from quantradar.datahub.service import DataHubService
+    root = Path(DataHubService().config.supplemental_repo)
+    candidate_path = root / 'candidate-check.json'
+    candidate = json.loads(candidate_path.read_text()) if candidate_path.exists() else None
+    return {
+        'candidate': {k: candidate[k] for k in ('candidate_id', 'quality', 'coverage', 'row_count')} if candidate else None,
+        'issues': _candidate_issues(candidate, include_symbols=True),
+    }
 
 
 @app.post("/api/datahub/repair")
