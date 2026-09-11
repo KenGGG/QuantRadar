@@ -639,6 +639,30 @@ class InvestmentDataProvider(DataProvider):
         paused.loc[observed == 1] = False
         return paused
 
+    def _paused_from_trade_status_many(
+        self, internal_symbols: list[str], start_date, end_date, count: Optional[int], indexes: dict[str, pd.DatetimeIndex]
+    ) -> dict[str, pd.Series]:
+        """Read status for all requested securities in one constrained query."""
+        start, end = _fmt_date(start_date), _fmt_date(end_date)
+        frames = self._fetch_table_cols_many(_INFO_TABLE, ["tradestatus"], internal_symbols, start, end, count, False)
+        reader = getattr(self, "_supplemental_reader", None)
+        scope = getattr(self, "_release_scope", None)
+        datasets = getattr(scope, "manifest", {}).get("datasets", {}) if scope is not None else {}
+        if reader is not None and datasets.get("trade_status_daily"):
+            patches = reader.trade_status([to_ts_symbol(symbol) for symbol in internal_symbols], start, end, count)
+            self._data_usage["status_patch_rows"] += sum(len(rows) for rows in patches.values())
+            frames = {symbol: overlay_status_patch(frame, patches.get(to_ts_symbol(symbol), [])) for symbol, frame in frames.items()}
+        result = {}
+        for symbol in internal_symbols:
+            index = indexes[symbol]
+            frame = frames[symbol]
+            observed = frame["tradestatus"].reindex(index) if "tradestatus" in frame.columns else pd.Series(index=index, dtype="float64")
+            paused = pd.Series(pd.NA, index=index, dtype="boolean")
+            paused.loc[observed == 0] = True
+            paused.loc[observed == 1] = False
+            result[symbol] = paused
+        return result
+
     def get_price(
         self,
         security: Union[str, List[str]],
@@ -765,13 +789,20 @@ class InvestmentDataProvider(DataProvider):
                 )
                 for internal in jq_to_internal.values()
             }
+        paused = {}
+        if need_paused:
+            self._data_usage["status_calls"] += 1
+            paused = self._paused_from_trade_status_many(
+                list(jq_to_internal.values()), start_date, end_date, count,
+                {symbol: raw_prices[symbol].index for symbol in jq_to_internal.values()},
+            )
 
         per_security: Dict[str, pd.DataFrame] = {}
         for jq, internal in jq_to_internal.items():
             df = raw_prices[internal]
             if need_paused:
                 df = df.copy()
-                df["paused"] = self._paused_from_trade_status(internal, start_date, end_date, count, df.index)
+                df["paused"] = paused[internal]
             if self._price_units == 'joinquant-shares-yuan-v2':
                 df = df.copy()
                 if 'volume' in df.columns and internal not in _NATIVE_SHARE_VOLUME_INDEXES:
