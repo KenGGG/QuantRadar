@@ -91,7 +91,9 @@ do_start() {
   load_env
   echo "[$APP_NAME] 正在启动 uvicorn ($APP_MODULE) ..."
   # nohup 在输出已重定向时直接 exec 目标进程，故 $! 即 uvicorn 的 PID；日志全量写入 LOG_FILE
-  nohup "$UVICORN" "$APP_MODULE" \
+  local app_root="${QUANTRADAR_APP_ROOT:-$ROOT_DIR}"
+  [[ -f "$app_root/backend/quantradar/api/app.py" ]] || { echo "Invalid QUANTRADAR_APP_ROOT" >&2; return 1; }
+  nohup "$UVICORN" "$APP_MODULE" --app-dir "$app_root/backend" \
     --host "$HOST" --port "$PORT" \
     > "$LOG_FILE" 2>&1 &
   echo $! > "$PID_FILE"
