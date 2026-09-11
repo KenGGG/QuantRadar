@@ -19,7 +19,16 @@ export function DataStatus() {
   useEffect(() => { void refresh(); const id = window.setInterval(refresh, 4000); return () => window.clearInterval(id); }, []);
   const action = async (operation: () => Promise<unknown>) => {
     setBusy(true);
-    try { const result = await operation() as { message?: string; status?: string }; setNotice(result.message ?? (result.status === 'ALREADY_RUNNING' ? '任务正在运行，请查看进度' : '操作已提交，请查看下方进度')); await refresh(); }
+    try {
+      const result = await operation() as { message?: string; status?: string; outcome?: string; selected?: Record<string, string> };
+      const symbols = result.selected ? Object.keys(result.selected).join('、') : '';
+      setNotice(result.message ?? (result.outcome === 'HEALTHY'
+        ? `来源抽样可用：${symbols}`
+        : result.outcome === 'UNHEALTHY'
+          ? `来源抽样仍异常：${symbols}。失败项保持隔离，不会批量重试。`
+          : result.status === 'ALREADY_RUNNING' ? '任务正在运行，请查看进度' : '操作已提交，请查看下方进度'));
+      await refresh();
+    }
     catch (e) { setError(String(e)); }
     finally { setBusy(false); }
   };
