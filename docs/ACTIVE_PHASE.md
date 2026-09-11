@@ -2,7 +2,7 @@
 
 **Milestone:** `QUANTRADAR_DATAHUB_V2_TRUSTED_FUSION`
 **Active Goal:** `DATAHUB_V2_HISTORICAL_REUSE_AND_INCREMENTAL_REPAIR`
-**Status:** IN_PROGRESS
+**Status:** COMPLETE
 
 ## Scope
 
@@ -25,7 +25,7 @@ PIT_PARTIAL、跨源一致性未验及陈旧元数据必须如实保留。
 - P3：已对低 Beta 首次调仓的 20 只实际候选补齐 2023-08-31 状态并发布 `R3f2a0c82acf28962`；严格版在 2023-09-01 通过首次调仓。其余月度状态日期仍是独立待处理缺口，证据见 `acceptance/datahub-v2-p3/low-beta-2023-08-31-repair.md`。
 - P3：严格低 Beta 的剩余状态依赖已按策略实际调仓规则收敛为 38 个前一交易日、11,400 个日期×成分股键（300 只股票），而非全市场逐日下载；固定基础的 CSI 300 成分快照只到 2022-07-01，不能宣称后续成分股历史完整。证据见 `acceptance/datahub-v2-p3/low-beta-status-dependency-plan.md`。
 - P3：上述 38 个依赖已完成真实 BaoStock 补数并发布为 `R22a53f013266373d`：298 只股票、11,347 条状态记录，覆盖 2023-06-30 至 2026-07-31；600837.SH、601989.SH 因基础行情先结束而保留 `NOT_COVERED`，没有伪造状态。严格版低 Beta 在 2023-07-03 的 R22 回测成功。证据见 `acceptance/datahub-v2-p3/low-beta-status-full-repair.md`。
-- P3：严格低 Beta 已在 R22 完成 2020-01-01 至 2026-08-31 的完整 1,615 个交易日回测，状态为 SUCCESS、结果哈希 `49849a788b8b506c4430264d73153c2e2a35bee7e6480bf3c2b095f6162a0484`。实际读取基础行情 37,102 次、补充状态 12,478 行；全程固定本地 release，未进行网络采集。证据见 `acceptance/datahub-v2-p3/low-beta-r22-full-backtest.md`。
+- P3：严格低 Beta 已在 R22 完成 2020-01-01 至 2026-08-31 的完整 1,615 个交易日回测，状态为 SUCCESS、结果哈希 `49849a788b8b506c4430264d73153c2e2a35bee7e6480bf3c2b095f6162a0484`。实际读取基础行情 37,102 次、补充状态 12,478 行；全程固定本地 release，未进行网络采集。证据见 `acceptance/datahub-v2-p3/low-beta-r22-full-backtest.md` 与 `acceptance/datahub-v2/implementation-audit.md`。
 
 ## Queued Goals
 
