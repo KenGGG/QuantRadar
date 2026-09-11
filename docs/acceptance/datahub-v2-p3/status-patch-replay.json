@@ -1,0 +1,14 @@
+[
+  {
+    "release_id": "Rb60ab5f94b2a612b",
+    "status": "PASS",
+    "seconds": 36.503,
+    "hash": "e24bd0d3d892ddc26c5aeafcd2b78c343e380432ebef251caa6aef1f8e07a745"
+  },
+  {
+    "release_id": "R6c4d2b9c79fc882d",
+    "status": "PASS",
+    "seconds": 35.803,
+    "hash": "e24bd0d3d892ddc26c5aeafcd2b78c343e380432ebef251caa6aef1f8e07a745"
+  }
+]
