@@ -23,6 +23,7 @@
 - CLI/UI/timer share the daily coordinator. A same-target watermark prevents repeated transport checks; Eastmoney's stock API still returns each requested stock's full history.
 - Research reads pin both commits. Supported valuation queries require an explicit stock universe; missing required records/fields and explicitly requested strict PIT cause errors.
 - Trusted base synchronization fast-forwarded the base commit and restored the read-only SQL service. Current price coverage is 5,556 securities through 2026-09-11; ST/paused coverage remains 5,183 securities through 2023-06-09 and is displayed separately.
+- The strict low-Beta status tail is precisely known: 38 monthly dependency dates from 2023-06-30 through 2026-07-31, 11,400 date×constituent keys across 300 stocks.  The base CSI 300 constituent snapshot used for these dates remains 2022-07-01, so post-2022 constituent-history completeness is not established.
 - New releases normalize price volume from lots to shares and amount from thousand yuan to yuan. Historical releases retain their original unit contract for replay.
 - Latest published release and live publication outcome are recorded in the linked acceptance evidence.
 
