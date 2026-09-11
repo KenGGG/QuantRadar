@@ -148,6 +148,26 @@ def test_service_persists_strategy_gap_plan(tmp_path, monkeypatch):
     assert (tmp_path / "gap_plan.json").is_file()
 
 
+def test_low_beta_status_plan_has_exact_symbols_and_release_fingerprint(tmp_path, monkeypatch):
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.service import DataHubService
+
+    service = DataHubService(DataHubConfig(supplemental_repo=str(tmp_path), release_root=str(tmp_path / "releases")))
+    monkeypatch.setattr(service.releases, "resolve", lambda release_id=None: {"release_id": "R1", "base_commit": "base"})
+    monkeypatch.setattr(service, "_low_beta_status_dependencies", lambda start, end, base_commit: [
+        {"rebalance_date": "2023-09-01", "status_date": "2023-08-31", "symbols": ["000001.SZ", "600519.SH"],
+         "boundary_check": {"before": "2023-08-30", "after": "2023-09-01"}},
+    ])
+
+    plan = service.low_beta_status_plan("2023-09-01", "2023-09-01")
+    task = plan["tasks"][0]
+    assert plan["release_id"] == "R1"
+    assert task["source_contract_id"] == "baostock-daily-v2"
+    assert task["range"] == {"start": "2023-08-31", "end": "2023-08-31"}
+    assert task["symbols"] == ["000001.SZ", "600519.SH"]
+    assert len(task["gap_fingerprint"]) == 64
+
+
 def test_work_queue_is_idempotent_and_rotates_all_three_queues(tmp_path):
     from quantradar.datahub.work_queue import DataHubWorkQueue
 

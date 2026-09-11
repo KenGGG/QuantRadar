@@ -167,6 +167,68 @@ class DataHubService:
         _atomic_json(Path(self.config.supplemental_repo) / "gap_plan.json", report)
         return report
 
+    def _low_beta_status_dependencies(self, start: str, end: str, base_commit: str) -> list[dict[str, Any]]:
+        """Read the fixed base calendar and CSI 300 snapshots for this strategy only."""
+        from .inventory import monthly_status_dependencies
+        connection = pymysql.connect(
+            host=self.config.base_host, port=self.config.base_port, user=self.config.user, password=self.config.password,
+            database=f"{self.config.base_database}/{base_commit}", connect_timeout=self.config.connect_timeout,
+            read_timeout=max(self.config.read_timeout, 300), charset="utf8mb4", cursorclass=DictCursor,
+        )
+        try:
+            with connection.cursor() as cursor:
+                # One prior calendar date is required for the first monthly decision.
+                cursor.execute(
+                    "SELECT date FROM ts_trade_day_calendar WHERE exchange=%s AND is_open=1 "
+                    "AND date <= %s ORDER BY date",
+                    ("SSE", end),
+                )
+                days = [str(row["date"])[:10] for row in cursor.fetchall()]
+                cache: dict[str, list[str]] = {}
+                def constituents(day: str) -> list[str]:
+                    if day not in cache:
+                        cursor.execute(
+                            "SELECT MAX(trade_date) AS trade_date FROM ts_index_weight "
+                            "WHERE index_code=%s AND trade_date<=%s", ("000300.SH", day),
+                        )
+                        snapshot = cursor.fetchone()["trade_date"]
+                        if snapshot is None:
+                            cache[day] = []
+                        else:
+                            cursor.execute(
+                                "SELECT stock_code FROM ts_index_weight WHERE index_code=%s AND trade_date=%s ORDER BY stock_code",
+                                ("000300.SH", snapshot),
+                            )
+                            cache[day] = [str(row["stock_code"]) for row in cursor.fetchall()]
+                    return cache[day]
+                return monthly_status_dependencies(days, start=start, end=end, constituents_for=constituents)
+        finally:
+            connection.close()
+
+    def low_beta_status_plan(self, start: str, end: str, release_id: str | None = None) -> dict[str, Any]:
+        """Describe the strict saved low-Beta strategy's unfilled status work without fetching it."""
+        manifest = self.releases.resolve(release_id)
+        dependencies = self._low_beta_status_dependencies(start, end, manifest["base_commit"])
+        tasks = []
+        for dependency in dependencies:
+            status_date = dependency["status_date"]
+            fingerprint = hashlib.sha256(json.dumps({
+                "release_id": manifest["release_id"], "base_commit": manifest["base_commit"],
+                "status_date": status_date, "symbols": dependency["symbols"],
+            }, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+            tasks.append({
+                "source_contract_id": "baostock-daily-v2", "base_source_contract_id": "base-bao-daily-v1",
+                "domain": "trade_status", "fields": ["is_st", "tradestatus", "turn"],
+                "symbols": dependency["symbols"], "range": {"start": status_date, "end": status_date},
+                "rebalance_date": dependency["rebalance_date"], "gap_reason": "low-beta previous-trading-day status dependency",
+                "gap_fingerprint": fingerprint, "boundary_check": dependency["boundary_check"],
+                "budget": {"network_attempts": "ONE_BAOSTOCK_QUERY_PER_SYMBOL"}, "source_health": "QUALIFIED_SAMPLED",
+            })
+        return {"release_id": manifest["release_id"], "base_commit": manifest["base_commit"],
+                "strategy": "low-beta-strict-monthly", "window": {"start": start, "end": end}, "tasks": tasks,
+                "key_count": sum(len(task["symbols"]) for task in tasks),
+                "symbol_count": len({symbol for task in tasks for symbol in task["symbols"]})}
+
     @contextmanager
     def _updater_lock(self):
         path = Path(self.config.supplemental_repo) / "datahub-updater.lock"
