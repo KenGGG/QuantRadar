@@ -31,7 +31,7 @@ export function RunExplorer({ onOpenReport, onEdit }: { onOpenReport: (runId: st
     </Space></div>
     {error && <Alert type="error" showIcon message={error} />}
     <Table<RunRecord> size="small" rowKey="run_id" dataSource={filtered} loading={loading} scroll={{ x: 1000 }} pagination={{ pageSize: 15, showSizeChanger: false, showTotal: n => `共 ${n} 次回测` }}
-      expandable={{ expandedRowRender: r => <div><div>运行 ID：{r.run_id}</div><div>结果哈希：{r.result_hash || "—"}</div>{r.error && <Alert type="error" message="回测失败" description={r.error} />}</div> }}
+      expandable={{ expandedRowRender: r => <div><div>运行 ID：{r.run_id}</div><div>结果哈希：{r.result_hash || "—"}</div>{r.status === "FAILED" && r.error && <Alert type="error" message="回测失败" description={r.error} />}</div> }}
       columns={[
         { title: "策略名称", key: "name", render: (_, r) => <Button type="link" onClick={() => onOpenReport(r.run_id)}>{String(r.config?.strategy_name || r.config?.security || "未命名策略")}</Button> },
         { title: "回测区间", key: "range", render: (_, r) => `${r.config?.start_date || "—"} 至 ${r.config?.end_date || "—"}` },

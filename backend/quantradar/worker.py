@@ -184,6 +184,7 @@ class BacktestWorker:
                 result_hash=info["result_hash"],
                 snapshot=info["snapshot"],
                 metrics=info["metrics"],
+                error=None,
             )
         except Exception as exc:  # noqa: BLE001 -- 全捕获以落库失败原因
             update_run(
