@@ -127,3 +127,18 @@ def test_service_persists_strategy_gap_plan(tmp_path, monkeypatch):
     assert plan["release_id"] == "R1"
     assert plan["strategy_gap"][0]["domain"] == "trade_status"
     assert (tmp_path / "gap_plan.json").is_file()
+
+
+def test_baostock_bundle_keeps_status_and_never_maps_ncf_to_ocf():
+    from quantradar.datahub.sources import normalize_baostock_daily_bundle
+
+    rows = normalize_baostock_daily_bundle([{
+        "date": "2023-09-01", "code": "sh.600519", "open": "1852.83", "high": "1865.47", "low": "1846.03", "close": "1851.05",
+        "volume": "13145.19", "amount": "2438622.738", "turn": "0.12", "tradestatus": "1", "isST": "0",
+        "peTTM": "33.7", "pbMRQ": "11.5", "psTTM": "16.7", "pcfNcfTTM": "2142.3",
+    }], raw_sha256="a" * 64, fetched_at="2026-09-11T00:00:00Z", adapter_version="test")
+
+    assert rows["price"][0]["close"] == 1851.05
+    assert rows["trade_status"][0] == {"trade_date": "2023-09-01", "symbol": "600519.SH", "tradestatus": 1, "is_st": 0, "turn": 0.12}
+    assert rows["valuation"][0]["pcf_ncf_ttm"] == 2142.3
+    assert "pcf_ocf_ttm" not in rows["valuation"][0]

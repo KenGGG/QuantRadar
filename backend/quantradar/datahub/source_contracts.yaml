@@ -38,6 +38,6 @@ contracts:
     upstream: baostock
     adapter: baostock.query_history_k_data_plus
     fields: [open, high, low, close, volume, amount, turn, tradestatus, is_st, pe_ttm, pb_mrq, ps_ttm]
-    status: FROZEN
-    source_evidence: access_recovery_required
+    status: QUALIFIED_SAMPLED
+    source_evidence: one_session_three_stock_one_day_raw_archived
     constraints: [single_session, stop_on_10001011, no_ncf_to_ocf_mapping]
