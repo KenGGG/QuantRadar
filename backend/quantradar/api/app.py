@@ -292,7 +292,7 @@ def datahub_overview() -> Dict[str, Any]:
         for symbol, reason in candidate['isolated'].items():
             key = reason if isinstance(reason, str) else 'QUALITY_FAILURE'
             issues.setdefault(key, []).append(symbol)
-    return {'release': manifest, 'base_coverage': saved('base-coverage.json'),
+    return {'release': manifest, 'base_coverage': saved('base-coverage.json'), 'base_inventory': saved('base_inventory.json'), 'gap_plan': saved('gap_plan.json'),
             'update': DailyUpdate(service).status(), 'job': service.job_status(),
             'candidate': {k: candidate[k] for k in ('candidate_id', 'quality', 'coverage', 'row_count')} if candidate else None,
             'issues': [{'reason': reason, 'count': len(symbols), 'symbols': symbols} for reason, symbols in issues.items()]}

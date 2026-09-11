@@ -27,11 +27,11 @@ export function DataStatus() {
   const release = data?.release;
   const base = data?.base_coverage?.base_commit === release?.base_commit ? data?.base_coverage?.datasets : undefined;
   const rows = [
-    { key: 'price', name: '行情', published: base?.['行情'], downloaded: undefined, status: base?.['行情'] ? '可用 · 日频' : '待检查', dateLabel: '' },
-    { key: 'status', name: 'ST / 停牌', published: base?.['ST / 停牌'], downloaded: undefined, status: base?.['ST / 停牌'] ? '部分可用 · 注意日期' : '待检查', dateLabel: '' },
-    { key: 'valuation_daily', name: '估值', published: release?.datasets.valuation_daily, downloaded: data?.job.counts.complete, status: release?.datasets.valuation_daily?.source?.some(s => s.includes('baostock')) ? '旧口径 · 新接口不可用' : release?.datasets.valuation_daily ? '部分可用' : '未发布', dateLabel: '' },
-    { key: 'sw_industry_history', name: '行业', published: release?.datasets.sw_industry_history, downloaded: undefined, status: release?.datasets.sw_industry_history ? '部分可用 · 一级行业' : '未发布', dateLabel: '' },
-    { key: 'security_lifecycle', name: '基础资料', published: release?.datasets.security_lifecycle, downloaded: undefined, status: release?.datasets.security_lifecycle ? '部分可用' : '未发布', dateLabel: '上市日期范围' },
+    { key: 'price', name: '行情', source: '基础库 · final 行情', published: base?.['行情'], downloaded: undefined, status: base?.['行情'] ? '可用 · 日频' : '待检查', dateLabel: '' },
+    { key: 'status', name: 'ST / 停牌', source: '基础库 · BaoStock 历史表', published: base?.['ST / 停牌'], downloaded: undefined, status: base?.['ST / 停牌'] ? '部分可用 · 注意日期' : '待检查', dateLabel: '' },
+    { key: 'valuation_daily', name: '估值', source: '补充库 · 东方财富', published: release?.datasets.valuation_daily, downloaded: data?.job.counts.complete, status: release?.datasets.valuation_daily?.source?.some(s => s.includes('baostock')) ? '旧口径 · 新接口不可用' : release?.datasets.valuation_daily ? '部分可用' : '未发布', dateLabel: '' },
+    { key: 'sw_industry_history', name: '行业', source: '补充库 · 申万', published: release?.datasets.sw_industry_history, downloaded: undefined, status: release?.datasets.sw_industry_history ? '部分可用 · 一级行业' : '未发布', dateLabel: '' },
+    { key: 'security_lifecycle', name: '基础资料', source: '基础库 · Tushare 名录', published: release?.datasets.security_lifecycle, downloaded: undefined, status: release?.datasets.security_lifecycle ? '部分可用' : '未发布', dateLabel: '上市日期范围' },
   ];
   const stages = [['base', '同步基础库'], ['valuation', '更新估值'], ['industry', '更新行业'], ['lifecycle', '更新基础资料'], ['check', '自动检查'], ['publish', '发布结果']].map(([key, name]) => ({ key, name, ...data?.update.stages[key] }));
   const issues = data?.issues.length ? data.issues : data?.job.counts.failed ? [{ reason: 'FAILED', count: data.job.counts.failed, symbols: [] }] : [];
@@ -42,6 +42,7 @@ export function DataStatus() {
     <Card title="当前能用于回测的数据">
       <Table rowKey="key" pagination={false} size="middle" scroll={{ x: 900 }} dataSource={rows} columns={[
         { title: '数据', dataIndex: 'name' },
+        { title: '实际读取来源', dataIndex: 'source' },
         { title: '已发布股票', render: (_, r) => fmt(r.published?.stocks) },
         { title: '已发布行数', render: (_, r) => fmt(r.published?.row_count ?? r.published?.rows) },
         { title: '日期范围', render: (_, r) => r.published?.first_date ? `${r.published.first_date} 至 ${r.published.latest_date ?? '未统计'}${r.dateLabel ? '（上市日期）' : ''}` : '未统计' },
@@ -49,6 +50,7 @@ export function DataStatus() {
         { title: '状态', dataIndex: 'status' },
       ]} />
       <Typography.Text type="secondary">发布于 {release?.published_at ? new Date(release.published_at).toLocaleString('zh-CN') : '未发布'}</Typography.Text>
+      {data?.gap_plan && <Typography.Paragraph type="secondary" style={{ margin: '8px 0 0' }}>低 Beta 窗口 {data.gap_plan.strategy_window.start} 至 {data.gap_plan.strategy_window.end}：基础行情已满足；{data.gap_plan.strategy_gap.length ? `仍缺 ${data.gap_plan.strategy_gap.map(g => `${g.domain}（${g.range.start} 至 ${g.range.end}，${g.state}）`).join('；')}` : '没有已确认缺口'}。</Typography.Paragraph>}
     </Card>
     <Card title={<Space>本次更新<Tag>{labels[data?.update.status ?? 'IDLE'] ?? data?.update.status}</Tag></Space>}>
       <Table rowKey="key" pagination={false} size="small" dataSource={stages} columns={[
