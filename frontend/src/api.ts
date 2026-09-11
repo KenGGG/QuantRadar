@@ -318,6 +318,7 @@ export function getDataHubJob(): Promise<DataHubJob> { return httpJson<DataHubJo
 export interface DataHubOverview {
   release: { release_id: string; base_commit: string; supplemental_commit?: string; published_at: string; datasets: Record<string, DataHubDataset>; source_adapters?: Record<string, string[]>; metadata?: Record<string, unknown> } | null;
   base_coverage: { base_commit: string; datasets: Record<string, DataHubDataset> } | null;
+  data_sources?: { domain: string; name: string; storage: string; upstream: string; coverage: DataHubDataset; read_rule: string }[];
   update: { status: string; job_id?: string; target_as_of?: string; stages: Record<string, { status: string; reason?: string; accepted?: number; isolated?: number }>; error?: string };
   job: DataHubJob;
   candidate: { candidate_id: string; quality: string; coverage: string; row_count: number } | null;

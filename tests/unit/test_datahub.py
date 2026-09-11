@@ -25,6 +25,22 @@ def test_datahub_overview_release_excludes_per_symbol_audit_metadata():
     }
 
 
+def test_datahub_overview_sources_describe_base_and_supplemental_status_separately():
+    from quantradar.api.app import _overview_data_sources
+
+    rows = _overview_data_sources(
+        {"datasets": {"trade_status_daily": {"stocks": 2, "row_count": 3, "source": ["baostock"]}}},
+        {"datasets": {"行情": {"stocks": 4}, "ST / 停牌": {"stocks": 3, "latest_date": "2023-06-09"}}},
+    )
+
+    status_rows = [row for row in rows if row["domain"] == "trade_status"]
+    assert [(row["storage"], row["read_rule"]) for row in status_rows] == [
+        ("/data/investment_data", "优先读取"),
+        ("/data/quantradar_data", "仅补基础库缺失记录"),
+    ]
+    assert status_rows[1]["coverage"]["row_count"] == 3
+
+
 def test_request_governor_persists_one_retry_and_opens_circuit_across_restart(tmp_path):
     from quantradar.datahub.governor import CircuitOpen, RequestGovernor
 

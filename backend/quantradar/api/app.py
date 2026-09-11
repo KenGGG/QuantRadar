@@ -279,6 +279,31 @@ def _overview_release(manifest: Dict[str, Any] | None) -> Dict[str, Any] | None:
     }
 
 
+def _overview_data_sources(manifest: Dict[str, Any] | None, base_coverage: Dict[str, Any] | None) -> List[Dict[str, Any]]:
+    """One backend-owned description of the storage and read route shown in the UI."""
+    datasets = (manifest or {}).get("datasets", {})
+    base = (base_coverage or {}).get("datasets", {})
+    def row(domain: str, name: str, storage: str, upstream: str, coverage: Dict[str, Any] | None, read_rule: str) -> Dict[str, Any]:
+        return {"domain": domain, "name": name, "storage": storage, "upstream": upstream,
+                "coverage": coverage or {}, "read_rule": read_rule}
+    rows = [
+        row("price", "行情", "/data/investment_data", "基础合并行情", base.get("行情"), "日频回测直接读取"),
+        row("trade_status", "ST / 停牌（历史）", "/data/investment_data", "BaoStock 历史表", base.get("ST / 停牌"), "优先读取"),
+    ]
+    status = datasets.get("trade_status_daily")
+    if status:
+        rows.append(row("trade_status", "ST / 停牌（补数）", "/data/quantradar_data", "BaoStock", status, "仅补基础库缺失记录"))
+    for domain, name, upstream, read_rule in (
+        ("valuation_daily", "估值", "东方财富", "策略按字段自动读取"),
+        ("sw_industry_history", "行业", "申万", "策略按字段自动读取"),
+    ):
+        if datasets.get(domain):
+            rows.append(row(domain, name, "/data/quantradar_data", upstream, datasets[domain], read_rule))
+    if datasets.get("security_lifecycle"):
+        rows.append(row("security_lifecycle", "基础资料", "/data/investment_data", "Tushare 名录", datasets["security_lifecycle"], "上市、退市判断"))
+    return rows
+
+
 def _candidate_issues(candidate: Dict[str, Any] | None, *, include_symbols: bool) -> List[Dict[str, Any]]:
     issues: Dict[str, List[str]] = {}
     for symbol, reason in (candidate or {}).get("isolated", {}).items():
@@ -316,7 +341,8 @@ def datahub_overview() -> Dict[str, Any]:
     except FileNotFoundError:
         manifest = None
     candidate = saved('candidate-check.json')
-    return {'release': _overview_release(manifest), 'base_coverage': saved('base-coverage.json'), 'base_inventory': saved('base_inventory.json'), 'gap_plan': saved('gap_plan.json'),
+    base_coverage = saved('base-coverage.json')
+    return {'release': _overview_release(manifest), 'base_coverage': base_coverage, 'data_sources': _overview_data_sources(manifest, base_coverage), 'base_inventory': saved('base_inventory.json'), 'gap_plan': saved('gap_plan.json'),
             'work_queue': DataHubWorkQueue(root / 'work-queue.json').status(),
             'update': DailyUpdate(service).status(), 'job': service.job_status(),
             'candidate': {k: candidate[k] for k in ('candidate_id', 'quality', 'coverage', 'row_count')} if candidate else None,

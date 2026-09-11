@@ -27,7 +27,7 @@ export function DataStatus() {
   const release = data?.release;
   const base = data?.base_coverage?.base_commit === release?.base_commit ? data?.base_coverage?.datasets : undefined;
   const statusPatch = release?.datasets.trade_status_daily;
-  const rows = [
+  const fallbackRows = [
     { key: 'price', name: '行情', location: '/data/investment_data', source: '存量行情表', published: base?.['行情'], usage: '日频回测直接读取', status: base?.['行情'] ? '可用' : '待检查', dateLabel: '' },
     { key: 'status-base', name: 'ST / 停牌（历史）', location: '/data/investment_data', source: 'BaoStock 历史表', published: base?.['ST / 停牌'], usage: '先读取；覆盖至此日期', status: base?.['ST / 停牌'] ? '部分可用' : '待检查', dateLabel: '' },
     { key: 'status-patch', name: 'ST / 停牌（补数）', location: '/data/quantradar_data', source: 'BaoStock 补数', published: statusPatch, usage: '自动补在历史表之后', status: statusPatch ? '已发布' : '未发布', dateLabel: '' },
@@ -35,6 +35,16 @@ export function DataStatus() {
     { key: 'sw_industry_history', name: '行业', location: '/data/quantradar_data', source: '申万', published: release?.datasets.sw_industry_history, usage: '策略按字段自动读取', status: release?.datasets.sw_industry_history ? '部分可用 · 一级行业' : '未发布', dateLabel: '' },
     { key: 'security_lifecycle', name: '基础资料', location: '/data/investment_data', source: 'Tushare 名录', published: release?.datasets.security_lifecycle, usage: '上市、退市判断', status: release?.datasets.security_lifecycle ? '部分可用' : '未发布', dateLabel: '上市日期范围' },
   ];
+  const rows = data?.data_sources?.length ? data.data_sources.map(source => ({
+    key: `${source.domain}-${source.storage}`,
+    name: source.name,
+    location: source.storage,
+    source: source.upstream,
+    published: source.coverage,
+    usage: source.read_rule,
+    status: source.domain === 'price' ? '可用' : source.domain === 'trade_status' && source.storage === '/data/quantradar_data' ? '已发布' : '部分可用',
+    dateLabel: source.domain === 'security_lifecycle' ? '上市日期范围' : '',
+  })) : fallbackRows;
   const stages = [['base', '同步基础库'], ['valuation', '更新估值'], ['industry', '更新行业'], ['lifecycle', '更新基础资料'], ['check', '自动检查'], ['publish', '发布结果']].map(([key, name]) => ({ key, name, ...data?.update.stages[key] }));
   const issues = data?.issues.length ? data.issues : data?.job.counts.failed ? [{ reason: 'FAILED', count: data.job.counts.failed, symbols: [] }] : [];
   return <Space direction="vertical" size={16} style={{ width: '100%' }}>
