@@ -38,6 +38,7 @@ _SCHEMA = (
       trade_date DATE NOT NULL, symbol VARCHAR(16) NOT NULL,
       tradestatus TINYINT NULL, is_st TINYINT NULL, turn DOUBLE NULL,
       source VARCHAR(64) NOT NULL, raw_sha256 CHAR(64) NOT NULL, adapter_version VARCHAR(128) NOT NULL,
+      source_contract_id VARCHAR(64) NULL,
       fetched_at VARCHAR(40) NOT NULL, available_date DATE NULL, pit_status VARCHAR(16) NOT NULL,
       PRIMARY KEY (trade_date, symbol)
     )
@@ -56,6 +57,12 @@ class SupplementalStore:
         with self.connection.cursor() as cursor:
             for statement in _SCHEMA:
                 cursor.execute(statement)
+            cursor.execute("SHOW COLUMNS FROM qr_trade_status_daily")
+            fetchall = getattr(cursor, "fetchall", None)
+            columns = {str(row["Field"]) for row in fetchall()} if fetchall is not None else {"source_contract_id"}
+            if "source_contract_id" not in columns:
+                cursor.execute("ALTER TABLE qr_trade_status_daily ADD COLUMN source_contract_id VARCHAR(64) NULL AFTER adapter_version")
+                cursor.execute("UPDATE qr_trade_status_daily SET source_contract_id='baostock-daily-v2' WHERE source='baostock' AND source_contract_id IS NULL")
         self.connection.commit()
 
     def prepare_canonical_valuation(self) -> None:
@@ -98,7 +105,7 @@ class SupplementalStore:
     def upsert_trade_status(self, rows: Iterable[dict[str, Any]]) -> None:
         self._upsert(
             "qr_trade_status_daily",
-            ("trade_date", "symbol", "tradestatus", "is_st", "turn", *self._PROVENANCE),
+            ("trade_date", "symbol", "tradestatus", "is_st", "turn", *self._PROVENANCE, "source_contract_id"),
             rows,
         )
 

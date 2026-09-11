@@ -256,7 +256,8 @@ class InvestmentDataProvider(DataProvider):
         return dict(CAPABILITIES)
 
     def get_fundamentals(self, query_object, date=None, statDate=None):
-        self._data_usage["valuation_calls"] += 1
+        if hasattr(self, "_data_usage"):
+            self._data_usage["valuation_calls"] += 1
         from ...datahub.strategy import fundamentals, DataUnavailable
         try:
             return fundamentals(self, query_object, date, statDate)
@@ -266,7 +267,8 @@ class InvestmentDataProvider(DataProvider):
             raise DataUnavailable(f'固定版本估值读取失败：{exc}') from exc
 
     def get_industry(self, security, date=None):
-        self._data_usage["industry_calls"] += 1
+        if hasattr(self, "_data_usage"):
+            self._data_usage["industry_calls"] += 1
         from ...datahub.strategy import industry, DataUnavailable
         try:
             return industry(self, security, date)

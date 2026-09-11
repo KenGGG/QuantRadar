@@ -28,7 +28,7 @@ def validate_trade_status_patch(rows: list[dict]) -> dict:
         seen.add(key)
         if row.get("tradestatus") not in (0, 1) or row.get("is_st") not in (0, 1):
             errors.append("invalid status")
-        if len(str(row.get("raw_sha256") or "")) != 64 or not row.get("source") or not row.get("adapter_version"):
+        if len(str(row.get("raw_sha256") or "")) != 64 or not row.get("source") or not row.get("adapter_version") or row.get("source_contract_id") != "baostock-daily-v2":
             errors.append("missing provenance")
     return {"status": "PASS" if rows and not errors else "FAIL", "rows": len(rows), "errors": sorted(set(errors))}
 

@@ -182,6 +182,7 @@ def test_baostock_bundle_keeps_status_and_never_maps_ncf_to_ocf():
     assert rows["price"][0]["close"] == 1851.05
     assert {key: rows["trade_status"][0][key] for key in ("trade_date", "symbol", "tradestatus", "is_st", "turn")} == {"trade_date": "2023-09-01", "symbol": "600519.SH", "tradestatus": 1, "is_st": 0, "turn": 0.12}
     assert rows["trade_status"][0]["raw_sha256"] == "a" * 64
+    assert rows["trade_status"][0]["source_contract_id"] == "baostock-daily-v2"
     assert rows["valuation"][0]["pcf_ncf_ttm"] == 2142.3
     assert "pcf_ocf_ttm" not in rows["valuation"][0]
 
@@ -283,7 +284,7 @@ def test_status_patch_validation_rejects_duplicate_or_invalid_state():
     from quantradar.datahub.publication import status_patch_delta, validate_trade_status_base_gap, validate_trade_status_patch
 
     good = [{"trade_date": "2023-09-01", "symbol": "600519.SH", "tradestatus": 1, "is_st": 0, "turn": 0.12,
-             "source": "baostock", "raw_sha256": "a" * 64, "adapter_version": "test", "fetched_at": "2026-09-11T00:00:00Z", "available_date": None, "pit_status": "PARTIAL"}]
+             "source": "baostock", "raw_sha256": "a" * 64, "adapter_version": "test", "source_contract_id": "baostock-daily-v2", "fetched_at": "2026-09-11T00:00:00Z", "available_date": None, "pit_status": "PARTIAL"}]
     assert validate_trade_status_patch(good)["status"] == "PASS"
     assert validate_trade_status_patch(good + good)["status"] == "FAIL"
     bad = [dict(good[0], tradestatus=3)]

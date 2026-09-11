@@ -110,7 +110,8 @@ def normalize_baostock_daily_bundle(
         status.append({"trade_date": day, "symbol": symbol, "tradestatus": int(_number(raw.get("tradestatus"), "tradestatus")),
                        "is_st": int(_number(raw.get("isST"), "isST")), "turn": _number(raw.get("turn"), "turn"),
                        "source": "baostock", "raw_sha256": raw_sha256, "adapter_version": adapter_version,
-                       "fetched_at": fetched_at, "available_date": None, "pit_status": PIT_PARTIAL})
+                       "fetched_at": fetched_at, "available_date": None, "pit_status": PIT_PARTIAL,
+                       "source_contract_id": "baostock-daily-v2"})
         valuation.append({"trade_date": day, "symbol": symbol, "pe_ttm": _number(raw.get("peTTM"), "peTTM"),
                           "pb_mrq": _number(raw.get("pbMRQ"), "pbMRQ"), "ps_ttm": _number(raw.get("psTTM"), "psTTM"),
                           "pcf_ncf_ttm": _number(raw.get("pcfNcfTTM"), "pcfNcfTTM"), "source": "baostock",
