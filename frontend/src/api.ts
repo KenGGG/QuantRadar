@@ -310,6 +310,7 @@ export interface DataHubOverview {
   issues: { reason: string; count: number; symbols: string[] }[];
   base_inventory?: { release_id: string; base_commit: string; domains: Record<string, { state: string; selected_table?: string; reusable_tables?: string[]; coverage?: DataHubDataset }> } | null;
   gap_plan?: { strategy_window: { start: string; end: string }; satisfied_by_base: string[]; strategy_gap: { domain: string; range: { start: string; end: string }; state: string; source_contract_id: string }[] } | null;
+  work_queue?: { counts: Record<string, Record<string, number>> } | null;
 }
 export function getDataHubOverview(): Promise<DataHubOverview> { return httpJson<DataHubOverview>('/api/datahub/overview'); }
 export function updateAllData(mode = 'update-all', start?: string, end?: string): Promise<unknown> {

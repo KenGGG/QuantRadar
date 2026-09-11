@@ -52,6 +52,7 @@ export function DataStatus() {
       ]} />
       <Typography.Text type="secondary">发布于 {release?.published_at ? new Date(release.published_at).toLocaleString('zh-CN') : '未发布'}</Typography.Text>
       {data?.gap_plan && <Typography.Paragraph type="secondary" style={{ margin: '8px 0 0' }}>低 Beta 窗口 {data.gap_plan.strategy_window.start} 至 {data.gap_plan.strategy_window.end}：基础行情已满足；{data.gap_plan.strategy_gap.length ? `仍缺 ${data.gap_plan.strategy_gap.map(g => `${g.domain}（${g.range.start} 至 ${g.range.end}，${g.state}）`).join('；')}` : '没有已确认缺口'}。</Typography.Paragraph>}
+      {data?.work_queue && <Typography.Paragraph type="secondary" style={{ margin: '0' }}>补数工作单：当前更新待处理 {data.work_queue.counts.current?.PENDING ?? 0}；策略缺口待处理 {data.work_queue.counts.strategy?.PENDING ?? 0}；历史修复待处理 {data.work_queue.counts.historical?.PENDING ?? 0}。</Typography.Paragraph>}
     </Card>
     <Card title={<Space>本次更新<Tag>{labels[data?.update.status ?? 'IDLE'] ?? data?.update.status}</Tag></Space>}>
       <Table rowKey="key" pagination={false} size="small" dataSource={stages} columns={[

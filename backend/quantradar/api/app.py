@@ -275,6 +275,7 @@ def datahub_status() -> Dict[str, Any]:
 def datahub_overview() -> Dict[str, Any]:
     from quantradar.datahub.service import DataHubService
     from quantradar.datahub.daily import DailyUpdate
+    from quantradar.datahub.work_queue import DataHubWorkQueue
     from pathlib import Path
     import json
     service = DataHubService()
@@ -293,6 +294,7 @@ def datahub_overview() -> Dict[str, Any]:
             key = reason if isinstance(reason, str) else 'QUALITY_FAILURE'
             issues.setdefault(key, []).append(symbol)
     return {'release': manifest, 'base_coverage': saved('base-coverage.json'), 'base_inventory': saved('base_inventory.json'), 'gap_plan': saved('gap_plan.json'),
+            'work_queue': DataHubWorkQueue(root / 'work-queue.json').status(),
             'update': DailyUpdate(service).status(), 'job': service.job_status(),
             'candidate': {k: candidate[k] for k in ('candidate_id', 'quality', 'coverage', 'row_count')} if candidate else None,
             'issues': [{'reason': reason, 'count': len(symbols), 'symbols': symbols} for reason, symbols in issues.items()]}
