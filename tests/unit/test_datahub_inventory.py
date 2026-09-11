@@ -310,5 +310,7 @@ def test_status_patch_validation_rejects_duplicate_or_invalid_state():
     assert overlap == {"status": "FAIL", "base_overlap_count": 1, "base_overlaps": [("2023-09-01", "600519.SH")]}
     existing = {("2023-09-01", "600519.SH"): dict(good[0])}
     assert status_patch_delta(good, existing) == {"new_rows": [], "conflicts": []}
+    legacy_existing = {("2023-09-01", "600519.SH"): {key: value for key, value in good[0].items() if key != "source_contract_id"}}
+    assert status_patch_delta(good, legacy_existing) == {"new_rows": [], "conflicts": []}
     assert status_patch_delta([dict(good[0], is_st=1)], existing)["conflicts"] == [("2023-09-01", "600519.SH")]
     assert status_patch_delta([dict(good[0], source_contract_id="another-qualified-contract")], existing)["conflicts"] == [("2023-09-01", "600519.SH")]

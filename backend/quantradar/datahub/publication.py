@@ -56,13 +56,22 @@ def validate_trade_status_base_gap(rows: list[dict], base_keys: set[tuple[str, s
 def status_patch_delta(rows: list[dict], existing: dict[tuple[str, str], dict]) -> dict:
     """Split an idempotent retry from a conflicting rewrite attempt."""
     comparable = ("tradestatus", "is_st", "turn", "source", "raw_sha256", "adapter_version", "source_contract_id", "available_date", "pit_status")
+
+    def value(row: dict, field: str):
+        if field != "source_contract_id":
+            return row.get(field)
+        # Releases published before the explicit column still carry BaoStock
+        # provenance.  Treat that immutable source label as its only approved
+        # historical contract, so an idempotent retry remains retryable.
+        return row.get(field) or ("baostock-daily-v2" if row.get("source") == "baostock" else None)
+
     new, conflicts = [], []
     for row in rows:
         key = (str(row["trade_date"])[:10], str(row["symbol"]))
         prior = existing.get(key)
         if prior is None:
             new.append(row)
-        elif any(prior.get(field) != row.get(field) for field in comparable):
+        elif any(value(prior, field) != value(row, field) for field in comparable):
             conflicts.append(key)
     return {"new_rows": new, "conflicts": sorted(conflicts)}
 
