@@ -285,7 +285,6 @@ class InvestmentDataProvider(DataProvider):
     ) -> List[datetime]:
         start = _fmt_date(start_date)
         end = _fmt_date(end_date)
-
         sql = "SELECT date, is_open FROM ts_trade_day_calendar WHERE exchange = %s"
         args: List[Any] = [_CALENDAR_EXCHANGE]
         if start:
@@ -573,6 +572,10 @@ class InvestmentDataProvider(DataProvider):
 
         start = _fmt_date(start_date)
         end = _fmt_date(end_date)
+        # A strategy's ``previous_date`` is an as-of decision date.  For a
+        # one-day status request, falling back to an older observation would
+        # silently make stale ST/paused data look current.
+        status_start = end if count == 1 and end is not None else start
 
         jq_to_internal = {
             to_joinquant_symbol(normalize_stock_symbol(s)): normalize_stock_symbol(s)
@@ -584,14 +587,14 @@ class InvestmentDataProvider(DataProvider):
             self._data_usage["status_calls"] += 1
             raw = self._fetch_table_cols_many(
                 _INFO_TABLE, ["is_st", "tradestatus"], list(jq_to_internal.values()),
-                start, end, count, fill_paused=False,
+                status_start, end, count, fill_paused=False,
             )
             reader = getattr(self, "_supplemental_reader", None)
             scope = getattr(self, "_release_scope", None)
             datasets = getattr(scope, "manifest", {}).get("datasets", {}) if scope is not None else {}
             if reader is not None and datasets.get("trade_status_daily"):
                 patch_symbols = [to_ts_symbol(symbol) for symbol in jq_to_internal.values()]
-                patches = reader.trade_status(patch_symbols, start, end, count)
+                patches = reader.trade_status(patch_symbols, status_start, end, count)
                 self._data_usage["status_patch_rows"] += sum(len(rows) for rows in patches.values())
                 raw = {symbol: overlay_status_patch(frame, patches.get(to_ts_symbol(symbol), [])) for symbol, frame in raw.items()}
             cached = {

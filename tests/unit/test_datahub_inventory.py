@@ -238,6 +238,25 @@ def test_paused_keeps_unknown_when_trade_status_is_missing():
     assert pd.isna(result.iloc[2])
 
 
+def test_one_day_status_request_uses_the_asof_date_not_an_older_observation():
+    import pandas as pd
+    from quantradar.providers.investment_data.provider import InvestmentDataProvider
+
+    provider = object.__new__(InvestmentDataProvider)
+    provider._data_usage = {"status_calls": 0, "status_patch_rows": 0}
+    provider._extras_cache = {}
+    provider._supplemental_reader = None
+    provider._release_scope = None
+    seen = {}
+    def fetch(_table, _fields, _symbols, start, end, count, **_kwargs):
+        seen.update(start=start, end=end, count=count)
+        return {"SH600519": pd.DataFrame({"is_st": [], "tradestatus": []})}
+    provider._fetch_table_cols_many = fetch
+    result = provider.get_extras("is_st", ["600519.XSHG"], end_date="2024-01-02", count=1)
+    assert seen == {"start": "2024-01-02", "end": "2024-01-02", "count": 1}
+    assert result.empty
+
+
 def test_provider_usage_keeps_base_and_supplemental_contributions_separate():
     from quantradar.providers.investment_data.provider import InvestmentDataProvider
 
