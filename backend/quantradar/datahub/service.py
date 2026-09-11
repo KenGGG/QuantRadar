@@ -271,7 +271,10 @@ class DataHubService:
                              AkshareValuationFetcher(governor), self.raw)
         with self._updater_lock(), governor.operation_lock():
             journal.phase("download", "RUNNING")
-            result = runner.run(symbols, resume=True)
+            # Health probes deliberately target terminal failures.  A normal
+            # resume skips them, which would turn every probe into a false
+            # negative without ever calling the source.
+            result = runner.run(symbols, resume=False)
             selected = {symbol: (journal.data.get("units", {}).get(symbol) or {}).get("status", "PENDING") for symbol in symbols}
             healthy = all(status == "COMPLETE" for status in selected.values()) and not governor.status().get("circuit_open")
             journal.heartbeat(phase="download", current_shard=None, pid=os.getpid())

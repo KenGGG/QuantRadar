@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import patch
 
 import pytest
 
@@ -374,6 +375,25 @@ def test_update_journal_keeps_health_probe_evidence(tmp_path):
     journal = UpdateJournal(tmp_path / "journal.json")
     journal.record_probe(symbols=["002505.SZ", "002506.SZ", "002507.SZ"], outcome="HEALTHY")
     assert UpdateJournal(tmp_path / "journal.json").data["health_probes"][-1]["outcome"] == "HEALTHY"
+
+
+def test_health_probe_retries_failed_symbols_instead_of_skipping_them(tmp_path):
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.service import DataHubService
+    from quantradar.datahub.store import UpdateJournal
+
+    config = DataHubConfig(
+        supplemental_repo=str(tmp_path / "repo"), raw_root=str(tmp_path / "raw"),
+        journal_root=str(tmp_path / "journals"), release_root=str(tmp_path / "releases"),
+    )
+    journal = UpdateJournal(tmp_path / "journals" / "valuation_daily-mvp.json")
+    for symbol in ["000022.SZ", "002504.SZ", "002505.SZ"]:
+        journal.fail(symbol, "old adapter error")
+
+    with patch("quantradar.datahub.service.AkshareValuationFetcher", return_value=lambda _: []):
+        result = DataHubService(config).mvp_health_probe(symbols=["000022.SZ", "002504.SZ", "002505.SZ"])
+
+    assert result["selected"] == {symbol: "LEGAL_EMPTY" for symbol in ["000022.SZ", "002504.SZ", "002505.SZ"]}
 
 
 def test_update_journal_backfills_missing_symbol_error_categories(tmp_path):
