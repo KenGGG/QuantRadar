@@ -173,6 +173,22 @@ def test_baostock_bundle_keeps_status_and_never_maps_ncf_to_ocf():
     assert "pcf_ocf_ttm" not in rows["valuation"][0]
 
 
+def test_baostock_pe_pb_ps_candidate_does_not_require_or_create_ocf(tmp_path):
+    import hashlib
+    import json
+    from quantradar.datahub.quality import validate_shard
+
+    row = {"symbol": "600519.SH", "trade_date": "2023-09-01", "source": "baostock", "pit_status": "PARTIAL",
+           "adapter_version": "test", "raw_sha256": "a" * 64, "pe_ttm": 33.7, "pb_mrq": 11.5, "ps_ttm": 16.7,
+           "pcf_ncf_ttm": 2142.3}
+    content = (json.dumps(row) + "\n").encode()
+    path = tmp_path / "600519.SH.jsonl"
+    path.write_bytes(content)
+    result = validate_shard(path, "600519.SH", {"row_count": 1, "staged_result_sha256": hashlib.sha256(content).hexdigest(), "source_contract_id": "baostock-daily-v2"})
+    assert result["status"] == "PASS"
+    assert result["source_contract_ids"] == ["baostock-daily-v2"]
+
+
 def test_status_patch_only_fills_missing_base_values():
     import pandas as pd
     from quantradar.providers.investment_data.provider import overlay_status_patch

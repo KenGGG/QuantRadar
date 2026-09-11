@@ -9,8 +9,34 @@ from collections import Counter
 from datetime import date
 from pathlib import Path
 
+import yaml
+
 POLICY = 'valuation-quality-v2'
 FIELDS = ('pe_ttm', 'pb_mrq', 'ps_ttm', 'pcf_ocf_ttm')
+_CONTRACT_PATH = Path(__file__).with_name('source_contracts.yaml')
+
+
+def valuation_contracts() -> dict[str, dict]:
+    """Load the approved contracts, keeping source/field policy in one file."""
+    raw = yaml.safe_load(_CONTRACT_PATH.read_text(encoding='utf-8')) or {}
+    return {name: value for name, value in raw.get('contracts', {}).items()
+            if {'pe_ttm', 'pb_mrq', 'ps_ttm'} <= set(value.get('fields', []))}
+
+
+def _contract_for_row(row: dict, explicit: str | None = None) -> tuple[str, dict]:
+    contracts = valuation_contracts()
+    if explicit:
+        contract = contracts.get(explicit)
+        if not contract:
+            raise ValueError('unknown_source_contract')
+        return explicit, contract
+    source = row.get('source')
+    matches = [(name, contract) for name, contract in contracts.items()
+               if (name == 'eastmoney-valuation-v1' and source == 'eastmoney:RPT_VALUEANALYSIS_DET')
+               or (name == 'baostock-daily-v2' and source == 'baostock')]
+    if len(matches) != 1:
+        raise ValueError('unapproved_source')
+    return matches[0]
 
 
 def validate_shard(path: Path, symbol: str, unit: dict, raw_store=None) -> dict:
@@ -21,6 +47,7 @@ def validate_shard(path: Path, symbol: str, unit: dict, raw_store=None) -> dict:
     dates = set()
     count = 0
     source_hashes = set()
+    contract_ids = set()
     try:
         with path.open('rb') as handle:
             for line in handle:
@@ -38,8 +65,13 @@ def validate_shard(path: Path, symbol: str, unit: dict, raw_store=None) -> dict:
                     if day in dates:
                         errors['duplicate_key'] += 1
                     dates.add(day)
-                    if row.get('source') != 'eastmoney:RPT_VALUEANALYSIS_DET' or 'pcf_ncf_ttm' in row:
+                    contract_id, contract = _contract_for_row(row, unit.get('source_contract_id'))
+                    contract_ids.add(contract_id)
+                    allowed_fields = set(contract['fields'])
+                    if contract_id == 'eastmoney-valuation-v1' and 'pcf_ncf_ttm' in row:
                         raise ValueError('source_or_semantics')
+                    if contract_id == 'baostock-daily-v2' and row.get('pcf_ocf_ttm') is not None:
+                        raise ValueError('ncf_is_not_ocf')
                     if row.get('pit_status') not in ('PARTIAL', 'PASS') or not row.get('adapter_version'):
                         raise ValueError('provenance')
                     if row.get('pit_status') == 'PASS' and not row.get('available_date'):
@@ -50,7 +82,15 @@ def validate_shard(path: Path, symbol: str, unit: dict, raw_store=None) -> dict:
                     source_hashes.add(raw_hash)
                     values = []
                     for field in FIELDS:
-                        value = row[field]
+                        # A source that does not provide OCF is still eligible
+                        # for PE/PB/PS-only research.  Its absent OCF must not be
+                        # synthesized or used to reject the independent fields.
+                        if field not in allowed_fields:
+                            if field == 'pcf_ocf_ttm':
+                                values.append(None)
+                                continue
+                            raise ValueError('contract_missing_required_field')
+                        value = row.get(field)
                         if value is None:
                             nulls[field] += 1
                         elif isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value):
@@ -82,7 +122,8 @@ def validate_shard(path: Path, symbol: str, unit: dict, raw_store=None) -> dict:
     return {'status': 'FAIL' if errors else 'PASS', 'errors': dict(errors), 'rows': count,
             'first_date': min(dates, default=None), 'latest_date': max(dates, default=None),
             'source_nulls': dict(nulls), 'input_hash': digest.hexdigest(), 'economic_hash': economic.hexdigest(),
-            'dates': sorted(dates), 'pit': 'PARTIAL', 'raw_http': 'NOT_CHECKED'}
+            'dates': sorted(dates), 'pit': 'PARTIAL', 'raw_http': 'NOT_CHECKED',
+            'source_contract_ids': sorted(contract_ids)}
 
 
 def validate_candidate(root: Path, units: dict, *, base_commit: str, raw_store=None, calendar=None) -> dict:

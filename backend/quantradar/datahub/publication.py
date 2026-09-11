@@ -7,7 +7,7 @@ from datetime import date
 from pathlib import Path
 
 from .dolt import SupplementalStore
-from .quality import POLICY
+from .quality import POLICY, valuation_contracts
 
 PUBLICATION_POLICY = 'canonical-valuation-base-lifecycle-units-v3'
 
@@ -211,11 +211,15 @@ def publish_candidate(service, candidate, progress=None):
             row = actual.get(symbol)
             if not row or row['n'] < expected['rows'] or str(row['first_date']) > expected['first_date'] or str(row['latest_date']) < expected['latest_date']:
                 raise ValueError(f'fixed-commit verification failed: {symbol}')
-        cur.execute("SELECT COUNT(*) AS invalid FROM qr_valuation_daily WHERE source <> 'eastmoney:RPT_VALUEANALYSIS_DET' OR adapter_version IS NULL")
+        allowed_sources = {'eastmoney:RPT_VALUEANALYSIS_DET', 'baostock'}
+        cur.execute("SELECT COUNT(*) AS invalid FROM qr_valuation_daily WHERE source NOT IN (%s, %s) OR adapter_version IS NULL", tuple(sorted(allowed_sources)))
         if cur.fetchone()['invalid']:
             raise ValueError('disallowed valuation source in candidate commit')
+        contracts = {contract for summary in candidate['shards'].values() for contract in summary.get('source_contract_ids', [])}
+        if not contracts <= set(valuation_contracts()):
+            raise ValueError('candidate references an unapproved valuation contract')
     manifest = service.releases.publish(base_commit=candidate['base_commit'], supplemental_commit=commit, datasets=datasets,
-        source_adapters={'valuation': 'akshare-1.18.94', 'quality_policy': POLICY},
+        source_adapters={'valuation': sorted({contract for summary in candidate['shards'].values() for contract in summary.get('source_contract_ids', [])}), 'quality_policy': POLICY},
         metadata={'candidate_id': candidate['candidate_id'], 'economic_hash': identity, 'isolated': candidate['isolated'],
                   'publication_policy': PUBLICATION_POLICY,
                   'price_units': 'joinquant-shares-yuan-v2',
