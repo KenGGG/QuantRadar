@@ -199,7 +199,7 @@ class DataHubService:
                 "elapsed_seconds": round(elapsed, 1), "processing_rate": rate,
                 "estimated_remaining_seconds": round((total - processed) / rate, 1) if rate else None,
                 "governor": governor, "control": control,
-                "worker_alive": worker_alive}
+                "worker_alive": worker_alive, "retry_progress": journal.data.get("retry_progress")}
 
     def _stage_coverage(self, journal: UpdateJournal) -> dict[str, Any]:
         dates = [(row.get("first_date"), row.get("last_date")) for row in journal.data.get("units", {}).values() if row.get("status") == "COMPLETE"]
@@ -235,6 +235,20 @@ class DataHubService:
         journal.record_audit(report)
         return {**report, "path": str(path)}
 
+    def start_repair(self) -> dict[str, Any]:
+        job = self.job_status()
+        if job["status"] in {"RUNNING", "PAUSING", "COOLDOWN"}:
+            raise RuntimeError("采集任务正在运行或冷却，请稍后重试")
+        if not job["counts"]["failed"]:
+            return {"status": "NO_FAILED_SHARDS", "message": "没有需要重试的失败项"}
+        subprocess.Popen(
+            [sys.executable, "-m", "quantradar.datahub.cli", "repair", "--dataset", "valuation_daily"],
+            cwd=str(Path(__file__).parents[3]),
+            env={**os.environ, "PYTHONPATH": str(Path(__file__).parents[3] / "backend")},
+            start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        return {"status": "STARTED", "message": "已提交失败项重试，请查看采集进度", "failed": job["counts"]["failed"]}
+
     def mvp_repair(self, *, dataset: str) -> dict[str, Any]:
         if dataset != "valuation_daily":
             raise ValueError(f"MVP repair is not yet implemented for {dataset}")
@@ -242,7 +256,14 @@ class DataHubService:
         governor = RequestGovernor(Path(self.config.supplemental_repo) / "governance", "eastmoney")
         runner = ShardRunner(Path(self.config.supplemental_repo) / "staging" / "valuation_daily-mvp", journal, AkshareValuationFetcher(governor), self.raw)
         with self._updater_lock(), governor.operation_lock():
+            journal.begin_job(total_shards=len(journal.data["units"]), resume=True)
+            journal.data["retry_progress"] = {"total": sum(u.get("status") == "FAILED" for u in journal.data["units"].values()), "processed": 0, "recovered": 0, "failed": 0, "active": True}
+            journal.phase("download", "RUNNING")
+            journal.heartbeat(phase="download", current_shard=None, pid=os.getpid())
             result = runner.repair_failed()
+            journal.data["retry_progress"]["active"] = False
+            journal.heartbeat(phase="download", current_shard=None, pid=0)
+            journal.phase("download", "PAUSED" if runner.stop_requested else "FAILED" if result["failed"] else "DONE")
             journal.record_repair(result)
         return {**result, "governor": governor.observed_status()}
 
@@ -383,8 +404,10 @@ class DataHubService:
         if gaps["pending_symbols"]:
             raise RuntimeError("quality gate failed: valuation has pending shards")
         journal = UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json")
-        if gaps["failed"] and not journal.data.get("repair_attempts"):
-            raise RuntimeError("quality gate failed: FAILED shards require a targeted repair before PARTIAL publication")
+        if gaps["failed"]:
+            raise RuntimeError(f"检查未通过：仍有 {gaps['failed']} 个未解决的失败分片，请修复或取得无覆盖证据后再发布")
+        if gaps["duplicate_count"] or gaps["schema_error_count"]:
+            raise RuntimeError("检查未通过：存在重复记录或格式错误")
         master_path = self._security_master_path()
         if not master_path.is_file():
             raise RuntimeError("quality gate failed: canonical security master is missing")

@@ -291,6 +291,7 @@ export interface DataHubStatus {
 }
 
 export interface DataHubJob {
+  retry_progress?: { total: number; processed: number; recovered: number; failed: number; active: boolean } | null;
   job_id?: string; worker_alive?: boolean;
   status: "IDLE" | "RUNNING" | "PAUSING" | "PAUSED" | "COOLDOWN" | "FAILED" | "COMPLETED" | "AUDITING" | "PUBLISHING" | "PUBLISHED";
   dataset: string; total_shards: number; processed_shards: number; progress_percentage: number;

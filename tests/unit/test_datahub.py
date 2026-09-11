@@ -954,3 +954,47 @@ def test_baostock_eof_socket_turns_an_empty_recv_into_a_finite_error():
 
     with pytest.raises(ConnectionError, match="closed"):
         _EofFailingSocket(Socket()).recv(8192)
+
+
+def test_repair_clears_pause_and_preserves_completed_shards(tmp_path):
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.service import DataHubService
+    from quantradar.datahub.store import UpdateJournal
+    config = DataHubConfig(supplemental_repo=str(tmp_path), raw_root=str(tmp_path / 'raw'), journal_root=str(tmp_path / 'journals'))
+    journal = UpdateJournal(tmp_path / 'journals' / 'valuation_daily-mvp.json')
+    journal.complete('good', raw_sha256='a' * 64, row_count=42)
+    journal.fail('bad', 'source error')
+    journal.request_pause()
+    calls = []
+    def fetch(symbol):
+        calls.append(symbol)
+        return [{'symbol': symbol, 'trade_date': '2026-09-10'}]
+    with patch('quantradar.datahub.service.AkshareValuationFetcher', return_value=fetch):
+        result = DataHubService(config).mvp_repair(dataset='valuation_daily')
+    saved = UpdateJournal(journal.path).data
+    assert calls == ['bad']
+    assert result['failed'] == 0
+    assert saved['units']['good']['row_count'] == 42
+    assert saved['phases']['download']['status'] == 'DONE'
+    assert saved['heartbeat']['pid'] == 0
+    assert saved['repair_attempts'][-1]['result']['completed'] == 2
+
+
+def test_published_valuation_with_no_rows_is_not_reported_as_pass(monkeypatch):
+    from quantradar.datahub.reader import SupplementalReader
+    reader = SupplementalReader(lambda: None)
+    monkeypatch.setattr(reader, '_query', lambda *_: [])
+    with pytest.raises(ValueError, match='no published valuation data'):
+        reader.valuation('600000.SH', '2020-01-01', '2020-01-02')
+
+
+def test_publication_rejects_unresolved_failures_even_after_retry(tmp_path, monkeypatch):
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.service import DataHubService
+    from quantradar.datahub.store import UpdateJournal
+    service = DataHubService(DataHubConfig(journal_root=str(tmp_path), raw_root=str(tmp_path / 'raw')))
+    journal = UpdateJournal(tmp_path / 'valuation_daily-mvp.json')
+    journal.record_repair({'failed': 196})
+    monkeypatch.setattr(service, 'mvp_gaps', lambda **_: {'pending_symbols': [], 'failed': 196})
+    with pytest.raises(RuntimeError, match='196'):
+        service.mvp_publish()

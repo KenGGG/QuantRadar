@@ -87,6 +87,8 @@ class SupplementalReader:
             "FROM qr_valuation_daily WHERE symbol = %s AND trade_date >= %s AND trade_date <= %s ORDER BY trade_date",
             (symbol, start_date, end_date),
         )
+        if not rows:
+            raise ValueError(f"no published valuation data for {symbol} between {start_date} and {end_date}")
         missing = [row for row in rows if any(row.get(field) is None for field in required_fields)]
         if missing:
             raise ValueError(f"required supplemental fields missing for {symbol}: {required_fields}")

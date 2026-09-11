@@ -152,6 +152,14 @@ class ShardRunner:
                 metadata = exc.metadata() if isinstance(exc, AdapterParseError) else {}
                 self.journal.fail(symbol, str(exc), **metadata)
                 self.journal.heartbeat(phase="download", current_shard=None, pid=os.getpid())
+            finally:
+                progress = self.journal.data.get("retry_progress")
+                status = self.journal.data["units"].get(symbol, {}).get("status")
+                if progress and progress.get("active") and status in {"COMPLETE", "FAILED", "LEGAL_EMPTY", "NOT_COVERED"}:
+                    progress["processed"] += 1
+                    progress["recovered"] += int(status == "COMPLETE")
+                    progress["failed"] += int(status == "FAILED")
+                    self.journal._save()
         signal.signal(signal.SIGINT, previous_int)
         signal.signal(signal.SIGTERM, previous_term)
         return self.report()

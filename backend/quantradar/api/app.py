@@ -318,7 +318,10 @@ def datahub_gaps() -> Dict[str, Any]:
 @app.post("/api/datahub/repair")
 def datahub_repair() -> Dict[str, Any]:
     from quantradar.datahub.service import DataHubService
-    return DataHubService().mvp_repair(dataset="valuation_daily")
+    try:
+        return DataHubService().start_repair()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.post("/api/datahub/audit")

@@ -45,14 +45,18 @@ export function DataStatus() {
   const [job, setJob] = useState<DataHubJob | null>(null);
   const [jobBusy, setJobBusy] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [releaseError, setReleaseError] = useState<string | null>(null);
   const [actionResult, setActionResult] = useState<unknown>(null);
   const refreshJob = () => getDataHubJob().then((value) => { setJob(value); setJobError(null); }).catch((e) => setJobError(String(e)));
   const refreshRelease = () => getDataHubStatus().then((value) => { setDataHub(value); setReleaseError(null); }).catch((e) => setReleaseError(String(e)));
   const jobAction = (action: "start" | "pause" | "resume" | "stop" | "audit" | "gaps" | "repair" | "publish") => {
     setJobBusy(true);
-    dataHubJobAction(action).then((result) => { setActionResult(result); return refreshJob(); })
-      .catch((e) => setJobError(String(e))).finally(() => setJobBusy(false));
+    setActionError(null);
+    setActionMessage(null);
+    dataHubJobAction(action).then((result) => { setActionResult(result); setActionMessage((result as { message?: string }).message ?? "操作已完成"); return refreshJob(); })
+      .catch((e) => setActionError(String(e))).finally(() => setJobBusy(false));
   };
   const onHealth = () => {
     setError(null);
@@ -139,20 +143,41 @@ export function DataStatus() {
 
   return (
     <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
-      <div><Typography.Title level={4} style={{ margin: 0 }}>数据状态</Typography.Title><Text type="secondary">采集进度每 4 秒刷新 · 下载结果经审计和发布后才用于研究</Text></div>
+      <div><Typography.Title level={4} style={{ margin: 0 }}>数据状态</Typography.Title><Text type="secondary">已发布覆盖与下载进度</Text></div>
       {jobError && <Alert type="error" showIcon message="任务状态获取失败，以下进度可能已过期" description={jobError} />}
+      <Card title="数据覆盖" extra={<Button onClick={refreshRelease}>刷新</Button>}>
+        <Table pagination={false} size="middle" rowKey="name" scroll={{ x: 720 }} dataSource={[
+          { name: "行情", stocks: undefined, first: undefined, latest: undefined, state: "已接入", note: "覆盖统计待接入" },
+          ...[["valuation_daily", "估值"], ["sw_industry_history", "行业"], ["security_lifecycle", "股票基础信息"]].map(([key, name]) => {
+            const d = dataHub?.datasets.find(row => row.name === key);
+            return { name, stocks: d?.stocks, first: d?.first_date, latest: d?.latest_date, state: d ? "已发布 · 有限制" : "未发布", note: key === "security_lifecycle" ? "日期为上市日期范围" : "" };
+          }),
+        ]} columns={[
+          { title: "数据", dataIndex: "name" },
+          { title: "覆盖股票", dataIndex: "stocks", render: v => v == null ? "未统计" : `${Number(v).toLocaleString()} 只` },
+          { title: "起始日期", dataIndex: "first", render: v => v ?? "未统计" },
+          { title: "最新日期", dataIndex: "latest", render: v => v ?? "未统计" },
+          { title: "状态", dataIndex: "state" },
+          { title: "备注", dataIndex: "note" },
+        ]} />
+      </Card>
       <Card title={<Space>采集任务 <Tag color={job?.status === "COOLDOWN" ? "orange" : job?.status === "RUNNING" ? "blue" : "default"}>{job?.status ?? "加载中"}</Tag></Space>} extra={<Button onClick={refreshJob}>刷新</Button>}>
         <Space direction="vertical" size={16} style={{ width: "100%" }}>
-          <Space wrap><Text strong>{job?.dataset ?? "valuation_daily"}</Text><Text type="secondary">Job: {job?.job_id ?? "—"} · 默认续传，保留已完成结果</Text></Space>
+          <Space wrap><Text strong>估值下载</Text></Space>
           <Space wrap>
-            <Button type="primary" disabled={busy || running} onClick={() => jobAction("start")}>开始回填</Button>
+            <Button type="primary" loading={jobBusy} disabled={busy || running || !job?.counts.failed} onClick={() => jobAction("repair")}>重试失败项（{job?.counts.failed ?? 0}）</Button>
+            <Button disabled={busy || running} onClick={() => jobAction("start")}>开始回填</Button>
             <Button disabled={busy || !["RUNNING", "COOLDOWN"].includes(job?.status ?? "")} onClick={() => jobAction("pause")}>暂停</Button>
             <Button disabled={busy || !["PAUSED", "COOLDOWN"].includes(job?.status ?? "")} onClick={() => jobAction("resume")}>继续</Button>
             <Button danger disabled={busy || !["RUNNING", "COOLDOWN"].includes(job?.status ?? "")} onClick={() => jobAction("stop")}>停止</Button>
           </Space>
+          {actionError && <Alert type="error" showIcon message="操作失败" description={actionError} />}
+          {actionMessage && <Alert type="info" showIcon message={actionMessage} />}
           {job?.status === "COOLDOWN" && <Alert showIcon type="warning" message="来源冷却中" description={`预计恢复时间：${timeLabel(job.governor.cooldown_until as string)}。当前没有发起新请求；以 Governor 的实际恢复结果为准。`} />}
           {job?.status === "PAUSED" && <Alert showIcon type="info" message="任务已暂停，下载结果和待处理进度已保留" />}
-          {job?.worker_alive === false && <Alert showIcon type="warning" message="采集进程当前未运行，页面展示已保存的进度" description="Governor 冷却状态不代表后台仍在运行。已完成数据保留；任务恢复控制仍需完成验收。" />}
+          {job?.retry_progress && <Alert showIcon type={job.retry_progress.active ? "info" : job.retry_progress.failed ? "warning" : "success"}
+            message={`本轮重试${job.retry_progress.active ? "进行中" : "已结束"}：已尝试 ${job.retry_progress.processed} / ${job.retry_progress.total}，恢复下载 ${job.retry_progress.recovered}，仍失败 ${job.retry_progress.failed}`}
+            description={<Progress percent={job.retry_progress.total ? Math.round(job.retry_progress.processed / job.retry_progress.total * 100) : 0} />} />}
           <Progress percent={job?.progress_percentage ?? 0} status={jobError ? "exception" : "normal"} />
           <Row gutter={[16, 16]}>
             <Col xs={12} md={6}><Statistic title="已处理 / 总股票数" value={job?.processed_shards ?? "—"} suffix={`/ ${job?.total_shards ?? "—"}`} /></Col>
@@ -160,11 +185,11 @@ export function DataStatus() {
             <Col xs={12} md={6}><Statistic title="当前股票" value={job?.current_shard ?? "—"} /></Col>
             <Col xs={12} md={6}><Statistic title="估计剩余时间" value={job?.worker_alive && job?.status === "RUNNING" ? duration(job.estimated_remaining_seconds) : "—"} /></Col>
           </Row>
-          <Space wrap>{[["complete", "完成"], ["not_covered", "未覆盖"], ["legal_empty", "合法空值"], ["failed", "失败"], ["pending", "待处理"]].map(([key, label]) => <Tag key={key} color={key === "failed" && (job?.counts.failed ?? 0) > 0 ? "red" : "default"}>{label} {job ? metric(job.counts[key]) : "—"}</Tag>)}</Space>
+          <Space wrap>{[["complete", "完成"], ["not_covered", "未覆盖"], ["legal_empty", "合法空值"], ["failed", "失败"], ["pending", "待处理"], ["running", "运行中"]].map(([key, label]) => <Tag key={key} color={key === "failed" && (job?.counts.failed ?? 0) > 0 ? "red" : "default"}>{label} {job ? metric(job.counts[key]) : "—"}</Tag>)}</Space>
           <Text type="secondary">覆盖日期 {job?.coverage.coverage_start ?? "—"} 至 {job?.coverage.coverage_end ?? "—"} · 最近心跳 {timeLabel(job?.last_heartbeat)} · 耗时 {duration(job?.elapsed_seconds)} · 平均速度 {job?.processing_rate ? `${(job.processing_rate * 60).toFixed(1)} 只/分钟` : "—"}</Text>
         </Space>
       </Card>
-      <Card size="small" title="来源请求状态 · Request Governor">
+      <Collapse items={[{ key: "source", label: "技术详情：来源请求与错误", children: <Card size="small" title="来源请求状态">
         <Descriptions size="small" column={{ xs: 1, sm: 2, lg: 3 }}>
           <Descriptions.Item label="来源">{metric(job?.governor.upstream)}</Descriptions.Item>
           <Descriptions.Item label="Circuit">{job ? (job.governor.circuit_open ? "OPEN / COOLDOWN" : "CLOSED") : "—"}</Descriptions.Item>
@@ -178,29 +203,30 @@ export function DataStatus() {
           <Descriptions.Item label="连续受影响股票">{Array.isArray(job?.governor.consecutive_affected_symbols) ? job?.governor.consecutive_affected_symbols.length : "—"}</Descriptions.Item>
           <Descriptions.Item label="最近错误" span={3}><Text type="secondary">{(() => { const last = job?.governor.last_error as Record<string, unknown> | undefined; return last ? `${metric(last.symbol)} · ${metric(last.category)} · ${metric(last.message)}` : "—"; })()}</Text></Descriptions.Item>
         </Descriptions>
-      </Card>
-      <Card title="正式研究数据与覆盖" extra={<Button onClick={refreshRelease}>刷新版本</Button>}>
+      </Card> }]} />
+      <Card title="检查与发布" extra={<Button onClick={refreshRelease}>刷新版本</Button>}>
+        <Alert showIcon type={job?.counts.failed ? "warning" : "info"} message={job?.counts.failed ? `暂不能发布：还有 ${job.counts.failed} 项采集失败` : "下载结束不代表检查通过，发布时仍须执行数据检查"}
+          style={{ marginBottom: 16 }} />
         <Space wrap style={{ marginBottom: 16 }}>
           <Button disabled={busy || job?.status !== "COMPLETED"} onClick={() => jobAction("audit")}>审计</Button>
           <Button disabled={busy || running} onClick={() => jobAction("gaps")}>查看缺口</Button>
-          <Button disabled={busy || running || !(job?.counts.failed)} onClick={() => jobAction("repair")}>修复失败</Button>
-          <Button disabled={busy || running || job?.status !== "COMPLETED" || !!dataHub?.audit_error} onClick={() => jobAction("publish")}>发布</Button>
+          <Button disabled={busy || running || job?.status !== "COMPLETED" || !!dataHub?.audit_error || !!job?.counts.failed || !!job?.counts.pending} onClick={() => jobAction("publish")}>检查并发布</Button>
         </Space>
-        <Alert type="info" showIcon message="采集进度不等于正式覆盖；研究使用下方 release 锁定的数据。PIT / 质量限制以各数据集实测审计为准。" style={{ marginBottom: 16 }} />
         {releaseError && <Alert type="error" message="正式版本状态读取失败" description={releaseError} />}
         {dataHub?.audit_error && <Alert type="warning" showIcon message="正式版本审计存在异常" description={dataHub.audit_error} style={{ marginBottom: 16 }} />}
         <Descriptions size="small" column={{ xs: 1, md: 2 }} style={{ marginBottom: 16 }}>
           <Descriptions.Item label="当前 release">{dataHub?.current_release?.release_id ?? "—"}</Descriptions.Item>
           <Descriptions.Item label="上次成功更新">{timeLabel(dataHub?.last_success)}</Descriptions.Item>
         </Descriptions>
-        <Table size="small" pagination={false} scroll={{ x: 1150 }} locale={{ emptyText: "暂无可展示的正式数据集审计；请查看上方状态" }} rowKey="name" dataSource={dataHub?.datasets ?? []} columns={[
-          { title: "数据集", dataIndex: "name" }, { title: "PIT", dataIndex: "pit_status" },
+        <Collapse items={[{ key: "audit", label: "技术详情：正式版本覆盖与审计", children: <Table size="small" pagination={false} scroll={{ x: 1750 }} locale={{ emptyText: "暂无可展示的正式数据集审计；请查看上方状态" }} rowKey="name" dataSource={dataHub?.datasets ?? []} columns={[
+          { title: "数据集", dataIndex: "name" }, { title: "历史时点可靠性（PIT）", render: (_v, row) => <Space direction="vertical" size={0}><Tag color={row.pit_status === "PASS" ? "green" : "orange"}>{row.pit_status ?? "未审计"}</Tag><Text type="secondary">未通过严格 PIT：{row.partial_rows == null ? "未统计" : `${row.partial_rows.toLocaleString()} 行`}</Text></Space> },
           { title: "来源", dataIndex: "source", render: (v) => Array.isArray(v) ? v.join(", ") : "-" },
           { title: "历史起点", dataIndex: "first_date" }, { title: "最新日期", dataIndex: "latest_date" },
-          { title: "股票覆盖", dataIndex: "stocks" }, { title: "行数", dataIndex: "rows", render: (v, row) => v ?? row.row_count ?? "-" },
-          { title: "缺失 / PARTIAL", render: (_v, row) => row.source_nulls ? JSON.stringify({ ...row.source_nulls, source_not_covered: row.coverage?.source_not_covered_stock_days }) : (row.partial_rows ?? "-") },
-          { title: "冲突 / 修订", render: (_v, row) => row.name === "security_lifecycle" ? `退市股票: ${row.delisted_stocks ?? "—"}` : `冲突: ${row.conflicts ?? "—"}；修订: ${row.history_revision_count ?? "—"}` },
-        ]} />
+          { title: "股票覆盖", dataIndex: "stocks" }, { title: "行数", render: (_v, row) => row.row_count ?? row.rows ?? "未统计" },
+          { title: "已入库字段空值", render: (_v, row) => row.source_nulls ? <Space direction="vertical" size={0}>{Object.entries(row.source_nulls).map(([field, count]) => <Text key={field}>{field}：{count == null ? "当前版本未提供" : `${count.toLocaleString()} 个空值`}</Text>)}</Space> : "未统计（不代表无缺失）" },
+          { title: "股票 / 日期覆盖缺口", render: (_v, row) => typeof row.coverage?.source_not_covered_stock_days === "number" ? `${row.coverage.source_not_covered_stock_days.toLocaleString()} 个股票交易日未覆盖` : "未统计（不代表完整覆盖）" },
+          { title: "冲突 / 修订", render: (_v, row) => row.name === "security_lifecycle" ? `退市股票: ${row.delisted_stocks ?? "—"}` : `冲突: ${row.conflicts ?? "未统计"}；修订: ${row.history_revision_count ?? "未统计"}` },
+        ]} /> }]} />
       </Card>
 
       {actionResult != null && <Collapse items={[{ key: "result", label: "最近操作结果", children: <pre style={{ maxHeight: 350, overflow: "auto", whiteSpace: "pre-wrap" }}>{JSON.stringify(actionResult, null, 2)}</pre> }]} />}
