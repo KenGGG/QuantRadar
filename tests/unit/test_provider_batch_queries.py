@@ -21,7 +21,7 @@ def _count_queries(provider, monkeypatch):
 
 
 @pytest.mark.unit
-def test_multi_security_extras_matches_single_queries_in_two_sql_calls(live_provider, monkeypatch):
+def test_multi_security_extras_matches_single_queries_in_one_sql_call(live_provider, monkeypatch):
     stocks = ["600519.XSHG", "000001.XSHE", "600000.XSHG"]
     expected = {
         field: pd.concat(
@@ -35,7 +35,7 @@ def test_multi_security_extras_matches_single_queries_in_two_sql_calls(live_prov
         field: live_provider.get_extras(field, stocks, end_date="2023-08-31", count=1)
         for field in ("is_st", "tradestatus")
     }
-    assert len(calls) == 2
+    assert len(calls) == 1
     for field in expected:
         assert_frame_equal(actual[field], expected[field])
 

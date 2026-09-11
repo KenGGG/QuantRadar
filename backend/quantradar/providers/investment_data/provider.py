@@ -194,6 +194,7 @@ class InvestmentDataProvider(DataProvider):
     def __init__(self, config: Optional[InvestmentDataConfig] = None) -> None:
         self._config = config or load_investment_data_config()
         self._connection = InvestmentDataConnection(self._config)
+        self._extras_cache: Dict[tuple, Dict[str, Dict[str, pd.DataFrame]]] = {}
 
     # -- 连接 / 认证 ------------------------------------------------------
 
@@ -517,9 +518,22 @@ class InvestmentDataProvider(DataProvider):
             to_joinquant_symbol(normalize_stock_symbol(s)): normalize_stock_symbol(s)
             for s in security_list
         }
-        raw = self._fetch_table_cols_many(
-            _INFO_TABLE, [field], list(jq_to_internal.values()), start, end, count, fill_paused=False
-        )
+        cache_key = (tuple(jq_to_internal.values()), start, end, count)
+        cached = self._extras_cache.get(cache_key)
+        if cached is None:
+            raw = self._fetch_table_cols_many(
+                _INFO_TABLE, ["is_st", "tradestatus"], list(jq_to_internal.values()),
+                start, end, count, fill_paused=False,
+            )
+            cached = {
+                extra_field: {
+                    internal: frame[[extra_field]].copy()
+                    for internal, frame in raw.items()
+                }
+                for extra_field in ("is_st", "tradestatus")
+            }
+            self._extras_cache[cache_key] = cached
+        raw = cached[field]
         per_sec: Dict[str, "pd.Series"] = {}
         for jq, internal in jq_to_internal.items():
             df_sec = raw[internal]
