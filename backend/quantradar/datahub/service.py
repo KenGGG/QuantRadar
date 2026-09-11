@@ -62,6 +62,13 @@ def _fetch_valuation_batch(host: str | None, symbols: list[str], start_date: str
     return list(BaostockAdapter(host=host).valuations(symbols, start_date, end_date))
 
 
+def low_beta_status_coverage_outcome(missing_dates: list[str], base_price_last_date: str | None) -> str:
+    """A missing state is legitimate only if fixed-base price ended first."""
+    if missing_dates and base_price_last_date and str(base_price_last_date)[:10] < min(missing_dates):
+        return "NOT_COVERED"
+    return "UNRESOLVED"
+
+
 class JsonlRows:
     """Repeatable disk staging for a full valuation backfill without RAM growth."""
 
@@ -237,6 +244,51 @@ class DataHubService:
     def _low_beta_status_journal(self, plan: dict[str, Any]) -> UpdateJournal:
         return UpdateJournal(Path(self.config.journal_root) / f"low-beta-status-{plan['plan_fingerprint'][:16]}.json")
 
+    def _base_price_last_dates(self, symbols: list[str], base_commit: str) -> dict[str, str | None]:
+        from ..providers.investment_data.symbols import normalize_stock_symbol
+        internal = [(symbol, normalize_stock_symbol(symbol)) for symbol in symbols]
+        result = {symbol: None for symbol, _ in internal}
+        connection = pymysql.connect(
+            host=self.config.base_host, port=self.config.base_port, user=self.config.user, password=self.config.password,
+            database=f"{self.config.base_database}/{base_commit}", connect_timeout=self.config.connect_timeout,
+            read_timeout=max(self.config.read_timeout, 300), charset="utf8mb4", cursorclass=DictCursor,
+        )
+        try:
+            with connection.cursor() as cursor:
+                for offset in range(0, len(internal), 500):
+                    chunk = internal[offset:offset + 500]
+                    marks = ", ".join(["%s"] * len(chunk))
+                    cursor.execute(
+                        "SELECT symbol, MAX(tradedate) AS last_date FROM final_a_stock_eod_price "
+                        f"WHERE symbol IN ({marks}) GROUP BY symbol", tuple(value for _, value in chunk),
+                    )
+                    external = {value: symbol for symbol, value in chunk}
+                    for row in cursor.fetchall():
+                        result[external[str(row["symbol"])]] = str(row["last_date"])[:10]
+        finally:
+            connection.close()
+        return result
+
+    def reconcile_low_beta_status_coverage(self, start: str, end: str, *, release_id: str | None = None) -> dict[str, Any]:
+        """Turn source absences into NOT_COVERED only when the base price also ended."""
+        plan = self.low_beta_status_plan(start, end, release_id)
+        journal = self._low_beta_status_journal(plan)
+        failed = {symbol: detail for symbol, detail in journal.data["units"].items() if detail.get("status") == "FAILED"}
+        last_dates = self._base_price_last_dates(list(failed), plan["base_commit"])
+        resolved, unresolved = [], []
+        for symbol, detail in failed.items():
+            missing = [part.strip() for part in str(detail.get("error", "")).partition(":")[2].split(",") if part.strip()]
+            outcome = low_beta_status_coverage_outcome(missing, last_dates.get(symbol))
+            if outcome == "NOT_COVERED":
+                journal.data["units"][symbol] = {**detail, "status": "NOT_COVERED", "base_price_last_date": last_dates[symbol],
+                                                  "coverage_evidence": "base final price ends before every missing requested status date"}
+                resolved.append(symbol)
+            else:
+                unresolved.append(symbol)
+        if resolved:
+            journal._save()
+        return {"not_covered": resolved, "unresolved": unresolved, "base_price_last_dates": last_dates}
+
     def collect_low_beta_status(self, start: str, end: str, *, release_id: str | None = None, limit: int = 0) -> dict[str, Any]:
         """Collect only strict low-Beta status dependencies into durable staging.
 
@@ -305,7 +357,7 @@ class DataHubService:
         plan = self.low_beta_status_plan(start, end, release_id)
         journal = self._low_beta_status_journal(plan)
         units = journal.data["units"]
-        incomplete = sorted(symbol for symbol, detail in units.items() if detail.get("status") != "COMPLETE")
+        incomplete = sorted(symbol for symbol, detail in units.items() if detail.get("status") not in {"COMPLETE", "NOT_COVERED"})
         if incomplete:
             raise RuntimeError(f"low-beta status repair has incomplete symbols: {len(incomplete)}")
         root = Path(self.config.supplemental_repo) / "staging" / "low-beta-status"

@@ -211,6 +211,13 @@ def test_low_beta_status_plan_fingerprint_changes_with_required_dates(tmp_path, 
     assert first["plan_fingerprint"] != second["plan_fingerprint"]
 
 
+def test_low_beta_missing_status_is_not_covered_only_after_base_price_ends():
+    from quantradar.datahub.service import low_beta_status_coverage_outcome
+
+    assert low_beta_status_coverage_outcome(["2025-03-31"], "2025-02-05") == "NOT_COVERED"
+    assert low_beta_status_coverage_outcome(["2025-03-31"], "2025-04-01") == "UNRESOLVED"
+
+
 def test_work_queue_is_idempotent_and_rotates_all_three_queues(tmp_path):
     from quantradar.datahub.work_queue import DataHubWorkQueue
 

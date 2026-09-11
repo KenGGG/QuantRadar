@@ -53,6 +53,10 @@ def _parser() -> argparse.ArgumentParser:
     low_beta_publish.add_argument("--start", required=True)
     low_beta_publish.add_argument("--end", required=True)
     low_beta_publish.add_argument("--release")
+    low_beta_reconcile = commands.add_parser("reconcile-low-beta-status")
+    low_beta_reconcile.add_argument("--start", required=True)
+    low_beta_reconcile.add_argument("--end", required=True)
+    low_beta_reconcile.add_argument("--release")
     return parser
 
 
@@ -118,6 +122,8 @@ def main(argv: list[str] | None = None) -> int:
             result = service.collect_low_beta_status(args.start, args.end, release_id=args.release, limit=args.limit)
         elif args.command == "publish-low-beta-status":
             result = service.publish_low_beta_status(args.start, args.end, release_id=args.release)
+        elif args.command == "reconcile-low-beta-status":
+            result = service.reconcile_low_beta_status_coverage(args.start, args.end, release_id=args.release)
     except Exception as exc:
         print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
         return 1
