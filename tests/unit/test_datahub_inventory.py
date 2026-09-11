@@ -225,6 +225,17 @@ def test_paused_keeps_unknown_when_trade_status_is_missing():
     assert pd.isna(result.iloc[2])
 
 
+def test_provider_usage_keeps_base_and_supplemental_contributions_separate():
+    from quantradar.providers.investment_data.provider import InvestmentDataProvider
+
+    provider = object.__new__(InvestmentDataProvider)
+    provider._data_usage = {"price_calls": 2, "price_symbols": {"SH600519", "SZ000001"}, "status_calls": 1,
+                            "status_patch_rows": 3, "valuation_calls": 4, "industry_calls": 5}
+    assert provider.data_usage() == {"base_final_price_calls": 2, "base_final_price_symbols": 2,
+                                     "trade_status_calls": 1, "supplemental_trade_status_rows": 3,
+                                     "supplemental_valuation_calls": 4, "supplemental_industry_calls": 5}
+
+
 def test_status_patch_validation_rejects_duplicate_or_invalid_state():
     from quantradar.datahub.publication import status_patch_delta, validate_trade_status_base_gap, validate_trade_status_patch
 

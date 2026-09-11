@@ -161,6 +161,10 @@ def run_backtest(
                         os.unlink(tmp.name)
                     except OSError:
                         pass
+                from bullet_trade.data import get_data_provider
+                provider = get_data_provider()
+                if hasattr(provider, 'data_usage'):
+                    audit_env['data_usage'] = provider.data_usage()
                 snapshot = build_snapshot(
                     engine, extras=extras, strategy_source=code,
                     security=security, amount=amount, benchmark=benchmark, fq=_fq,
@@ -188,6 +192,10 @@ def run_backtest(
                 initial_cash=initial_cash,
             )
             engine.run()
+            from bullet_trade.data import get_data_provider
+            provider = get_data_provider()
+            if hasattr(provider, 'data_usage'):
+                audit_env['data_usage'] = provider.data_usage()
             snapshot = build_snapshot(
                 engine, extras=extras, strategy_source=None,
                 security=sec, amount=amount, benchmark=benchmark, fq=_fq,

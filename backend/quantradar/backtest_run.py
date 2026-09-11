@@ -160,6 +160,10 @@ def run_unified_backtest(
                 extras=extras,
                 use_real_price=_use_real_price,
             )
+            from bullet_trade.data import get_data_provider
+            provider = get_data_provider()
+            if hasattr(provider, 'data_usage'):
+                audit_env['data_usage'] = provider.data_usage()
         finally:
             set_option("use_real_price", _prev)
 

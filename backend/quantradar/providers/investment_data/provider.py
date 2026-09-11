@@ -223,6 +223,17 @@ class InvestmentDataProvider(DataProvider):
         self._connection = InvestmentDataConnection(self._config)
         self._price_units = 'joinquant-shares-yuan-v2'
         self._extras_cache: Dict[tuple, Dict[str, Dict[str, pd.DataFrame]]] = {}
+        self._data_usage = {"price_calls": 0, "price_symbols": set(), "status_calls": 0,
+                            "status_patch_rows": 0, "valuation_calls": 0, "industry_calls": 0}
+
+    def data_usage(self) -> dict[str, Any]:
+        """Actual provider calls for the current fixed-release backtest."""
+        return {"base_final_price_calls": self._data_usage["price_calls"],
+                "base_final_price_symbols": len(self._data_usage["price_symbols"]),
+                "trade_status_calls": self._data_usage["status_calls"],
+                "supplemental_trade_status_rows": self._data_usage["status_patch_rows"],
+                "supplemental_valuation_calls": self._data_usage["valuation_calls"],
+                "supplemental_industry_calls": self._data_usage["industry_calls"]}
 
     # -- 连接 / 认证 ------------------------------------------------------
 
@@ -244,6 +255,7 @@ class InvestmentDataProvider(DataProvider):
         return dict(CAPABILITIES)
 
     def get_fundamentals(self, query_object, date=None, statDate=None):
+        self._data_usage["valuation_calls"] += 1
         from ...datahub.strategy import fundamentals, DataUnavailable
         try:
             return fundamentals(self, query_object, date, statDate)
@@ -253,6 +265,7 @@ class InvestmentDataProvider(DataProvider):
             raise DataUnavailable(f'固定版本估值读取失败：{exc}') from exc
 
     def get_industry(self, security, date=None):
+        self._data_usage["industry_calls"] += 1
         from ...datahub.strategy import industry, DataUnavailable
         try:
             return industry(self, security, date)
@@ -567,6 +580,7 @@ class InvestmentDataProvider(DataProvider):
         cache_key = (tuple(jq_to_internal.values()), start, end, count)
         cached = self._extras_cache.get(cache_key)
         if cached is None:
+            self._data_usage["status_calls"] += 1
             raw = self._fetch_table_cols_many(
                 _INFO_TABLE, ["is_st", "tradestatus"], list(jq_to_internal.values()),
                 start, end, count, fill_paused=False,
@@ -577,6 +591,7 @@ class InvestmentDataProvider(DataProvider):
             if reader is not None and datasets.get("trade_status_daily"):
                 patch_symbols = [to_ts_symbol(symbol) for symbol in jq_to_internal.values()]
                 patches = reader.trade_status(patch_symbols, start, end, count)
+                self._data_usage["status_patch_rows"] += sum(len(rows) for rows in patches.values())
                 raw = {symbol: overlay_status_patch(frame, patches.get(to_ts_symbol(symbol), [])) for symbol, frame in raw.items()}
             cached = {
                 extra_field: {
@@ -733,6 +748,8 @@ class InvestmentDataProvider(DataProvider):
             )
 
         ordered_jq = list(jq_to_internal.keys())
+        self._data_usage["price_calls"] += 1
+        self._data_usage["price_symbols"].update(jq_to_internal.values())
         if len(jq_to_internal) > 1 and not limit_cols:
             raw_prices = self._fetch_raw_prices_many(
                 list(jq_to_internal.values()), price_cols, need_paused,
