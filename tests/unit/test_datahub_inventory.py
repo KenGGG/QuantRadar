@@ -139,7 +139,8 @@ def test_baostock_bundle_keeps_status_and_never_maps_ncf_to_ocf():
     }], raw_sha256="a" * 64, fetched_at="2026-09-11T00:00:00Z", adapter_version="test")
 
     assert rows["price"][0]["close"] == 1851.05
-    assert rows["trade_status"][0] == {"trade_date": "2023-09-01", "symbol": "600519.SH", "tradestatus": 1, "is_st": 0, "turn": 0.12}
+    assert {key: rows["trade_status"][0][key] for key in ("trade_date", "symbol", "tradestatus", "is_st", "turn")} == {"trade_date": "2023-09-01", "symbol": "600519.SH", "tradestatus": 1, "is_st": 0, "turn": 0.12}
+    assert rows["trade_status"][0]["raw_sha256"] == "a" * 64
     assert rows["valuation"][0]["pcf_ncf_ttm"] == 2142.3
     assert "pcf_ocf_ttm" not in rows["valuation"][0]
 
@@ -154,3 +155,22 @@ def test_status_patch_only_fills_missing_base_values():
     assert patched.loc["2023-06-09", "is_st"] == 0
     assert patched.loc["2023-06-12", "is_st"] == 0
     assert patched.loc["2023-06-12", "tradestatus"] == 1
+
+
+def test_status_patch_adds_dates_absent_from_base_table():
+    import pandas as pd
+    from quantradar.providers.investment_data.provider import overlay_status_patch
+
+    patched = overlay_status_patch(pd.DataFrame({"is_st": pd.Series(dtype="float64"), "tradestatus": pd.Series(dtype="float64")}), [{"trade_date": "2023-09-01", "is_st": 0, "tradestatus": 1}])
+    assert patched.loc["2023-09-01", "is_st"] == 0
+
+
+def test_status_patch_validation_rejects_duplicate_or_invalid_state():
+    from quantradar.datahub.publication import validate_trade_status_patch
+
+    good = [{"trade_date": "2023-09-01", "symbol": "600519.SH", "tradestatus": 1, "is_st": 0, "turn": 0.12,
+             "source": "baostock", "raw_sha256": "a" * 64, "adapter_version": "test", "fetched_at": "2026-09-11T00:00:00Z", "available_date": None, "pit_status": "PARTIAL"}]
+    assert validate_trade_status_patch(good)["status"] == "PASS"
+    assert validate_trade_status_patch(good + good)["status"] == "FAIL"
+    bad = [dict(good[0], tradestatus=3)]
+    assert validate_trade_status_patch(bad)["status"] == "FAIL"

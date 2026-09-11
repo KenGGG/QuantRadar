@@ -12,6 +12,65 @@ from .quality import POLICY
 PUBLICATION_POLICY = 'canonical-valuation-base-lifecycle-units-v3'
 
 
+def validate_trade_status_patch(rows: list[dict]) -> dict:
+    """Validate a narrow status candidate before any Dolt branch is touched."""
+    seen, errors = set(), []
+    for row in rows:
+        key = (row.get("trade_date"), row.get("symbol"))
+        try:
+            date.fromisoformat(str(key[0])[:10])
+        except ValueError:
+            errors.append("invalid trade_date")
+        if not isinstance(key[1], str) or len(key[1]) != 9 or not key[1][:6].isdigit() or not key[1].endswith((".SH", ".SZ")):
+            errors.append("invalid symbol")
+        if key in seen:
+            errors.append("duplicate key")
+        seen.add(key)
+        if row.get("tradestatus") not in (0, 1) or row.get("is_st") not in (0, 1):
+            errors.append("invalid status")
+        if len(str(row.get("raw_sha256") or "")) != 64 or not row.get("source") or not row.get("adapter_version"):
+            errors.append("missing provenance")
+    return {"status": "PASS" if rows and not errors else "FAIL", "rows": len(rows), "errors": sorted(set(errors))}
+
+
+def publish_trade_status_patch(service, rows: list[dict]) -> dict:
+    """Publish a validated, additive status patch on an isolated Dolt branch."""
+    check = validate_trade_status_patch(rows)
+    if check["status"] != "PASS":
+        raise ValueError("trade status candidate failed: " + ", ".join(check["errors"]))
+    old = service.releases.current()
+    conn = service._connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM dolt_status")
+            if cursor.fetchall():
+                raise ValueError("supplemental repository has uncommitted changes")
+            identity = hashlib.sha256(json.dumps(sorted((r["trade_date"], r["symbol"], r["raw_sha256"]) for r in rows)).encode()).hexdigest()[:16]
+            branch = "candidate_status_" + identity
+            cursor.execute("SELECT name FROM dolt_branches WHERE name=%s", (branch,))
+            if cursor.fetchone():
+                cursor.execute("CALL DOLT_CHECKOUT(%s)", (branch,))
+            else:
+                cursor.execute("CALL DOLT_CHECKOUT('-b', %s, %s)", (branch, old["supplemental_commit"]))
+        writer = SupplementalStore(conn)
+        writer.ensure_schema()
+        writer.upsert_trade_status(rows)
+        commit = writer.commit("datahub: checked trade status patch " + identity)
+    finally:
+        conn.close()
+    with service._connection(service.config.supplemental_database + "/" + commit) as frozen, frozen.cursor() as cur:
+        cur.execute("SELECT COUNT(*) AS row_count, COUNT(DISTINCT symbol) AS stocks, MIN(trade_date) AS first_date, MAX(trade_date) AS latest_date FROM qr_trade_status_daily")
+        metrics = {k: str(v) if hasattr(v, "isoformat") else v for k, v in cur.fetchone().items()}
+        cur.execute("SELECT COUNT(*) AS invalid FROM qr_trade_status_daily WHERE tradestatus NOT IN (0,1) OR is_st NOT IN (0,1)")
+        if cur.fetchone()["invalid"]:
+            raise ValueError("fixed-commit status verification failed")
+    datasets = {**old["datasets"], "trade_status_daily": {**metrics, "source": ["baostock"], "pit_status": "PARTIAL", "quality_status": "PARTIAL", "refresh_status": "UPDATED", "published_through": metrics["latest_date"]}}
+    manifest = service.releases.publish(base_commit=old["base_commit"], supplemental_commit=commit, datasets=datasets,
+        source_adapters={**old["source_adapters"], "trade_status": "baostock-daily-v2"},
+        metadata={**old.get("metadata", {}), "trade_status_patch": {"rows": len(rows), "candidate": identity, "selection": "fill_base_missing_only"}})
+    return {"status": "PARTIAL", "release_id": manifest["release_id"], "supplemental_commit": commit, "rows": len(rows), "validation": check}
+
+
 def checked_rows(root, candidate, symbols=None):
     for symbol in candidate['accepted'] if symbols is None else symbols:
         path = root / 'valuation_daily' / f'{symbol}.jsonl'

@@ -108,7 +108,9 @@ def normalize_baostock_daily_bundle(
             field: _number(raw.get(field), field) for field in ("open", "high", "low", "close", "volume", "amount")
         }, "source": "baostock", "raw_sha256": raw_sha256, "adapter_version": adapter_version, "fetched_at": fetched_at})
         status.append({"trade_date": day, "symbol": symbol, "tradestatus": int(_number(raw.get("tradestatus"), "tradestatus")),
-                       "is_st": int(_number(raw.get("isST"), "isST")), "turn": _number(raw.get("turn"), "turn")})
+                       "is_st": int(_number(raw.get("isST"), "isST")), "turn": _number(raw.get("turn"), "turn"),
+                       "source": "baostock", "raw_sha256": raw_sha256, "adapter_version": adapter_version,
+                       "fetched_at": fetched_at, "available_date": None, "pit_status": PIT_PARTIAL})
         valuation.append({"trade_date": day, "symbol": symbol, "pe_ttm": _number(raw.get("peTTM"), "peTTM"),
                           "pb_mrq": _number(raw.get("pbMRQ"), "pbMRQ"), "ps_ttm": _number(raw.get("psTTM"), "psTTM"),
                           "pcf_ncf_ttm": _number(raw.get("pcfNcfTTM"), "pcfNcfTTM"), "source": "baostock",

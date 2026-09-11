@@ -72,6 +72,8 @@ def overlay_status_patch(base: pd.DataFrame, rows: list[dict[str, Any]]) -> pd.D
         return base
     patch.index = pd.to_datetime(patch.pop("trade_date"))
     result = base.copy()
+    result.index = pd.to_datetime(result.index)
+    result = result.reindex(result.index.union(patch.index).sort_values())
     for field in ("is_st", "tradestatus"):
         if field not in patch.columns:
             continue
@@ -573,8 +575,9 @@ class InvestmentDataProvider(DataProvider):
             scope = getattr(self, "_release_scope", None)
             datasets = getattr(scope, "manifest", {}).get("datasets", {}) if scope is not None else {}
             if reader is not None and datasets.get("trade_status_daily"):
-                patches = reader.trade_status(list(jq_to_internal.values()), start, end, count)
-                raw = {symbol: overlay_status_patch(frame, patches.get(symbol, [])) for symbol, frame in raw.items()}
+                patch_symbols = [to_ts_symbol(symbol) for symbol in jq_to_internal.values()]
+                patches = reader.trade_status(patch_symbols, start, end, count)
+                raw = {symbol: overlay_status_patch(frame, patches.get(to_ts_symbol(symbol), [])) for symbol, frame in raw.items()}
             cached = {
                 extra_field: {
                     internal: frame[[extra_field]].copy()
