@@ -56,6 +56,11 @@ _LIMIT_FIELDS = ["up_limit", "down_limit"]
 #   - 公司行为（分红/送转）：以 adjfactor 跨日变化率作为累计权益因子（scale_factor），
 #     并以 preclose 缺口作为辅助校验；每股现金红利因缺字段暂置 0（PARTIAL，绝不伪造）。
 _INFO_TABLE = "bao_a_stock_eod_info"
+
+# These are index series in the final price table whose stored volume is
+# already shares.  Keep this explicit: a SH/SZ suffix alone never proves that
+# a security is an index.
+_NATIVE_SHARE_VOLUME_INDEXES = {"SH000300", "SZ399300"}
 _INFO_DATE_COL = "tradedate"
 _INFO_ST_FIELDS = {"is_st", "tradestatus"}
 # 除权日识别阈值：正常交易日 preclose == 前一日 close；preclose 明显偏低即发生权益变动。
@@ -700,9 +705,10 @@ class InvestmentDataProvider(DataProvider):
             df = raw_prices[internal]
             if self._price_units == 'joinquant-shares-yuan-v2':
                 df = df.copy()
-                for field, factor in (('volume', 100), ('amount', 1000)):
-                    if field in df.columns:
-                        df[field] = df[field] * factor
+                if 'volume' in df.columns and internal not in _NATIVE_SHARE_VOLUME_INDEXES:
+                    df['volume'] = df['volume'] * 100
+                if 'amount' in df.columns:
+                    df['amount'] = df['amount'] * 1000
             if drop_volume and "volume" in df.columns:
                 df = df.drop(columns=["volume"])
             if rename_back:

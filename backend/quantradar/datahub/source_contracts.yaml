@@ -31,9 +31,9 @@ contracts:
     upstream: tencent
     adapter: akshare.stock_zh_a_hist_tx
     fields: [open, high, low, close, volume, amount]
-    status: UNKNOWN
-    source_evidence: qualification_required
-    constraints: [raw_unadjusted_only, record_sdk_and_http_attempts]
+    status: QUALIFIED_SAMPLED
+    source_evidence: four_archived_cross_checked_samples
+    constraints: [raw_unadjusted_only, record_sdk_and_http_attempts, revalidate_each_new_adapter_version]
   baostock-daily-v2:
     upstream: baostock
     adapter: baostock.query_history_k_data_plus

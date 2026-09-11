@@ -100,6 +100,14 @@ class TestProviderAliases:
         )
         assert df.loc["2024-01-02", "volume"] == pytest.approx(float(raw["volume"]) * 100, rel=1e-9)
 
+    def test_index_volume_is_already_in_shares(self, live_provider):
+        df = live_provider.get_price("000300.XSHG", "2024-01-02", "2024-01-02", fields=["volume"])
+        raw = live_provider.connection.query_one(
+            "SELECT volume FROM final_a_stock_eod_price "
+            "WHERE symbol='SH000300' AND tradedate='2024-01-02'"
+        )
+        assert df.loc["2024-01-02", "volume"] == pytest.approx(float(raw["volume"]), rel=1e-9)
+
     def test_fq_none_equiv_none(self, live_provider):
         df = live_provider.get_price("600519.XSHG", "2024-01-02", "2024-01-02", fq=None)
         assert len(df) == 1
