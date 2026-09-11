@@ -24,6 +24,7 @@ PIT_PARTIAL、跨源一致性未验及陈旧元数据必须如实保留。
 - P3：低 Beta 的真实状态依赖已预检：2024-01-02 的 300 个成分股没有当日状态记录。策略版本 141 在未知状态导致可验证股票不足 20 只时拒绝回测，旧版及旧运行不变；证据见 `acceptance/datahub-v2-p3/low-beta-status-guard.md`。
 - P3：已对低 Beta 首次调仓的 20 只实际候选补齐 2023-08-31 状态并发布 `R3f2a0c82acf28962`；严格版在 2023-09-01 通过首次调仓。其余月度状态日期仍是独立待处理缺口，证据见 `acceptance/datahub-v2-p3/low-beta-2023-08-31-repair.md`。
 - P3：严格低 Beta 的剩余状态依赖已按策略实际调仓规则收敛为 38 个前一交易日、11,400 个日期×成分股键（300 只股票），而非全市场逐日下载；固定基础的 CSI 300 成分快照只到 2022-07-01，不能宣称后续成分股历史完整。证据见 `acceptance/datahub-v2-p3/low-beta-status-dependency-plan.md`。
+- P3：上述 38 个依赖已完成真实 BaoStock 补数并发布为 `R22a53f013266373d`：298 只股票、11,347 条状态记录，覆盖 2023-06-30 至 2026-07-31；600837.SH、601989.SH 因基础行情先结束而保留 `NOT_COVERED`，没有伪造状态。严格版低 Beta 在 2023-07-03 的 R22 回测成功。证据见 `acceptance/datahub-v2-p3/low-beta-status-full-repair.md`。
 
 ## Queued Goals
 
