@@ -229,6 +229,93 @@ class DataHubService:
                 "key_count": sum(len(task["symbols"]) for task in tasks),
                 "symbol_count": len({symbol for task in tasks for symbol in task["symbols"]})}
 
+    def _low_beta_status_journal(self) -> UpdateJournal:
+        return UpdateJournal(Path(self.config.journal_root) / "low-beta-status-repair.json")
+
+    def collect_low_beta_status(self, start: str, end: str, *, release_id: str | None = None, limit: int = 0) -> dict[str, Any]:
+        """Collect only strict low-Beta status dependencies into durable staging.
+
+        This never publishes.  A completed symbol has one RawStore receipt and
+        a JSONL projection containing only the exact date keys the strategy
+        reads.  Failed symbols remain retryable in the journal.
+        """
+        plan = self.low_beta_status_plan(start, end, release_id)
+        wanted = {
+            (task["range"]["start"], symbol)
+            for task in plan["tasks"] for symbol in task["symbols"]
+        }
+        symbols = sorted({symbol for _, symbol in wanted})
+        journal = self._low_beta_status_journal()
+        journal.start("low-beta-status-repair", dataset="trade_status_daily")
+        journal.ensure_pending(symbols, reason="strict low-beta monthly status dependency")
+        selected = [symbol for symbol in symbols if journal.data["units"].get(symbol, {}).get("status") != "COMPLETE"]
+        if limit:
+            selected = selected[:limit]
+        stage_root = Path(self.config.supplemental_repo) / "staging" / "low-beta-status"
+        min_date, max_date = min(day for day, _ in wanted), max(day for day, _ in wanted)
+        completed = failed = staged_rows = 0
+        with self._updater_lock():
+            journal.begin_job(total_shards=len(symbols), resume=True)
+            journal.phase("download", "RUNNING")
+            adapter = BaostockAdapter(host=self.config.baostock_host)
+            try:
+                for symbol, fetched in adapter.daily_bundles(selected, min_date, max_date):
+                    journal.running(symbol)
+                    journal.heartbeat(phase="download", current_shard=symbol, pid=os.getpid())
+                    try:
+                        receipt = self.raw.put(f"trade_status_daily/low-beta/{symbol}", fetched.raw_bytes)
+                        if receipt["sha256"] != fetched.rows[0]["raw_sha256"]:
+                            raise ValueError("raw receipt hash differs from normalized status candidate")
+                        rows = [row for row in fetched.rows if (str(row["trade_date"])[:10], str(row["symbol"])) in wanted]
+                        missing = sorted(day for day, expected_symbol in wanted if expected_symbol == symbol and not any(str(row["trade_date"])[:10] == day for row in rows))
+                        if missing:
+                            raise ValueError("missing requested status dates: " + ", ".join(missing))
+                        content = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows).encode()
+                        path = stage_root / f"{symbol}.jsonl"
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        temporary = path.with_suffix(".tmp")
+                        temporary.write_bytes(content)
+                        os.replace(temporary, path)
+                        journal.complete(symbol, raw_sha256=receipt["sha256"], row_count=len(rows), source="baostock",
+                                         adapter_version=rows[0]["adapter_version"], first_date=min(row["trade_date"] for row in rows),
+                                         last_date=max(row["trade_date"] for row in rows), staged_result_sha256=hashlib.sha256(content).hexdigest())
+                        completed += 1
+                        staged_rows += len(rows)
+                    except Exception as exc:
+                        journal.fail(symbol, str(exc), category="STATUS_DEPENDENCY_UNRESOLVED")
+                        failed += 1
+                    journal.heartbeat(phase="download", current_shard=None, pid=os.getpid())
+            except Exception as exc:
+                # The adapter session may fail between securities.  All
+                # completed shards remain durable; the unvisited ones stay pending.
+                journal.phase("download", "FAILED")
+                return {"status": "PARTIAL", "error": str(exc), "completed": completed, "failed": failed,
+                        "staged_rows": staged_rows, "remaining": len(selected) - completed - failed, "plan": plan}
+            journal.phase("download", "DONE" if not failed else "FAILED")
+        return {"status": "COMPLETE" if not failed and completed == len(selected) else "PARTIAL", "completed": completed,
+                "failed": failed, "staged_rows": staged_rows, "remaining": len(symbols) - len(journal.completed_units()), "plan": plan}
+
+    def publish_low_beta_status(self) -> dict[str, Any]:
+        """Publish the staged low-Beta repair only when every planned symbol completed."""
+        journal = self._low_beta_status_journal()
+        units = journal.data["units"]
+        incomplete = sorted(symbol for symbol, detail in units.items() if detail.get("status") != "COMPLETE")
+        if incomplete:
+            raise RuntimeError(f"low-beta status repair has incomplete symbols: {len(incomplete)}")
+        root = Path(self.config.supplemental_repo) / "staging" / "low-beta-status"
+        rows = []
+        for symbol in sorted(units):
+            path = root / f"{symbol}.jsonl"
+            if not path.is_file():
+                raise RuntimeError(f"completed status shard missing staging file: {symbol}")
+            rows.extend(json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
+        if not rows:
+            raise RuntimeError("no staged low-beta status rows")
+        from .publication import publish_trade_status_patch
+        result = publish_trade_status_patch(self, rows)
+        journal.publish(result["release_id"])
+        return result
+
     @contextmanager
     def _updater_lock(self):
         path = Path(self.config.supplemental_repo) / "datahub-updater.lock"

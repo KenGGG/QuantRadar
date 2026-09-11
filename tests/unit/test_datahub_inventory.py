@@ -168,6 +168,35 @@ def test_low_beta_status_plan_has_exact_symbols_and_release_fingerprint(tmp_path
     assert len(task["gap_fingerprint"]) == 64
 
 
+def test_low_beta_status_collection_archives_raw_and_stages_only_requested_keys(tmp_path, monkeypatch):
+    import hashlib
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.adapters import FetchedRows
+    from quantradar.datahub.service import DataHubService
+
+    service = DataHubService(DataHubConfig(supplemental_repo=str(tmp_path / "supp"), release_root=str(tmp_path / "releases"),
+                                           raw_root=str(tmp_path / "raw"), journal_root=str(tmp_path / "journals")))
+    monkeypatch.setattr(service, "low_beta_status_plan", lambda *_args, **_kwargs: {
+        "release_id": "R1", "base_commit": "base", "tasks": [{"symbols": ["600519.SH"], "range": {"start": "2023-08-31", "end": "2023-08-31"}}],
+        "key_count": 1, "symbol_count": 1,
+    })
+    row = {"trade_date": "2023-08-31", "symbol": "600519.SH", "tradestatus": 1, "is_st": 0, "turn": 0.1,
+           "source": "baostock", "raw_sha256": hashlib.sha256(b"raw").hexdigest(), "adapter_version": "test", "fetched_at": "now",
+           "available_date": None, "pit_status": "PARTIAL", "source_contract_id": "baostock-daily-v2"}
+    class Adapter:
+        def __init__(self, **_kwargs): pass
+        def daily_bundles(self, symbols, *_args):
+            assert symbols == ["600519.SH"]
+            yield "600519.SH", FetchedRows("trade_status_daily", b"raw", [row], "baostock", "now")
+    monkeypatch.setattr("quantradar.datahub.service.BaostockAdapter", Adapter)
+
+    result = service.collect_low_beta_status("2023-09-01", "2023-09-01")
+    assert result["completed"] == 1
+    assert result["staged_rows"] == 1
+    assert (tmp_path / "supp" / "staging" / "low-beta-status" / "600519.SH.jsonl").is_file()
+    assert service.raw.read(__import__("hashlib").sha256(b"raw").hexdigest()) == b"raw"
+
+
 def test_work_queue_is_idempotent_and_rotates_all_three_queues(tmp_path):
     from quantradar.datahub.work_queue import DataHubWorkQueue
 

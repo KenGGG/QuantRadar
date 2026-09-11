@@ -44,6 +44,12 @@ def _parser() -> argparse.ArgumentParser:
     resolve.add_argument("--symbol", required=True)
     probe = commands.add_parser("health-probe")
     probe.add_argument("--symbol", action="append", dest="symbols", required=True)
+    low_beta_collect = commands.add_parser("collect-low-beta-status")
+    low_beta_collect.add_argument("--start", required=True)
+    low_beta_collect.add_argument("--end", required=True)
+    low_beta_collect.add_argument("--release")
+    low_beta_collect.add_argument("--limit", type=int, default=0)
+    commands.add_parser("publish-low-beta-status")
     return parser
 
 
@@ -105,6 +111,10 @@ def main(argv: list[str] | None = None) -> int:
             result = service.resolve_false_positive_circuit(symbol=args.symbol)
         elif args.command == "health-probe":
             result = service.mvp_health_probe(symbols=args.symbols)
+        elif args.command == "collect-low-beta-status":
+            result = service.collect_low_beta_status(args.start, args.end, release_id=args.release, limit=args.limit)
+        elif args.command == "publish-low-beta-status":
+            result = service.publish_low_beta_status()
     except Exception as exc:
         print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
         return 1
