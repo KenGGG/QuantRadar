@@ -155,7 +155,10 @@ def run_backtest(
                         frequency=frequency,
                         initial_cash=initial_cash,
                     )
-                    engine.run()
+                    try:
+                        engine.run()
+                    except SystemExit as exc:
+                        raise ValueError(f"策略严格预检拒绝运行：{exc}") from exc
                 finally:
                     try:
                         os.unlink(tmp.name)
@@ -191,7 +194,10 @@ def run_backtest(
                 frequency=frequency,
                 initial_cash=initial_cash,
             )
-            engine.run()
+            try:
+                engine.run()
+            except SystemExit as exc:
+                raise ValueError(f"策略严格预检拒绝运行：{exc}") from exc
             from bullet_trade.data import get_data_provider
             provider = get_data_provider()
             if hasattr(provider, 'data_usage'):

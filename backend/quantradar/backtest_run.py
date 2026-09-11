@@ -149,17 +149,20 @@ def run_unified_backtest(
                     "price_units": scope.manifest.get('metadata', {}).get('price_units', 'legacy-v1'),
                 }
                 audit_env["dolt_commit"] = scope.manifest["base_commit"]
-            results = create_backtest(
-                strategy_file=strategy_path,
-                start_date=start_date,
-                end_date=end_date,
-                frequency=frequency,
-                initial_cash=initial_cash,
-                benchmark=benchmark,
-                log_file=log_file,
-                extras=extras,
-                use_real_price=_use_real_price,
-            )
+            try:
+                results = create_backtest(
+                    strategy_file=strategy_path,
+                    start_date=start_date,
+                    end_date=end_date,
+                    frequency=frequency,
+                    initial_cash=initial_cash,
+                    benchmark=benchmark,
+                    log_file=log_file,
+                    extras=extras,
+                    use_real_price=_use_real_price,
+                )
+            except SystemExit as exc:
+                raise ValueError(f"策略严格预检拒绝运行：{exc}") from exc
             from bullet_trade.data import get_data_provider
             provider = get_data_provider()
             if hasattr(provider, 'data_usage'):
