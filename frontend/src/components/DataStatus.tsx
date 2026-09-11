@@ -28,11 +28,12 @@ export function DataStatus() {
   const base = data?.base_coverage?.base_commit === release?.base_commit ? data?.base_coverage?.datasets : undefined;
   const statusPatch = release?.datasets.trade_status_daily;
   const rows = [
-    { key: 'price', name: '行情', source: '基础库 · final 行情', published: base?.['行情'], downloaded: undefined, status: base?.['行情'] ? '可用 · 日频' : '待检查', dateLabel: '' },
-    { key: 'status', name: 'ST / 停牌', source: statusPatch ? `基础库 · BaoStock 历史表；补充补丁 ${fmt(statusPatch.row_count)} 行（${statusPatch.first_date}）` : '基础库 · BaoStock 历史表', published: base?.['ST / 停牌'], downloaded: undefined, status: base?.['ST / 停牌'] ? '部分可用 · 注意日期' : '待检查', dateLabel: '' },
-    { key: 'valuation_daily', name: '估值', source: '补充库 · 东方财富', published: release?.datasets.valuation_daily, downloaded: data?.job.counts.complete, status: release?.datasets.valuation_daily?.source?.some(s => s.includes('baostock')) ? '旧口径 · 新接口不可用' : release?.datasets.valuation_daily ? '部分可用' : '未发布', dateLabel: '' },
-    { key: 'sw_industry_history', name: '行业', source: '补充库 · 申万', published: release?.datasets.sw_industry_history, downloaded: undefined, status: release?.datasets.sw_industry_history ? '部分可用 · 一级行业' : '未发布', dateLabel: '' },
-    { key: 'security_lifecycle', name: '基础资料', source: '基础库 · Tushare 名录', published: release?.datasets.security_lifecycle, downloaded: undefined, status: release?.datasets.security_lifecycle ? '部分可用' : '未发布', dateLabel: '上市日期范围' },
+    { key: 'price', name: '行情', location: '/data/investment_data', source: '存量行情表', published: base?.['行情'], usage: '日频回测直接读取', status: base?.['行情'] ? '可用' : '待检查', dateLabel: '' },
+    { key: 'status-base', name: 'ST / 停牌（历史）', location: '/data/investment_data', source: 'BaoStock 历史表', published: base?.['ST / 停牌'], usage: '先读取；覆盖至此日期', status: base?.['ST / 停牌'] ? '部分可用' : '待检查', dateLabel: '' },
+    { key: 'status-patch', name: 'ST / 停牌（补数）', location: '/data/quantradar_data', source: 'BaoStock 补数', published: statusPatch, usage: '自动补在历史表之后', status: statusPatch ? '已发布' : '未发布', dateLabel: '' },
+    { key: 'valuation_daily', name: '估值', location: '/data/quantradar_data', source: '东方财富', published: release?.datasets.valuation_daily, usage: '策略按字段自动读取', status: release?.datasets.valuation_daily ? '部分可用' : '未发布', dateLabel: '' },
+    { key: 'sw_industry_history', name: '行业', location: '/data/quantradar_data', source: '申万', published: release?.datasets.sw_industry_history, usage: '策略按字段自动读取', status: release?.datasets.sw_industry_history ? '部分可用 · 一级行业' : '未发布', dateLabel: '' },
+    { key: 'security_lifecycle', name: '基础资料', location: '/data/investment_data', source: 'Tushare 名录', published: release?.datasets.security_lifecycle, usage: '上市、退市判断', status: release?.datasets.security_lifecycle ? '部分可用' : '未发布', dateLabel: '上市日期范围' },
   ];
   const stages = [['base', '同步基础库'], ['valuation', '更新估值'], ['industry', '更新行业'], ['lifecycle', '更新基础资料'], ['check', '自动检查'], ['publish', '发布结果']].map(([key, name]) => ({ key, name, ...data?.update.stages[key] }));
   const issues = data?.issues.length ? data.issues : data?.job.counts.failed ? [{ reason: 'FAILED', count: data.job.counts.failed, symbols: [] }] : [];
@@ -43,11 +44,12 @@ export function DataStatus() {
     <Card title="当前能用于回测的数据">
       <Table rowKey="key" pagination={false} size="middle" scroll={{ x: 900 }} dataSource={rows} columns={[
         { title: '数据', dataIndex: 'name' },
-        { title: '实际读取来源', dataIndex: 'source' },
+        { title: '存放位置', dataIndex: 'location' },
+        { title: '数据源', dataIndex: 'source' },
         { title: '已发布股票', render: (_, r) => fmt(r.published?.stocks) },
         { title: '已发布行数', render: (_, r) => fmt(r.published?.row_count ?? r.published?.rows) },
         { title: '日期范围', render: (_, r) => r.published?.first_date ? `${r.published.first_date} 至 ${r.published.latest_date ?? '未统计'}${r.dateLabel ? '（上市日期）' : ''}` : '未统计' },
-        { title: '已下载股票', render: (_, r) => r.downloaded == null ? '—' : fmt(r.downloaded) },
+        { title: '回测怎么用', dataIndex: 'usage' },
         { title: '状态', dataIndex: 'status' },
       ]} />
       <Typography.Text type="secondary">发布于 {release?.published_at ? new Date(release.published_at).toLocaleString('zh-CN') : '未发布'}</Typography.Text>
