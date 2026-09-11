@@ -54,7 +54,8 @@ CAPABILITIES: Dict[str, Dict[str, str]] = {
         "fq='post'/'hfq' 后复权（close 精确等于 adjclose）；fq='pre'/'qfq' 前复权"
         "（基准日=pre_factor_ref_date 或窗口末日，基准日 close==原始）；因子由 adjclose/"
         "原始价真实推导，绝不伪造；frequency 别名 d/day/1d->daily；字段别名 money->amount；"
-        "high_limit/low_limit 来自 final_a_stock_limit，paused 由 volume==0 派生；缺行显式 NaN（PARTIAL）",
+        "high_limit/low_limit 来自 final_a_stock_limit；paused 仅由显式 tradestatus 派生，"
+        "未知状态保持 NaN，绝不以成交量推断；缺行显式 NaN（PARTIAL）",
     },
     "get_split_dividend": {
         "status": "PARTIAL",

@@ -269,15 +269,31 @@ def test_provider_usage_keeps_base_and_supplemental_contributions_separate():
                                      "supplemental_valuation_calls": 4, "supplemental_industry_calls": 5}
 
 
-def test_paused_cache_key_includes_release_and_requested_window():
+def test_get_extras_cache_isolated_by_release():
+    import pandas as pd
     from types import SimpleNamespace
     from quantradar.providers.investment_data.provider import InvestmentDataProvider
 
     provider = object.__new__(InvestmentDataProvider)
-    provider._release_scope = SimpleNamespace(release_id="R1")
-    key = (provider._release_scope.release_id, ("SH600519",), "2023-09-01", "2023-09-01", None)
-    different_release = ("R2", "SH600519", "2023-09-01", "2023-09-01", None)
-    assert key[0] != different_release[0]
+    provider._data_usage = {"status_calls": 0, "status_patch_rows": 0}
+    provider._extras_cache = {}
+    provider._release_scope = SimpleNamespace(
+        release_id="R1", manifest={"datasets": {"trade_status_daily": {}}}
+    )
+    provider._supplemental_reader = None
+    calls = []
+
+    def fetch(_table, _fields, symbols, _start, _end, _count, **_kwargs):
+        calls.append(tuple(symbols))
+        return {symbol: pd.DataFrame({"is_st": [0], "tradestatus": [1]}, index=pd.to_datetime(["2023-09-01"])) for symbol in symbols}
+
+    provider._fetch_table_cols_many = fetch
+    provider.get_extras("is_st", ["600519.XSHG"], end_date="2023-09-01", count=1)
+    provider._release_scope = SimpleNamespace(
+        release_id="R2", manifest={"datasets": {"trade_status_daily": {}}}
+    )
+    provider.get_extras("is_st", ["600519.XSHG"], end_date="2023-09-01", count=1)
+    assert calls == [("SH600519",), ("SH600519",)]
 
 
 def test_status_patch_validation_rejects_duplicate_or_invalid_state():

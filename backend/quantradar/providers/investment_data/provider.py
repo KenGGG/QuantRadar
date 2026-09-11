@@ -583,7 +583,12 @@ class InvestmentDataProvider(DataProvider):
             to_joinquant_symbol(normalize_stock_symbol(s)): normalize_stock_symbol(s)
             for s in security_list
         }
-        cache_key = (tuple(jq_to_internal.values()), start, end, count)
+        # Supplement rows are release-pinned.  A provider can be reused by a
+        # replay bootstrap, so a cache entry without the release would leak a
+        # prior release's status into the next replay.
+        scope = getattr(self, "_release_scope", None)
+        release_id = getattr(scope, "release_id", None)
+        cache_key = (release_id, tuple(jq_to_internal.values()), start, end, count)
         cached = self._extras_cache.get(cache_key)
         if cached is None:
             self._data_usage["status_calls"] += 1
@@ -592,7 +597,6 @@ class InvestmentDataProvider(DataProvider):
                 status_start, end, count, fill_paused=False,
             )
             reader = getattr(self, "_supplemental_reader", None)
-            scope = getattr(self, "_release_scope", None)
             datasets = getattr(scope, "manifest", {}).get("datasets", {}) if scope is not None else {}
             if reader is not None and datasets.get("trade_status_daily"):
                 patch_symbols = [to_ts_symbol(symbol) for symbol in jq_to_internal.values()]
