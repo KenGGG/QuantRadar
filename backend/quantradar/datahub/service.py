@@ -362,7 +362,7 @@ class DataHubService:
             raise RuntimeError(f"low-beta status repair has incomplete symbols: {len(incomplete)}")
         root = Path(self.config.supplemental_repo) / "staging" / "low-beta-status"
         rows = []
-        for symbol in sorted(units):
+        for symbol in sorted(symbol for symbol, detail in units.items() if detail.get("status") == "COMPLETE"):
             path = root / f"{symbol}.jsonl"
             if not path.is_file():
                 raise RuntimeError(f"completed status shard missing staging file: {symbol}")
