@@ -1,0 +1,29 @@
+{
+  "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+  "datasets": {
+    "ST / 停牌": {
+      "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+      "checked_at": "2026-09-11T18:09:01.950285+08:00",
+      "first_date": "1990-12-19",
+      "latest_date": "2023-06-09",
+      "row_count": 14342735,
+      "stocks": 5183
+    },
+    "股票基础信息": {
+      "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+      "checked_at": "2026-09-11T18:09:01.956147+08:00",
+      "first_date": "1990-12-10",
+      "latest_date": "2022-07-15",
+      "row_count": 4916,
+      "stocks": 4916
+    },
+    "行情": {
+      "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+      "checked_at": "2026-09-11T18:08:44.557335+08:00",
+      "first_date": "1990-12-19",
+      "latest_date": "2026-09-11",
+      "row_count": 18171885,
+      "stocks": 5556
+    }
+  }
+}

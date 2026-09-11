@@ -164,17 +164,24 @@ class DataHubService:
         heartbeat, phase = journal.data.get("heartbeat") or {}, (journal.data.get("phases") or {}).get("download", {}).get("status")
         control = journal.data.get("control") or {}
         governor = RequestGovernor(Path(self.config.supplemental_repo) / "governance", "eastmoney").observed_status()
-        worker_alive = bool(heartbeat.get("pid") and Path(f"/proc/{heartbeat['pid']}").exists())
+        from .daily import process_identity
+        actual_identity = process_identity(heartbeat.get('pid'))
+        worker_alive = bool(actual_identity and actual_identity == heartbeat.get('process_identity'))
+        if actual_identity and not heartbeat.get('process_identity'):
+            try:
+                worker_alive = b'quantradar.datahub.cli' in Path(f"/proc/{heartbeat['pid']}/cmdline").read_bytes()
+            except OSError:
+                worker_alive = False
         if control.get("pause_requested"):
-            status = "PAUSED" if phase == "PAUSED" else "PAUSING"
-        elif worker_alive or heartbeat.get("current_shard"):
+            status = "PAUSING" if worker_alive else "PAUSED"
+        elif worker_alive:
             status = "RUNNING"
         elif governor.get("circuit_open"):
             status = "COOLDOWN"
         elif phase == "DONE": status = "COMPLETED"
         elif phase == "FAILED": status = "COMPLETED" if not states["PENDING"] and not states["RUNNING"] else "FAILED"
         elif phase == "PAUSED": status = "PAUSED"
-        elif phase == "RUNNING": status = "RUNNING"
+        elif phase == "RUNNING": status = "PAUSED"
         else: status = "IDLE"
         # Older in-flight jobs predate the controller metadata.  Attach them to
         # the immutable base pool once so their UI percentage is never a false
@@ -188,7 +195,8 @@ class DataHubService:
         if status == "COMPLETED" and states["PENDING"]:
             status = "PAUSED"
         started = (journal.data.get("job") or {}).get("started_at") or journal.data.get("started_at")
-        elapsed = max(0.0, time.time() - __import__('datetime').datetime.fromisoformat(started).timestamp()) if started else 0.0
+        ended = time.time() if worker_alive else __import__('datetime').datetime.fromisoformat(heartbeat['last_heartbeat']).timestamp() if heartbeat.get('last_heartbeat') else time.time()
+        elapsed = max(0.0, ended - __import__('datetime').datetime.fromisoformat(started).timestamp()) if started else 0.0
         rate = processed / elapsed if elapsed else 0.0
         return {"job_id": journal.data.get("operation_id"), "dataset": journal.data.get("dataset") or "valuation_daily",
                 "status": status, "total_shards": total, "processed_shards": processed,
@@ -236,11 +244,18 @@ class DataHubService:
         return {**report, "path": str(path)}
 
     def start_repair(self) -> dict[str, Any]:
+        from .daily import DailyUpdate
+        if DailyUpdate(self).status()['status'] == 'RUNNING':
+            raise RuntimeError('统一更新正在运行，请稍后重试')
         job = self.job_status()
         if job["status"] in {"RUNNING", "PAUSING", "COOLDOWN"}:
             raise RuntimeError("采集任务正在运行或冷却，请稍后重试")
         if not job["counts"]["failed"]:
             return {"status": "NO_FAILED_SHARDS", "message": "没有需要重试的失败项"}
+        units = UpdateJournal(Path(self.config.journal_root) / 'valuation_daily-mvp.json').data['units']
+        failed = [u for u in units.values() if u.get('status') == 'FAILED']
+        if failed and all(u.get('category') == 'SYMBOL_DATA_ERROR' and u.get('adapter_version') == 'akshare-1.18.94' and 'NoneType' in str(u.get('error')) for u in failed):
+            return {'status': 'SOURCE_BLOCKED', 'message': f'{len(failed)} 项均为当前适配器解析异常；已停止同版本批量重复重试，需先核查来源响应。失败记录保留隔离。', 'failed': len(failed)}
         subprocess.Popen(
             [sys.executable, "-m", "quantradar.datahub.cli", "repair", "--dataset", "valuation_daily"],
             cwd=str(Path(__file__).parents[3]),
@@ -249,10 +264,12 @@ class DataHubService:
         )
         return {"status": "STARTED", "message": "已提交失败项重试，请查看采集进度", "failed": job["counts"]["failed"]}
 
-    def mvp_repair(self, *, dataset: str) -> dict[str, Any]:
+    def mvp_repair(self, *, dataset: str, symbols: list[str] | None = None) -> dict[str, Any]:
         if dataset != "valuation_daily":
             raise ValueError(f"MVP repair is not yet implemented for {dataset}")
         journal = UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json")
+        if symbols and (len(symbols) > 3 or any(journal.data['units'].get(s, {}).get('status') != 'FAILED' for s in symbols)):
+            raise ValueError('诊断修复仅接受最多三个现有 FAILED 分片')
         governor = RequestGovernor(Path(self.config.supplemental_repo) / "governance", "eastmoney")
         runner = ShardRunner(Path(self.config.supplemental_repo) / "staging" / "valuation_daily-mvp", journal, AkshareValuationFetcher(governor), self.raw)
         with self._updater_lock(), governor.operation_lock():
@@ -260,7 +277,7 @@ class DataHubService:
             journal.data["retry_progress"] = {"total": sum(u.get("status") == "FAILED" for u in journal.data["units"].values()), "processed": 0, "recovered": 0, "failed": 0, "active": True}
             journal.phase("download", "RUNNING")
             journal.heartbeat(phase="download", current_shard=None, pid=os.getpid())
-            result = runner.repair_failed()
+            result = runner.run(symbols, resume=False) if symbols else runner.repair_failed()
             journal.data["retry_progress"]["active"] = False
             journal.heartbeat(phase="download", current_shard=None, pid=0)
             journal.phase("download", "PAUSED" if runner.stop_requested else "FAILED" if result["failed"] else "DONE")
@@ -326,9 +343,9 @@ class DataHubService:
         finally:
             connection.close()
 
-    def _base_lifecycle(self, *, persist_raw: bool = True) -> list[dict[str, Any]]:
+    def _base_lifecycle(self, *, persist_raw: bool = True, base_commit: str | None = None) -> list[dict[str, Any]]:
         """Use the approved read-only base listing table with explicit BASE_EXISTING provenance."""
-        base_commit = self._base_commit()
+        base_commit = base_commit or self._base_commit()
         connection = pymysql.connect(
             host=self.config.base_host, port=self.config.base_port, user=self.config.user, password=self.config.password,
             database=f"{self.config.base_database}/{base_commit}", connect_timeout=self.config.connect_timeout,
@@ -399,41 +416,9 @@ class DataHubService:
         return sorted(row["symbol"] for row in self._base_lifecycle(persist_raw=False))
 
     def mvp_publish(self) -> dict[str, Any]:
-        """Audit staged MVP data then atomically publish a partial paired-Dolt release."""
-        gaps = self.mvp_gaps(dataset="valuation_daily")
-        if gaps["pending_symbols"]:
-            raise RuntimeError("quality gate failed: valuation has pending shards")
-        journal = UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json")
-        if gaps["failed"]:
-            raise RuntimeError(f"检查未通过：仍有 {gaps['failed']} 个未解决的失败分片，请修复或取得无覆盖证据后再发布")
-        if gaps["duplicate_count"] or gaps["schema_error_count"]:
-            raise RuntimeError("检查未通过：存在重复记录或格式错误")
-        master_path = self._security_master_path()
-        if not master_path.is_file():
-            raise RuntimeError("quality gate failed: canonical security master is missing")
-        master = json.loads(master_path.read_text(encoding="utf-8"))
-        valuation, industry, lifecycle = self._staged_valuations(), self._existing_industries(), self._base_lifecycle()
-        writer_connection = self._connection()
-        try:
-            pipeline = DataHubPipeline(self.config.supplemental_repo, releases=self.releases,
-                                       writer=SupplementalStore(writer_connection), base_commit=self._base_commit, raw_store=self.raw)
-            with self._updater_lock():
-                manifest = pipeline.publish(
-                    {"valuation_daily": lambda: valuation, "sw_industry_history": lambda: industry, "security_lifecycle": lambda: lifecycle},
-                    extra_metadata={"valuation_daily": {"quality_status": "PARTIAL", "gap_count": len(gaps["missing_symbols"]),
-                                                         "completed_symbols": gaps["completed"], "not_covered_symbols": gaps["not_covered"],
-                                                         "failed_symbols": gaps["failed"]},
-                                    "sw_industry_history": {"quality_status": "PARTIAL"},
-                                    "security_lifecycle": {"quality_status": "PARTIAL", "provenance": "BASE_EXISTING"}},
-                    release_metadata={"canonical_universe_version": master.get("version"),
-                                      "canonical_universe_symbols": master.get("symbol_count"),
-                                      "valuation_gap_counts": {key: gaps[key] for key in ("completed", "failed", "not_covered", "legal_empty", "total_shards")},
-                                      "valuation_pit_status": "PARTIAL"},
-                )
-            UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json").publish(manifest["release_id"])
-            return manifest
-        finally:
-            writer_connection.close()
+        """Legacy entry delegates to the same candidate checks as daily updates."""
+        from .daily import DailyUpdate
+        return DailyUpdate(self).start('publish')
 
     def _connection(self, database: str | None = None):
         return pymysql.connect(
@@ -452,7 +437,7 @@ class DataHubService:
         )
         try:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT commit_hash FROM dolt_log ORDER BY date DESC LIMIT 1")
+                cursor.execute("SELECT DOLT_HASHOF('HEAD') AS commit_hash")
                 row = cursor.fetchone()
             if not row or not row.get("commit_hash"):
                 raise RuntimeError("investment_data did not return a Dolt commit")

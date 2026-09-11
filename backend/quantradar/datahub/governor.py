@@ -86,6 +86,10 @@ class RequestGovernor:
     def observed_status(self) -> dict:
         """Expose only counters visible outside an opaque public SDK."""
         ledger = self._load()
+        deadline = ledger.get('cooldown_until')
+        ledger['probe_due'] = bool(ledger.get('circuit_open') and deadline and self._now() >= datetime.fromisoformat(deadline))
+        if ledger['probe_due']:
+            ledger['circuit_open'] = False
         return {
             **ledger,
             "sdk_attempts_opaque": int(ledger.get("sdk_invocations", 0)),
@@ -209,7 +213,7 @@ class RequestGovernor:
                                         "message": str(exc), "at": self._now().isoformat(), "logical_key": logical_key}
                 ledger[kind] = int(ledger.get(kind, 0)) + 1
                 immediate_open = kind in {"403", "429"}
-                if immediate_open or attempt + 1 == max_attempts:
+                if immediate_open or category == "SYMBOL_DATA_ERROR" or attempt + 1 == max_attempts:
                     ledger["failure"] += 1
                     if category == "SYMBOL_DATA_ERROR":
                         ledger["shard_failure_streak"] = 1

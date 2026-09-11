@@ -17,6 +17,8 @@ from typing import Dict
 
 # Phase 2A 时点能力状态
 CAPABILITIES: Dict[str, Dict[str, str]] = {
+    'get_fundamentals': {'status': 'PARTIAL', 'note': '固定补充版本；仅 valuation.code/pe_ratio/pb_ratio/ps_ratio，必须明确 code.in_ 股票池；缺值阻止，严格 PIT 未通过'},
+    'get_industry': {'status': 'PARTIAL', 'note': '固定补充版本的申万一级生效区间；缺失阻止，行业名称未提供'},
     "connection": {
         "status": "PASS",
         "note": "只读 pymysql 连接（3307），超时/探针/明确错误齐备",

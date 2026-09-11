@@ -30,6 +30,7 @@ from typing import Any, Dict, Optional
 from quantradar.backtest import _FQ_LOCK
 from quantradar.audit import collect_audit_env
 from quantradar.snapshot import _to_native, build_snapshot_from_results, write_snapshot_json
+from quantradar.datahub.maintenance import base_lease
 
 log = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ def run_unified_backtest(
     from quantradar.bootstrap import bootstrap_data_release, bootstrap_investment_data
 
     # 2) 复权口径（全局线程安全临界区）+ 激活只读 InvestmentDataProvider + 原生回测
-    with _FQ_LOCK:
+    with _FQ_LOCK, base_lease():
         _prev = get_settings().options.get("use_real_price", False)
         set_option("use_real_price", _use_real_price)
         try:
@@ -145,6 +146,7 @@ def run_unified_backtest(
                     "base_commit": scope.manifest["base_commit"],
                     "supplemental_commit": scope.manifest["supplemental_commit"],
                     "schema_version": scope.manifest["schema_version"],
+                    "price_units": scope.manifest.get('metadata', {}).get('price_units', 'legacy-v1'),
                 }
                 audit_env["dolt_commit"] = scope.manifest["base_commit"]
             results = create_backtest(

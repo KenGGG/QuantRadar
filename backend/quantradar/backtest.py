@@ -117,7 +117,8 @@ def run_backtest(
     # 训练所用的后复权(hfq)收益率一致（严谨研究型口径）。
     _use_real_price = _fq != "none"
 
-    with _FQ_LOCK:
+    from quantradar.datahub.maintenance import base_lease
+    with _FQ_LOCK, base_lease():
         _prev_real_price = get_settings().options.get("use_real_price", False)
         set_option("use_real_price", _use_real_price)
         try:
@@ -136,6 +137,7 @@ def run_backtest(
                     "base_commit": scope.manifest["base_commit"],
                     "supplemental_commit": scope.manifest["supplemental_commit"],
                     "schema_version": scope.manifest["schema_version"],
+                    "price_units": scope.manifest.get('metadata', {}).get('price_units', 'legacy-v1'),
                 }
                 audit_env["dolt_commit"] = scope.manifest["base_commit"]
 

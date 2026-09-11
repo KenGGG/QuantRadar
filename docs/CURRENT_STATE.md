@@ -1,70 +1,32 @@
 # Current State
 
-`docs/ACTIVE_PHASE.md` is the sole source of truth for the current goal. This
-file records present facts, not plans or chronological logs.
+`docs/ACTIVE_PHASE.md` is the sole source of truth for the current goal. This file records current facts.
 
-## Repository
+## Repository and runtime
 
-- Branch: `main`
-- Remote backup: `origin/main` (baseline `3c87bb2`).
-- HEAD: the current commit on this branch (`git rev-parse HEAD`).
-- Local runtime state under `data/runtime/` is ignored and is not source data.
+- Development branch: `main`. DataHub feature work and the launcher change are merged into main.
+- The Web process at `127.0.0.1:7231` serves the main checkout.
+- Old worktrees remain available for reference. Local runtime and browser scratch files are not source data.
+- Latest completed goal: `DATAHUB_DAILY_UPDATE_REMEDIATION_PASS`.
+- Current verification and source limitations: [2026-09-11 remediation evidence](acceptance/datahub-remediation-2026-09-11/README.md).
 
-## Active Product Work
+## DataHub facts
 
-`REPORT_MVP_ENGINEERING_PASS`, `REPORT_MVP_WEB_VISIBILITY_PASS`, and
-`REPORT_MVP_YESTERDAY_DIGEST_PASS` are complete and merged to `main` through
-PR #3 (merge commit `7ba6cff`). The Agnes seven-day observation was terminated
-by the approved provider-cutover decision and is recorded as
-`REPORT_MVP_7D_LIVE_PASS = ABORTED_BY_PROVIDER_CUTOVER`; this is not a product
-failure. `LOCAL_DAILY_BACKTEST_BROWSER_ACCEPTANCE_PASS` and milestone
-`QUANTRADAR_LOCAL_BACKTEST_WEBUI_PASS` passed for the previous layout. The active
-Goal `JOINQUANT_LAYOUT_BROWSER_ACCEPTANCE_PASS` passed by explicit user acceptance
-on 2026-09-09. Layout work is closed; see
-[acceptance record](acceptance/local-backtest/layout-user-acceptance.md).
-The sole active Goal is `DATAHUB_INGESTION_MVP_PASS`; the former
-`DATAHUB_REPRODUCIBLE_PIT_V1_PASS` and
-`DATAHUB_GOVERNED_REPRODUCIBLE_V1_PASS` are superseded and are not PASS
-results. MVP permits explicit `PARTIAL` releases with coverage and gaps; the
-later Research Coverage Goal owns complete 2016 and delisted-security coverage.
-Gate 0 is complete: `investment_data` was audited read-only at Dolt commit
-`dje7kjb4gb27khhfmqncnfhf00n9igcg`, and real probes of the three approved
-source interfaces established the documented `PARTIAL` PIT limitations. The
-facts and boundaries are in [DataHub V1 evidence](acceptance/datahub-v1/README.md).
-`/data/quantradar_data` is now owned by `ken:ken` (mode `0750`) and has an
-empty independent Dolt repository served locally at `127.0.0.1:3308` by the
-enabled user service `quantradar-datahub-dolt.service`. The limited real
-validation release is `Rb60ab5f94b2a612b`; it pairs base commit
-`dje7kjb4gb27khhfmqncnfhf00n9igcg` with supplemental commit
-`4qrt5p86jdqpp4l2b0sm8d2r0o2fn7em`. The timer unit is installed but disabled until the DataHub branch
-is integrated into the service working tree. BaoStock real requests are
-suspended. Its former probes, `10002007` and `10001011` failures, 623
-incomplete unpublished shards, journal, raw hashes, and error evidence are
-frozen and excluded from canonical data and releases. `current_release`
-remains the limited validation release; no DataHub V1 acceptance claim is
-made. V1 valuation canonical semantics are `pe_ttm`, `pb_mrq`, `ps_ttm`, and
-`pcf_ocf_ttm`: the old planned `pcf_ncf_ttm` is not a semantic alias and is
-out of scope.
-The governed Eastmoney MVP completed real interruption/resume and targeted
-repair acceptance, then expanded through a 500-symbol stage. The current
-remaining-universe process is running serially under the shared Governor.
-At the last verified status it had 976 `COMPLETE`, 123 `NOT_COVERED`, 3
-`FAILED`, and 3,813 `PENDING` shards. No new DataHub release has been
-published.
-The first governed Eastmoney A0 probe of required date `2016-01-04` returned
-`success=false`, `code=9201`, `message=返回数据为空`, and `result=null` after
-one controlled retry. Its rejected 89-byte response is content-addressed as
-`ea6528a2204b61a7ee34683a73ca00f8afdc86aadf3f765d4dae39bbfb19dbe7`; the
-acceptance record is `acceptance/datahub-v1/eastmoney-a0-2026-09-09.json`.
-This historical source limitation is recorded as `PARTIAL`; it does not block
-the approved ingestion MVP or its later release gates.
-Under the later approved Source Qualification revision, Eastmoney official
-per-symbol qualification also failed: 600519 and 000001 start at 2018-01-02,
-and delisted 600005 failed. SSE lifecycle qualification succeeded, including
-600005 in 159 delisted rows, but both SZSE qualification calls failed with TLS
-EOF. The complete records and source gap report are in
-`acceptance/datahub-v1/`; no valuation or complete lifecycle source is approved
-for complete historical coverage; those facts remain explicit `PARTIAL` gaps.
+- Base Dolt: `/data/investment_data`, read-only SQL on localhost:3307. Approved upstream is `chenditc/investment_data`; only clean fast-forward synchronization is allowed.
+- Supplemental Dolt: `/data/quantradar_data`, localhost:3308. Candidate branches and immutable paired manifests isolate publication from backtests.
+- The failure baseline contains 5,554 securities: 5,235 COMPLETE, 196 FAILED, 123 legacy NOT_COVERED. The 196 failures share the AKShare 1.18.94 NoneType parse fingerprint. The 123 records lack sufficient coverage evidence and remain unverified.
+- Current release is `Re7a88349f47a53e4`, pairing base commit `uhdpedb4pr97ve80aq6nrabr66atsqtq` with supplemental commit `bp052o1ckl17t46tj097i442j81kt6jo`: 5,235 valuation securities / 9,206,992 rows through 2026-09-11. A limited update added 50 rows; no failed security was silently reclassified or deleted.
+- Canonical valuation fields are PE_TTM, PB_MRQ, PS_TTM and PCF_OCF_TTM. BaoStock NCF semantics are frozen and cannot substitute for OCF.
+- PIT is PARTIAL. Cross-source values, historical availability and full lifecycle/field coverage are not comprehensively verified.
+- Current page has three blocks: published usable coverage, current update stages, and grouped issues. Download counts and published coverage are displayed separately.
+- CLI/UI/timer share the daily coordinator. A same-target watermark prevents repeated transport checks; Eastmoney's stock API still returns each requested stock's full history.
+- Research reads pin both commits. Supported valuation queries require an explicit stock universe; missing required records/fields and explicitly requested strict PIT cause errors.
+- Trusted base synchronization fast-forwarded the base commit and restored the read-only SQL service. Current price coverage is 5,556 securities through 2026-09-11; ST/paused coverage remains 5,183 securities through 2023-06-09 and is displayed separately.
+- New releases normalize price volume from lots to shares and amount from thousand yuan to yuan. Historical releases retain their original unit contract for replay.
+- Latest published release and live publication outcome are recorded in the linked acceptance evidence.
+
+## Other accepted product work
+
 NotebookLM development is paused.
 `REPORT_MVP_BASELINE_PASS`, `REPORT_MVP_AGNES_PASS`,
 `REPORT_MVP_PIPELINE_RESUME_PASS`, `REPORT_MVP_DELIVERY_PASS`, and
@@ -76,7 +38,7 @@ NotebookLM runtime code exists, including pre-auth gates; its goal has not passe
 
 ### Local daily backtest WebUI: browser accepted
 
-- Runtime version: `5118bd4ec9a082b45eacd0422b40e0452d3124c3`, served at
+- Accepted layout baseline: `5118bd4ec9a082b45eacd0422b40e0452d3124c3`; main now serves
   `http://127.0.0.1:7231/` by FastAPI; the built React/Monaco assets are local.
 - Browser strategy version save/reopen, report return with draft preservation,
   historical source/config restoration, menu navigation, explicit task errors,

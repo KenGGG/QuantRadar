@@ -301,6 +301,18 @@ export interface DataHubJob {
   estimated_remaining_seconds?: number | null; governor: Record<string, unknown>;
 }
 export function getDataHubJob(): Promise<DataHubJob> { return httpJson<DataHubJob>("/api/datahub/job"); }
+export interface DataHubOverview {
+  release: { release_id: string; base_commit: string; supplemental_commit?: string; published_at: string; datasets: Record<string, DataHubDataset> } | null;
+  base_coverage: { base_commit: string; datasets: Record<string, DataHubDataset> } | null;
+  update: { status: string; job_id?: string; target_as_of?: string; stages: Record<string, { status: string; reason?: string; accepted?: number; isolated?: number }>; error?: string };
+  job: DataHubJob;
+  candidate: { candidate_id: string; quality: string; coverage: string; row_count: number } | null;
+  issues: { reason: string; count: number; symbols: string[] }[];
+}
+export function getDataHubOverview(): Promise<DataHubOverview> { return httpJson<DataHubOverview>('/api/datahub/overview'); }
+export function updateAllData(mode = 'update-all', start?: string, end?: string): Promise<unknown> {
+  return httpJson('/api/datahub/update-all', { method: 'POST', body: JSON.stringify({ mode, start, end }) });
+}
 export function dataHubJobAction(action: "start" | "pause" | "resume" | "stop" | "audit" | "gaps" | "repair" | "publish"): Promise<unknown> {
   const path = action === "audit" ? "/api/datahub/audit" : action === "gaps" ? "/api/datahub/gaps" : action === "repair" ? "/api/datahub/repair" : action === "publish" ? "/api/datahub/publish" : `/api/datahub/job/${action}`;
   return httpJson<unknown>(path, { method: action === "gaps" ? "GET" : "POST", body: action === "start" || action === "resume" ? JSON.stringify({ dataset: "valuation_daily", resume: true }) : undefined });

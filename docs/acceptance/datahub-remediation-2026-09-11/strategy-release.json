@@ -1,0 +1,26 @@
+[
+  {
+    "case": "supplemental_read",
+    "status": "PASS",
+    "hash": "5e60dc24d36de9e1530abf4d8fbbaad7a5891cb6f3a223fc826701983e281275",
+    "release_id": "Re7a88349f47a53e4"
+  },
+  {
+    "case": "isolated_stock",
+    "status": "PASS",
+    "error": "当前版本隔离了这些股票的估值：['000022.SZ']",
+    "release_id": "Re7a88349f47a53e4"
+  },
+  {
+    "case": "missing_date",
+    "status": "PASS",
+    "error": "2016-01-04 缺少必需估值记录或字段：['600519.SH']",
+    "release_id": "Re7a88349f47a53e4"
+  },
+  {
+    "case": "strict_pit",
+    "status": "PASS",
+    "error": "当前估值不满足严格 PIT",
+    "release_id": "Re7a88349f47a53e4"
+  }
+]

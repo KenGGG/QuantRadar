@@ -1,0 +1,1380 @@
+{
+  "baseline": 196,
+  "repaired": 0,
+  "reclassified": 0,
+  "isolated": 196,
+  "rows": [
+    {
+      "symbol": "000022.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "000043.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002504.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002505.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002509.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002604.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002610.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002618.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002619.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002621.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002665.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002680.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002684.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002699.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002711.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002740.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002750.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002751.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002770.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002776.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "002781.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300023.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300028.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300038.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300064.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300089.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300090.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300104.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300108.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300114.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300116.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300117.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300156.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300178.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300186.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300202.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300208.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300216.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300262.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300273.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300280.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300282.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300297.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300309.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300312.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300325.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300330.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300336.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300356.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300362.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300367.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300372.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300379.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300392.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300431.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300495.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300526.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300630.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300742.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "300799.SZ",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600001.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600002.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600003.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600065.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600068.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600069.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600070.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600074.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600077.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600083.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600086.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600087.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600090.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600091.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600092.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600093.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600102.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600112.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600122.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600139.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600145.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600146.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600175.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600181.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600190.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600200.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600205.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600209.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600213.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600220.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600225.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600240.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600242.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600247.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600253.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600260.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600263.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600270.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600275.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600277.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600286.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600290.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600291.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600296.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600297.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600306.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600311.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600317.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600321.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600357.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600385.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600387.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600393.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600401.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600432.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600462.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600466.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600472.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600485.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600532.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600553.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600555.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600565.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600591.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600607.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600614.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600625.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600627.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600631.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600632.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600634.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600646.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600647.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600652.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600656.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600659.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600669.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600670.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600672.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600677.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600680.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600687.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600695.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600700.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600701.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600705.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600709.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600723.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600747.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600752.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600762.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600766.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600767.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600772.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600781.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600786.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600788.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600799.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600804.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600806.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600811.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600813.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600823.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600832.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600836.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600837.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600840.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600842.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600849.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600852.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600856.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600870.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600878.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600890.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600891.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600896.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600898.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600899.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600978.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "600991.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "601028.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "601258.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "601268.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "601299.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "601558.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "601989.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "603003.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "603133.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "603157.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "603388.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "603555.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "603603.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "603963.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "603996.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "688086.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    },
+    {
+      "symbol": "688555.SH",
+      "baseline": "FAILED",
+      "current": "FAILED",
+      "disposition": "ISOLATED",
+      "reason": "SYMBOL_DATA_ERROR"
+    }
+  ]
+}

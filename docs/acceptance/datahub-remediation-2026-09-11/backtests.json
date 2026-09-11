@@ -1,0 +1,20 @@
+[
+  {
+    "name": "buy_hold_raw",
+    "status": "PASS",
+    "seconds": 6.017,
+    "hash": "e9dfb61e0b7ab38ba94d95e14b6700b046e5ec9cead52ab01294464e071be2fe"
+  },
+  {
+    "name": "buy_hold_pre",
+    "status": "PASS",
+    "seconds": 5.349,
+    "hash": "e9dfb61e0b7ab38ba94d95e14b6700b046e5ec9cead52ab01294464e071be2fe"
+  },
+  {
+    "name": "low_beta",
+    "status": "PASS",
+    "seconds": 51.069,
+    "hash": "e24bd0d3d892ddc26c5aeafcd2b78c343e380432ebef251caa6aef1f8e07a745"
+  }
+]

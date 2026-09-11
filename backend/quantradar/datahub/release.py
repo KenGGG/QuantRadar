@@ -21,11 +21,11 @@ class ReleaseStore:
         return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
     def publish(
-        self, *, base_commit: str, supplemental_commit: str, datasets: dict[str, Any], source_adapters: dict[str, str], schema_version: str = "datahub-v1", metadata: dict[str, Any] | None = None
+        self, *, base_commit: str, supplemental_commit: str | None, datasets: dict[str, Any], source_adapters: dict[str, str], schema_version: str = "datahub-v1", metadata: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         if not base_commit:
             raise ValueError("base_commit is required")
-        if not supplemental_commit:
+        if supplemental_commit == '' or (supplemental_commit is None and datasets):
             raise ValueError("supplemental_commit is required")
         identity = {
             "base_commit": base_commit,

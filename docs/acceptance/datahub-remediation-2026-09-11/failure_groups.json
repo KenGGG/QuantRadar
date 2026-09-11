@@ -1,0 +1,511 @@
+{
+  "journal_path": "/data/quantradar_data/journals/valuation_daily-mvp.json",
+  "baseline_sha256": "ea8485e3e016509996134cfeb9f30e1204e8bc9c3f02ad80d8709720da95e374",
+  "installed_akshare": "1.18.94",
+  "states": {
+    "COMPLETE": 5235,
+    "NOT_COVERED": 123,
+    "FAILED": 196
+  },
+  "groups": [
+    {
+      "adapter_version": "akshare-1.18.94",
+      "fingerprint": "<symbol> akshare.stock_value_em: TypeError: 'NoneType' object is not subscriptable",
+      "count": 196
+    }
+  ],
+  "legacy_gaps": {
+    "000003.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000005.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000013.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000015.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000018.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000023.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000024.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000033.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000038.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000040.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000046.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000047.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000150.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000405.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000406.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000412.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000413.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000416.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000418.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000502.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000508.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000511.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000515.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000522.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000527.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000535.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000540.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000542.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000549.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000556.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000562.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000569.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000578.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000583.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000584.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000585.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000587.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000588.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000594.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000602.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000606.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000611.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000613.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000616.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000618.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000621.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000622.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000627.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000653.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000658.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000660.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000662.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000666.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000667.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000671.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000673.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000675.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000687.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000689.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000693.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000699.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000730.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000732.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000748.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000760.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000763.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000765.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000769.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000780.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000787.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000805.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000806.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000817.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000827.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000832.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000835.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000836.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000851.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000861.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000866.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000916.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000918.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000939.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000956.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000961.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000971.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000976.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000979.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000982.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "000996.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002002.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002013.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002018.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002070.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002071.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002087.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002089.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002113.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002118.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002143.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002147.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002220.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002260.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002280.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002288.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002308.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002325.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002336.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002341.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002359.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002411.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002417.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002433.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002435.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002447.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002450.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002464.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002473.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002477.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002499.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002502.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "002503.SZ": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    },
+    "600005.SH": {
+      "reason": "source does not cover shard",
+      "status": "NOT_COVERED"
+    }
+  }
+}

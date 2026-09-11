@@ -1,0 +1,137 @@
+[
+  {
+    "symbol": "SH600000",
+    "tradedate": "2023-09-04",
+    "close": 7.11,
+    "low": 7.03,
+    "high": 7.14,
+    "volume": 368143.07,
+    "amount": 261369.413
+  },
+  {
+    "symbol": "SH600000",
+    "tradedate": "2023-09-05",
+    "close": 7.04,
+    "low": 7.03,
+    "high": 7.12,
+    "volume": 223267.7,
+    "amount": 157581.032
+  },
+  {
+    "symbol": "SH600000",
+    "tradedate": "2023-09-06",
+    "close": 7.09,
+    "low": 7.02,
+    "high": 7.09,
+    "volume": 167364.57,
+    "amount": 118026.826
+  },
+  {
+    "symbol": "SH600000",
+    "tradedate": "2023-09-07",
+    "close": 7.04,
+    "low": 7.02,
+    "high": 7.1,
+    "volume": 202718.73,
+    "amount": 143062.806
+  },
+  {
+    "symbol": "SH600000",
+    "tradedate": "2023-09-08",
+    "close": 7.0,
+    "low": 7.0,
+    "high": 7.05,
+    "volume": 184165.54,
+    "amount": 129109.494
+  },
+  {
+    "symbol": "SH600519",
+    "tradedate": "2023-09-04",
+    "close": 1866.0,
+    "low": 1853.53,
+    "high": 1879.94,
+    "volume": 23871.0,
+    "amount": 4453823.216
+  },
+  {
+    "symbol": "SH600519",
+    "tradedate": "2023-09-05",
+    "close": 1858.7,
+    "low": 1856.8,
+    "high": 1868.0,
+    "volume": 15658.74,
+    "amount": 2915625.961
+  },
+  {
+    "symbol": "SH600519",
+    "tradedate": "2023-09-06",
+    "close": 1861.0,
+    "low": 1849.01,
+    "high": 1866.66,
+    "volume": 11121.43,
+    "amount": 2067605.99
+  },
+  {
+    "symbol": "SH600519",
+    "tradedate": "2023-09-07",
+    "close": 1838.0,
+    "low": 1831.19,
+    "high": 1856.89,
+    "volume": 16981.57,
+    "amount": 3128587.116
+  },
+  {
+    "symbol": "SH600519",
+    "tradedate": "2023-09-08",
+    "close": 1818.5,
+    "low": 1814.95,
+    "high": 1834.94,
+    "volume": 12211.78,
+    "amount": 2224338.144
+  },
+  {
+    "symbol": "SZ000001",
+    "tradedate": "2023-09-04",
+    "close": 11.56,
+    "low": 11.33,
+    "high": 11.59,
+    "volume": 1410029.23,
+    "amount": 1621769.196
+  },
+  {
+    "symbol": "SZ000001",
+    "tradedate": "2023-09-05",
+    "close": 11.39,
+    "low": 11.36,
+    "high": 11.51,
+    "volume": 804177.16,
+    "amount": 917888.859
+  },
+  {
+    "symbol": "SZ000001",
+    "tradedate": "2023-09-06",
+    "close": 11.43,
+    "low": 11.3,
+    "high": 11.46,
+    "volume": 634840.51,
+    "amount": 721905.682
+  },
+  {
+    "symbol": "SZ000001",
+    "tradedate": "2023-09-07",
+    "close": 11.33,
+    "low": 11.32,
+    "high": 11.44,
+    "volume": 540041.57,
+    "amount": 613812.176
+  },
+  {
+    "symbol": "SZ000001",
+    "tradedate": "2023-09-08",
+    "close": 11.27,
+    "low": 11.23,
+    "high": 11.32,
+    "volume": 479029.67,
+    "amount": 539624.963
+  }
+]

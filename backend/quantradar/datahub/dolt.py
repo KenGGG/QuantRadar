@@ -39,8 +39,9 @@ _SCHEMA = (
 class SupplementalStore:
     """Upsert staged normalized values; publication is handled by ReleaseStore afterwards."""
 
-    def __init__(self, connection: Any) -> None:
+    def __init__(self, connection: Any, progress=None) -> None:
         self.connection = connection
+        self.progress = progress
 
     def ensure_schema(self) -> None:
         with self.connection.cursor() as cursor:
@@ -91,16 +92,28 @@ class SupplementalStore:
         placeholders = ", ".join(["%s"] * len(fields))
         columns = ", ".join(fields)
         update_fields = [field for field in fields if field not in self._key_fields(table)]
-        updates = ", ".join(f"{field}=VALUES({field})" for field in update_fields)
+        if table == 'qr_valuation_daily':
+            economic = ('pe_ttm', 'pb_mrq', 'ps_ttm', 'pcf_ocf_ttm')
+            changed = 'NOT (' + ' AND '.join(f'{f} <=> VALUES({f})' for f in economic) + ')'
+            # MySQL assignments run left to right: preserve provenance for equal
+            # values before assigning the economic fields.
+            updates = ', '.join([f'{f}=IF({changed}, VALUES({f}), {f})' for f in self._PROVENANCE]
+                                + [f'{f}=VALUES({f})' for f in economic])
+        else:
+            updates = ", ".join(f"{field}=VALUES({field})" for field in update_fields)
         sql = f"INSERT INTO {table} ({columns}) VALUES ({placeholders}) ON DUPLICATE KEY UPDATE {updates}"
         wrote = False
+        processed = 0
         with self.connection.cursor() as cursor:
             batch: list[tuple[Any, ...]] = []
             for row in rows:
                 batch.append(tuple(row.get(field) for field in fields))
                 wrote = True
-                if len(batch) == 1_000:
+                if len(batch) == 5_000:
                     self._write_batch(cursor, sql, batch)
+                    processed += len(batch)
+                    if self.progress and processed % 100_000 == 0:
+                        self.progress(table, processed)
                     batch.clear()
             if batch:
                 self._write_batch(cursor, sql, batch)
@@ -131,7 +144,7 @@ class SupplementalStore:
         self._previous_commit = self._head_commit()
         with self.connection.cursor() as cursor:
             cursor.execute("CALL DOLT_COMMIT('-Am', %s)", (message,))
-            cursor.execute("SELECT commit_hash FROM dolt_log ORDER BY date DESC LIMIT 1")
+            cursor.execute("SELECT DOLT_HASHOF('HEAD') AS commit_hash")
             row = cursor.fetchone()
         self.connection.commit()
         if not row or not row.get("commit_hash"):
@@ -140,7 +153,7 @@ class SupplementalStore:
 
     def _head_commit(self) -> str | None:
         with self.connection.cursor() as cursor:
-            cursor.execute("SELECT commit_hash FROM dolt_log ORDER BY date DESC LIMIT 1")
+            cursor.execute("SELECT DOLT_HASHOF('HEAD') AS commit_hash")
             row = cursor.fetchone()
         return str(row["commit_hash"]) if row and row.get("commit_hash") else None
 

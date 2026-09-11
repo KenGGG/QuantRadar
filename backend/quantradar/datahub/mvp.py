@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import signal
+import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -85,7 +86,12 @@ class AkshareValuationFetcher:
 
 
 def _number(value):
-    return None if value is None or str(value).lower() == "nan" else float(value)
+    if value is None or str(value).lower() == "nan":
+        return None
+    result = float(value)
+    if not math.isfinite(result):
+        raise ValueError('non-finite valuation')
+    return result
 
 
 class ShardRunner:
@@ -96,7 +102,7 @@ class ShardRunner:
     def request_stop(self, *_args) -> None:
         self.stop_requested = True
 
-    def run(self, symbols: Iterable[str], *, resume: bool = True, limit: int = 0) -> dict:
+    def run(self, symbols: Iterable[str], *, resume: bool = True, limit: int = 0, target_as_of: str | None = None, requested_start: str | None = None) -> dict:
         self.journal.start(self.journal.data.get("operation_id") or "valuation-mvp", dataset="valuation_daily")
         selected = list(symbols)
         if limit: selected = selected[:limit]
@@ -121,10 +127,10 @@ class ShardRunner:
                 fetched = self.fetch(symbol)
                 rows = fetched.rows if isinstance(fetched, FetchedShard) else fetched
                 if rows is None:
-                    self.journal.gap(symbol, "NOT_COVERED", "source does not cover shard")
+                    self.journal.fail(symbol, "Empty response without coverage evidence", category="UNKNOWN_EMPTY")
                     continue
                 if not rows:
-                    self.journal.gap(symbol, "LEGAL_EMPTY", "source returned no records")
+                    self.journal.fail(symbol, "Empty response without coverage evidence", category="UNKNOWN_EMPTY")
                     continue
                 content = "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows).encode()
                 digest = fetched.raw_sha256 if isinstance(fetched, FetchedShard) else hashlib.sha256(content).hexdigest()
@@ -142,7 +148,11 @@ class ShardRunner:
                 self.journal.complete(symbol, raw_sha256=digest, row_count=len(rows),
                                       source=rows[0].get("source"), adapter_version=rows[0].get("adapter_version"),
                                       fetched_at=rows[0].get("fetched_at"), first_date=first_date, last_date=last_date,
+                                      target_as_of=target_as_of, last_checked_target=target_as_of,
+                                      requested_start=requested_start,
                                       raw_bytes=receipt["bytes"] if receipt else len(content))
+                self.journal.data['units'][symbol]['staged_result_sha256'] = hashlib.sha256(content).hexdigest()
+                self.journal._save()
                 self.journal.heartbeat(phase="download", current_shard=None, pid=os.getpid())
             except Exception as exc:
                 if isinstance(exc, CircuitOpen):
@@ -173,7 +183,14 @@ class ShardRunner:
         return restored
 
     def repair_failed(self) -> dict:
-        return self.run([name for name, row in self.journal.data["units"].items() if row.get("status") == "FAILED"], resume=False)
+        failed = {name: row for name, row in self.journal.data['units'].items() if row.get('status') == 'FAILED'}
+        blocked = [name for name, row in failed.items() if row.get('category') == 'SYMBOL_DATA_ERROR' and row.get('adapter_version') == 'akshare-1.18.94' and 'NoneType' in str(row.get('error'))]
+        selected = [name for name in failed if name not in blocked]
+        if self.journal.data.get('retry_progress'):
+            self.journal.data['retry_progress'].update(total=len(selected), skipped_same_adapter=len(blocked))
+            self.journal._save()
+        return {**self.run(selected, resume=False), 'skipped_same_adapter': len(blocked),
+                'message': '相同适配器的确定性解析异常保留隔离；可指定少量分片诊断' if blocked else '重试结束'}
 
     def report(self) -> dict:
         states = [row.get("status") for row in self.journal.data["units"].values()]
@@ -203,24 +220,17 @@ class ShardRunner:
         return archived
 
     def gap_report(self) -> dict:
+        from .quality import validate_candidate
         units = self.journal.data["units"]
-        rows, dates, symbols, duplicates = 0, [], set(), 0
-        for symbol, detail in units.items():
-            if detail.get("status") != "COMPLETE":
-                continue
-            path = self.stage_root / "valuation_daily" / f"{symbol}.jsonl"
-            seen = set()
-            if path.is_file():
-                for line in path.read_text(encoding="utf-8").splitlines():
-                    row = json.loads(line); rows += 1; dates.append(str(row.get("trade_date"))); symbols.add(str(row.get("symbol")))
-                    key = (row.get("trade_date"), row.get("symbol")); duplicates += key in seen; seen.add(key)
+        checked = validate_candidate(self.stage_root, units, base_commit='UNBOUND', raw_store=self.raw_store)
+        summaries = checked['shards'].values()
         failed = sorted(name for name, row in units.items() if row.get("status") == "FAILED")
         uncovered = sorted(name for name, row in units.items() if row.get("status") == "NOT_COVERED")
         legal_empty = sorted(name for name, row in units.items() if row.get("status") == "LEGAL_EMPTY")
         pending = sorted(name for name, row in units.items() if row.get("status") in {"PENDING", "RUNNING"})
-        quality = "FULL" if not (failed or uncovered or legal_empty or pending) else "PARTIAL"
-        return {**self.report(), "dataset": "valuation_daily", "row_count": rows, "coverage_start": min(dates) if dates else None,
-                "coverage_end": max(dates) if dates else None, "symbol_count": len(symbols), "missing_symbols": sorted(set(failed + uncovered + legal_empty)),
+        quality = "PARTIAL"
+        return {**self.report(), "dataset": "valuation_daily", "row_count": checked['row_count'], "coverage_start": min((r['first_date'] for r in summaries if r['first_date']), default=None),
+                "coverage_end": max((r['latest_date'] for r in summaries if r['latest_date']), default=None), "symbol_count": len(checked['accepted']), "missing_symbols": sorted(checked['isolated']),
                 "failed_symbols": failed, "not_covered_symbols": uncovered, "legal_empty_symbols": legal_empty, "pending_symbols": pending,
-                "error_classes": {name: units[name].get("error") for name in failed}, "duplicate_count": duplicates, "schema_error_count": 0,
+                "error_classes": {name: units[name].get("error") for name in failed}, "duplicate_count": checked['duplicate_count'], "schema_error_count": checked['schema_error_count'],
                 "quality_status": quality}

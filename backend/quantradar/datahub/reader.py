@@ -13,7 +13,7 @@ from .release import ReleaseStore
 class ReleaseReadScope:
     release_id: str
     base_database: str
-    supplemental_database: str
+    supplemental_database: str | None
     manifest: dict
 
 
@@ -27,7 +27,7 @@ class ReleaseReader:
         return ReleaseReadScope(
             release_id=manifest["release_id"],
             base_database=f"{self.config.base_database}/{manifest['base_commit']}",
-            supplemental_database=f"{self.config.supplemental_database}/{manifest['supplemental_commit']}",
+            supplemental_database=f"{self.config.supplemental_database}/{manifest['supplemental_commit']}" if manifest.get('supplemental_commit') else None,
             manifest=manifest,
         )
 
@@ -45,6 +45,8 @@ class ReleaseReader:
 
     def supplemental_connection_kwargs(self, scope: ReleaseReadScope) -> dict:
         """Pymysql arguments for a read-only commit-qualified supplemental connection."""
+        if scope.supplemental_database is None:
+            raise ValueError('此版本仅提供基础行情，补充字段不可用')
         return {
             "host": self.config.supplemental_host,
             "port": self.config.supplemental_port,

@@ -9,4 +9,6 @@ After=quantradar-datahub-dolt.service
 Type=oneshot
 WorkingDirectory=/data/Projects/a-stock-research/QuantRadar
 EnvironmentFile=-/data/quantradar_data/datahub.env
-ExecStart=/bin/sh -c '/data/Projects/a-stock-research/QuantRadar/.venv/bin/python -m quantradar.datahub.cli update --end "$$(date +%%F)"'
+Environment=PYTHONPATH=/data/Projects/a-stock-research/QuantRadar/backend
+ExecStart=/data/Projects/a-stock-research/QuantRadar/.venv/bin/python -m quantradar.datahub.cli update-all --wait
+TimeoutStartSec=infinity

@@ -197,8 +197,8 @@ def test_eastmoney_date_slice_records_empty_response_as_schema_failure(tmp_path)
     with pytest.raises(RuntimeError, match="schema invalid") as error:
         adapter.valuation_date("2016-01-04")
     assert b'"total":0' in error.value.raw_bytes
-    assert adapter.governor.status()["schema_invalid"] == 2
-    assert adapter.governor.status()["retry"] == 1
+    assert adapter.governor.status()["schema_invalid"] == 1
+    assert adapter.governor.status()["retry"] == 0
 
 
 def test_eastmoney_http_rate_limit_is_recorded_by_the_governor(tmp_path):
@@ -393,7 +393,8 @@ def test_health_probe_retries_failed_symbols_instead_of_skipping_them(tmp_path):
     with patch("quantradar.datahub.service.AkshareValuationFetcher", return_value=lambda _: []):
         result = DataHubService(config).mvp_health_probe(symbols=["000022.SZ", "002504.SZ", "002505.SZ"])
 
-    assert result["selected"] == {symbol: "LEGAL_EMPTY" for symbol in ["000022.SZ", "002504.SZ", "002505.SZ"]}
+    assert result["selected"] == {symbol: "FAILED" for symbol in ["000022.SZ", "002504.SZ", "002505.SZ"]}
+    assert all(u['category'] == 'UNKNOWN_EMPTY' for u in UpdateJournal(journal.path).data['units'].values())
 
 
 def test_update_journal_backfills_missing_symbol_error_categories(tmp_path):
@@ -445,10 +446,10 @@ def test_mvp_shard_runner_persists_completed_and_repairs_only_failed_shards(tmp_
     journal = UpdateJournal(tmp_path / "journal.json")
     runner = ShardRunner(tmp_path / "stage", journal, fetch)
     report = runner.run(["ok", "old", "bad"], resume=True)
-    assert report["completed"] == 1 and report["not_covered"] == 1 and report["failed"] == 1
+    assert report["completed"] == 1 and report["not_covered"] == 0 and report["failed"] == 2
     calls.clear()
     runner.repair_failed()
-    assert calls == ["bad"]
+    assert set(calls) == {"old", "bad"}
 
 
 def test_mvp_resume_skips_all_terminal_shard_states(tmp_path):
@@ -639,7 +640,11 @@ def test_bootstrap_data_release_activates_the_release_qualified_base_database(tm
     )
     received = {}
     monkeypatch.setattr(bootstrap, "load_datahub_config", lambda: DataHubConfig(release_root=str(tmp_path / "releases")))
-    monkeypatch.setattr(bootstrap, "bootstrap_investment_data", lambda config, **_: received.setdefault("config", config))
+    from types import SimpleNamespace
+    def activate(config, **_):
+        received['config'] = config
+        return SimpleNamespace()
+    monkeypatch.setattr(bootstrap, "bootstrap_investment_data", activate)
 
     scope = bootstrap.bootstrap_data_release(manifest["release_id"])
     assert scope.release_id == manifest["release_id"]
@@ -988,13 +993,13 @@ def test_published_valuation_with_no_rows_is_not_reported_as_pass(monkeypatch):
         reader.valuation('600000.SH', '2020-01-01', '2020-01-02')
 
 
-def test_publication_rejects_unresolved_failures_even_after_retry(tmp_path, monkeypatch):
+def test_legacy_publication_uses_daily_candidate_checks(tmp_path, monkeypatch):
     from quantradar.config import DataHubConfig
     from quantradar.datahub.service import DataHubService
     from quantradar.datahub.store import UpdateJournal
     service = DataHubService(DataHubConfig(journal_root=str(tmp_path), raw_root=str(tmp_path / 'raw')))
     journal = UpdateJournal(tmp_path / 'valuation_daily-mvp.json')
     journal.record_repair({'failed': 196})
-    monkeypatch.setattr(service, 'mvp_gaps', lambda **_: {'pending_symbols': [], 'failed': 196})
-    with pytest.raises(RuntimeError, match='196'):
-        service.mvp_publish()
+    from quantradar.datahub.daily import DailyUpdate
+    monkeypatch.setattr(DailyUpdate, 'start', lambda self, mode: {'mode': mode})
+    assert service.mvp_publish() == {'mode': 'publish'}

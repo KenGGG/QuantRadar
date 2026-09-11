@@ -1,0 +1,82 @@
+{
+  "finished_at": "2026-09-11T18:17:55.908195+08:00",
+  "heartbeat": "2026-09-11T18:17:55.902834+08:00",
+  "identity": "9855094",
+  "job_id": "update_ae30c9655894447baff37ae63123f366",
+  "mode": "publish",
+  "pid": 1125026,
+  "requested_range": {
+    "end": null,
+    "start": null
+  },
+  "stages": {
+    "base": {
+      "commit_hash": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+      "status": "NO_CHANGE"
+    },
+    "check": {
+      "accepted": 5235,
+      "candidate_id": "Cca91381039931cebb0b643cfd01daeafaaefdc42554b59520364775507ead3ea",
+      "isolated": 319,
+      "not_checked": [
+        "cross_source_values",
+        "historical_availability",
+        "full_lifecycle_field_coverage"
+      ],
+      "status": "PARTIAL"
+    },
+    "coverage": {
+      "datasets": {
+        "ST / 停牌": {
+          "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+          "checked_at": "2026-09-11T18:15:43.699942+08:00",
+          "first_date": "1990-12-19",
+          "latest_date": "2023-06-09",
+          "row_count": 14342735,
+          "stocks": 5183
+        },
+        "股票基础信息": {
+          "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+          "checked_at": "2026-09-11T18:15:43.705902+08:00",
+          "first_date": "1990-12-10",
+          "latest_date": "2022-07-15",
+          "row_count": 4916,
+          "stocks": 4916
+        },
+        "行情": {
+          "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+          "checked_at": "2026-09-11T18:15:08.348345+08:00",
+          "first_date": "1990-12-19",
+          "latest_date": "2026-09-11",
+          "row_count": 18171885,
+          "stocks": 5556
+        }
+      },
+      "status": "UPDATED"
+    },
+    "industry": {
+      "reason": "无已验收的行业增量更新入口；保留原发布日期",
+      "status": "SOURCE_BLOCKED"
+    },
+    "lifecycle": {
+      "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+      "reason": "使用本次固定基础版本；不推断上市或退市日期",
+      "status": "NO_CHANGE"
+    },
+    "publish": {
+      "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+      "release_id": "Re7a88349f47a53e4",
+      "status": "PARTIAL",
+      "supplemental_commit": "bp052o1ckl17t46tj097i442j81kt6jo"
+    },
+    "valuation": {
+      "selected": 0,
+      "status": "NO_CHANGE",
+      "target_as_of": "2026-09-11",
+      "transport": "per-symbol full history"
+    }
+  },
+  "started_at": "2026-09-11T18:14:23.119993+08:00",
+  "status": "PARTIAL",
+  "target_as_of": "2026-09-11"
+}

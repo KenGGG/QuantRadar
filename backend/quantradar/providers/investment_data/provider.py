@@ -194,6 +194,7 @@ class InvestmentDataProvider(DataProvider):
     def __init__(self, config: Optional[InvestmentDataConfig] = None) -> None:
         self._config = config or load_investment_data_config()
         self._connection = InvestmentDataConnection(self._config)
+        self._price_units = 'joinquant-shares-yuan-v2'
         self._extras_cache: Dict[tuple, Dict[str, Dict[str, pd.DataFrame]]] = {}
 
     # -- 连接 / 认证 ------------------------------------------------------
@@ -214,6 +215,24 @@ class InvestmentDataProvider(DataProvider):
 
     def capabilities(self) -> Dict[str, Dict[str, str]]:
         return dict(CAPABILITIES)
+
+    def get_fundamentals(self, query_object, date=None, statDate=None):
+        from ...datahub.strategy import fundamentals, DataUnavailable
+        try:
+            return fundamentals(self, query_object, date, statDate)
+        except DataUnavailable:
+            raise
+        except Exception as exc:
+            raise DataUnavailable(f'固定版本估值读取失败：{exc}') from exc
+
+    def get_industry(self, security, date=None):
+        from ...datahub.strategy import industry, DataUnavailable
+        try:
+            return industry(self, security, date)
+        except DataUnavailable:
+            raise
+        except Exception as exc:
+            raise DataUnavailable(f'固定版本行业读取失败：{exc}') from exc
 
     # -- get_trade_days ---------------------------------------------------
 
@@ -575,9 +594,9 @@ class InvestmentDataProvider(DataProvider):
 
         约定：
             - frequency 别名归一：'d'/'day'/'1d' -> 'daily'；其余抛 NotImplementedError（分钟级 UNSUPPORTED）。
-            - fq 别名：'none'/None -> 原始价（PASS）；'pre'/'post'/'qfq'/'hfq' 等 ->
-              当前等价原始价（LIMIT，复权因子实现在 Phase 5，绝不伪造）；其余未知 fq 抛 NotImplementedError。
+            - fq 别名：'none'/None -> 原始价；pre/post/qfq/hfq 使用真实复权因子；未知 fq 抛 NotImplementedError。
             - 字段别名（JoinQuant -> investment_data）：'money' -> 'amount'。
+            - 新契约 volume 手→股、amount 千元→元；历史 release 缺少版本标记时保留 legacy 原单位。
             - security 支持 str 或 List[str]，经 normalize_stock_symbol 转 SH600519 查表。
             - 单证券：返回 DataFrame，index=日期，columns=字段（扁平）。
             - 多证券 panel=True：返回 DataFrame，index=日期，columns=MultiIndex(字段, 证券)。
@@ -679,6 +698,11 @@ class InvestmentDataProvider(DataProvider):
         per_security: Dict[str, pd.DataFrame] = {}
         for jq, internal in jq_to_internal.items():
             df = raw_prices[internal]
+            if self._price_units == 'joinquant-shares-yuan-v2':
+                df = df.copy()
+                for field, factor in (('volume', 100), ('amount', 1000)):
+                    if field in df.columns:
+                        df[field] = df[field] * factor
             if drop_volume and "volume" in df.columns:
                 df = df.drop(columns=["volume"])
             if rename_back:

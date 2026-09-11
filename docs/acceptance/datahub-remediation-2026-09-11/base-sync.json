@@ -1,0 +1,77 @@
+{
+  "finished_at": "2026-09-11T18:09:02.513313+08:00",
+  "heartbeat": "2026-09-11T18:09:02.508407+08:00",
+  "identity": "9816298",
+  "job_id": "update_a00126c9c3064e2db9ac60fae7dad791",
+  "mode": "base-sync",
+  "pid": 1119426,
+  "requested_range": {
+    "end": null,
+    "start": null
+  },
+  "stages": {
+    "base": {
+      "before_commit": "dje7kjb4gb27khhfmqncnfhf00n9igcg",
+      "branch": "master",
+      "commit_hash": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+      "pull": {
+        "method": "trusted_cli_ff_only",
+        "output": "- Pulling...Fast-forward\nUpdating dje7kjb4gb27khhfmqncnfhf00n9igcg..uhdpedb4pr97ve80aq6nrabr66atsqtq\nEverything up-to-date\n"
+      },
+      "status": "UPDATED",
+      "version": "1.86.0"
+    },
+    "check": {
+      "reason": "固定基础版本的 schema 和覆盖已核对；补充数据未重检",
+      "status": "PARTIAL"
+    },
+    "coverage": {
+      "datasets": {
+        "ST / 停牌": {
+          "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+          "checked_at": "2026-09-11T18:09:01.950285+08:00",
+          "first_date": "1990-12-19",
+          "latest_date": "2023-06-09",
+          "row_count": 14342735,
+          "stocks": 5183
+        },
+        "股票基础信息": {
+          "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+          "checked_at": "2026-09-11T18:09:01.956147+08:00",
+          "first_date": "1990-12-10",
+          "latest_date": "2022-07-15",
+          "row_count": 4916,
+          "stocks": 4916
+        },
+        "行情": {
+          "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+          "checked_at": "2026-09-11T18:08:44.557335+08:00",
+          "first_date": "1990-12-19",
+          "latest_date": "2026-09-11",
+          "row_count": 18171885,
+          "stocks": 5556
+        }
+      },
+      "status": "UPDATED"
+    },
+    "industry": {
+      "reason": "仅同步基础库；补充数据保留原版本",
+      "status": "NO_CHANGE"
+    },
+    "lifecycle": {
+      "reason": "仅同步基础库；补充数据保留原版本",
+      "status": "NO_CHANGE"
+    },
+    "publish": {
+      "reason": "基础维护同步，补充版本保留",
+      "release_id": "Ra23e42aba7c92cf2",
+      "status": "PARTIAL"
+    },
+    "valuation": {
+      "reason": "仅同步基础库；补充数据保留原版本",
+      "status": "NO_CHANGE"
+    }
+  },
+  "started_at": "2026-09-11T18:07:55.152621+08:00",
+  "status": "UPDATED"
+}

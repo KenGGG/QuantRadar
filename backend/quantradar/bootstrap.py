@@ -35,7 +35,12 @@ def bootstrap_data_release(release_id: Optional[str] = None, *, config: Optional
 
     reader = ReleaseReader(config or load_datahub_config())
     scope = reader.resolve(release_id)
-    bootstrap_investment_data(reader.base_config(scope), set_active=True, overwrite=True)
+    provider = bootstrap_investment_data(reader.base_config(scope), set_active=True, overwrite=True)
+    provider._release_scope = scope
+    provider._price_units = scope.manifest.get('metadata', {}).get('price_units', 'legacy-v1')
+    if provider._price_units not in ('legacy-v1', 'joinquant-shares-yuan-v2'):
+        raise ValueError('unsupported release price units')
+    provider._supplemental_reader = reader.supplemental_reader(scope) if scope.supplemental_database else None
     return scope
 
 

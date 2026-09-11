@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import copy
+import fcntl
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -57,6 +59,7 @@ class UpdateJournal:
     def __init__(self, path: Path | str) -> None:
         self.path = Path(path)
         self.data = self._load()
+        self._baseline = copy.deepcopy(self.data)
 
     def _load(self) -> dict[str, Any]:
         if self.path.is_file():
@@ -65,7 +68,28 @@ class UpdateJournal:
                 "control": {"pause_requested": False, "stop_requested": False}, "job": {}}
 
     def _save(self) -> None:
-        _atomic_json(self.path, self.data)
+        # Apply only this reader's changed keys under a short interprocess lock.
+        # An atomic rename alone would lose concurrent pause/heartbeat updates.
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.with_suffix('.lock').open('a+') as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            current = self._load()
+            def merge(old, new, latest):
+                for key, value in new.items():
+                    if key in old and value == old[key]:
+                        continue
+                    if isinstance(value, dict) and isinstance(old.get(key), dict):
+                        latest[key] = merge(old[key], value, latest.get(key, {}).copy())
+                    elif isinstance(value, list) and isinstance(old.get(key), list) and value[:len(old[key])] == old[key]:
+                        latest[key] = latest.get(key, []) + value[len(old[key]):]
+                    else:
+                        latest[key] = copy.deepcopy(value)
+                for key in old.keys() - new.keys():
+                    latest.pop(key, None)
+                return latest
+            self.data = merge(self._baseline, self.data, current)
+            _atomic_json(self.path, self.data)
+            self._baseline = copy.deepcopy(self.data)
 
     def start(self, operation_id: str, *, dataset: str) -> None:
         existing = self.data.get("operation_id")
@@ -98,12 +122,17 @@ class UpdateJournal:
         if len(raw_sha256) != 64:
             raise ValueError("raw_sha256 must be a sha256 digest")
         self.data["units"][unit] = {
+            **{k: v for k, v in self.data['units'].get(unit, {}).items() if k in ('attempts', 'first_failed_at', 'last_attempt_at')},
+            'last_success_at': datetime.now(timezone.utc).isoformat(),
             "status": "COMPLETE", "raw_sha256": raw_sha256, "row_count": int(row_count), **metadata,
         }
         self._save()
 
     def running(self, unit: str) -> None:
-        self.data["units"][unit] = {"status": "RUNNING", "updated_at": datetime.now(timezone.utc).isoformat()}
+        previous = self.data["units"].get(unit, {})
+        if previous.get('status') == 'FAILED':
+            self.data.setdefault('attempt_history', []).append({'symbol': unit, 'previous': copy.deepcopy(previous), 'at': datetime.now(timezone.utc).isoformat()})
+        self.data["units"][unit] = {**previous, "status": "RUNNING", "attempts": int(previous.get('attempts', 0)) + 1, "last_attempt_at": datetime.now(timezone.utc).isoformat(), "updated_at": datetime.now(timezone.utc).isoformat()}
         self._save()
 
     def pending(self, unit: str, reason: str) -> None:
@@ -137,10 +166,12 @@ class UpdateJournal:
         self._save()
 
     def heartbeat(self, *, phase: str, current_shard: str | None, pid: int) -> None:
+        from .daily import process_identity
         units = self.data["units"].values()
         self.data["heartbeat"] = {
             "job_id": self.data.get("operation_id"), "dataset": self.data.get("dataset"), "phase": phase,
             "pid": int(pid), "current_shard": current_shard,
+            "process_identity": process_identity(pid),
             "completed": sum(row.get("status") == "COMPLETE" for row in units),
             "failed": sum(row.get("status") == "FAILED" for row in units),
             "legal_empty": sum(row.get("status") == "LEGAL_EMPTY" for row in units),
@@ -162,7 +193,9 @@ class UpdateJournal:
         self._save()
 
     def fail(self, unit: str, error: str, **metadata: Any) -> None:
-        self.data["units"][unit] = {"status": "FAILED", "error": str(error), **metadata}
+        previous = self.data['units'].get(unit, {})
+        now = datetime.now(timezone.utc).isoformat()
+        self.data["units"][unit] = {**previous, "status": "FAILED", "error": str(error), "first_failed_at": previous.get('first_failed_at', now), "last_failed_at": now, **metadata}
         self._save()
 
     def classify_unclassified_symbol_errors(self) -> int:

@@ -1,0 +1,134 @@
+[
+  {
+    "symbol": "SH600000",
+    "tradedate": "2016-01-04",
+    "close": 17.8,
+    "low": 17.55,
+    "high": 18.28,
+    "volume": 422406.1,
+    "amount": 754425.783,
+    "source_shares": 42240610,
+    "source_yuan": 754425776.0
+  },
+  {
+    "symbol": "SH600519",
+    "tradedate": "2016-01-04",
+    "close": 210.02,
+    "low": 209.99,
+    "high": 218.0,
+    "volume": 17349.69,
+    "amount": 371909.829,
+    "source_shares": 1734969,
+    "source_yuan": 371909824.0
+  },
+  {
+    "symbol": "SZ000001",
+    "tradedate": "2016-01-04",
+    "close": 11.33,
+    "low": 11.23,
+    "high": 12.03,
+    "volume": 563497.87,
+    "amount": 660376.1531,
+    "source_shares": 56349787,
+    "source_yuan": 660376160.0
+  },
+  {
+    "symbol": "SH600000",
+    "tradedate": "2020-01-06",
+    "close": 12.46,
+    "low": 12.42,
+    "high": 12.65,
+    "volume": 410011.93,
+    "amount": 514432.551,
+    "source_shares": 41001193,
+    "source_yuan": 514432551.0
+  },
+  {
+    "symbol": "SH600519",
+    "tradedate": "2020-01-06",
+    "close": 1077.99,
+    "low": 1067.3,
+    "high": 1092.9,
+    "volume": 63414.78,
+    "amount": 6853917.601,
+    "source_shares": 6341478,
+    "source_yuan": 6853917601.0
+  },
+  {
+    "symbol": "SZ000001",
+    "tradedate": "2020-01-06",
+    "close": 17.07,
+    "low": 16.91,
+    "high": 17.34,
+    "volume": 862083.5,
+    "amount": 1477930.193,
+    "source_shares": 86208350,
+    "source_yuan": 1477930193.19
+  },
+  {
+    "symbol": "SH600000",
+    "tradedate": "2023-05-08",
+    "close": 8.07,
+    "low": 7.76,
+    "high": 8.17,
+    "volume": 1431178.62,
+    "amount": 1148389.705,
+    "source_shares": 143117862,
+    "source_yuan": 1148389705.0
+  },
+  {
+    "symbol": "SH600519",
+    "tradedate": "2023-05-08",
+    "close": 1720.52,
+    "low": 1717.17,
+    "high": 1769.0,
+    "volume": 33171.26,
+    "amount": 5742915.994,
+    "source_shares": 3317126,
+    "source_yuan": 5742915994.0
+  },
+  {
+    "symbol": "SZ000001",
+    "tradedate": "2023-05-08",
+    "close": 13.32,
+    "low": 12.84,
+    "high": 13.49,
+    "volume": 2630718.61,
+    "amount": 3478891.629,
+    "source_shares": 263071861,
+    "source_yuan": 3478891629.35
+  },
+  {
+    "symbol": "SH600000",
+    "tradedate": "2026-09-08",
+    "close": 9.28,
+    "low": 9.21,
+    "high": 9.34,
+    "volume": 403779.31,
+    "amount": 374763.157,
+    "source_shares": null,
+    "source_yuan": null
+  },
+  {
+    "symbol": "SH600519",
+    "tradedate": "2026-09-08",
+    "close": 1309.3,
+    "low": 1309.05,
+    "high": 1323.0,
+    "volume": 17534.04,
+    "amount": 2302823.753,
+    "source_shares": null,
+    "source_yuan": null
+  },
+  {
+    "symbol": "SZ000001",
+    "tradedate": "2026-09-08",
+    "close": 11.78,
+    "low": 11.65,
+    "high": 11.81,
+    "volume": 740515.97,
+    "amount": 870361.06417,
+    "source_shares": null,
+    "source_yuan": null
+  }
+]

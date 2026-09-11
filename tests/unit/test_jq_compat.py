@@ -43,7 +43,7 @@ class TestProviderAliases:
             "SELECT amount FROM final_a_stock_eod_price "
             "WHERE symbol='SH600519' AND tradedate='2024-01-02'"
         )
-        assert df.loc["2024-01-02", "money"] == pytest.approx(float(raw["amount"]), rel=1e-9)
+        assert df.loc["2024-01-02", "money"] == pytest.approx(float(raw["amount"]) * 1000, rel=1e-9)
 
     def test_fq_pre_single_day_equals_raw(self, live_provider):
         # 单日窗口下前复权基准日即当日，scale=1，close 精确等于原始 close
@@ -88,7 +88,7 @@ class TestProviderAliases:
         expected_first = float(first["adjclose"]) * (float(last["close"]) / float(last["adjclose"]))
         assert df.loc[first_d, "close"] == pytest.approx(expected_first, rel=1e-9)
 
-    def test_fq_adjustment_keeps_volume_raw(self, live_provider):
+    def test_fq_adjustment_keeps_volume_in_shares(self, live_provider):
         # 复权仅缩放 OHLC，volume 保持原始成交（不伪造）
         start, end = "2024-01-02", "2024-01-03"
         df = live_provider.get_price(
@@ -98,7 +98,7 @@ class TestProviderAliases:
             "SELECT volume FROM final_a_stock_eod_price "
             "WHERE symbol='SH600519' AND tradedate='2024-01-02'"
         )
-        assert df.loc["2024-01-02", "volume"] == pytest.approx(float(raw["volume"]), rel=1e-9)
+        assert df.loc["2024-01-02", "volume"] == pytest.approx(float(raw["volume"]) * 100, rel=1e-9)
 
     def test_fq_none_equiv_none(self, live_provider):
         df = live_provider.get_price("600519.XSHG", "2024-01-02", "2024-01-02", fq=None)
@@ -158,7 +158,7 @@ class TestEngineIntegration:
             "SELECT amount FROM final_a_stock_eod_price "
             "WHERE symbol='SH600519' AND tradedate='2024-01-02'"
         )
-        assert df.loc["2024-01-02", "money"] == pytest.approx(float(raw["amount"]), rel=1e-9)
+        assert df.loc["2024-01-02", "money"] == pytest.approx(float(raw["amount"]) * 1000, rel=1e-9)
 
     def test_api_not_using_adjclose(self, registry_reset):
         bootstrap_investment_data(set_active=True)

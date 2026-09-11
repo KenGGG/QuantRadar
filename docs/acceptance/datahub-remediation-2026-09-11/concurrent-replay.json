@@ -1,0 +1,50 @@
+[
+  {
+    "release_id": "Rb60ab5f94b2a612b",
+    "binding": {
+      "release_id": "Rb60ab5f94b2a612b",
+      "base_commit": "dje7kjb4gb27khhfmqncnfhf00n9igcg",
+      "supplemental_commit": "4qrt5p86jdqpp4l2b0sm8d2r0o2fn7em",
+      "schema_version": "datahub-v1",
+      "price_units": "legacy-v1"
+    },
+    "hash": "0f9a4777eb79822a0c17ede0b80f97e433cef6490b71e1b2889717ab0c65f46f",
+    "status": "PASS"
+  },
+  {
+    "release_id": "Re7a88349f47a53e4",
+    "binding": {
+      "release_id": "Re7a88349f47a53e4",
+      "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+      "supplemental_commit": "bp052o1ckl17t46tj097i442j81kt6jo",
+      "schema_version": "datahub-v1",
+      "price_units": "joinquant-shares-yuan-v2"
+    },
+    "hash": "0f9a4777eb79822a0c17ede0b80f97e433cef6490b71e1b2889717ab0c65f46f",
+    "status": "PASS"
+  },
+  {
+    "release_id": "Rb60ab5f94b2a612b",
+    "binding": {
+      "release_id": "Rb60ab5f94b2a612b",
+      "base_commit": "dje7kjb4gb27khhfmqncnfhf00n9igcg",
+      "supplemental_commit": "4qrt5p86jdqpp4l2b0sm8d2r0o2fn7em",
+      "schema_version": "datahub-v1",
+      "price_units": "legacy-v1"
+    },
+    "hash": "0f9a4777eb79822a0c17ede0b80f97e433cef6490b71e1b2889717ab0c65f46f",
+    "status": "PASS"
+  },
+  {
+    "release_id": "Re7a88349f47a53e4",
+    "binding": {
+      "release_id": "Re7a88349f47a53e4",
+      "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+      "supplemental_commit": "bp052o1ckl17t46tj097i442j81kt6jo",
+      "schema_version": "datahub-v1",
+      "price_units": "joinquant-shares-yuan-v2"
+    },
+    "hash": "0f9a4777eb79822a0c17ede0b80f97e433cef6490b71e1b2889717ab0c65f46f",
+    "status": "PASS"
+  }
+]

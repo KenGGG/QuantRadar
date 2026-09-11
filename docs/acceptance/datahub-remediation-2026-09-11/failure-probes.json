@@ -1,0 +1,50 @@
+[
+  {
+    "symbol": "000022.SZ",
+    "status": "FAILED",
+    "error": "'NoneType' object is not subscriptable",
+    "parsed_sdk_response": [
+      {
+        "version": null,
+        "result": null,
+        "success": false,
+        "message": "返回数据为空",
+        "code": 9201
+      }
+    ],
+    "sha256": "6e236bae79ffecef585402d5feae27ec1bce4c802dfbc1e57677c29352da8bd7",
+    "raw_http": "NOT_CAPTURED"
+  },
+  {
+    "symbol": "300114.SZ",
+    "status": "FAILED",
+    "error": "'NoneType' object is not subscriptable",
+    "parsed_sdk_response": [
+      {
+        "version": null,
+        "result": null,
+        "success": false,
+        "message": "返回数据为空",
+        "code": 9201
+      }
+    ],
+    "sha256": "6e236bae79ffecef585402d5feae27ec1bce4c802dfbc1e57677c29352da8bd7",
+    "raw_http": "NOT_CAPTURED"
+  },
+  {
+    "symbol": "600001.SH",
+    "status": "FAILED",
+    "error": "'NoneType' object is not subscriptable",
+    "parsed_sdk_response": [
+      {
+        "version": null,
+        "result": null,
+        "success": false,
+        "message": "返回数据为空",
+        "code": 9201
+      }
+    ],
+    "sha256": "6e236bae79ffecef585402d5feae27ec1bce4c802dfbc1e57677c29352da8bd7",
+    "raw_http": "NOT_CAPTURED"
+  }
+]

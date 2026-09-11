@@ -1,0 +1,73 @@
+{
+  "status": "PASS",
+  "seconds": 46.812,
+  "hash": "e24bd0d3d892ddc26c5aeafcd2b78c343e380432ebef251caa6aef1f8e07a745",
+  "query_wall_seconds": 39.819,
+  "query_calls": 1578,
+  "queries": {
+    "SELECT commit_hash FROM dolt_log ORDER BY date DESC LIMIT 1": {
+      "calls": 1,
+      "seconds": 0.003580635995604098
+    },
+    "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS ": {
+      "calls": 1,
+      "seconds": 0.004933074000291526
+    },
+    "SELECT MAX(tradedate) FROM final_a_stock_eod_price": {
+      "calls": 1,
+      "seconds": 0.0003815520030912012
+    },
+    "SELECT date, is_open FROM ts_trade_day_calendar ": {
+      "calls": 4,
+      "seconds": 0.35044091900635976
+    },
+    "SELECT tradedate, close FROM final_a_stock_eod_price ": {
+      "calls": 381,
+      "seconds": 13.068620200181613
+    },
+    "SELECT MAX(trade_date) AS d FROM ts_index_weight ": {
+      "calls": 1,
+      "seconds": 0.03667145100189373
+    },
+    "SELECT stock_code FROM ts_index_weight ": {
+      "calls": 1,
+      "seconds": 0.00203883700305596
+    },
+    "SELECT source.symbol, source.tradedate, source.is_st, source.tradestatus FROM bao_a_stock_eod_info AS source JOIN (SELEC": {
+      "calls": 1,
+      "seconds": 2.9468556089996127
+    },
+    "SELECT tradedate, close, adjclose FROM final_a_stock_eod_price ": {
+      "calls": 21,
+      "seconds": 0.6392234220256796
+    },
+    "SELECT symbol, tradedate, close, adjclose FROM (SELECT symbol, tradedate, close, adjclose, ROW_NUMBER() OVER (PARTITION ": {
+      "calls": 1,
+      "seconds": 19.2154144619999
+    },
+    "SELECT tradedate, open, close, volume, adjclose FROM final_a_stock_eod_price ": {
+      "calls": 20,
+      "seconds": 1.247549583989894
+    },
+    "SELECT tradedate, up_limit, down_limit FROM final_a_stock_limit ": {
+      "calls": 20,
+      "seconds": 0.016715539022698067
+    },
+    "SELECT ts_code, exchange, list_date, delist_date FROM ts_a_stock_list ": {
+      "calls": 381,
+      "seconds": 0.23949646204710007
+    },
+    "SELECT tradedate, open FROM final_a_stock_eod_price ": {
+      "calls": 20,
+      "seconds": 0.5489296070154523
+    },
+    "SELECT tradedate, close, preclose FROM bao_a_stock_eod_info ": {
+      "calls": 722,
+      "seconds": 1.4447333408897975
+    },
+    "SELECT ts_code, symbol, exchange, list_date, delist_date FROM ts_a_stock_list": {
+      "calls": 2,
+      "seconds": 0.0529700640036026
+    }
+  }
+}

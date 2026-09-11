@@ -1,0 +1,12 @@
+{
+  "first_sample_size": 15,
+  "raw_vwap_within_low_high": 0,
+  "converted_vwap_within_low_high": 15,
+  "historical_sample_size": 12,
+  "source_pairs": 9,
+  "shares_match": 9,
+  "yuan_match": 9,
+  "volume_factor": 100,
+  "amount_factor": 1000,
+  "full_history_units_audit": "NOT_CHECKED"
+}

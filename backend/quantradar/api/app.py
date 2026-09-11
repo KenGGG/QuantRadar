@@ -271,6 +271,43 @@ def datahub_status() -> Dict[str, Any]:
         raise HTTPException(status_code=503, detail=f"DataHub unavailable: {exc}")
 
 
+@app.get('/api/datahub/overview')
+def datahub_overview() -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    from quantradar.datahub.daily import DailyUpdate
+    from pathlib import Path
+    import json
+    service = DataHubService()
+    root = Path(service.config.supplemental_repo)
+    def saved(name):
+        path = root / name
+        return json.loads(path.read_text()) if path.exists() else None
+    try:
+        manifest = service.releases.current()
+    except FileNotFoundError:
+        manifest = None
+    candidate = saved('candidate-check.json')
+    issues = {}
+    if candidate:
+        for symbol, reason in candidate['isolated'].items():
+            key = reason if isinstance(reason, str) else 'QUALITY_FAILURE'
+            issues.setdefault(key, []).append(symbol)
+    return {'release': manifest, 'base_coverage': saved('base-coverage.json'),
+            'update': DailyUpdate(service).status(), 'job': service.job_status(),
+            'candidate': {k: candidate[k] for k in ('candidate_id', 'quality', 'coverage', 'row_count')} if candidate else None,
+            'issues': [{'reason': reason, 'count': len(symbols), 'symbols': symbols} for reason, symbols in issues.items()]}
+
+
+@app.post('/api/datahub/update-all')
+def datahub_update_all(payload: Dict[str, Any] = Body(default={})) -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    from quantradar.datahub.daily import DailyUpdate
+    try:
+        return DailyUpdate(DataHubService()).start(str(payload.get('mode', 'update-all')), payload.get('start'), payload.get('end'))
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @app.get("/api/datahub/job")
 def datahub_job() -> Dict[str, Any]:
     from quantradar.datahub.service import DataHubService
@@ -311,8 +348,8 @@ def datahub_job_resume(payload: Dict[str, Any] = Body(default={})) -> Dict[str, 
 
 @app.get("/api/datahub/gaps")
 def datahub_gaps() -> Dict[str, Any]:
-    from quantradar.datahub.service import DataHubService
-    return DataHubService().mvp_gaps()
+    overview = datahub_overview()
+    return {'candidate': overview['candidate'], 'issues': overview['issues']}
 
 
 @app.post("/api/datahub/repair")
@@ -326,8 +363,7 @@ def datahub_repair() -> Dict[str, Any]:
 
 @app.post("/api/datahub/audit")
 def datahub_audit() -> Dict[str, Any]:
-    from quantradar.datahub.service import DataHubService
-    return DataHubService().mvp_gaps()
+    return datahub_update_all({'mode': 'audit'})
 
 
 @app.post("/api/datahub/publish")
@@ -343,9 +379,11 @@ def datahub_update(payload: Dict[str, Any] = Body(default={})) -> Dict[str, Any]
         service = DataHubService()
         action = payload.get("action", "update")
         if action in {"update", "resume"}:
-            result = service.mvp_backfill(dataset="valuation_daily", symbols=payload.get("symbols") or service.valuation_universe(), resume=True, limit=int(payload.get("limit", 0)))
+            if payload.get('symbols') or payload.get('limit'):
+                raise ValueError('该入口不支持 symbols/limit；请使用明确的修复或回填入口')
+            result = service.start_job(resume=True) if action == 'resume' else datahub_update_all({})
         elif action == "audit" or action == "gaps":
-            result = service.mvp_gaps(dataset="valuation_daily")
+            result = datahub_audit() if action == 'audit' else datahub_gaps()
         elif action == "publish":
             result = service.mvp_publish()
         else:
@@ -358,7 +396,7 @@ def datahub_update(payload: Dict[str, Any] = Body(default={})) -> Dict[str, Any]
 @app.post("/api/data/pull")
 def pull_data() -> Dict[str, Any]:
     """Compatibility endpoint: DataHub replaces direct writes to investment_data."""
-    return datahub_update({"mode": "sync"})
+    return datahub_update_all()
 
 
 @app.get("/", response_class=HTMLResponse)
