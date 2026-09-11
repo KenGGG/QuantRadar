@@ -157,7 +157,7 @@ _FIELD_TO_COLUMN = {
     "high_limit": "up_limit",
     "low_limit": "down_limit",
 }
-# 计算字段（无独立存储列，由其他字段派生；绝不伪造）
+# 计算字段（由真实交易状态派生；未知保持未知）
 _COMPUTED_FIELDS = {"paused"}
 
 # JoinQuant 频率别名 -> investment_data 内部表达（Phase 3 JQ 兼容核心）
@@ -605,6 +605,25 @@ class InvestmentDataProvider(DataProvider):
             for jq, series in per_sec.items()
         }
 
+    def _paused_from_trade_status(
+        self, internal_symbol: str, start_date, end_date, count: Optional[int], index: pd.DatetimeIndex
+    ) -> pd.Series:
+        """Derive paused only from explicit tradestatus; volume never proves status."""
+        status = self._fetch_table_cols(
+            _INFO_TABLE, ["tradestatus"], internal_symbol, _fmt_date(start_date), _fmt_date(end_date), count, False
+        )
+        reader = getattr(self, "_supplemental_reader", None)
+        scope = getattr(self, "_release_scope", None)
+        datasets = getattr(scope, "manifest", {}).get("datasets", {}) if scope is not None else {}
+        if reader is not None and datasets.get("trade_status_daily"):
+            patches = reader.trade_status([to_ts_symbol(internal_symbol)], _fmt_date(start_date), _fmt_date(end_date), count)
+            status = overlay_status_patch(status, patches.get(to_ts_symbol(internal_symbol), []))
+        observed = status["tradestatus"].reindex(index) if "tradestatus" in status.columns else pd.Series(index=index, dtype="float64")
+        paused = pd.Series(pd.NA, index=index, dtype="boolean")
+        paused.loc[observed == 0] = True
+        paused.loc[observed == 1] = False
+        return paused
+
     def get_price(
         self,
         security: Union[str, List[str]],
@@ -697,7 +716,8 @@ class InvestmentDataProvider(DataProvider):
                     f"get_price: 不支持的字段 {f!r}；"
                     f"可用字段={_PRICE_FIELDS} + high_limit/low_limit/paused（money->amount）"
                 )
-        # paused 由 volume 派生；若未显式请求 volume 仍内部取用，最后按需剔除
+        # ``paused`` needs a price-table date anchor, but its value comes only
+        # from explicit ``tradestatus`` below.  Zero/missing volume is UNKNOWN.
         volume_requested = "volume" in requested_raw
         # 价格表必须至少有一列作为日期锚点（即便只请求了涨跌停 / paused）
         if not price_cols:
@@ -732,6 +752,9 @@ class InvestmentDataProvider(DataProvider):
         per_security: Dict[str, pd.DataFrame] = {}
         for jq, internal in jq_to_internal.items():
             df = raw_prices[internal]
+            if need_paused:
+                df = df.copy()
+                df["paused"] = self._paused_from_trade_status(internal, start_date, end_date, count, df.index)
             if self._price_units == 'joinquant-shares-yuan-v2':
                 df = df.copy()
                 if 'volume' in df.columns and internal not in _NATIVE_SHARE_VOLUME_INDEXES:
@@ -936,9 +959,6 @@ class InvestmentDataProvider(DataProvider):
             _fmt_date(start_date), _fmt_date(end_date), count, fill_paused,
         )
         for frame in result.values():
-            if need_paused:
-                volume = frame["volume"] if "volume" in frame.columns else pd.Series(0.0, index=frame.index)
-                frame["paused"] = volume.fillna(0) == 0
             if adj_mode and "adjclose" in frame.columns:
                 self._apply_adjustment(frame, adj_mode, pre_factor_ref_date)
                 if drop_adjclose:
@@ -963,7 +983,7 @@ class InvestmentDataProvider(DataProvider):
         """从 final_a_stock_eod_price（价格）+ final_a_stock_limit（涨跌停）拉取单证券日频，
         并可选派生 paused、可选应用真实复权（hfq/qfq）。返回 index=日期、列为请求字段的 DataFrame。
 
-        涨跌停来自真实表（final_a_stock_limit）；paused 由 volume==0 派生；
+        涨跌停来自真实表（final_a_stock_limit）；paused 由调用方按真实 tradestatus 派生；
         复权因子由 adjclose 与原始 close 真实推导，绝不伪造；缺数据显式 NaN（PARTIAL）。
         """
         start = _fmt_date(start_date)
@@ -999,13 +1019,6 @@ class InvestmentDataProvider(DataProvider):
                 )
             limit_df = limit_df.reindex(price_df.index)
             result = price_df.join(limit_df, how="left")
-
-        if need_paused:
-            vol = result["volume"] if "volume" in result.columns else pd.Series(
-                0.0, index=result.index
-            )
-            # volume 缺失或为 0 视为停牌（真实信号）；有成交价的交易日视为未停牌
-            result["paused"] = (vol.fillna(0) == 0)
 
         if adj_mode and "adjclose" in result.columns:
             self._apply_adjustment(result, adj_mode, pre_factor_ref_date)

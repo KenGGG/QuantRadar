@@ -193,6 +193,22 @@ def test_status_patch_adds_dates_absent_from_base_table():
     assert patched.loc["2023-09-01", "is_st"] == 0
 
 
+def test_paused_keeps_unknown_when_trade_status_is_missing():
+    import pandas as pd
+    from quantradar.providers.investment_data.provider import InvestmentDataProvider
+
+    provider = object.__new__(InvestmentDataProvider)
+    provider._supplemental_reader = None
+    provider._release_scope = None
+    provider._fetch_table_cols = lambda *args, **kwargs: pd.DataFrame(
+        {"tradestatus": [1.0, 0.0, float("nan")]}, index=pd.to_datetime(["2023-09-01", "2023-09-04", "2023-09-05"])
+    )
+    result = provider._paused_from_trade_status("SH600519", "2023-09-01", "2023-09-05", None, pd.to_datetime(["2023-09-01", "2023-09-04", "2023-09-05"]))
+    assert bool(result.iloc[0]) is False
+    assert bool(result.iloc[1]) is True
+    assert pd.isna(result.iloc[2])
+
+
 def test_status_patch_validation_rejects_duplicate_or_invalid_state():
     from quantradar.datahub.publication import status_patch_delta, validate_trade_status_base_gap, validate_trade_status_patch
 

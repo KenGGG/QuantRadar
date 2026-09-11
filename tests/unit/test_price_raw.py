@@ -232,13 +232,13 @@ class TestGetPriceLimitAndPaused:
             assert df.loc[d, "high_limit"] == pytest.approx(float(r["up_limit"]), rel=1e-9)
             assert df.loc[d, "low_limit"] == pytest.approx(float(r["down_limit"]), rel=1e-9)
 
-    def test_paused_derived_from_volume(self, live_provider):
+    def test_paused_comes_from_explicit_trade_status(self, live_provider):
         sym = "600519.XSHG"
         start, end = "2023-01-03", "2023-01-04"
         df = live_provider.get_price(sym, start, end, fields=["close", "paused"])
         assert "paused" in df.columns
-        # 有成交（volume>0）的交易日 -> paused == False（不伪造停牌）
-        assert df["paused"].dtype == bool
+        # 有明确 tradestatus=1 的交易日 -> paused == False；成交量不参与推断。
+        assert str(df["paused"].dtype) == "boolean"
         assert (df["paused"] == False).all()  # noqa: E712
 
     def test_mixed_fields_price_and_limit(self, live_provider):
