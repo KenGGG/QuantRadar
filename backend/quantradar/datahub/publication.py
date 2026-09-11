@@ -33,12 +33,64 @@ def validate_trade_status_patch(rows: list[dict]) -> dict:
     return {"status": "PASS" if rows and not errors else "FAIL", "rows": len(rows), "errors": sorted(set(errors))}
 
 
+def validate_trade_status_base_gap(rows: list[dict], base_keys: set[tuple[str, str]]) -> dict:
+    """Reject a candidate that would replace a base status observation.
+
+    Supplemental records are deliberately additive.  Runtime reads also favour
+    the base table, but that is a safety net rather than publication approval:
+    allowing an overlapping row into a release would make provenance and later
+    audits ambiguous.
+    """
+    overlapping = sorted(
+        (str(row["trade_date"])[:10], str(row["symbol"]))
+        for row in rows
+        if (str(row["trade_date"])[:10], str(row["symbol"])) in base_keys
+    )
+    return {
+        "status": "PASS" if not overlapping else "FAIL",
+        "base_overlap_count": len(overlapping),
+        "base_overlaps": overlapping,
+    }
+
+
+def status_patch_delta(rows: list[dict], existing: dict[tuple[str, str], dict]) -> dict:
+    """Split an idempotent retry from a conflicting rewrite attempt."""
+    comparable = ("tradestatus", "is_st", "turn", "source", "raw_sha256", "adapter_version", "available_date", "pit_status")
+    new, conflicts = [], []
+    for row in rows:
+        key = (str(row["trade_date"])[:10], str(row["symbol"]))
+        prior = existing.get(key)
+        if prior is None:
+            new.append(row)
+        elif any(prior.get(field) != row.get(field) for field in comparable):
+            conflicts.append(key)
+    return {"new_rows": new, "conflicts": sorted(conflicts)}
+
+
 def publish_trade_status_patch(service, rows: list[dict]) -> dict:
     """Publish a validated, additive status patch on an isolated Dolt branch."""
     check = validate_trade_status_patch(rows)
     if check["status"] != "PASS":
         raise ValueError("trade status candidate failed: " + ", ".join(check["errors"]))
     old = service.releases.current()
+    base_gap = validate_trade_status_base_gap(
+        rows, service.base_trade_status_keys(rows, base_commit=old["base_commit"])
+    )
+    if base_gap["status"] != "PASS":
+        raise ValueError(
+            "trade status candidate overlaps immutable base observations: "
+            + ", ".join(f"{day}/{symbol}" for day, symbol in base_gap["base_overlaps"])
+        )
+    prior = service.supplemental_trade_status_rows(rows, supplemental_commit=old.get("supplemental_commit"))
+    delta = status_patch_delta(rows, prior)
+    if delta["conflicts"]:
+        raise ValueError(
+            "trade status candidate conflicts with published supplemental observations: "
+            + ", ".join(f"{day}/{symbol}" for day, symbol in delta["conflicts"])
+        )
+    if not delta["new_rows"]:
+        return {"status": "NO_CHANGE", "release_id": old["release_id"], "rows": 0, "validation": {**check, "base_gap": base_gap}}
+    rows = delta["new_rows"]
     conn = service._connection()
     try:
         with conn.cursor() as cursor:
@@ -68,7 +120,7 @@ def publish_trade_status_patch(service, rows: list[dict]) -> dict:
     manifest = service.releases.publish(base_commit=old["base_commit"], supplemental_commit=commit, datasets=datasets,
         source_adapters={**old["source_adapters"], "trade_status": "baostock-daily-v2"},
         metadata={**old.get("metadata", {}), "trade_status_patch": {"rows": len(rows), "candidate": identity, "selection": "fill_base_missing_only"}})
-    return {"status": "PARTIAL", "release_id": manifest["release_id"], "supplemental_commit": commit, "rows": len(rows), "validation": check}
+    return {"status": "PARTIAL", "release_id": manifest["release_id"], "supplemental_commit": commit, "rows": len(rows), "validation": {**check, "base_gap": base_gap}}
 
 
 def checked_rows(root, candidate, symbols=None):

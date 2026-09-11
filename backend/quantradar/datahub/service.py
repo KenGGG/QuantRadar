@@ -406,6 +406,74 @@ class DataHubService:
             raise RuntimeError("base lifecycle query produced no Shanghai/Shenzhen securities")
         return rows
 
+    def base_trade_status_keys(self, rows: Iterable[dict[str, Any]], *, base_commit: str) -> set[tuple[str, str]]:
+        """Return candidate keys already observed in the immutable base table.
+
+        This is intentionally a narrow, commit-qualified read used by status
+        publication.  A supplemental record may fill an absent date, but must
+        never compete with a status observation already present in the base.
+        """
+        from ..providers.investment_data.symbols import normalize_stock_symbol
+
+        candidates = {
+            (str(row["trade_date"])[:10], str(row["symbol"]))
+            for row in rows
+        }
+        if not candidates:
+            return set()
+        internal = [(day, normalize_stock_symbol(symbol), symbol) for day, symbol in candidates]
+        connection = pymysql.connect(
+            host=self.config.base_host, port=self.config.base_port, user=self.config.user, password=self.config.password,
+            database=f"{self.config.base_database}/{base_commit}", connect_timeout=self.config.connect_timeout,
+            read_timeout=self.config.read_timeout, charset="utf8mb4", cursorclass=DictCursor,
+        )
+        found: set[tuple[str, str]] = set()
+        try:
+            with connection.cursor() as cursor:
+                # Keep every SELECT bounded.  Candidate batches are normally
+                # small, while retry queues can contain many securities.
+                for offset in range(0, len(internal), 500):
+                    chunk = internal[offset:offset + 500]
+                    marks = ", ".join(["(%s, %s)"] * len(chunk))
+                    cursor.execute(
+                        "SELECT tradedate, symbol FROM bao_a_stock_eod_info "
+                        f"WHERE (tradedate, symbol) IN ({marks})",
+                        tuple(value for day, symbol, _ in chunk for value in (day, symbol)),
+                    )
+                    external_by_internal = {(day, internal_symbol): external for day, internal_symbol, external in chunk}
+                    for item in cursor.fetchall():
+                        key = (str(item["tradedate"])[:10], str(item["symbol"]))
+                        if key in external_by_internal:
+                            found.add((key[0], external_by_internal[key]))
+        finally:
+            connection.close()
+        return found
+
+    def supplemental_trade_status_rows(self, rows: Iterable[dict[str, Any]], *, supplemental_commit: str | None) -> dict[tuple[str, str], dict]:
+        """Read matching records from a fixed supplemental commit for retry safety."""
+        if not supplemental_commit:
+            return {}
+        candidates = sorted({(str(row["trade_date"])[:10], str(row["symbol"])) for row in rows})
+        if not candidates:
+            return {}
+        connection = self._connection(f"{self.config.supplemental_database}/{supplemental_commit}")
+        result: dict[tuple[str, str], dict] = {}
+        try:
+            with connection.cursor() as cursor:
+                for offset in range(0, len(candidates), 500):
+                    chunk = candidates[offset:offset + 500]
+                    marks = ", ".join(["(%s, %s)"] * len(chunk))
+                    cursor.execute(
+                        "SELECT trade_date, symbol, tradestatus, is_st, turn, source, raw_sha256, adapter_version, available_date, pit_status "
+                        "FROM qr_trade_status_daily WHERE (trade_date, symbol) IN (" + marks + ")",
+                        tuple(value for item in chunk for value in item),
+                    )
+                    for item in cursor.fetchall():
+                        result[(str(item["trade_date"])[:10], str(item["symbol"]))] = item
+        finally:
+            connection.close()
+        return result
+
     def _security_master_path(self) -> Path:
         return Path(self.config.supplemental_repo) / "security-master" / "sh_sz.json"
 

@@ -166,7 +166,7 @@ def test_status_patch_adds_dates_absent_from_base_table():
 
 
 def test_status_patch_validation_rejects_duplicate_or_invalid_state():
-    from quantradar.datahub.publication import validate_trade_status_patch
+    from quantradar.datahub.publication import status_patch_delta, validate_trade_status_base_gap, validate_trade_status_patch
 
     good = [{"trade_date": "2023-09-01", "symbol": "600519.SH", "tradestatus": 1, "is_st": 0, "turn": 0.12,
              "source": "baostock", "raw_sha256": "a" * 64, "adapter_version": "test", "fetched_at": "2026-09-11T00:00:00Z", "available_date": None, "pit_status": "PARTIAL"}]
@@ -174,3 +174,9 @@ def test_status_patch_validation_rejects_duplicate_or_invalid_state():
     assert validate_trade_status_patch(good + good)["status"] == "FAIL"
     bad = [dict(good[0], tradestatus=3)]
     assert validate_trade_status_patch(bad)["status"] == "FAIL"
+    assert validate_trade_status_base_gap(good, set())["status"] == "PASS"
+    overlap = validate_trade_status_base_gap(good, {("2023-09-01", "600519.SH")})
+    assert overlap == {"status": "FAIL", "base_overlap_count": 1, "base_overlaps": [("2023-09-01", "600519.SH")]}
+    existing = {("2023-09-01", "600519.SH"): dict(good[0])}
+    assert status_patch_delta(good, existing) == {"new_rows": [], "conflicts": []}
+    assert status_patch_delta([dict(good[0], is_st=1)], existing)["conflicts"] == [("2023-09-01", "600519.SH")]
