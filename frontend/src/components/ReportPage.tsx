@@ -90,6 +90,13 @@ export function ReportPage({ runId, onBack, onEdit }: { runId: string; onBack: (
 
   const cfg = run?.config || {};
   const env = run?.snapshot?.environment;
+  const usage = env?.data_usage;
+  const sourceUsage = usage ? [
+    `基础行情：${usage.base_final_price_calls ?? 0} 次读取，${usage.base_final_price_symbols ?? 0} 只证券`,
+    `ST / 停牌：${usage.trade_status_calls ?? 0} 次读取，补数 ${usage.supplemental_trade_status_rows ?? 0} 行`,
+    `补充估值：${usage.supplemental_valuation_calls ?? 0} 次读取`,
+    `补充行业：${usage.supplemental_industry_calls ?? 0} 次读取`,
+  ].join('；') : '旧运行未记录实际读取明细';
   return <div className="report-page">
     <div className="report-toolbar">
       <div><strong>{String(cfg.strategy_name || "回测报告")}</strong><span>设置：{String(cfg.start_date || "—")} 至 {String(cfg.end_date || "—")}， ¥ {Number(cfg.initial_cash || 0).toLocaleString()}，每天</span>
@@ -116,7 +123,7 @@ export function ReportPage({ runId, onBack, onEdit }: { runId: string; onBack: (
           { title: "大小", dataIndex: "size", render: (size: number) => `${(size / 1024).toFixed(1)} KB` },
         ]} />}
         {section === "audit" && run && <div className="audit-content"><Descriptions column={2} bordered size="small">
-          {Object.entries({ "起始日期": cfg.start_date, "结束日期": cfg.end_date, "初始资金": cfg.initial_cash, "频率": cfg.frequency, "页面基准": cfg.benchmark, "实际基准": data?.meta.benchmark, "复权": cfg.fq, "数据源": env?.provider, "数据版本": env?.dolt_commit, "QuantRadar 版本": env?.quantradar_commit, "BulletTrade 版本": env?.bullettrade_commit, "策略哈希": run.snapshot?.strategy_hash, "配置哈希": run.snapshot?.config_hash, "结果哈希": run.result_hash }).map(([key, value]) => <Descriptions.Item key={key} label={key}>{String(value ?? "—")}</Descriptions.Item>)}
+          {Object.entries({ "起始日期": cfg.start_date, "结束日期": cfg.end_date, "初始资金": cfg.initial_cash, "频率": cfg.frequency, "页面基准": cfg.benchmark, "实际基准": data?.meta.benchmark, "复权": cfg.fq, "数据源": env?.provider, "正式数据版本": env?.data_release?.release_id, "基础库版本": env?.data_release?.base_commit ?? env?.dolt_commit, "补充库版本": env?.data_release?.supplemental_commit, "本次实际读取": sourceUsage, "QuantRadar 版本": env?.quantradar_commit, "BulletTrade 版本": env?.bullettrade_commit, "策略哈希": run.snapshot?.strategy_hash, "配置哈希": run.snapshot?.config_hash, "结果哈希": run.result_hash }).map(([key, value]) => <Descriptions.Item key={key} label={key}>{String(value ?? "—")}</Descriptions.Item>)}
         </Descriptions></div>}
       </section>
     </div>

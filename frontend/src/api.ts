@@ -102,6 +102,20 @@ export interface Environment {
   latest_data_date: string | null;
   bullettrade_commit: string;
   quantradar_commit: string;
+  data_release?: {
+    release_id?: string;
+    base_commit?: string;
+    supplemental_commit?: string;
+    price_units?: string;
+  };
+  data_usage?: {
+    base_final_price_calls?: number;
+    base_final_price_symbols?: number;
+    trade_status_calls?: number;
+    supplemental_trade_status_rows?: number;
+    supplemental_valuation_calls?: number;
+    supplemental_industry_calls?: number;
+  };
 }
 
 export interface Snapshot {
