@@ -614,6 +614,11 @@ class DataHubService:
                                  details={"result": result, "selected": selected, "governor": governor.status()})
         return {"outcome": "HEALTHY" if healthy else "UNHEALTHY", "result": result, "selected": selected, "governor": governor.status()}
 
+    def valuation_health_probe_symbols(self) -> list[str]:
+        """Return a bounded, deterministic diagnostic sample; never bulk-retry failures."""
+        journal = UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json")
+        return sorted(symbol for symbol, detail in journal.data["units"].items() if detail.get("status") == "FAILED")[:3]
+
     def _staged_valuations(self) -> ShardJsonlRows:
         journal = UpdateJournal(Path(self.config.journal_root) / "valuation_daily-mvp.json")
         root = Path(self.config.supplemental_repo) / "staging" / "valuation_daily-mvp" / "valuation_daily"

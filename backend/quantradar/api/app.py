@@ -418,6 +418,19 @@ def datahub_repair() -> Dict[str, Any]:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+@app.post("/api/datahub/health-probe")
+def datahub_health_probe() -> Dict[str, Any]:
+    from quantradar.datahub.service import DataHubService
+    service = DataHubService()
+    symbols = service.valuation_health_probe_symbols()
+    if len(symbols) < 3:
+        raise HTTPException(status_code=409, detail="失败项不足 3 个，无法执行受控来源抽检")
+    try:
+        return service.mvp_health_probe(symbols=symbols)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @app.post("/api/datahub/audit")
 def datahub_audit() -> Dict[str, Any]:
     return datahub_update_all({'mode': 'audit'})

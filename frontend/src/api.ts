@@ -331,8 +331,8 @@ export function getDataHubOverview(): Promise<DataHubOverview> { return httpJson
 export function updateAllData(mode = 'update-all', start?: string, end?: string): Promise<unknown> {
   return httpJson('/api/datahub/update-all', { method: 'POST', body: JSON.stringify({ mode, start, end }) });
 }
-export function dataHubJobAction(action: "start" | "pause" | "resume" | "stop" | "audit" | "gaps" | "repair" | "publish"): Promise<unknown> {
-  const path = action === "audit" ? "/api/datahub/audit" : action === "gaps" ? "/api/datahub/gaps" : action === "repair" ? "/api/datahub/repair" : action === "publish" ? "/api/datahub/publish" : `/api/datahub/job/${action}`;
+export function dataHubJobAction(action: "start" | "pause" | "resume" | "stop" | "audit" | "gaps" | "repair" | "health_probe" | "publish"): Promise<unknown> {
+  const path = action === "audit" ? "/api/datahub/audit" : action === "gaps" ? "/api/datahub/gaps" : action === "repair" ? "/api/datahub/repair" : action === "health_probe" ? "/api/datahub/health-probe" : action === "publish" ? "/api/datahub/publish" : `/api/datahub/job/${action}`;
   return httpJson<unknown>(path, { method: action === "gaps" ? "GET" : "POST", body: action === "start" || action === "resume" ? JSON.stringify({ dataset: "valuation_daily", resume: true }) : undefined });
 }
 

@@ -143,6 +143,19 @@ def test_journal_creates_pending_entries_without_overwriting_completed(tmp_path)
     assert journal.data["units"]["688999.SH"]["status"] == "PENDING"
 
 
+def test_valuation_health_probe_selects_only_three_failed_symbols(tmp_path):
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.service import DataHubService
+    from quantradar.datahub.store import UpdateJournal
+
+    service = DataHubService(DataHubConfig(journal_root=str(tmp_path)))
+    journal = UpdateJournal(tmp_path / "valuation_daily-mvp.json")
+    for symbol in ("000003.SZ", "000001.SZ", "000002.SZ", "600000.SH"):
+        journal.fail(symbol, "parse")
+
+    assert service.valuation_health_probe_symbols() == ["000001.SZ", "000002.SZ", "000003.SZ"]
+
+
 def test_shard_runner_defers_the_remaining_shards_when_governor_circuit_opens(tmp_path):
     from quantradar.datahub.governor import CircuitOpen
     from quantradar.datahub.mvp import ShardRunner
