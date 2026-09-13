@@ -1,0 +1,34 @@
+# G1 A 股受控样本
+
+本文件记录候选数据集的小样本验证，不代表已发布的全历史数据，也不使任何
+Alpha101 或回测路径获得严格 PIT 资格。
+
+## BaoStock 日线与状态
+
+2026-09-13 使用一个 BaoStock 登录会话，按已存 CSI500 快照在 2024-01-02
+选取深市主板 `000009.SZ`、创业板 `300001.SZ`、沪市主板 `600004.SH`。每只
+请求并严格验证 2024-01-02 至 2024-01-10 的 7 个交易日。
+
+| 证券 | 行数 | 原始响应 SHA-256 |
+| --- | ---: | --- |
+| `000009.SZ` | 7 | `bc162a11bfc215db5c6c2fafb9a10b4e5a9080ceb22237d4586a7451597901be` |
+| `300001.SZ` | 7 | `199dea48c884998143be2fbc8f0bcc2c2fead52b9f4fb592cd75b53084616c42` |
+| `600004.SH` | 7 | `38d758bff049d4e2cf55612dd45339b7af75e0cc99e873c1b44ad88489ad7811` |
+
+每份响应都使用 `a-stock-data@2012ce7cd0e75d379c5e6cbd3115514f300f3bc8`
+适配器版本保存为 `SDK_RESPONSE_SNAPSHOT`，并验证完整 OHLC、成交量、成交额、
+`tradestatus` 与 `isST`。标准化候选明确使用
+`baostock-shares-yuan` 单位契约和原始价格；成交量未因任何价格调整而改变。
+staging 目录：`/data/quantradar_data/staging/alpha-etf/g1-stock-daily-sample/`。
+
+## 巨潮实施公告
+
+对 `600519` 做了一次 Cninfo 历史分红接口烟测。HTTP 200 原始响应的 SHA-256 为
+`3afdfe3924e2c058e1eb4a6e3fa7d533303d3a82a5b30e76a685ff6e46d2e5ec`，解析出 31 条
+实施公告候选。响应和 journal 位于
+`/data/quantradar_data/staging/alpha-etf/g1-stock-events/`。
+
+解析器保留实施公告日、登记日、除权日、派息日、股份到账日、每十股现金/送股/
+转增和方案文本；缺失送股或转增比例不会补为零，因此对应的 `share_multiplier`
+保持未知。报告期如“2025年报”按文本保存，不误作发布日期。候选的历史可得时间
+仍未取得证据，故均为 `PARTIAL` PIT 且不可直接进入账户账务。
