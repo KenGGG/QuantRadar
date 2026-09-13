@@ -1,0 +1,39 @@
+{
+  "alpha_id": 1,
+  "attrs": {
+    "adv_basis": "amount",
+    "alpha_family": "WORLDQUANT_101",
+    "alpha_id": 1,
+    "amount_mode": "RAW_AMOUNT",
+    "corporate_action_mode": "NONE",
+    "delay_adaptation": "next_session",
+    "formula_hash": "cd92e26ec13458e6a764c536ab37749046cca4b71412a0980593b2f7709802f2",
+    "lookback_days": 25,
+    "price_mode": "RAW",
+    "qualification": "NOT_ASSESSED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "volume_mode": "RAW_VOLUME",
+    "vwap_method": "amount / volume"
+  },
+  "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+  "end": "2023-03-31",
+  "finite_cells": 105,
+  "input_rows": 59,
+  "provider_usage": {
+    "base_final_price_calls": 1,
+    "base_final_price_symbols": 3,
+    "supplemental_industry_calls": 0,
+    "supplemental_price_rows": 0,
+    "supplemental_trade_status_rows": 0,
+    "supplemental_valuation_calls": 0,
+    "trade_status_calls": 0
+  },
+  "release_id": "Rf5c0c823fd8084cf",
+  "start": "2023-01-03",
+  "symbols": [
+    "000001.XSHE",
+    "600519.XSHG",
+    "300001.XSHE"
+  ]
+}
