@@ -8,6 +8,7 @@ from datetime import date
 from pathlib import Path
 
 from .dolt import SupplementalStore
+from .market_cap import validate_market_cap_candidate
 from .quality import POLICY, valuation_contracts
 
 PUBLICATION_POLICY = 'canonical-valuation-base-lifecycle-units-v3'
@@ -123,6 +124,82 @@ def price_patch_delta(rows: list[dict], existing: dict[tuple[str, str], dict]) -
         elif any(prior.get(field) != row.get(field) for field in comparable):
             conflicts.append(key)
     return {"new_rows": new, "conflicts": sorted(conflicts)}
+
+
+def market_cap_patch_delta(rows: list[dict], existing: dict[tuple[str, str], dict]) -> dict:
+    """Market-cap history is append-only within a supplemental lineage."""
+    new, conflicts = [], []
+    comparable = ('total_market_cap_cny', 'raw_sha256', 'qualification')
+    for row in rows:
+        key = (str(row['trade_date'])[:10], str(row['symbol']))
+        prior = existing.get(key)
+        if prior is None:
+            new.append(row)
+        elif any(prior.get(field) != row.get(field) for field in comparable):
+            conflicts.append(key)
+    return {'new_rows': new, 'conflicts': sorted(conflicts)}
+
+
+def _market_cap_stage_rows(stage_path: Path):
+    """Re-read a JSONL candidate; each record must pass the publication gate."""
+    with stage_path.open(encoding='utf-8') as handle:
+        for line_number, line in enumerate(handle, 1):
+            row = json.loads(line)
+            check = validate_market_cap_candidate([row])
+            if check['status'] != 'PASS':
+                raise ValueError(f'market-cap candidate row {line_number} failed: {check["errors"]}')
+            yield row
+
+
+def publish_market_cap_stage(service, stage_path: Path) -> dict:
+    """Publish hash-verified staged total market cap on an isolated Dolt branch."""
+    stage_path = Path(stage_path)
+    digest = hashlib.sha256()
+    rows = 0
+    first = latest = None
+    for row in _market_cap_stage_rows(stage_path):
+        digest.update((json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n').encode())
+        rows += 1
+        day = str(row['trade_date'])[:10]
+        first = day if first is None or day < first else first
+        latest = day if latest is None or day > latest else latest
+    if not rows:
+        raise ValueError('market-cap candidate is empty')
+    old = service.releases.current()
+    identity = digest.hexdigest()[:16]
+    conn = service._connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute('SELECT * FROM dolt_status')
+            if cursor.fetchall():
+                raise ValueError('supplemental repository has uncommitted changes')
+            branch = 'candidate_market_cap_' + identity
+            cursor.execute('SELECT name FROM dolt_branches WHERE name=%s', (branch,))
+            if cursor.fetchone():
+                cursor.execute('CALL DOLT_CHECKOUT(%s)', (branch,))
+            else:
+                cursor.execute('CALL DOLT_CHECKOUT(\'-b\', %s, %s)', (branch, old['supplemental_commit']))
+        writer = SupplementalStore(conn)
+        writer.ensure_schema()
+        writer.upsert_market_caps(_market_cap_stage_rows(stage_path))
+        commit = writer.commit('datahub: checked total market cap candidate ' + identity)
+    finally:
+        conn.close()
+    with service._connection(service.config.supplemental_database + '/' + commit) as frozen, frozen.cursor() as cur:
+        cur.execute('SELECT COUNT(*) AS row_count, COUNT(DISTINCT symbol) AS stocks, MIN(trade_date) AS first_date, MAX(trade_date) AS latest_date FROM qr_market_cap_daily')
+        metrics = {k: str(v) if hasattr(v, 'isoformat') else v for k, v in cur.fetchone().items()}
+        cur.execute('SELECT COUNT(*) AS invalid FROM qr_market_cap_daily WHERE total_market_cap_cny < 0 OR source <> %s OR qualification <> %s', ('eastmoney:RPT_VALUEANALYSIS_DET', 'CANDIDATE_NOT_PUBLISHED'))
+        if cur.fetchone()['invalid']:
+            raise ValueError('fixed-commit market-cap verification failed')
+    datasets = {**old['datasets'], 'market_cap_daily': {**metrics, 'source': ['eastmoney:RPT_VALUEANALYSIS_DET'],
+        'pit_status': 'PARTIAL', 'quality_status': 'PARTIAL', 'qualification': 'CANDIDATE_NOT_PUBLISHED',
+        'field': 'total_market_cap_cny', 'forbidden_substitute': 'float_market_cap', 'refresh_status': 'PUBLISHED'}}
+    manifest = service.releases.publish(base_commit=old['base_commit'], supplemental_commit=commit, datasets=datasets,
+        source_adapters={**old['source_adapters'], 'market_cap_daily': 'eastmoney-archive-v1'},
+        metadata={**old.get('metadata', {}), 'market_cap_candidate': {'rows': rows, 'stage_sha256': digest.hexdigest(),
+            'selection': 'archived_total_market_cap_only', 'qualification': 'CANDIDATE_NOT_PUBLISHED'}})
+    return {'status': 'PARTIAL', 'release_id': manifest['release_id'], 'supplemental_commit': commit,
+            'rows': rows, 'validation': {'status': 'PASS', 'stage_sha256': digest.hexdigest(), 'first_date': first, 'latest_date': latest}}
 
 
 def publish_trade_status_patch(service, rows: list[dict]) -> dict:

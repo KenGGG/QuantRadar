@@ -155,6 +155,20 @@ class SupplementalReader:
             grouped.setdefault(row["symbol"], []).append(row)
         return grouped
 
+    def market_cap(self, symbol: str, start_date: str, end_date: str) -> dict[str, Any]:
+        """Read total market cap solely from the release-pinned candidate table."""
+        rows = self._query(
+            "SELECT trade_date, total_market_cap_cny, pit_status FROM qr_market_cap_daily "
+            "WHERE symbol = %s AND trade_date >= %s AND trade_date <= %s ORDER BY trade_date",
+            (symbol, start_date, end_date),
+        )
+        if not rows:
+            raise ValueError(f"no published total market cap for {symbol} between {start_date} and {end_date}")
+        return {
+            'rows': rows,
+            'pit_status': 'PARTIAL' if any(row.get('pit_status') != 'PASS' for row in rows) else 'PASS',
+        }
+
     def _query(self, sql: str, args: tuple[Any, ...]) -> list[dict[str, Any]]:
         connection = self._connect()
         try:

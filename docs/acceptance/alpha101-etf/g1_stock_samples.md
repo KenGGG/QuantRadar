@@ -127,3 +127,17 @@ commit 回放。
 转增和方案文本；缺失送股或转增比例不会补为零，因此对应的 `share_multiplier`
 保持未知。报告期如“2025年报”按文本保存，不误作发布日期。候选的历史可得时间
 仍未取得证据，故均为 `PARTIAL` PIT 且不可直接进入账户账务。
+
+## Alpha #56 历史总市值候选发布
+
+从 G0 固定原始目录的 997 份 Eastmoney
+`RPT_VALUEANALYSIS_DET` 快照重新解析并逐份 SHA-256 校验，产生 1,933,230 条
+`total_market_cap_cny` 记录，覆盖 997 只证券、2018-01-02 至 2026-09-11。候选
+staging SHA-256 为 `20b76bd934f94d479fb949e105e1664250c05b068c7d87fce2f39fa0a6693076`；
+流通市值字段被显式禁止作为替代。
+
+这些记录已发布为 current release `Rb799aeb65657bf8d`，补充 Dolt commit
+`2sg7kcf38n2svnet409ove3qpl91rc8c`。固定 commit 验证显示行数 1,933,230、证券数
+997、负市值 0；`000006.SZ` / 2018-01-02 的总市值为 13,297,451,203.1 元。该数据集
+具有 `CANDIDATE_NOT_PUBLISHED` 资格与 `PARTIAL` PIT 状态：它可作为 Alpha #56 的
+总市值候选输入，不能证明历史时点可得性，也不能用于严格 PIT 评价。

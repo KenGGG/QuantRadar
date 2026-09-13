@@ -54,6 +54,16 @@ _SCHEMA = (
       PRIMARY KEY (trade_date, symbol)
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS qr_market_cap_daily (
+      trade_date DATE NOT NULL, symbol VARCHAR(16) NOT NULL,
+      total_market_cap_cny DOUBLE NOT NULL,
+      source VARCHAR(64) NOT NULL, raw_sha256 CHAR(64) NOT NULL, adapter_version VARCHAR(128) NOT NULL,
+      fetched_at VARCHAR(40) NOT NULL, available_date DATE NULL, pit_status VARCHAR(16) NOT NULL,
+      qualification VARCHAR(64) NOT NULL,
+      PRIMARY KEY (trade_date, symbol)
+    )
+    """,
 )
 
 
@@ -128,6 +138,13 @@ class SupplementalStore:
             rows,
         )
 
+    def upsert_market_caps(self, rows: Iterable[dict[str, Any]]) -> None:
+        self._upsert(
+            "qr_market_cap_daily",
+            ("trade_date", "symbol", "total_market_cap_cny", *self._PROVENANCE, "qualification"),
+            rows,
+        )
+
     _PROVENANCE = ("source", "raw_sha256", "adapter_version", "fetched_at", "available_date", "pit_status")
 
     def _upsert(self, table: str, fields: tuple[str, ...], rows: Iterable[dict[str, Any]]) -> None:
@@ -180,6 +197,7 @@ class SupplementalStore:
             "qr_security_lifecycle": {"symbol"},
             "qr_trade_status_daily": {"trade_date", "symbol"},
             "qr_a_stock_eod_price": {"trade_date", "symbol"},
+            "qr_market_cap_daily": {"trade_date", "symbol"},
         }[table]
 
     def commit(self, message: str) -> str:
