@@ -96,3 +96,11 @@ def test_fixed_reader_returns_release_pinned_etf_raw_prices():
                        'open': 3.4, 'high': 3.5, 'low': 3.3, 'close': 3.45,
                        'volume_shares': 10000.0, 'amount_cny': 34500.0, 'pit_status': 'PARTIAL'}]
     }
+
+
+def test_fund_announcement_parser_keeps_publish_date_and_report_id():
+    payload = '{"Data":[{"FUNDCODE":"510300","TITLE":"ETF分红公告","PUBLISHDATE":"2024-01-11T00:00:00","ID":"AN1"}]}'.encode()
+    assert fa.parse_fund_announcements(payload, fund_code='510300') == [{
+        'fund_code': '510300', 'title': 'ETF\u5206\u7ea2\u516c\u544a', 'publish_date': '2024-01-11',
+        'report_id': 'AN1', 'qualification': 'ANNOUNCEMENT_DIRECTORY_ONLY', 'available_at': '2024-01-11',
+    }]

@@ -155,6 +155,32 @@ def validate_etf_daily_candidate(rows: list[dict]) -> dict:
     return {'status':'PASS' if rows and not errors else 'FAIL','rows':len(rows),'errors':sorted(set(errors))}
 
 
+def parse_fund_announcements(content: bytes, *, fund_code: str) -> list[dict]:
+    """Parse an announcement directory; it is evidence, not cash-event terms."""
+    if not re.fullmatch(r'\d{6}', fund_code):
+        raise ValueError('explicit fund code required')
+    try:
+        payload=json.loads(content)
+    except (UnicodeDecodeError,json.JSONDecodeError) as exc:
+        raise ValueError('invalid fund announcement JSON') from exc
+    data=payload.get('Data')
+    if not isinstance(data,list):
+        raise ValueError('fund announcement data array required')
+    rows=[];seen=set()
+    for item in data:
+        if not isinstance(item,dict) or str(item.get('FUNDCODE') or '') != fund_code:
+            raise ValueError('fund announcement identity mismatch')
+        title=str(item.get('TITLE') or '').strip(); report_id=str(item.get('ID') or '').strip(); published=_day(item.get('PUBLISHDATE'))
+        if not title or not report_id or published is None:
+            raise ValueError('incomplete fund announcement record')
+        if report_id in seen:
+            raise ValueError('duplicate fund announcement report id')
+        seen.add(report_id)
+        rows.append({'fund_code':fund_code,'title':title,'publish_date':published,'report_id':report_id,
+                     'qualification':'ANNOUNCEMENT_DIRECTORY_ONLY','available_at':published})
+    return rows
+
+
 class EastmoneyFundAdapter:
     """One request per call; the caller qualifies scope before iterating symbols/pages."""
     def __init__(self, transport: GovernedHttpSource):self.transport=transport
