@@ -106,6 +106,21 @@ def test_fund_announcement_parser_keeps_publish_date_and_report_id():
     }]
 
 
+def test_etf_overview_parser_keeps_fund_establishment_distinct_from_listing():
+    content = '''<table><tr><td>基金全称</td><td>华泰柏瑞沪深300交易型开放式指数证券投资基金</td>
+    <td>基金简称</td><td>沪深300ETF</td></tr><tr><td>基金代码</td><td>510300</td>
+    <td>成立日期</td><td>2012-05-04</td></tr><tr><td>跟踪标的</td><td>沪深300指数</td>
+    <td>基金类型</td><td>股票型</td></tr></table>'''.encode()
+    assert fa.parse_etf_overview(content, fund_code='510300') == {
+        'fund_code': '510300', 'fund_name': '沪深300ETF',
+        'fund_full_name': '华泰柏瑞沪深300交易型开放式指数证券投资基金',
+        'fund_established_date': '2012-05-04', 'tracking_index': '沪深300指数',
+        'fund_type': '股票型', 'listing_date': None, 'termination_date': None,
+        'listing_date_status': 'UNVERIFIED_NOT_INFERRED_FROM_FUND_ESTABLISHMENT',
+        'qualification': 'FUND_PROFILE_ONLY',
+    }
+
+
 def test_fixed_reader_returns_etf_announcement_evidence():
     from quantradar.datahub.reader import SupplementalReader
     reader = SupplementalReader(lambda: None)

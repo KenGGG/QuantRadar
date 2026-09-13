@@ -1,10 +1,12 @@
 """Scoped ETF source parsers; parsed records remain candidates until qualified."""
 from __future__ import annotations
 import ast
+import html
 import json
 import math
 import re
 from datetime import date
+from html.parser import HTMLParser
 from typing import Any
 
 from .research_collection import GovernedHttpSource
@@ -181,6 +183,57 @@ def parse_fund_announcements(content: bytes, *, fund_code: str) -> list[dict]:
     return rows
 
 
+class _TableCells(HTMLParser):
+    """Extract table cell text without interpreting source markup or scripts."""
+    def __init__(self):
+        super().__init__(); self.cells=[]; self._active=False; self._parts=[]
+    def handle_starttag(self, tag, attrs):
+        if tag in {'td', 'th'}: self._active=True; self._parts=[]
+    def handle_data(self, data):
+        if self._active: self._parts.append(data)
+    def handle_endtag(self, tag):
+        if tag in {'td', 'th'} and self._active:
+            self.cells.append(''.join(self._parts).strip()); self._active=False; self._parts=[]
+
+
+def parse_etf_overview(content: bytes, *, fund_code: str) -> dict:
+    """Parse only fund-profile facts; fund establishment never proves listing.
+
+    The public profile page has no sufficient exchange listing/termination
+    evidence.  Those fields are intentionally emitted as unknown rather than
+    inferred from the fund date or the first observed quote.
+    """
+    if not re.fullmatch(r'\d{6}', fund_code): raise ValueError('explicit fund code required')
+    if len(content) > 4_000_000: raise ValueError('fund profile response size exceeded')
+    try: text=content.decode('utf-8-sig')
+    except UnicodeDecodeError as exc: raise ValueError('invalid fund profile HTML') from exc
+    # The source omits some optional ``</td>`` tags.  Extract a cell up to the
+    # next header/data cell instead of trusting it to be well-formed XML.
+    table_match=re.search(r"<table\b[^>]*class=[\"'][^\"']*\binfo\b[^\"']*[\"'][^>]*>(.*?)</table>", text, re.I|re.S)
+    if not table_match:
+        table_match=re.search(r'<table\b[^>]*>(.*?)</table>', text, re.I|re.S)
+    if not table_match: raise ValueError('fund profile information table missing')
+    def clean(fragment):
+        return re.sub(r'\\s+', ' ', html.unescape(re.sub(r'<[^>]+>', '', fragment))).strip()
+    cells=[clean(cell) for cell in re.findall(r'<(?:th|td)\b[^>]*>(.*?)(?=<(?:th|td)\b|</tr>)', table_match.group(1), re.I|re.S)]
+    fields={}
+    for label, value in zip(cells[::2], cells[1::2]):
+        if label and value: fields[label.replace(' ', '')]=value.strip()
+    observed_code=re.search(r'\d{6}', str(fields.get('基金代码') or ''))
+    if not observed_code or observed_code.group() != fund_code: raise ValueError('fund profile identity mismatch')
+    def value(label): return fields.get(label)
+    established=value('成立日期') or value('成立日期/规模')
+    if established:
+        established_match=re.search(r'\d{4}(?:-|年)\d{2}(?:-|月)\d{2}', established)
+        established=_day(established_match.group().replace('年','-').replace('月','-') if established_match else established)
+    return {'fund_code': fund_code, 'fund_name': value('基金简称'),
+            'fund_full_name': value('基金全称'), 'fund_established_date': established,
+            'tracking_index': value('跟踪标的'), 'fund_type': value('基金类型'),
+            'listing_date': None, 'termination_date': None,
+            'listing_date_status': 'UNVERIFIED_NOT_INFERRED_FROM_FUND_ESTABLISHMENT',
+            'qualification': 'FUND_PROFILE_ONLY'}
+
+
 class EastmoneyFundAdapter:
     """One request per call; the caller qualifies scope before iterating symbols/pages."""
     def __init__(self, transport: GovernedHttpSource):self.transport=transport
@@ -201,3 +254,9 @@ class EastmoneyFundAdapter:
                 'rank':'BZDM' if kind=='dividend' else 'FSRQ','sort':'asc','gs':'','ftype':'','year':str(year)}
         receipt=self.transport.fetch('https://fund.eastmoney.com/Data/funddataIndex_Interface.aspx',params,contract='fund-event-literal-pages-v1')
         return receipt,parse_fund_event_page(receipt['content'],kind=kind,year=year,page=page)
+
+    def overview(self, fund_code: str):
+        if not re.fullmatch(r'\d{6}', fund_code): raise ValueError('explicit fund code required')
+        receipt=self.transport.fetch(f'https://fundf10.eastmoney.com/jbgk_{fund_code}.html', {},
+                                     contract='eastmoney-fund-profile-html-v1')
+        return receipt, parse_etf_overview(receipt['content'], fund_code=fund_code)

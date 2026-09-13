@@ -21,6 +21,7 @@ ALLOWED_ENDPOINTS = {
     'eastmoney-etf': {'https://push2his.eastmoney.com/api/qt/stock/kline/get'},
     'eastmoney-fund-events': {'https://fund.eastmoney.com/Data/funddataIndex_Interface.aspx'},
     'eastmoney-fund-announcements': {'https://api.fund.eastmoney.com/f10/JJGG'},
+    'eastmoney-fund-profile': {'https://fundf10.eastmoney.com/'},
     'eastmoney-fund-nav': {'https://api.fund.eastmoney.com/f10/lsjz'},
     'cninfo-dividend': {'https://webapi.cninfo.com.cn/api/sysapi/p_sysapi1139'},
     'sina-etf': {'https://finance.sina.com.cn/realstock/company/'},
@@ -45,6 +46,9 @@ class GovernedHttpSource:
         if self.endpoint=='sina-etf':
             import re
             allowed=bool(re.fullmatch(r'https://finance\.sina\.com\.cn/realstock/company/(sh|sz)\d{6}/hisdata/klc_kl\.js',url))
+        if self.endpoint=='eastmoney-fund-profile':
+            import re
+            allowed=bool(re.fullmatch(r'https://fundf10\.eastmoney\.com/jbgk_\d{6}\.html',url))
         if not allowed or method not in {'GET','POST'} or not contract:
             raise ValueError('unapproved endpoint/method/contract')
         identity={'endpoint':self.endpoint,'url':url,'method':method,'params':params,'contract':contract}

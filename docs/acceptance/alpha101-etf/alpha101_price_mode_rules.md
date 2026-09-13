@@ -20,6 +20,14 @@ separate future data product.  Readiness is workflow-specific:
 `raw_price_ready`, `adjusted_price_ready`, `corporate_action_ready`, and
 `account_replay_ready` are independent.
 
+Every Alpha101 result records `alpha_family=WORLDQUANT_101`, `price_mode`,
+`volume_mode=RAW_VOLUME`, `amount_mode=RAW_AMOUNT`, `vwap_method=amount /
+volume`, and `corporate_action_mode`.  The first formal mode is `RAW` with
+`corporate_action_mode=NONE`; it does not claim a total-return or adjusted
+price result.  `FINAL_ADJ` and `BAO_ADJ` remain separate, explicitly named
+research modes.  A custom total-return series requires independently audited
+cash and share events and is not supplied by this resolver.
+
 Fixed-release probe: `000039.SZ`, 2020-08-19 through 2020-08-25, has no
 `final_a_stock_eod_price` rows but has five Bao raw rows.  `fq='none'` resolves
 those five rows from the base Bao table.  The corresponding `FINAL_ADJ` path
