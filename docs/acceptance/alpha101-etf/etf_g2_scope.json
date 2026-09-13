@@ -1,0 +1,20 @@
+{
+  "selection_rule": "G0 fixed domestic-equity ETF engineering pool; selected before observing returns.",
+  "symbols": [
+    "510050.SH",
+    "510300.SH",
+    "510500.SH",
+    "159919.SZ",
+    "159915.SZ",
+    "159901.SZ",
+    "159902.SZ",
+    "159903.SZ",
+    "510180.SH",
+    "510880.SH"
+  ],
+  "identity_status": "PENDING_PRIMARY_EVIDENCE",
+  "base_price_coverage": "NONE",
+  "daily_candidate": "eastmoney ETF raw kline, fqt=0",
+  "event_candidate": "Eastmoney fund dividend/split announcement pages",
+  "prohibited_selection": "return-based filtering, ETF current-list backfill, and pre-listing tradability"
+}

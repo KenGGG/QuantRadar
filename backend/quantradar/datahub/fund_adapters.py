@@ -99,6 +99,33 @@ def parse_etf_daily(payload: dict, *, symbol: str, start: str, end: str) -> list
     return rows
 
 
+def qualify_etf_daily_units(rows: list[dict]) -> list[dict]:
+    """Accept hand/yuan only when the source's price-volume identity proves it.
+
+    The Eastmoney daily response does not carry a machine-readable unit label.
+    For an ETF, ``amount / (close * volume)`` must be approximately 100 for
+    hand volume and yuan amount.  Zero-volume observations are not evidence.
+    """
+    evidence=[]
+    for row in rows:
+        volume, amount, close = row.get('volume_source'), row.get('amount_source'), row.get('close')
+        if volume is None or amount is None or close is None:
+            raise ValueError('ETF unit qualification requires price, volume and amount')
+        if volume > 0 and amount > 0 and close > 0:
+            evidence.append(float(amount)/(float(close)*float(volume)))
+    if not evidence or any(not 95.0 <= value <= 105.0 for value in evidence):
+        raise ValueError('ETF source units are not consistently hand/yuan')
+    result=[]
+    for row in rows:
+        item=dict(row)
+        item.update(volume_shares=float(row['volume_source'])*100.0,
+                    amount_cny=float(row['amount_source']),
+                    volume_units='HAND',
+                    unit_status='HAND_AND_CNY_QUALIFIED')
+        result.append(item)
+    return result
+
+
 class EastmoneyFundAdapter:
     """One request per call; the caller qualifies scope before iterating symbols/pages."""
     def __init__(self, transport: GovernedHttpSource):self.transport=transport

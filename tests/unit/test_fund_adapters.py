@@ -38,3 +38,15 @@ def test_no_data_is_not_no_trading_and_duplicates_are_rejected():
     line='2020-01-02,4,4.1,4.2,3.9,100,41000,0,0,0,0'
     with pytest.raises(ValueError,match='duplicate'):
         fa.parse_etf_daily({'rc':0,'data':{'code':'510300','market':1,'klines':[line,line]}},symbol='510300.SH',start='2020-01-01',end='2020-01-03')
+
+
+def test_etf_daily_unit_qualification_normalizes_hands_and_yuan():
+    rows = [{
+        'symbol': '510300.SH', 'trade_date': '2024-01-02', 'close': 3.45,
+        'volume_source': 100.0, 'amount_source': 34500.0,
+        'unit_status': 'UNIT_UNVERIFIED',
+    }]
+    qualified = fa.qualify_etf_daily_units(rows)
+    assert qualified[0]['volume_shares'] == 10000.0
+    assert qualified[0]['amount_cny'] == 34500.0
+    assert qualified[0]['unit_status'] == 'HAND_AND_CNY_QUALIFIED'
