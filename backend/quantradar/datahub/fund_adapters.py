@@ -41,7 +41,9 @@ def parse_fund_event_page(content: bytes, *, kind: str, year: int, page: int) ->
         raise ValueError('explicit kind/year/page required')
     if len(content)>16_000_000:raise ValueError('event response size exceeded')
     text=content.decode('utf-8-sig');prefix='jjfh' if kind=='dividend' else 'jjcf'
-    metadata=_literal_assignment(text,prefix+'_jjjs')
+    # Eastmoney's historical response used ``jjfh_jjjs``/``jjcf_jjjs``;
+    # current responses expose the same page-count tuple as ``pageinfo``.
+    metadata=_literal_assignment(text,'pageinfo') if re.search(r'(?:^|;)\s*var\s+pageinfo\s*=',text) else _literal_assignment(text,prefix+'_jjjs')
     if not metadata or isinstance(metadata[0],bool) or not isinstance(metadata[0],int) or not 0<=metadata[0]<=10000:
         raise ValueError('invalid pagination metadata')
     pages=metadata[0]

@@ -14,6 +14,13 @@ def test_fund_pages_are_parsed_as_literals_without_execution(tmp_path):
     with pytest.raises(ValueError):fa.parse_fund_event_page(malicious,kind='dividend',year=2020,page=1)
 
 
+def test_fund_event_parser_accepts_current_pageinfo_metadata():
+    payload=b'var pageinfo = [1,100,1]; var jjfh_data=[["510300","ETF","2020-01-02","2020-01-03","0.12","2020-01-06","1"]];'
+    page=fa.parse_fund_event_page(payload,kind='dividend',year=2020,page=1)
+    assert page['page_count'] == 1
+    assert page['rows'][0]['fund_code'] == '510300'
+
+
 def test_event_empty_and_missing_metadata_are_distinct():
     empty=b'var jjcf_jjjs=[0,0,0];var jjcf_data=[];var jjcf_jjgs=0;'
     assert fa.parse_fund_event_page(empty,kind='split',year=2020,page=1)['rows']==[]
