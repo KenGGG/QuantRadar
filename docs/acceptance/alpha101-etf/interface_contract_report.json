@@ -1,0 +1,347 @@
+{
+  "generated_at": "2026-09-13T12:04:22.922796+00:00",
+  "python_version": "3.12.3",
+  "status": "OFFLINE_INSPECTION_ONLY",
+  "network_test": "NOT_NETWORK_TESTED",
+  "coverage_test": "NOT_TESTED",
+  "pit_test": "NOT_TESTED",
+  "database_changes": false,
+  "modules": [
+    {
+      "module": "baostock",
+      "network_test": "NOT_NETWORK_TESTED",
+      "functions": {
+        "query_history_k_data_plus": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "code": "sh.600519",
+            "fields": "date,code,open,high,low,close,volume,amount,tradestatus,isST",
+            "start_date": "2020-01-01",
+            "end_date": "2026-08-31",
+            "frequency": "d",
+            "adjustflag": "3"
+          },
+          "signature": "(code, fields, start_date=None, end_date=None, frequency='d', adjustflag='3')",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/baostock/security/history.py",
+          "source_file_sha256": "fe653aa09c0f07e9f9479407c8f2f5455b4ec60c3a9571c652cd9343f7d0094f"
+        },
+        "query_stock_basic": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "code": "sh.600519"
+          },
+          "signature": "(code='', code_name='')",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/baostock/metadata/stock_metadata.py",
+          "source_file_sha256": "f24ff4fd6586d1063ac5feeb0ebf8210705a0f139eb15dba1d871e8dd585a5da"
+        },
+        "query_all_stock": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "day": "2020-01-02"
+          },
+          "signature": "(day=None)",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/baostock/metadata/stock_metadata.py",
+          "source_file_sha256": "f24ff4fd6586d1063ac5feeb0ebf8210705a0f139eb15dba1d871e8dd585a5da"
+        },
+        "query_trade_dates": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "start_date": "2020-01-01",
+            "end_date": "2026-08-31"
+          },
+          "signature": "(start_date=None, end_date=None)",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/baostock/metadata/stock_metadata.py",
+          "source_file_sha256": "f24ff4fd6586d1063ac5feeb0ebf8210705a0f139eb15dba1d871e8dd585a5da"
+        },
+        "query_adjust_factor": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "code": "sh.600519",
+            "start_date": "2020-01-01",
+            "end_date": "2026-08-31"
+          },
+          "signature": "(code, start_date=None, end_date=None)",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/baostock/evaluation/season_index.py",
+          "source_file_sha256": "4a0c2fdc62f0161f47b52b9ff35690a5541db948ed0a2fcb719befa6f8f0bac7"
+        },
+        "query_dividend_data": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "code": "sh.600519",
+            "year": "2020",
+            "yearType": "operate"
+          },
+          "signature": "(code, year=None, yearType='report')",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/baostock/evaluation/season_index.py",
+          "source_file_sha256": "4a0c2fdc62f0161f47b52b9ff35690a5541db948ed0a2fcb719befa6f8f0bac7"
+        },
+        "query_hs300_stocks": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "date": "2020-01-02"
+          },
+          "signature": "(date='')",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/baostock/security/sectorinfo.py",
+          "source_file_sha256": "b20fdbde427fd14278013c91edd97f20d4fdf21e37a0419f2b19f227c0f5da8e"
+        },
+        "query_zz500_stocks": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "date": "2020-01-02"
+          },
+          "signature": "(date='')",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/baostock/security/sectorinfo.py",
+          "source_file_sha256": "b20fdbde427fd14278013c91edd97f20d4fdf21e37a0419f2b19f227c0f5da8e"
+        }
+      },
+      "installed_version": "0.9.3",
+      "status": "INSPECTED_NOT_NETWORK_TESTED",
+      "suppressed_import_log_chars": 0
+    },
+    {
+      "module": "akshare",
+      "network_test": "NOT_NETWORK_TESTED",
+      "functions": {
+        "stock_zh_a_hist_tx": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "symbol": "sz000001",
+            "start_date": "20200101",
+            "end_date": "20260831",
+            "adjust": "",
+            "timeout": 30
+          },
+          "signature": "(symbol: str = 'sz000001', start_date: str = '19000101', end_date: str = '20500101', adjust: str = '', timeout: float = None) -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/stock_feature/stock_hist_tx.py",
+          "source_file_sha256": "aa9199665d356ba3a054297004e349d3926fa83026abfd2d50c4b7f832226d84"
+        },
+        "stock_value_em": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "symbol": "600519"
+          },
+          "signature": "(symbol: str = '300766') -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/stock_feature/stock_value_em.py",
+          "source_file_sha256": "440f38d9d91e0a1484a12df237d7e21b14b7783cd88de51dae95db9ed7b2cd96"
+        },
+        "stock_zh_valuation_baidu": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "symbol": "600519",
+            "indicator": "总市值",
+            "period": "全部"
+          },
+          "signature": "(symbol: str = '002044', indicator: str = '总市值', period: str = '近一年') -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/stock_feature/stock_zh_valuation_baidu.py",
+          "source_file_sha256": "a316081cfebca45bc0632aa30af669ddaf6da5ccd31625a14b1674c387b2a3b2"
+        },
+        "stock_dividend_cninfo": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "symbol": "600519"
+          },
+          "signature": "(symbol: str = '600009') -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/stock/stock_dividend_cninfo.py",
+          "source_file_sha256": "a3d548dd1296cb5c565ae9ad1a2f60a49209bcf49f3153193425cce6ad8b2914"
+        },
+        "stock_industry_clf_hist_sw": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {},
+          "signature": "() -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/stock/stock_industry_sw.py",
+          "source_file_sha256": "0b41630e0f7be84034124b114b7b0285b98939998e3c43b3282ac756cd98a938"
+        },
+        "sw_index_first_info": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {},
+          "signature": "() -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/index/index_sw.py",
+          "source_file_sha256": "ee6c5c51177da78deaad81bccfef950a0cf2458fc21d277e2c4ea80ad3e37eed"
+        },
+        "sw_index_second_info": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {},
+          "signature": "() -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/index/index_sw.py",
+          "source_file_sha256": "ee6c5c51177da78deaad81bccfef950a0cf2458fc21d277e2c4ea80ad3e37eed"
+        },
+        "sw_index_third_info": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {},
+          "signature": "() -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/index/index_sw.py",
+          "source_file_sha256": "ee6c5c51177da78deaad81bccfef950a0cf2458fc21d277e2c4ea80ad3e37eed"
+        },
+        "index_stock_cons_csindex": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "symbol": "000300"
+          },
+          "signature": "(symbol: str = '000300') -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/index/index_cons.py",
+          "source_file_sha256": "f884ef86797108d86da89786e3091474b3c064033084a7e8b6996c52c9fd246d"
+        },
+        "index_stock_cons_weight_csindex": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "symbol": "000300"
+          },
+          "signature": "(symbol: str = '000300') -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/index/index_cons.py",
+          "source_file_sha256": "f884ef86797108d86da89786e3091474b3c064033084a7e8b6996c52c9fd246d"
+        },
+        "fund_etf_category_sina": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "symbol": "ETF基金"
+          },
+          "signature": "(symbol: str = 'LOF基金') -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/fund/fund_etf_sina.py",
+          "source_file_sha256": "796a35b1fec179533dffc4a4b9a7b94c5564d8e02aa2e7504fcead1d4735c97b"
+        },
+        "fund_etf_spot_em": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {},
+          "signature": "() -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/fund/fund_etf_em.py",
+          "source_file_sha256": "e27bca79042081fd7e6e3251e431aae5b2e2dcf0930d3a38818a6009d94ea2fd"
+        },
+        "fund_etf_hist_em": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "symbol": "510300",
+            "period": "daily",
+            "start_date": "20200101",
+            "end_date": "20260831",
+            "adjust": ""
+          },
+          "signature": "(symbol: str = '159707', period: str = 'daily', start_date: str = '19700101', end_date: str = '20500101', adjust: str = '') -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/fund/fund_etf_em.py",
+          "source_file_sha256": "e27bca79042081fd7e6e3251e431aae5b2e2dcf0930d3a38818a6009d94ea2fd"
+        },
+        "fund_etf_hist_sina": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "symbol": "sh510300"
+          },
+          "signature": "(symbol: str = 'sh510050') -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/fund/fund_etf_sina.py",
+          "source_file_sha256": "796a35b1fec179533dffc4a4b9a7b94c5564d8e02aa2e7504fcead1d4735c97b"
+        },
+        "fund_fh_em": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "year": "2020",
+            "typ": "",
+            "rank": "BZDM",
+            "sort": "asc",
+            "page": 1
+          },
+          "signature": "(year: str = '2025', typ: str = '', rank: str = 'BZDM', sort: str = 'asc', page: int = -1) -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/fund/fund_fhsp_em.py",
+          "source_file_sha256": "3dc5a0d4d637e99b70fc5316d8ccca4c6600caffa8c19199f2022d1cd510cc4d"
+        },
+        "fund_cf_em": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "year": "2020",
+            "typ": "",
+            "rank": "FSRQ",
+            "sort": "desc",
+            "page": 1
+          },
+          "signature": "(year: str = '2025', typ: str = '', rank: str = 'FSRQ', sort: str = 'desc', page: int = -1) -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/fund/fund_fhsp_em.py",
+          "source_file_sha256": "3dc5a0d4d637e99b70fc5316d8ccca4c6600caffa8c19199f2022d1cd510cc4d"
+        },
+        "fund_announcement_dividend_em": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "symbol": "510300"
+          },
+          "signature": "(symbol: str = '000001') -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/fund/fund_announcement_em.py",
+          "source_file_sha256": "afd0b8f43ba646f0a8e91d2cf5b88598ce9cfd52aa03f79ee04f7953f27eb1d5"
+        },
+        "fund_etf_dividend_sina": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "symbol": "sh510050"
+          },
+          "signature": "(symbol: str = 'sh510050') -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/fund/fund_etf_sina.py",
+          "source_file_sha256": "796a35b1fec179533dffc4a4b9a7b94c5564d8e02aa2e7504fcead1d4735c97b"
+        },
+        "fund_etf_fund_info_em": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "fund": "510300",
+            "start_date": "20200101",
+            "end_date": "20260831"
+          },
+          "signature": "(fund: str = '511280', start_date: str = '20000101', end_date: str = '20500101') -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/fund/fund_em.py",
+          "source_file_sha256": "83ecb3e3677752af75a271636ef85d643ee2945581fa62649e061fded27ffc23"
+        },
+        "stock_info_sz_delist": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "symbol": "终止上市公司"
+          },
+          "signature": "(symbol: str = '终止上市公司') -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/stock/stock_info.py",
+          "source_file_sha256": "d3288903d1e8ce7796e051bfbe651cb15aad0b29d4043277b04984f3cec72892"
+        },
+        "stock_info_sh_delist": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {
+            "symbol": "全部"
+          },
+          "signature": "(symbol: str = '全部') -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/stock/stock_info.py",
+          "source_file_sha256": "d3288903d1e8ce7796e051bfbe651cb15aad0b29d4043277b04984f3cec72892"
+        },
+        "stock_zh_a_st_em": {
+          "network_test": "NOT_NETWORK_TESTED",
+          "example_kwargs": {},
+          "signature": "() -> pandas.core.frame.DataFrame",
+          "status": "SIGNATURE_COMPATIBLE_NOT_NETWORK_TESTED",
+          "source_file": "/data/Projects/a-stock-research/QuantRadar/.venv/lib/python3.12/site-packages/akshare/stock/stock_zh_a_special.py",
+          "source_file_sha256": "136054ef714bc8e0bedcb71788b115428b19e95beeeac220a3e11eeba933cd33"
+        }
+      },
+      "installed_version": "1.18.94",
+      "status": "INSPECTED_NOT_NETWORK_TESTED",
+      "suppressed_import_log_chars": 0
+    }
+  ]
+}

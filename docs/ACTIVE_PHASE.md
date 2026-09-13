@@ -1,32 +1,26 @@
 # QuantRadar Active Phase
 
-**Milestone:** `QUANTRADAR_DATAHUB_V2_TRUSTED_FUSION`
-**Active Goal:** `DATAHUB_V2_HISTORICAL_REUSE_AND_INCREMENTAL_REPAIR`
-**Status:** COMPLETE
+**Milestone:** `DATAHUB_ALPHA101_ETF_REQUIRED_DATA_V2`
+**Active Goal:** `ALPHA_ETF_G0_INVENTORY_AND_CONTRACTS`
+**Status:** IN_PROGRESS
 
 ## Scope
 
-用户于 2026-09-11 提供《QuantRadar DataHub：历史复用、渐进补数与可信融合实施方案 V2》，要求统一在 main 开发。此前 DataHub V1 整改仍是可复用基础；Web 服务读取主工作区。旧 worktree 仅保留备查。
-
-本轮将基础库视为多来源历史资料，先扫描并复用 `final` 与已验证原表，再以获准的 AKShare/BaoStock 路径逐步补足真实缺口，最终发布带选源映射和使用说明的固定本地版本。实施清单见 [V2 P0 计划](superpowers/plans/2026-09-11-datahub-v2-p0-inventory.md)，V1 事实证据见 [既有验收记录](acceptance/datahub-remediation-2026-09-11/README.md)。
-
-仅允许对配置好的可信基础 Dolt remote 做干净 fast-forward 同步；禁止基础表自制写入、硬重置、强制覆盖和绕开来源冻结。
-未解决证券必须保留台账与隔离，不改分母、不虚构覆盖。历史版本保持可回放。基础行情能力不因补充字段缺口被全局锁死。
-PIT_PARTIAL、跨源一致性未验及陈旧元数据必须如实保留。
+用户于 2026-09-13 明确要求执行附件 V1/V2。以 [V2](superpowers/specs/2026-09-13-alpha101-etf-v2.md) 为接口修订依据，保留 [V1](superpowers/specs/2026-09-13-alpha101-etf-v1.md) G0—G4 验收。五份相同粘贴说明是任务背景，示例参数和健康推测均须核验。
+沿用 main、双 Dolt、Provider、Governor、coordinator、journal、candidate 和既有页面。基础只读，不新增 Tushare 在线采集；无第三事实库；回测禁联网和静默 fallback。旧版本可回放。196 FAILED/123 未验证分母保留。
 
 ## Acceptance
 
-- P0：固定 release 的 schema 扫描器、库存产物与低 Beta 窗口工作单已完成。已发现 `final`、Tushare、BaoStock、Wind/财汇与 Yahoo 原表；基础行情无需重抓，ST/停牌尾部保持 UNKNOWN。
-- P0：已核验 `000300.SH` 与 `399300.SZ` 在 2020-01-02 至 2022-07-01 的 47 个共同截面成分完全一致；别名只能限于该重叠区间。
-- P1：腾讯原始日线已完成主板、创业板、科创板、指数四类样本资格检查；仅限字段/单位样本合格，尚未发布补丁。
-- P2：BaoStock 单次登录和一会话三只股票的最小样本成功，原始响应可同时派生行情、状态与估值候选；23 条真实缺失状态记录（含低 Beta 首日 20 个实际持仓）已在独立部分 release 发布并通过回放。剩余尾部仍为 UNKNOWN。
-- P3：旧、新 release 的原低 Beta 2023-09 回放均通过并产生相同哈希；状态补丁未触及该策略的实际状态依赖路径，差异归因为零。20 只股票的同机固定版本批量读取首读 115.804 ms、状态缓存热读中位数 13.205 ms，证据见 `acceptance/datahub-v2-p3/batch-read-benchmark.md`。
-- P3：低 Beta 的真实状态依赖已预检：2024-01-02 的 300 个成分股没有当日状态记录。策略版本 141 在未知状态导致可验证股票不足 20 只时拒绝回测，旧版及旧运行不变；证据见 `acceptance/datahub-v2-p3/low-beta-status-guard.md`。
-- P3：已对低 Beta 首次调仓的 20 只实际候选补齐 2023-08-31 状态并发布 `R3f2a0c82acf28962`；严格版在 2023-09-01 通过首次调仓。其余月度状态日期仍是独立待处理缺口，证据见 `acceptance/datahub-v2-p3/low-beta-2023-08-31-repair.md`。
-- P3：严格低 Beta 的剩余状态依赖已按策略实际调仓规则收敛为 38 个前一交易日、11,400 个日期×成分股键（300 只股票），而非全市场逐日下载；固定基础的 CSI 300 成分快照只到 2022-07-01，不能宣称后续成分股历史完整。证据见 `acceptance/datahub-v2-p3/low-beta-status-dependency-plan.md`。
-- P3：上述 38 个依赖已完成真实 BaoStock 补数并发布为 `R22a53f013266373d`：298 只股票、11,347 条状态记录，覆盖 2023-06-30 至 2026-07-31；600837.SH、601989.SH 因基础行情先结束而保留 `NOT_COVERED`，没有伪造状态。严格版低 Beta 在 2023-07-03 的 R22 回测成功。证据见 `acceptance/datahub-v2-p3/low-beta-status-full-repair.md`。
-- P3：严格低 Beta 已在 R22 完成 2020-01-01 至 2026-08-31 的完整 1,615 个交易日回测，状态为 SUCCESS、结果哈希 `49849a788b8b506c4430264d73153c2e2a35bee7e6480bf3c2b095f6162a0484`。实际读取基础行情 37,102 次、补充状态 12,478 行；全程固定本地 release，未进行网络采集。证据见 `acceptance/datahub-v2-p3/low-beta-r22-full-backtest.md` 与 `acceptance/datahub-v2/implementation-audit.md`。
+G0 固定 release 与两个 commit，检查 SDK 本地契约、实际 schema、原始资料和精确字段依赖；提交 Alpha101/ETF gap_plan 和最小实施计划。接口签名通过不代表网络健康。
+计划：[实施计划](superpowers/plans/2026-09-13-alpha101-etf.md)。各数据集依次小样本→候选→质量验收→回放→发布，未具备外部证据的范围保持 UNKNOWN/BLOCKED。
 
 ## Queued Goals
 
-无。在本目标结束前不进入 FactorLab、NotebookLM、Qlib 或 Kronos。此前用户接受的整体 WebUI 布局不重新设计。
+1. `ALPHA_ETF_G1_STOCK_INPUTS`：BaoStock 原始复用/逐日状态，101 依赖及预热，标准量价与真实股票事件。
+2. `ALPHA_ETF_G2_ETF_PACKAGE`：10—20 只境内权益 ETF 的冻结范围、身份、行情、分红拆分、公告及规则。
+3. `ALPHA_ETF_G3_RESEARCH_AND_ACCOUNTING`：公式/评价/执行/PIT 四级门禁，输入及账户对账和轮动。
+4. `ALPHA_ETF_G4_RELEASE_AND_REPLAY`：逐项发布、断网同 hash、故障注入、旧版回放和现有数据页资格展示；市值/行业只阻塞依赖项。
+
+## Previous milestone
+
+DataHub V2 COMPLETE；完整验收保留于 [历史 Active Phase](acceptance/datahub-v2/active-phase-completed.md)。
