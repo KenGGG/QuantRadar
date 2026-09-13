@@ -1,7 +1,9 @@
 {
   "alpha_id": 56,
+  "release_id": "Rb799aeb65657bf8d",
+  "supplemental_commit": "2sg7kcf38n2svnet409ove3qpl91rc8c",
   "price_mode": "RAW",
-  "market_cap": "eastmoney total_market_cap_cny from archived raw snapshots",
+  "market_cap": "release-pinned qr_market_cap_daily.total_market_cap_cny",
   "symbols": ["000006.XSHE", "000008.XSHE", "000009.XSHE"],
   "start": "2018-01-02",
   "end": "2018-03-30",
