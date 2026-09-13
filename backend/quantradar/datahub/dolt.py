@@ -95,6 +95,15 @@ _SCHEMA = (
       PRIMARY KEY (symbol)
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS qr_etf_corporate_action (
+      symbol VARCHAR(16) NOT NULL, ex_date DATE NOT NULL, event_kind VARCHAR(32) NOT NULL,
+      cash_per_unit DOUBLE NULL, record_date DATE NULL, pay_date DATE NULL, share_multiplier DOUBLE NULL,
+      source VARCHAR(64) NOT NULL, raw_sha256 CHAR(64) NOT NULL, adapter_version VARCHAR(128) NOT NULL,
+      fetched_at VARCHAR(40) NOT NULL, available_at DATE NOT NULL, qualification VARCHAR(64) NOT NULL,
+      coverage VARCHAR(64) NOT NULL, PRIMARY KEY (symbol, ex_date, event_kind)
+    )
+    """,
 )
 
 
@@ -198,6 +207,11 @@ class SupplementalStore:
             "termination_date", "fund_established_date", "tracking_index", "fund_type", "currency", "source",
             "raw_sha256", "adapter_version", "fetched_at", "qualification", "listing_date_status"), rows)
 
+    def upsert_etf_corporate_actions(self, rows: Iterable[dict[str, Any]]) -> None:
+        self._upsert("qr_etf_corporate_action", ("symbol", "ex_date", "event_kind", "cash_per_unit", "record_date",
+            "pay_date", "share_multiplier", "source", "raw_sha256", "adapter_version", "fetched_at", "available_at",
+            "qualification", "coverage"), rows)
+
     _PROVENANCE = ("source", "raw_sha256", "adapter_version", "fetched_at", "available_date", "pit_status")
 
     def _upsert(self, table: str, fields: tuple[str, ...], rows: Iterable[dict[str, Any]]) -> None:
@@ -254,6 +268,7 @@ class SupplementalStore:
             "qr_etf_eod_price": {"trade_date", "symbol"},
             "qr_etf_event_announcement": {"symbol", "report_id"},
             "qr_etf_master": {"symbol"},
+            "qr_etf_corporate_action": {"symbol", "ex_date", "event_kind"},
         }[table]
 
     def commit(self, message: str) -> str:

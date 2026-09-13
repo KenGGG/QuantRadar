@@ -354,6 +354,30 @@ def publish_etf_master_stage(service, stage_path: Path) -> dict:
     return {'status':'PARTIAL','release_id':manifest['release_id'],'supplemental_commit':commit,'rows':10,'validation':{'status':'PASS','stage_sha256':digest}}
 
 
+def publish_etf_corporate_action_stage(service, stage_path: Path) -> dict:
+    rows=[json.loads(line) for line in Path(stage_path).read_text(encoding='utf-8').splitlines()]
+    if not rows: raise ValueError('ETF corporate-action candidate is empty')
+    for row in rows:
+        if row.get('event_kind') != 'CASH_DIVIDEND' or row.get('share_multiplier') is not None or row.get('coverage') != 'SAMPLE_ONLY_NOT_POOL_COMPLETE':
+            raise ValueError('ETF corporate-action candidate has unsupported scope')
+        for field in ('record_date','ex_date','pay_date','available_at'):
+            try: date.fromisoformat(str(row.get(field))[:10])
+            except ValueError: raise ValueError('ETF corporate-action candidate has invalid date')
+        if not 0 < float(row.get('cash_per_unit')) or len(str(row.get('raw_sha256') or '')) != 64 or row.get('qualification') != 'OFFICIAL_DIVIDEND_DOCUMENT':
+            raise ValueError('ETF corporate-action candidate lacks official terms')
+    digest=hashlib.sha256(''.join(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n' for r in rows).encode()).hexdigest(); old=service.releases.current(); conn=service._connection(); branch='candidate_etf_action_'+digest[:16]
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT * FROM dolt_status')
+            if cur.fetchall(): raise ValueError('supplemental repository has uncommitted changes')
+            cur.execute('CALL DOLT_CHECKOUT(\'-b\', %s, %s)',(branch,old['supplemental_commit']))
+        writer=SupplementalStore(conn); writer.ensure_schema(); writer.upsert_etf_corporate_actions(rows); commit=writer.commit('datahub: checked ETF corporate-action candidate '+digest[:16])
+    finally: conn.close()
+    datasets={**old['datasets'],'etf_corporate_action':{'rows':len(rows),'source':['sse:official_fund_dividend_pdf'],'pit_status':'PARTIAL','quality_status':'PARTIAL','qualification':'SAMPLE_ONLY_NOT_POOL_COMPLETE','refresh_status':'PUBLISHED'}}
+    manifest=service.releases.publish(base_commit=old['base_commit'],supplemental_commit=commit,datasets=datasets,source_adapters={**old['source_adapters'],'etf_corporate_action':'official-etf-dividend-pdf-v1'},metadata={**old.get('metadata',{}),'etf_corporate_action_candidate':{'rows':len(rows),'stage_sha256':digest,'coverage':'SAMPLE_ONLY_NOT_POOL_COMPLETE'}})
+    return {'status':'PARTIAL','release_id':manifest['release_id'],'supplemental_commit':commit,'rows':len(rows),'validation':{'status':'PASS','stage_sha256':digest}}
+
+
 def publish_trade_status_patch(service, rows: list[dict]) -> dict:
     """Publish a validated, additive status patch on an isolated Dolt branch."""
     check = validate_trade_status_patch(rows)
