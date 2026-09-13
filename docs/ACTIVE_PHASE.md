@@ -1,7 +1,7 @@
 # QuantRadar Active Phase
 
 **Milestone:** `DATAHUB_ALPHA101_ETF_REQUIRED_DATA_V2`
-**Active Goal:** `ALPHA_ETF_G1_STOCK_INPUTS`
+**Active Goal:** `ALPHA_ETF_G2_ETF_PACKAGE`
 **Status:** IN_PROGRESS
 
 ## Scope
@@ -13,13 +13,14 @@
 
 G0 已通过：固定 release 与两个 commit，检查 SDK 本地契约、实际 schema、原始资料和精确字段依赖；提交 Alpha101/ETF gap_plan 和最小实施计划。详细结果见 [G0 审计报告](acceptance/alpha101-etf/g0_inventory_report.md)。接口签名通过不代表网络健康。
 
-当前 G1：基于 BaoStock 受控原始响应和可复用归档，补齐 A 股日线、交易状态、标准量价输入和真实股票事件；每个候选数据集依次小样本、质量验收、固定版本回放后才发布。未具备外部证据的范围保持 UNKNOWN/BLOCKED。
+G1 已通过 Alpha RAW 输入范围：固定原始量价、明确交易状态和历史总市值候选均已按候选→质量→固定版本回放发布。公司行为完整性属于 G3 账户门禁；行业三层映射只阻塞 18 条行业公式。验收见 [G1 报告](acceptance/alpha101-etf/g1_completion_report.md)。
+
+当前 G2：冻结 10 只境内权益 ETF 的身份范围，逐项补齐非复权日线、真实分红拆分、必要主数据及交易规则；每个候选数据集依次小样本、质量验收、固定版本回放后才发布。未具备外部证据的范围保持 UNKNOWN/BLOCKED。
 
 ## Queued Goals
 
-1. `ALPHA_ETF_G2_ETF_PACKAGE`：10—20 只境内权益 ETF 的冻结范围、身份、行情、分红拆分、公告及规则。
-2. `ALPHA_ETF_G3_RESEARCH_AND_ACCOUNTING`：公式/评价/执行/PIT 四级门禁，输入及账户对账和轮动。
-3. `ALPHA_ETF_G4_RELEASE_AND_REPLAY`：逐项发布、断网同 hash、故障注入、旧版回放和现有数据页资格展示；市值/行业只阻塞依赖项。
+1. `ALPHA_ETF_G3_RESEARCH_AND_ACCOUNTING`：公式/评价/执行/PIT 四级门禁，输入及账户对账和轮动。
+2. `ALPHA_ETF_G4_RELEASE_AND_REPLAY`：逐项发布、断网同 hash、故障注入、旧版回放和现有数据页资格展示；市值/行业只阻塞依赖项。
 
 ## Previous milestone
 
