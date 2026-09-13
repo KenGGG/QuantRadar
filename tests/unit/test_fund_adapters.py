@@ -133,6 +133,17 @@ def test_official_etf_identity_text_requires_symbol_exchange_and_listing_date():
     assert fa.parse_official_etf_identity_text(iso, symbol='510300.SH')['listing_date'] == '2012-05-28'
 
 
+def test_official_etf_dividend_text_requires_cash_and_three_dates():
+    text = '基金主代码 510300\n本次分红方案（单位：元/10 份基金份额） 0.72\n权益登记日 2021 年 1 月 15 日\n除息日 2021 年 1 月 18 日\n现金红利发放日 2021 年 1 月 21 日'
+    assert fa.parse_official_etf_dividend_text(text, symbol='510300.SH') == {
+        'symbol': '510300.SH', 'cash_per_unit': .072, 'record_date': '2021-01-15',
+        'ex_date': '2021-01-18', 'pay_date': '2021-01-21',
+        'qualification': 'OFFICIAL_DIVIDEND_DOCUMENT',
+    }
+    with pytest.raises(ValueError, match='pay date'):
+        fa.parse_official_etf_dividend_text(text.replace('现金红利发放日 2021 年 1 月 21 日', ''), symbol='510300.SH')
+
+
 def test_fixed_reader_returns_etf_announcement_evidence():
     from quantradar.datahub.reader import SupplementalReader
     reader = SupplementalReader(lambda: None)

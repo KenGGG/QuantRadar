@@ -264,6 +264,27 @@ def parse_official_etf_identity_text(text: str, *, symbol: str) -> dict:
             'qualification':'OFFICIAL_IDENTITY_DOCUMENT'}
 
 
+def parse_official_etf_dividend_text(text: str, *, symbol: str) -> dict:
+    """Extract one cash dividend only when the official terms are complete."""
+    if not re.fullmatch(r'\d{6}\.(SH|SZ)', symbol) or not isinstance(text, str):
+        raise ValueError('explicit ETF symbol and text required')
+    compact=re.sub(r'\s+', '', text)
+    if not re.search(rf'(?:基金主代码|基金代码){symbol[:6]}(?!\d)', compact):
+        raise ValueError('official dividend code mismatch')
+    amount=re.search(r'本次分红方案（单位：元/10份基金份额）([0-9]+(?:\.[0-9]+)?)', compact)
+    if not amount: raise ValueError('official dividend cash amount missing')
+    def event_date(label, error):
+        match=re.search(label+r'(\d{4}年\d{1,2}月\d{1,2}日)', compact)
+        if not match: raise ValueError(error)
+        values=re.findall(r'\d+', match.group(1))
+        return date(int(values[0]), int(values[1]), int(values[2])).isoformat()
+    return {'symbol':symbol,'cash_per_unit':float(amount.group(1))/10.0,
+            'record_date':event_date('权益登记日','official dividend record date missing'),
+            'ex_date':event_date('除息日','official dividend ex date missing'),
+            'pay_date':event_date('现金红利发放日','official dividend pay date missing'),
+            'qualification':'OFFICIAL_DIVIDEND_DOCUMENT'}
+
+
 class EastmoneyFundAdapter:
     """One request per call; the caller qualifies scope before iterating symbols/pages."""
     def __init__(self, transport: GovernedHttpSource):self.transport=transport
