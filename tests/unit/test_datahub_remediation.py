@@ -174,6 +174,57 @@ def test_cli_does_not_silently_ignore_unsupported_dataset(capsys):
     assert '没有已验收' in capsys.readouterr().out
 
 
+def test_etf_trading_rule_publish_is_idempotent_when_candidate_already_exists(tmp_path, monkeypatch):
+    """A release retry must reuse the existing branch head when Dolt is clean."""
+    from types import SimpleNamespace
+    from quantradar.datahub import publication
+
+    symbols = ['510050.SH', '510180.SH', '510300.SH', '510500.SH', '510880.SH',
+               '159901.SZ', '159902.SZ', '159903.SZ', '159915.SZ', '159919.SZ']
+    rows = [
+        {'symbol': symbol, 'exchange': 'SSE' if symbol.endswith('.SH') else 'SZSE',
+         'effective_from': '2026-07-06', 'available_at': '2026-04-24',
+         'lot_size': 100, 'tick_size': .001, 'turnover_status': 'UNKNOWN',
+         'fee_status': 'UNKNOWN', 'special_status': 'UNKNOWN',
+         'rule_scope': 'EXCHANGE_FUND_RULE', 'qualification': 'EXCHANGE_RULE_PARTIAL',
+         'raw_sha256': 'a' * 64, 'source': 'exchange-rule'}
+        for symbol in symbols
+    ]
+    stage = tmp_path / 'rules.jsonl'
+    stage.write_text(''.join(json.dumps(row) + '\n' for row in rows))
+
+    class Cursor:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def execute(self, sql, args=None): self.sql = sql
+        def fetchall(self): return []
+        def fetchone(self):
+            if 'dolt_branches' in self.sql: return None
+            if 'dolt_log' in self.sql: return {'commit_hash': 'existing-commit'}
+            return None
+
+    class Connection:
+        def cursor(self): return Cursor()
+        def close(self): pass
+
+    committed = []
+    class Store:
+        def __init__(self, connection): pass
+        def ensure_schema(self): pass
+        def upsert_etf_trading_rules(self, values): assert list(values) == rows
+        def commit(self, message): committed.append(message); return 'unexpected-commit'
+
+    monkeypatch.setattr(publication, 'SupplementalStore', Store)
+    old = {'base_commit': 'base', 'supplemental_commit': 'prior', 'datasets': {}, 'source_adapters': {}, 'metadata': {}}
+    service = SimpleNamespace(
+        releases=SimpleNamespace(current=lambda: old, publish=lambda **kwargs: {'release_id': 'R-test'}),
+        _connection=lambda *args: Connection(),
+    )
+    result = publication.publish_etf_trading_rule_stage(service, stage)
+    assert committed == []
+    assert result['supplemental_commit'] == 'existing-commit'
+
+
 def test_new_units_are_converted_once_and_legacy_release_units_are_preserved(monkeypatch):
     import pandas as pd
     from quantradar.providers.investment_data.provider import InvestmentDataProvider

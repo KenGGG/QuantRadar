@@ -416,7 +416,15 @@ def publish_etf_trading_rule_stage(service, stage_path: Path) -> dict:
             cur.execute('SELECT name FROM dolt_branches WHERE name=%s',(branch,))
             if cur.fetchone(): cur.execute('CALL DOLT_CHECKOUT(%s)',(branch,))
             else: cur.execute('CALL DOLT_CHECKOUT(\'-b\', %s, %s)',(branch,old['supplemental_commit']))
-        writer=SupplementalStore(conn); writer.ensure_schema(); writer.upsert_etf_trading_rules(rows); commit=writer.commit('datahub: checked ETF trading-rule candidate '+digest[:16])
+        writer=SupplementalStore(conn); writer.ensure_schema(); writer.upsert_etf_trading_rules(rows)
+        with conn.cursor() as cur:
+            cur.execute('SELECT * FROM dolt_status')
+            changed=cur.fetchall()
+            if not changed:
+                cur.execute('SELECT commit_hash FROM dolt_log LIMIT 1')
+                commit=cur.fetchone()['commit_hash']
+            else:
+                commit=writer.commit('datahub: checked ETF trading-rule candidate '+digest[:16])
     finally: conn.close()
     datasets={**old['datasets'],'etf_trading_rule':{'rows':len(rows),'source':sorted({row['source'] for row in rows}),'pit_status':'PARTIAL','quality_status':'PARTIAL','qualification':'EXCHANGE_RULE_PARTIAL','refresh_status':'PUBLISHED'}}
     manifest=service.releases.publish(base_commit=old['base_commit'],supplemental_commit=commit,datasets=datasets,source_adapters={**old['source_adapters'],'etf_trading_rule':'exchange-trading-rule-2026-v1'},metadata={**old.get('metadata',{}),'etf_trading_rule_candidate':{'rows':len(rows),'stage_sha256':digest,'unknown_fields':['turnover','fees','special_status'],'limit_rule':'CONDITIONAL_NOT_PER_FUND_QUALIFIED'}})
