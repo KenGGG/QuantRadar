@@ -28,6 +28,8 @@ ALLOWED_ENDPOINTS = {
     'chinaamc-etf-evidence': {'https://www.chinaamc.com/'},
     'southernfund-etf-evidence': {'https://www.southernfund.com/'},
     'jsfund-etf-evidence': {'https://www.jsfund.cn/'},
+    'sse-trading-rule-evidence': {'https://www.sse.com.cn/'},
+    'szse-trading-rule-evidence': {'https://docs.static.szse.cn/'},
     'eastmoney-fund-nav': {'https://api.fund.eastmoney.com/f10/lsjz'},
     'cninfo-dividend': {'https://webapi.cninfo.com.cn/api/sysapi/p_sysapi1139'},
     'sina-etf': {'https://finance.sina.com.cn/realstock/company/'},
@@ -72,6 +74,12 @@ class GovernedHttpSource:
         if self.endpoint=='jsfund-etf-evidence':
             import re
             allowed=bool(re.fullmatch(r'https://www\.jsfund\.cn/plat_files/upload/product_ann/\d{8}/\d+/[^/?]+\.pdf',url))
+        if self.endpoint=='sse-trading-rule-evidence':
+            import re
+            allowed=bool(re.fullmatch(r'https://www\.sse\.com\.cn/lawandrules/sselawsrules2025/stocks/exchange/c/c_\d{8}_\d+\.shtml',url))
+        if self.endpoint=='szse-trading-rule-evidence':
+            import re
+            allowed=bool(re.fullmatch(r'https://docs\.static\.szse\.cn/www/lawrules/rule/trade/current/W\d+\.pdf',url))
         if not allowed or method not in {'GET','POST'} or not contract:
             raise ValueError('unapproved endpoint/method/contract')
         identity={'endpoint':self.endpoint,'url':url,'method':method,'params':params,'contract':contract}

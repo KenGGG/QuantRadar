@@ -64,3 +64,13 @@ def test_jsfund_etf_evidence_requires_product_announcement_pdf_path(tmp_path):
     source.fetch('https://www.jsfund.cn/plat_files/upload/product_ann/20250314/202503141741951225663/dividend.pdf', {}, contract='jsfund-etf-pdf-v1')
     with pytest.raises(ValueError, match='unapproved'):
         source.fetch('https://www.jsfund.cn/plat_files/upload/product_ann/20250314/dividend.html', {}, contract='jsfund-etf-pdf-v1')
+
+
+def test_exchange_rule_evidence_paths_are_allowlisted(tmp_path):
+    session = Session()
+    sse = rc.GovernedHttpSource(tmp_path, 'sse-trading-rule-evidence', session=session, interval_seconds=0)
+    sse.fetch('https://www.sse.com.cn/lawandrules/sselawsrules2025/stocks/exchange/c/c_20260424_10816482.shtml', {}, contract='sse-trading-rule-v1')
+    szse = rc.GovernedHttpSource(tmp_path, 'szse-trading-rule-evidence', session=session, interval_seconds=0)
+    szse.fetch('https://docs.static.szse.cn/www/lawrules/rule/trade/current/W020260424690713155663.pdf', {}, contract='szse-trading-rule-v1')
+    with pytest.raises(ValueError, match='unapproved'):
+        sse.fetch('https://www.sse.com.cn/lawandrules/sselawsrules2025/stocks/exchange/c/not-a-rule.pdf', {}, contract='sse-trading-rule-v1')
