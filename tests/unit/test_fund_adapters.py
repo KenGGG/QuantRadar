@@ -28,6 +28,8 @@ def test_event_empty_and_missing_metadata_are_distinct():
     split=b'var jjcf_jjjs=[1,1,1];var jjcf_data=[["510300","ETF","2020-01-03","split","2",""]];var jjcf_jjgs=1;'
     r=fa.parse_fund_event_page(split,kind='split',year=2020,page=1)['rows'][0]
     assert r['source_split_value']==2 and r['share_multiplier'] is None
+    undisclosed=b'var jjcf_jjjs=[1,1,1];var jjcf_data=[["510300","ETF","2020-01-03","split","\xe6\x9a\x82\xe6\x9c\xaa\xe6\x8a\xab\xe9\x9c\xb2",""]];var jjcf_jjgs=1;'
+    assert fa.parse_fund_event_page(undisclosed,kind='split',year=2020,page=1)['rows'][0]['source_split_value'] is None
 
 
 def test_daily_units_not_guessed_and_schema_not_coerced():

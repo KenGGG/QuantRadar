@@ -65,7 +65,8 @@ def parse_fund_event_page(content: bytes, *, kind: str, year: int, page: int) ->
         if kind=='dividend':
             event.update(record_date=_day(row[2]),ex_date=_day(row[3]),cash_per_unit=_number(row[4]),pay_date=_day(row[5]),source_unit='CNY_PER_FUND_UNIT')
         else:
-            event.update(ex_date=_day(row[2]),source_split_type=row[3],source_split_value=_number(row[4]))
+            split_value=None if str(row[4]).strip() in {'暂未披露','待披露'} else _number(row[4])
+            event.update(ex_date=_day(row[2]),source_split_type=row[3],source_split_value=split_value)
         key=(code,event['ex_date'],event['record_date'],event['pay_date'],kind)
         if key in keys:raise ValueError('duplicate event key')
         keys.add(key);result.append(event)
