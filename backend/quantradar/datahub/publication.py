@@ -358,12 +358,20 @@ def publish_etf_corporate_action_stage(service, stage_path: Path) -> dict:
     rows=[json.loads(line) for line in Path(stage_path).read_text(encoding='utf-8').splitlines()]
     if not rows: raise ValueError('ETF corporate-action candidate is empty')
     for row in rows:
-        if row.get('event_kind') != 'CASH_DIVIDEND' or row.get('share_multiplier') is not None or row.get('coverage') != 'SAMPLE_ONLY_NOT_POOL_COMPLETE':
+        kind=row.get('event_kind')
+        if kind not in {'CASH_DIVIDEND','ETF_SHARE_SPLIT'} or row.get('coverage') != 'SAMPLE_ONLY_NOT_POOL_COMPLETE':
             raise ValueError('ETF corporate-action candidate has unsupported scope')
-        for field in ('record_date','ex_date','pay_date','available_at'):
+        for field in ('ex_date','available_at'):
             try: date.fromisoformat(str(row.get(field))[:10])
             except ValueError: raise ValueError('ETF corporate-action candidate has invalid date')
-        if not 0 < float(row.get('cash_per_unit')) or len(str(row.get('raw_sha256') or '')) != 64 or row.get('qualification') != 'OFFICIAL_DIVIDEND_DOCUMENT':
+        if kind == 'CASH_DIVIDEND':
+            for field in ('record_date','pay_date'):
+                try: date.fromisoformat(str(row.get(field))[:10])
+                except ValueError: raise ValueError('ETF corporate-action candidate has invalid dividend date')
+            valid=0 < float(row.get('cash_per_unit')) and row.get('share_multiplier') is None and row.get('qualification') == 'OFFICIAL_DIVIDEND_DOCUMENT'
+        else:
+            valid=row.get('cash_per_unit') is None and row.get('record_date') is None and row.get('pay_date') is None and 0 < float(row.get('share_multiplier')) and row.get('qualification') == 'OFFICIAL_SPLIT_DOCUMENT'
+        if not valid or len(str(row.get('raw_sha256') or '')) != 64:
             raise ValueError('ETF corporate-action candidate lacks official terms')
     digest=hashlib.sha256(''.join(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n' for r in rows).encode()).hexdigest(); old=service.releases.current(); conn=service._connection(); branch='candidate_etf_action_'+digest[:16]
     try:

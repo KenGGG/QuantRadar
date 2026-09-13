@@ -149,6 +149,16 @@ def test_official_etf_dividend_text_accepts_official_rmb_unit_spacing():
     assert fa.parse_official_etf_dividend_text(text, symbol='159901.SZ')['cash_per_unit'] == pytest.approx(.085)
 
 
+def test_official_etf_split_text_requires_split_date_and_multiplier():
+    text = '基金代码：510500\n份额拆分日：2022 年8 月26 日。\n本基金本次基金份额拆分比例为 1.14539。'
+    assert fa.parse_official_etf_split_text(text, symbol='510500.SH') == {
+        'symbol': '510500.SH', 'ex_date': '2022-08-26', 'record_date': None,
+        'share_multiplier': 1.14539, 'qualification': 'OFFICIAL_SPLIT_DOCUMENT',
+    }
+    with pytest.raises(ValueError, match='multiplier'):
+        fa.parse_official_etf_split_text(text.replace('1.14539', ''), symbol='510500.SH')
+
+
 def test_etf_package_gate_does_not_unlock_account_from_sample_event():
     assert fa.etf_package_qualification(
         scope=['510300.SH', '510500.SH'], master_symbols=['510300.SH', '510500.SH'],

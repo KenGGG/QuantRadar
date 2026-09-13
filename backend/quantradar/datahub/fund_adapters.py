@@ -269,7 +269,7 @@ def parse_official_etf_dividend_text(text: str, *, symbol: str) -> dict:
     if not re.fullmatch(r'\d{6}\.(SH|SZ)', symbol) or not isinstance(text, str):
         raise ValueError('explicit ETF symbol and text required')
     compact=re.sub(r'\s+', '', text)
-    if not re.search(rf'(?:基金主代码|基金代码){symbol[:6]}(?!\d)', compact):
+    if not re.search(rf'(?:基金主代码|基金代码)[:：]?{symbol[:6]}(?!\d)', compact):
         raise ValueError('official dividend code mismatch')
     amount=re.search(r'本次分红方案（单位：(?>人民币)?元/10份基金份额）([0-9]+(?:\.[0-9]+)?)', compact)
     if not amount: raise ValueError('official dividend cash amount missing')
@@ -283,6 +283,26 @@ def parse_official_etf_dividend_text(text: str, *, symbol: str) -> dict:
             'ex_date':event_date('除息日','official dividend ex date missing'),
             'pay_date':event_date('现金红利发放日','official dividend pay date missing'),
             'qualification':'OFFICIAL_DIVIDEND_DOCUMENT'}
+
+
+def parse_official_etf_split_text(text: str, *, symbol: str) -> dict:
+    """Extract a single ETF share split only when its official ratio and date exist."""
+    if not re.fullmatch(r'\d{6}\.(SH|SZ)', symbol) or not isinstance(text, str):
+        raise ValueError('explicit ETF symbol and text required')
+    compact=re.sub(r'\s+', '', text)
+    if not re.search(rf'(?:基金主代码|基金代码)[:：]?{symbol[:6]}(?!\d)', compact):
+        raise ValueError('official split code mismatch')
+    day=re.search(r'份额拆分日：?(\d{4}年\d{1,2}月\d{1,2}日)', compact)
+    if not day: raise ValueError('official split date missing')
+    multiplier=re.search(r'拆分比例为([0-9]+(?:\.[0-9]+)?)', compact)
+    if not multiplier: raise ValueError('official split multiplier missing')
+    values=re.findall(r'\d+', day.group(1))
+    try: split_day=date(int(values[0]), int(values[1]), int(values[2])).isoformat()
+    except (IndexError, ValueError) as exc: raise ValueError('official split date invalid') from exc
+    value=float(multiplier.group(1))
+    if value <= 0: raise ValueError('official split multiplier invalid')
+    return {'symbol':symbol,'ex_date':split_day,'record_date':None,'share_multiplier':value,
+            'qualification':'OFFICIAL_SPLIT_DOCUMENT'}
 
 
 def etf_package_qualification(*, scope: list[str], master_symbols: list[str], event_symbols: list[str], rules_symbols: list[str]) -> dict:
