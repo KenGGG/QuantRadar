@@ -285,6 +285,17 @@ def parse_official_etf_dividend_text(text: str, *, symbol: str) -> dict:
             'qualification':'OFFICIAL_DIVIDEND_DOCUMENT'}
 
 
+def etf_package_qualification(*, scope: list[str], master_symbols: list[str], event_symbols: list[str], rules_symbols: list[str]) -> dict:
+    """Keep raw-price research separate from account/total-return eligibility."""
+    required=set(scope); blocked=[]
+    if not required <= set(master_symbols): blocked.append('MASTER_COVERAGE_INCOMPLETE')
+    if not required <= set(event_symbols): blocked.append('EVENT_COVERAGE_INCOMPLETE')
+    if not required <= set(rules_symbols): blocked.append('TRADING_RULES_INCOMPLETE')
+    account=not blocked
+    return {'raw_price_research_ready': bool(required <= set(master_symbols)),
+            'account_replay_ready': account, 'total_return_ready': account, 'blocked': blocked}
+
+
 class EastmoneyFundAdapter:
     """One request per call; the caller qualifies scope before iterating symbols/pages."""
     def __init__(self, transport: GovernedHttpSource):self.transport=transport

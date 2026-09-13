@@ -144,6 +144,14 @@ def test_official_etf_dividend_text_requires_cash_and_three_dates():
         fa.parse_official_etf_dividend_text(text.replace('现金红利发放日 2021 年 1 月 21 日', ''), symbol='510300.SH')
 
 
+def test_etf_package_gate_does_not_unlock_account_from_sample_event():
+    assert fa.etf_package_qualification(
+        scope=['510300.SH', '510500.SH'], master_symbols=['510300.SH', '510500.SH'],
+        event_symbols=['510300.SH'], rules_symbols=[]
+    ) == {'raw_price_research_ready': True, 'account_replay_ready': False,
+          'total_return_ready': False, 'blocked': ['EVENT_COVERAGE_INCOMPLETE', 'TRADING_RULES_INCOMPLETE']}
+
+
 def test_fixed_reader_returns_etf_announcement_evidence():
     from quantradar.datahub.reader import SupplementalReader
     reader = SupplementalReader(lambda: None)
