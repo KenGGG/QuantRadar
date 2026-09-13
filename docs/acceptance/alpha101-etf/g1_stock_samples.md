@@ -21,6 +21,13 @@ Alpha101 或回测路径获得严格 PIT 资格。
 `baostock-shares-yuan` 单位契约和原始价格；成交量未因任何价格调整而改变。
 staging 目录：`/data/quantradar_data/staging/alpha-etf/g1-stock-daily-sample/`。
 
+同一 21 条记录已同固定 R22 base commit
+`uhdpedb4pr97ve80aq6nrabr66atsqtq` 的 `final_a_stock_eod_price` 对拍通过：
+OHLC 相同，BaoStock 的成交量（股）和成交额（元）分别与基础表的手和千元契约
+一致。基础表的显示精度为 0.01 手、0.001 千元，因此对拍仅容许 50 股和 1 元的
+显示舍入界限；最终差异为零。机器可读报告为
+`quality_reconciliation.json`。
+
 ## 巨潮实施公告
 
 对 `600519` 做了一次 Cninfo 历史分红接口烟测。HTTP 200 原始响应的 SHA-256 为
