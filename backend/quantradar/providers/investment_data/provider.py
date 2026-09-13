@@ -101,6 +101,26 @@ def overlay_price_patch(base: pd.DataFrame, rows: list[dict[str, Any]]) -> pd.Da
     # Base columns encode the caller's public field selection.  Supplement
     # provenance and unrequested fields (for example preclose) stay internal.
     return pd.concat([base, patch.reindex(columns=base.columns)], axis=0).sort_index()
+
+
+def overlay_bao_raw_price(base: pd.DataFrame, bao: pd.DataFrame) -> pd.DataFrame:
+    """Fill absent final raw rows from immutable Bao rows, never adjusted values."""
+    if bao.empty:
+        return base
+    base, bao = base.copy(), bao.copy()
+    base.index, bao.index = pd.to_datetime(base.index), pd.to_datetime(bao.index)
+    if base.empty:
+        return bao.reindex(columns=base.columns if len(base.columns) else bao.columns)
+    absent = ~base.notna().any(axis=1)
+    result = base.copy()
+    common = bao.index.intersection(result.index)
+    replace = common[absent.reindex(common, fill_value=False)]
+    if len(replace):
+        result.loc[replace, list(result.columns)] = bao.reindex(columns=result.columns).loc[replace].to_numpy()
+    additions = bao.loc[~bao.index.isin(base.index)]
+    if not additions.empty:
+        result = pd.concat([result, additions.reindex(columns=result.columns)], axis=0)
+    return result.sort_index()
 _INFO_DATE_COL = "tradedate"
 _INFO_ST_FIELDS = {"is_st", "tradestatus"}
 # 除权日识别阈值：正常交易日 preclose == 前一日 close；preclose 明显偏低即发生权益变动。
@@ -1049,6 +1069,13 @@ class InvestmentDataProvider(DataProvider):
             _PRICE_TABLE, fetch_cols, internal_symbols,
             _fmt_date(start_date), _fmt_date(end_date), count, fill_paused,
         )
+        if adj_mode is None and start_date is not None and end_date is not None:
+            bao = self._fetch_table_cols_many(_INFO_TABLE, price_cols, internal_symbols,
+                                               _fmt_date(start_date), _fmt_date(end_date), None, False)
+            for frame in bao.values():
+                if "volume" in frame: frame["volume"] = frame["volume"] / 100.0
+                if "amount" in frame: frame["amount"] = frame["amount"] / 1000.0
+            result = {symbol: overlay_bao_raw_price(frame, bao[symbol]) for symbol, frame in result.items()}
         for frame in result.values():
             if adj_mode and "adjclose" in frame.columns:
                 self._apply_adjustment(frame, adj_mode, pre_factor_ref_date)
@@ -1097,6 +1124,12 @@ class InvestmentDataProvider(DataProvider):
         price_df = self._fetch_table_cols(
             _PRICE_TABLE, fetch_price_cols, internal_symbol, start, end, count, fill_paused
         )
+
+        if adj_mode is None and start is not None and end is not None:
+            bao_df = self._fetch_table_cols(_INFO_TABLE, price_cols, internal_symbol, start, end, None, False)
+            if "volume" in bao_df: bao_df["volume"] = bao_df["volume"] / 100.0
+            if "amount" in bao_df: bao_df["amount"] = bao_df["amount"] / 1000.0
+            price_df = overlay_bao_raw_price(price_df, bao_df)
 
         result = price_df
         if limit_cols:

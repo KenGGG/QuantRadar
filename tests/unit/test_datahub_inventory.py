@@ -393,6 +393,16 @@ def test_price_patch_adds_only_dates_absent_from_base_table():
     assert patched.loc["2023-06-12", "close"] == 4
 
 
+def test_bao_raw_price_fills_absent_final_row_but_never_replaces_final_row():
+    import pandas as pd
+    from quantradar.providers.investment_data.provider import overlay_bao_raw_price
+    final = pd.DataFrame({"open": [10.0, float("nan")], "close": [11.0, float("nan")]}, index=pd.to_datetime(["2023-06-09", "2023-06-12"]))
+    bao = pd.DataFrame({"open": [1.0, 2.0], "close": [2.0, 3.0]}, index=pd.to_datetime(["2023-06-09", "2023-06-12"]))
+    resolved = overlay_bao_raw_price(final, bao)
+    assert resolved.loc["2023-06-09", "close"] == 11
+    assert resolved.loc["2023-06-12", "close"] == 3
+
+
 def test_provider_reads_release_pinned_raw_price_patch_when_base_has_no_date():
     import pandas as pd
     from types import SimpleNamespace

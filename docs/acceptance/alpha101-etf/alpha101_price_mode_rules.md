@@ -19,3 +19,8 @@ must never fill a missing final `adjclose`; a validated adjustment bridge is a
 separate future data product.  Readiness is workflow-specific:
 `raw_price_ready`, `adjusted_price_ready`, `corporate_action_ready`, and
 `account_replay_ready` are independent.
+
+Fixed-release probe: `000039.SZ`, 2020-08-19 through 2020-08-25, has no
+`final_a_stock_eod_price` rows but has five Bao raw rows.  `fq='none'` resolves
+those five rows from the base Bao table.  The corresponding `FINAL_ADJ` path
+does not consume Bao `adjclose`; it remains a final-adjusted coverage gap.
