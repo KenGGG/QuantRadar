@@ -84,6 +84,17 @@ _SCHEMA = (
       PRIMARY KEY (symbol, report_id)
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS qr_etf_master (
+      symbol VARCHAR(16) NOT NULL, fund_code VARCHAR(6) NOT NULL, fund_name VARCHAR(256) NULL,
+      exchange VARCHAR(8) NOT NULL, listing_date DATE NOT NULL, termination_date DATE NULL,
+      fund_established_date DATE NULL, tracking_index VARCHAR(256) NULL, fund_type VARCHAR(128) NULL,
+      currency VARCHAR(8) NULL, source VARCHAR(64) NOT NULL, raw_sha256 CHAR(64) NOT NULL,
+      adapter_version VARCHAR(128) NOT NULL, fetched_at VARCHAR(40) NOT NULL,
+      qualification VARCHAR(64) NOT NULL, listing_date_status VARCHAR(96) NOT NULL,
+      PRIMARY KEY (symbol)
+    )
+    """,
 )
 
 
@@ -182,6 +193,11 @@ class SupplementalStore:
             rows,
         )
 
+    def upsert_etf_master(self, rows: Iterable[dict[str, Any]]) -> None:
+        self._upsert("qr_etf_master", ("symbol", "fund_code", "fund_name", "exchange", "listing_date",
+            "termination_date", "fund_established_date", "tracking_index", "fund_type", "currency", "source",
+            "raw_sha256", "adapter_version", "fetched_at", "qualification", "listing_date_status"), rows)
+
     _PROVENANCE = ("source", "raw_sha256", "adapter_version", "fetched_at", "available_date", "pit_status")
 
     def _upsert(self, table: str, fields: tuple[str, ...], rows: Iterable[dict[str, Any]]) -> None:
@@ -237,6 +253,7 @@ class SupplementalStore:
             "qr_market_cap_daily": {"trade_date", "symbol"},
             "qr_etf_eod_price": {"trade_date", "symbol"},
             "qr_etf_event_announcement": {"symbol", "report_id"},
+            "qr_etf_master": {"symbol"},
         }[table]
 
     def commit(self, message: str) -> str:
