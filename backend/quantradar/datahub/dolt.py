@@ -104,6 +104,16 @@ _SCHEMA = (
       coverage VARCHAR(64) NOT NULL, PRIMARY KEY (symbol, ex_date, event_kind)
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS qr_etf_trading_rule (
+      symbol VARCHAR(16) NOT NULL, effective_from DATE NOT NULL, effective_to DATE NULL,
+      exchange VARCHAR(8) NOT NULL, lot_size INT NULL, tick_size DOUBLE NULL, limit_pct DOUBLE NULL,
+      turnover_status VARCHAR(64) NOT NULL, fee_status VARCHAR(64) NOT NULL, special_status VARCHAR(64) NOT NULL,
+      rule_scope VARCHAR(64) NOT NULL, source VARCHAR(64) NOT NULL, raw_sha256 CHAR(64) NOT NULL,
+      adapter_version VARCHAR(128) NOT NULL, fetched_at VARCHAR(40) NOT NULL, available_at DATE NOT NULL,
+      qualification VARCHAR(64) NOT NULL, PRIMARY KEY (symbol, effective_from)
+    )
+    """,
 )
 
 
@@ -212,6 +222,11 @@ class SupplementalStore:
             "pay_date", "share_multiplier", "source", "raw_sha256", "adapter_version", "fetched_at", "available_at",
             "qualification", "coverage"), rows)
 
+    def upsert_etf_trading_rules(self, rows: Iterable[dict[str, Any]]) -> None:
+        self._upsert("qr_etf_trading_rule", ("symbol", "effective_from", "effective_to", "exchange", "lot_size",
+            "tick_size", "limit_pct", "turnover_status", "fee_status", "special_status", "rule_scope", "source",
+            "raw_sha256", "adapter_version", "fetched_at", "available_at", "qualification"), rows)
+
     _PROVENANCE = ("source", "raw_sha256", "adapter_version", "fetched_at", "available_date", "pit_status")
 
     def _upsert(self, table: str, fields: tuple[str, ...], rows: Iterable[dict[str, Any]]) -> None:
@@ -269,6 +284,7 @@ class SupplementalStore:
             "qr_etf_event_announcement": {"symbol", "report_id"},
             "qr_etf_master": {"symbol"},
             "qr_etf_corporate_action": {"symbol", "ex_date", "event_kind"},
+            "qr_etf_trading_rule": {"symbol", "effective_from"},
         }[table]
 
     def commit(self, message: str) -> str:

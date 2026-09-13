@@ -241,6 +241,23 @@ class SupplementalReader:
             grouped.setdefault(row['symbol'], []).append(row)
         return grouped
 
+    def etf_trading_rules(self, symbols: list[str], *, as_of: str) -> dict[str, dict[str, Any]]:
+        """Return the release-pinned rule version effective on the requested day."""
+        if not symbols:
+            return {}
+        marks = ','.join(['%s'] * len(symbols))
+        rows = self._query(
+            'SELECT symbol, effective_from, effective_to, exchange, lot_size, tick_size, limit_pct, '
+            'turnover_status, fee_status, special_status, qualification FROM qr_etf_trading_rule '
+            f'WHERE symbol IN ({marks}) AND effective_from <= %s AND (effective_to IS NULL OR effective_to >= %s) '
+            'ORDER BY symbol, effective_from DESC',
+            (*symbols, as_of, as_of),
+        )
+        result: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            result.setdefault(row['symbol'], row)
+        return result
+
     def _query(self, sql: str, args: tuple[Any, ...]) -> list[dict[str, Any]]:
         connection = self._connect()
         try:

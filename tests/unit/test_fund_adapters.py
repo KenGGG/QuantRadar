@@ -205,3 +205,19 @@ def test_fixed_reader_filters_etf_actions_by_available_at():
     assert got['510500.SH'] == []
     assert 'available_at <= %s' in captured['sql']
     assert captured['args'] == ('510300.SH', '510500.SH', '2021-01-01', '2021-01-31', '2021-01-12')
+
+
+def test_fixed_reader_returns_only_effective_etf_trading_rules():
+    from quantradar.datahub.reader import SupplementalReader
+    reader = SupplementalReader(lambda: None)
+    captured = {}
+    reader._query = lambda sql, args: captured.update(sql=sql, args=args) or [{
+        'symbol': '510300.SH', 'effective_from': '2026-07-06', 'effective_to': None,
+        'lot_size': 100, 'tick_size': .001, 'limit_pct': None,
+        'turnover_status': 'UNKNOWN', 'fee_status': 'UNKNOWN',
+        'special_status': 'UNKNOWN', 'qualification': 'EXCHANGE_RULE_PARTIAL',
+    }]
+    got = reader.etf_trading_rules(['510300.SH'], as_of='2026-07-06')
+    assert got['510300.SH']['lot_size'] == 100
+    assert 'effective_from <= %s' in captured['sql']
+    assert captured['args'] == ('510300.SH', '2026-07-06', '2026-07-06')
