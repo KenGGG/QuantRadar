@@ -309,6 +309,51 @@ def publish_etf_announcement_stage(service, stage_path: Path) -> dict:
             'validation': {'status': 'PASS', 'stage_sha256': digest.hexdigest()}}
 
 
+def _etf_master_stage_rows(stage_path: Path):
+    seen = set()
+    for number, line in enumerate(stage_path.read_text(encoding='utf-8').splitlines(), 1):
+        row = json.loads(line); symbol = row.get('symbol'); key = (symbol, row.get('fund_code'))
+        if key in seen or not isinstance(symbol, str) or not __import__('re').fullmatch(r'\d{6}\.(SH|SZ)', symbol):
+            raise ValueError(f'ETF master row {number} has invalid identity')
+        seen.add(key)
+        try: date.fromisoformat(str(row.get('listing_date'))[:10])
+        except ValueError: raise ValueError(f'ETF master row {number} has invalid listing date')
+        expected = 'SSE' if symbol.endswith('.SH') else 'SZSE'
+        if row.get('fund_code') != symbol[:6] or row.get('exchange') != expected or row.get('termination_date') is not None:
+            raise ValueError(f'ETF master row {number} has invalid exchange or inferred termination')
+        if len(str(row.get('raw_sha256') or '')) != 64 or len(str(row.get('profile_raw_sha256') or '')) != 64:
+            raise ValueError(f'ETF master row {number} lacks evidence')
+        if row.get('listing_date_status') != 'OFFICIAL_DOCUMENT_VERIFIED' or row.get('qualification') not in {'OFFICIAL_IDENTITY_DOCUMENT','OFFICIAL_TARGET_FUND_IDENTITY_DOCUMENT'}:
+            raise ValueError(f'ETF master row {number} has invalid qualification')
+        yield row
+
+
+def publish_etf_master_stage(service, stage_path: Path) -> dict:
+    stage_path=Path(stage_path); rows=list(_etf_master_stage_rows(stage_path))
+    if len(rows) != 10: raise ValueError('ETF master candidate must cover fixed ten-symbol scope')
+    digest=hashlib.sha256(''.join(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n' for r in rows).encode()).hexdigest()
+    old=service.releases.current(); conn=service._connection(); branch='candidate_etf_master_'+digest[:16]
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT * FROM dolt_status')
+            if cur.fetchall(): raise ValueError('supplemental repository has uncommitted changes')
+            cur.execute('SELECT name FROM dolt_branches WHERE name=%s',(branch,))
+            if cur.fetchone(): cur.execute('CALL DOLT_CHECKOUT(%s)',(branch,))
+            else: cur.execute('CALL DOLT_CHECKOUT(\'-b\', %s, %s)',(branch,old['supplemental_commit']))
+        writer=SupplementalStore(conn); writer.ensure_schema(); writer.upsert_etf_master(rows)
+        commit=writer.commit('datahub: checked ETF master candidate '+digest[:16])
+    finally: conn.close()
+    with service._connection(service.config.supplemental_database+'/'+commit) as frozen, frozen.cursor() as cur:
+        cur.execute('SELECT COUNT(*) AS row_count, COUNT(DISTINCT symbol) AS stocks FROM qr_etf_master')
+        metrics=cur.fetchone()
+        if metrics['row_count'] != 10 or metrics['stocks'] != 10: raise ValueError('fixed-commit ETF master verification failed')
+        cur.execute("SELECT COUNT(*) AS invalid FROM qr_etf_master WHERE listing_date IS NULL OR termination_date IS NOT NULL OR listing_date_status <> 'OFFICIAL_DOCUMENT_VERIFIED'")
+        if cur.fetchone()['invalid']: raise ValueError('fixed-commit ETF master qualification failed')
+    datasets={**old['datasets'],'etf_master':{**metrics,'source':['official_etf_identity_documents','eastmoney:fund_profile'],'pit_status':'PARTIAL','quality_status':'PARTIAL','qualification':'LISTING_DATE_ONLY','refresh_status':'PUBLISHED'}}
+    manifest=service.releases.publish(base_commit=old['base_commit'],supplemental_commit=commit,datasets=datasets,source_adapters={**old['source_adapters'],'etf_master':'official-etf-pdf-identity-v1'},metadata={**old.get('metadata',{}),'etf_master_candidate':{'rows':10,'stage_sha256':digest,'termination_date':'UNKNOWN','trading_rules':'UNKNOWN'}})
+    return {'status':'PARTIAL','release_id':manifest['release_id'],'supplemental_commit':commit,'rows':10,'validation':{'status':'PASS','stage_sha256':digest}}
+
+
 def publish_trade_status_patch(service, rows: list[dict]) -> dict:
     """Publish a validated, additive status patch on an isolated Dolt branch."""
     check = validate_trade_status_patch(rows)
