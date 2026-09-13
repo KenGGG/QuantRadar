@@ -242,17 +242,23 @@ def parse_official_etf_identity_text(text: str, *, symbol: str) -> dict:
     if not re.search(rf'(?:基金主代码|基金代码|交易代码)\s*{code}(?!\d)', text):
         raise ValueError('official document code mismatch')
     compact=re.sub(r'\s+', '', text)
-    region_match=re.search(r'(.{0,100})(?:上市交易所及上市日期|基金份额上市的证券交.{0,3}易所)(.{0,100})', compact)
-    if not region_match: raise ValueError('official document listing exchange missing')
-    region=region_match.group(0)
+    # PDF table columns can be emitted in a different visual order.  Bound the
+    # evidence to the first profile block after the verified fund code instead
+    # of scanning a whole report that may mention unrelated exchanges.
+    code_match=re.search(rf'(?:基金主代码|基金代码|交易代码){code}(?!\d)', compact)
+    profile=compact[code_match.end():code_match.end()+1200] if code_match else ''
+    label_positions=[pos for pos in (profile.find('上市交易所及上市日期'), profile.find('基金份额上市的证券交易所')) if pos >= 0]
+    if not label_positions:
+        raise ValueError('official document listing exchange missing')
+    region=profile[min(label_positions):min(label_positions)+160]
     exchange = 'SSE' if '上海证券交易所' in region else 'SZSE' if '深圳证券交易所' in region else None
     expected = 'SSE' if symbol.endswith('.SH') else 'SZSE'
     if exchange != expected: raise ValueError('official document exchange mismatch')
     match=re.search(r'(\d{4}年\d{1,2}月\d{1,2}日)', region)
     if not match: raise ValueError('official document listing date missing')
-    date_text=match.group(1).replace('年','-').replace('月','-').replace('日','')
-    listing=_day(date_text)
-    if listing is None: raise ValueError('official document listing date invalid')
+    pieces=re.findall(r'\d+', match.group(1))
+    try: listing=date(int(pieces[0]), int(pieces[1]), int(pieces[2])).isoformat()
+    except (IndexError, ValueError) as exc: raise ValueError('official document listing date invalid') from exc
     return {'symbol':symbol,'exchange':exchange,'listing_date':listing,
             'currency':'CNY' if '人民币' in text else None,
             'qualification':'OFFICIAL_IDENTITY_DOCUMENT'}
