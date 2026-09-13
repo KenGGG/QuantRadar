@@ -370,10 +370,21 @@ def publish_etf_corporate_action_stage(service, stage_path: Path) -> dict:
         with conn.cursor() as cur:
             cur.execute('SELECT * FROM dolt_status')
             if cur.fetchall(): raise ValueError('supplemental repository has uncommitted changes')
-            cur.execute('CALL DOLT_CHECKOUT(\'-b\', %s, %s)',(branch,old['supplemental_commit']))
-        writer=SupplementalStore(conn); writer.ensure_schema(); writer.upsert_etf_corporate_actions(rows); commit=writer.commit('datahub: checked ETF corporate-action candidate '+digest[:16])
+            cur.execute('SELECT name FROM dolt_branches WHERE name=%s',(branch,))
+            if cur.fetchone(): cur.execute('CALL DOLT_CHECKOUT(%s)',(branch,))
+            else: cur.execute('CALL DOLT_CHECKOUT(\'-b\', %s, %s)',(branch,old['supplemental_commit']))
+        writer=SupplementalStore(conn); writer.ensure_schema(); writer.upsert_etf_corporate_actions(rows)
+        with conn.cursor() as cur:
+            cur.execute('SELECT * FROM dolt_status')
+            changed=cur.fetchall()
+            if not changed:
+                cur.execute('SELECT commit_hash FROM dolt_log LIMIT 1')
+                commit=cur.fetchone()['commit_hash']
+            else:
+                commit=writer.commit('datahub: checked ETF corporate-action candidate '+digest[:16])
     finally: conn.close()
-    datasets={**old['datasets'],'etf_corporate_action':{'rows':len(rows),'source':['sse:official_fund_dividend_pdf'],'pit_status':'PARTIAL','quality_status':'PARTIAL','qualification':'SAMPLE_ONLY_NOT_POOL_COMPLETE','refresh_status':'PUBLISHED'}}
+    sources=sorted({str(row['source']) for row in rows})
+    datasets={**old['datasets'],'etf_corporate_action':{'rows':len(rows),'source':sources,'pit_status':'PARTIAL','quality_status':'PARTIAL','qualification':'SAMPLE_ONLY_NOT_POOL_COMPLETE','refresh_status':'PUBLISHED'}}
     manifest=service.releases.publish(base_commit=old['base_commit'],supplemental_commit=commit,datasets=datasets,source_adapters={**old['source_adapters'],'etf_corporate_action':'official-etf-dividend-pdf-v1'},metadata={**old.get('metadata',{}),'etf_corporate_action_candidate':{'rows':len(rows),'stage_sha256':digest,'coverage':'SAMPLE_ONLY_NOT_POOL_COMPLETE'}})
     return {'status':'PARTIAL','release_id':manifest['release_id'],'supplemental_commit':commit,'rows':len(rows),'validation':{'status':'PASS','stage_sha256':digest}}
 

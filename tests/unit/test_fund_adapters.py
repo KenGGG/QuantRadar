@@ -144,6 +144,11 @@ def test_official_etf_dividend_text_requires_cash_and_three_dates():
         fa.parse_official_etf_dividend_text(text.replace('现金红利发放日 2021 年 1 月 21 日', ''), symbol='510300.SH')
 
 
+def test_official_etf_dividend_text_accepts_official_rmb_unit_spacing():
+    text = '基金主代码 159901\n本次分红方案（单位：人民币元/10 份基金份额） 0.85\n权益登记日 2025 年 11 月 14 日\n除息日 2025 年 11 月 17 日\n现金红利发放日 2025 年 11 月 19 日'
+    assert fa.parse_official_etf_dividend_text(text, symbol='159901.SZ')['cash_per_unit'] == pytest.approx(.085)
+
+
 def test_etf_package_gate_does_not_unlock_account_from_sample_event():
     assert fa.etf_package_qualification(
         scope=['510300.SH', '510500.SH'], master_symbols=['510300.SH', '510500.SH'],

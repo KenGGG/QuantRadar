@@ -271,7 +271,7 @@ def parse_official_etf_dividend_text(text: str, *, symbol: str) -> dict:
     compact=re.sub(r'\s+', '', text)
     if not re.search(rf'(?:基金主代码|基金代码){symbol[:6]}(?!\d)', compact):
         raise ValueError('official dividend code mismatch')
-    amount=re.search(r'本次分红方案（单位：元/10份基金份额）([0-9]+(?:\.[0-9]+)?)', compact)
+    amount=re.search(r'本次分红方案（单位：(?>人民币)?元/10份基金份额）([0-9]+(?:\.[0-9]+)?)', compact)
     if not amount: raise ValueError('official dividend cash amount missing')
     def event_date(label, error):
         match=re.search(label+r'(\d{4}年\d{1,2}月\d{1,2}日)', compact)
