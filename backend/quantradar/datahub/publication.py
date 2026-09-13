@@ -257,6 +257,58 @@ def publish_etf_daily_stage(service, stage_path: Path) -> dict:
             'rows': rows, 'validation': {'status': 'PASS', 'stage_sha256': digest.hexdigest()}}
 
 
+def _etf_announcement_stage_rows(stage_path: Path):
+    with stage_path.open(encoding='utf-8') as handle:
+        seen = set()
+        for line_number, line in enumerate(handle, 1):
+            row = json.loads(line); key = (row.get('symbol'), row.get('report_id'))
+            try: date.fromisoformat(str(row.get('publish_date'))[:10])
+            except ValueError: raise ValueError(f'ETF announcement row {line_number} has invalid publish date')
+            if key in seen or not row.get('title') or not row.get('fund_code') or row.get('fund_code') != str(key[0])[:6]:
+                raise ValueError(f'ETF announcement row {line_number} has invalid identity')
+            seen.add(key)
+            if row.get('source') != 'eastmoney:fund_announcement_directory' or len(str(row.get('raw_sha256') or '')) != 64 or not row.get('adapter_version') or not row.get('fetched_at'):
+                raise ValueError(f'ETF announcement row {line_number} lacks provenance')
+            if row.get('qualification') != 'ANNOUNCEMENT_DIRECTORY_ONLY' or row.get('available_at') != str(row.get('publish_date'))[:10]:
+                raise ValueError(f'ETF announcement row {line_number} has invalid qualification')
+            yield row
+
+
+def publish_etf_announcement_stage(service, stage_path: Path) -> dict:
+    """Publish announcement-directory evidence without inventing event terms."""
+    stage_path = Path(stage_path); digest = hashlib.sha256(); rows = 0
+    for row in _etf_announcement_stage_rows(stage_path):
+        digest.update((json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n').encode()); rows += 1
+    if not rows: raise ValueError('ETF announcement candidate is empty')
+    old = service.releases.current(); identity = digest.hexdigest()[:16]; conn = service._connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute('SELECT * FROM dolt_status')
+            if cursor.fetchall(): raise ValueError('supplemental repository has uncommitted changes')
+            branch = 'candidate_etf_announcement_' + identity
+            cursor.execute('SELECT name FROM dolt_branches WHERE name=%s', (branch,))
+            if cursor.fetchone(): cursor.execute('CALL DOLT_CHECKOUT(%s)', (branch,))
+            else: cursor.execute('CALL DOLT_CHECKOUT(\'-b\', %s, %s)', (branch, old['supplemental_commit']))
+        writer = SupplementalStore(conn); writer.ensure_schema(); writer.upsert_etf_announcements(_etf_announcement_stage_rows(stage_path))
+        commit = writer.commit('datahub: checked ETF announcement candidate ' + identity)
+    finally:
+        conn.close()
+    with service._connection(service.config.supplemental_database + '/' + commit) as frozen, frozen.cursor() as cur:
+        cur.execute('SELECT COUNT(*) AS row_count, COUNT(DISTINCT symbol) AS stocks, MIN(publish_date) AS first_date, MAX(publish_date) AS latest_date FROM qr_etf_event_announcement')
+        metrics = {k: str(v) if hasattr(v, 'isoformat') else v for k, v in cur.fetchone().items()}
+        cur.execute("SELECT COUNT(*) AS invalid FROM qr_etf_event_announcement WHERE qualification <> 'ANNOUNCEMENT_DIRECTORY_ONLY' OR available_at <> publish_date")
+        if cur.fetchone()['invalid']: raise ValueError('fixed-commit ETF announcement verification failed')
+    datasets = {**old['datasets'], 'etf_event_announcement': {**metrics, 'source': ['eastmoney:fund_announcement_directory'],
+        'pit_status': 'PARTIAL', 'quality_status': 'PARTIAL', 'qualification': 'ANNOUNCEMENT_DIRECTORY_ONLY',
+        'event_terms': 'UNAVAILABLE', 'refresh_status': 'PUBLISHED'}}
+    manifest = service.releases.publish(base_commit=old['base_commit'], supplemental_commit=commit, datasets=datasets,
+        source_adapters={**old['source_adapters'], 'etf_event_announcement': 'akshare-1.18.94-fund-announcement-v1'},
+        metadata={**old.get('metadata', {}), 'etf_announcement_candidate': {'rows': rows, 'stage_sha256': digest.hexdigest(),
+            'event_terms': 'UNAVAILABLE', 'qualification': 'ANNOUNCEMENT_DIRECTORY_ONLY'}})
+    return {'status': 'PARTIAL', 'release_id': manifest['release_id'], 'supplemental_commit': commit, 'rows': rows,
+            'validation': {'status': 'PASS', 'stage_sha256': digest.hexdigest()}}
+
+
 def publish_trade_status_patch(service, rows: list[dict]) -> dict:
     """Publish a validated, additive status patch on an isolated Dolt branch."""
     check = validate_trade_status_patch(rows)

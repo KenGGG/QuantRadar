@@ -104,3 +104,14 @@ def test_fund_announcement_parser_keeps_publish_date_and_report_id():
         'fund_code': '510300', 'title': 'ETF\u5206\u7ea2\u516c\u544a', 'publish_date': '2024-01-11',
         'report_id': 'AN1', 'qualification': 'ANNOUNCEMENT_DIRECTORY_ONLY', 'available_at': '2024-01-11',
     }]
+
+
+def test_fixed_reader_returns_etf_announcement_evidence():
+    from quantradar.datahub.reader import SupplementalReader
+    reader = SupplementalReader(lambda: None)
+    reader._query = lambda sql, args: [{'symbol': '510300.SH', 'report_id': 'AN1',
+                                        'publish_date': '2024-01-11', 'title': 'ETF分红公告',
+                                        'qualification': 'ANNOUNCEMENT_DIRECTORY_ONLY'}]
+    assert reader.etf_announcements(['510300.SH']) == {'510300.SH': [{
+        'symbol': '510300.SH', 'report_id': 'AN1', 'publish_date': '2024-01-11',
+        'title': 'ETF分红公告', 'qualification': 'ANNOUNCEMENT_DIRECTORY_ONLY'}]}

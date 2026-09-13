@@ -200,6 +200,19 @@ class SupplementalReader:
             grouped.setdefault(row['symbol'], []).append(row)
         return grouped
 
+    def etf_announcements(self, symbols: list[str]) -> dict[str, list[dict[str, Any]]]:
+        if not symbols:
+            return {}
+        marks = ','.join(['%s'] * len(symbols))
+        rows = self._query(
+            'SELECT symbol, report_id, publish_date, title, qualification FROM qr_etf_event_announcement '
+            f'WHERE symbol IN ({marks}) ORDER BY symbol, publish_date, report_id', tuple(symbols),
+        )
+        grouped = {symbol: [] for symbol in symbols}
+        for row in rows:
+            grouped.setdefault(row['symbol'], []).append(row)
+        return grouped
+
     def _query(self, sql: str, args: tuple[Any, ...]) -> list[dict[str, Any]]:
         connection = self._connect()
         try:
