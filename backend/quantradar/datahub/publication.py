@@ -397,6 +397,32 @@ def publish_etf_corporate_action_stage(service, stage_path: Path) -> dict:
     return {'status':'PARTIAL','release_id':manifest['release_id'],'supplemental_commit':commit,'rows':len(rows),'validation':{'status':'PASS','stage_sha256':digest}}
 
 
+def publish_etf_trading_rule_stage(service, stage_path: Path) -> dict:
+    """Publish only exchange-rule facts; incomplete per-fund fields remain explicit."""
+    rows=[json.loads(line) for line in Path(stage_path).read_text(encoding='utf-8').splitlines() if line.strip()]
+    required={'510050.SH','510180.SH','510300.SH','510500.SH','510880.SH','159901.SZ','159902.SZ','159903.SZ','159915.SZ','159919.SZ'}
+    if {row.get('symbol') for row in rows} != required or len(rows) != len(required): raise ValueError('ETF rule candidate must cover fixed ten-symbol scope exactly')
+    for row in rows:
+        if row.get('exchange') not in {'SSE','SZSE'} or row.get('rule_scope') != 'EXCHANGE_FUND_RULE' or row.get('qualification') != 'EXCHANGE_RULE_PARTIAL': raise ValueError('ETF rule candidate has unsupported qualification')
+        for field in ('effective_from','available_at'):
+            try: date.fromisoformat(str(row.get(field))[:10])
+            except ValueError: raise ValueError('ETF rule candidate has invalid date')
+        if row.get('lot_size') != 100 or float(row.get('tick_size')) != .001 or row.get('turnover_status') != 'UNKNOWN' or row.get('fee_status') != 'UNKNOWN' or row.get('special_status') != 'UNKNOWN' or len(str(row.get('raw_sha256') or '')) != 64: raise ValueError('ETF rule candidate has unsupported fields')
+    digest=hashlib.sha256(''.join(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n' for r in rows).encode()).hexdigest(); old=service.releases.current(); conn=service._connection(); branch='candidate_etf_rule_'+digest[:16]
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT * FROM dolt_status')
+            if cur.fetchall(): raise ValueError('supplemental repository has uncommitted changes')
+            cur.execute('SELECT name FROM dolt_branches WHERE name=%s',(branch,))
+            if cur.fetchone(): cur.execute('CALL DOLT_CHECKOUT(%s)',(branch,))
+            else: cur.execute('CALL DOLT_CHECKOUT(\'-b\', %s, %s)',(branch,old['supplemental_commit']))
+        writer=SupplementalStore(conn); writer.ensure_schema(); writer.upsert_etf_trading_rules(rows); commit=writer.commit('datahub: checked ETF trading-rule candidate '+digest[:16])
+    finally: conn.close()
+    datasets={**old['datasets'],'etf_trading_rule':{'rows':len(rows),'source':sorted({row['source'] for row in rows}),'pit_status':'PARTIAL','quality_status':'PARTIAL','qualification':'EXCHANGE_RULE_PARTIAL','refresh_status':'PUBLISHED'}}
+    manifest=service.releases.publish(base_commit=old['base_commit'],supplemental_commit=commit,datasets=datasets,source_adapters={**old['source_adapters'],'etf_trading_rule':'exchange-trading-rule-2026-v1'},metadata={**old.get('metadata',{}),'etf_trading_rule_candidate':{'rows':len(rows),'stage_sha256':digest,'unknown_fields':['turnover','fees','special_status'],'limit_rule':'CONDITIONAL_NOT_PER_FUND_QUALIFIED'}})
+    return {'status':'PARTIAL','release_id':manifest['release_id'],'supplemental_commit':commit,'rows':len(rows),'validation':{'status':'PASS','stage_sha256':digest}}
+
+
 def publish_trade_status_patch(service, rows: list[dict]) -> dict:
     """Publish a validated, additive status patch on an isolated Dolt branch."""
     check = validate_trade_status_patch(rows)
