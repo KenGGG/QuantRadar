@@ -64,3 +64,17 @@ def test_market_cap_delta_rejects_rewrite_of_an_already_published_observation():
     assert market_cap_patch_delta([{**row, 'total_market_cap_cny': 101.0}], {
         ('2020-01-02', '000001.SZ'): row
     }) == {'new_rows': [], 'conflicts': [('2020-01-02', '000001.SZ')]}
+
+
+def test_fixed_supplemental_reader_groups_market_cap_for_a_research_panel():
+    from quantradar.datahub.reader import SupplementalReader
+
+    reader = SupplementalReader(lambda: None)
+    reader._query = lambda sql, args: [
+        {'symbol': '000001.SZ', 'trade_date': '2020-01-02', 'total_market_cap_cny': 100.0, 'pit_status': 'PARTIAL'},
+        {'symbol': '600000.SH', 'trade_date': '2020-01-02', 'total_market_cap_cny': 200.0, 'pit_status': 'PARTIAL'},
+    ]
+    assert reader.market_caps(['000001.SZ', '600000.SH'], '2020-01-02', '2020-01-02') == {
+        '000001.SZ': [{'symbol': '000001.SZ', 'trade_date': '2020-01-02', 'total_market_cap_cny': 100.0, 'pit_status': 'PARTIAL'}],
+        '600000.SH': [{'symbol': '600000.SH', 'trade_date': '2020-01-02', 'total_market_cap_cny': 200.0, 'pit_status': 'PARTIAL'}],
+    }

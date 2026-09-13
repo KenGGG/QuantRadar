@@ -169,6 +169,21 @@ class SupplementalReader:
             'pit_status': 'PARTIAL' if any(row.get('pit_status') != 'PASS' for row in rows) else 'PASS',
         }
 
+    def market_caps(self, symbols: list[str], start_date: str, end_date: str) -> dict[str, list[dict[str, Any]]]:
+        """Read a release-pinned total-market-cap panel without filling gaps."""
+        if not symbols:
+            return {}
+        marks = ','.join(['%s'] * len(symbols))
+        rows = self._query(
+            'SELECT symbol, trade_date, total_market_cap_cny, pit_status FROM qr_market_cap_daily '
+            f'WHERE symbol IN ({marks}) AND trade_date >= %s AND trade_date <= %s ORDER BY symbol, trade_date',
+            (*symbols, start_date, end_date),
+        )
+        grouped = {symbol: [] for symbol in symbols}
+        for row in rows:
+            grouped.setdefault(row['symbol'], []).append(row)
+        return grouped
+
     def _query(self, sql: str, args: tuple[Any, ...]) -> list[dict[str, Any]]:
         connection = self._connect()
         try:
