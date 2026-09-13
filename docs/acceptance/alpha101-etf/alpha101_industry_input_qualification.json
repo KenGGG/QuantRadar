@@ -1,0 +1,20 @@
+{
+  "release_id": "Rb799aeb65657bf8d",
+  "supplemental_commit": "2sg7kcf38n2svnet409ove3qpl91rc8c",
+  "dataset": "qr_sw_industry_history",
+  "rows": 12536,
+  "symbols": 5568,
+  "first_effective_date": "1990-01-01",
+  "last_known_date": "2026-08-28",
+  "pit_status": "PARTIAL",
+  "available_classification": "single sw industry_code with effective_from/effective_to",
+  "required_alpha101_levels": ["indclass.sector", "indclass.industry", "indclass.subindustry"],
+  "qualification": "BLOCKED_MISSING_LEVEL_MAPPING_AND_STRICT_PIT",
+  "prohibited_assumption": "Do not map one SW industry_code into sector, industry, and subindustry simultaneously.",
+  "sample_as_of": {
+    "date": "2018-01-02",
+    "000006.SZ": "430000",
+    "000008.SZ": "640000",
+    "000009.SZ": "510000"
+  }
+}
