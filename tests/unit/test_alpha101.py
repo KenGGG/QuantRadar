@@ -210,6 +210,15 @@ def test_basis_and_conventions_are_part_of_identity():
     assert all(row['evaluation_status'] == row['execution_status'] == row['strict_pit_status'] == 'NOT_ASSESSED' for row in amount)
 
 
+def test_raw_alpha_mode_is_explicit_and_does_not_require_corporate_actions():
+    result = api().compute(1, {'close': frame([[1], [2]]), 'returns': frame([[float('nan')], [1]])})
+    assert result.attrs['alpha_family'] == 'WORLDQUANT_101'
+    assert result.attrs['price_mode'] == 'RAW'
+    assert result.attrs['corporate_action_mode'] == 'NONE'
+    with pytest.raises(ValueError, match='price_mode'):
+        api().compute(1, {'close': frame([[1], [2]]), 'returns': frame([[float('nan')], [1]])}, price_mode='mixed')
+
+
 @pytest.mark.parametrize('alpha_id', [0, 102, True, 1.0, '1'])
 def test_invalid_alpha_id(alpha_id):
     with pytest.raises(ValueError, match='alpha_id'):

@@ -99,12 +99,25 @@ def evaluate(expression: str, panel: dict[str, pd.DataFrame], *, adv_basis: str 
     return result
 
 
-def compute(alpha_id: int, panel: dict[str, pd.DataFrame], *, adv_basis: str = 'amount') -> pd.DataFrame:
+def compute(alpha_id: int, panel: dict[str, pd.DataFrame], *, adv_basis: str = 'amount',
+            price_mode: str = 'RAW', corporate_action_mode: str = 'NONE') -> pd.DataFrame:
+    """Compute a named Alpha101 research mode without silently changing prices.
+
+    RAW is the initial supported production input mode.  Adjusted modes remain
+    explicit labels for separately qualified research; this interpreter never
+    converts one mode into another or requires corporate-action facts for RAW.
+    """
     if isinstance(alpha_id, bool) or not isinstance(alpha_id, int) or not 1 <= alpha_id <= 101:
         raise ValueError('alpha_id must be an integer from 1 through 101')
+    if price_mode not in {'RAW', 'FINAL_ADJ', 'BAO_ADJ'}:
+        raise ValueError('unsupported price_mode')
+    if corporate_action_mode not in {'NONE', 'VALIDATION_ONLY', 'ACCOUNT_LEDGER'}:
+        raise ValueError('unsupported corporate_action_mode')
     result = evaluate(FORMULAS[alpha_id - 1], panel, adv_basis=adv_basis)
     row = dependency_matrix(adv_basis=adv_basis)[alpha_id - 1]
     result.attrs.update({'alpha_id': alpha_id, 'formula_hash': row['formula_hash'],
                          'semantic_adaptations': row['semantic_adaptations'],
-                         'delay_adaptation': row['delay_adaptation']})
+                         'delay_adaptation': row['delay_adaptation'], 'alpha_family': 'WORLDQUANT_101',
+                         'price_mode': price_mode, 'volume_mode': 'RAW_VOLUME', 'amount_mode': 'RAW_AMOUNT',
+                         'vwap_method': 'amount / volume', 'corporate_action_mode': corporate_action_mode})
     return result
