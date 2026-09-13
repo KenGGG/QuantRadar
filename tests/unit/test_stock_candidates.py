@@ -1,7 +1,7 @@
 import json
 
 from quantradar.datahub.adapters import FetchedRows
-from quantradar.datahub.stock_candidates import collect_stock_daily_candidates, promote_stock_candidate_raw, replay_stock_daily_candidates_from_raw
+from quantradar.datahub.stock_candidates import collect_stock_daily_candidates, price_rows_from_stock_candidates, promote_stock_candidate_raw, replay_stock_daily_candidates_from_raw
 from quantradar.datahub.store import RawStore
 
 
@@ -66,3 +66,17 @@ def test_stock_candidate_replays_captured_raw_without_source_call(tmp_path):
     assert outcome["status"] == "COMPLETE"
     staged = json.loads((tmp_path / "stock-daily-candidates" / "000009.SZ.json").read_text())
     assert staged["price_qualification"] == "MISSING_OHLCV_OR_AMOUNT"
+
+
+def test_price_rows_are_loaded_only_from_complete_raw_candidates(tmp_path):
+    price = [{"trade_date": "2024-01-02", "open": 1, "high": 2, "low": 1, "close": 2, "volume": 100, "amount": 200,
+              "adapter_version": "test", "raw_sha256": "ignored"}]
+    status = [{"trade_date": "2024-01-02", "tradestatus": 1, "is_st": 0}]
+    class Adapter:
+        def daily_bundles(self, *_args, **_kwargs):
+            yield "000009.SZ", FetchedRows("trade_status_daily", b"raw", status, "baostock", "now", candidate_domains={"price": price, "trade_status": status})
+    collect_stock_daily_candidates(tmp_path, ["000009.SZ"], "2024-01-02", "2024-01-02", expected_days={"000009.SZ": ["2024-01-02"]}, adapter=Adapter())
+    rows = price_rows_from_stock_candidates(tmp_path)
+    assert rows[0]["unit_contract_version"] == "baostock-shares-yuan"
+    assert rows[0]["source_contract_id"] == "baostock-daily-v2"
+    assert rows[0]["close"] == 2

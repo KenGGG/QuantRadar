@@ -59,6 +59,11 @@ def collect_stock_daily_candidates(
                 receipt = raw.put(f"stock_daily/{symbol}", fetched.raw_bytes)
                 price = fetched.candidate_domains["price"]
                 status = fetched.candidate_domains["trade_status"]
+                # Even a lightweight adapter must retain the captured response
+                # hash rather than an adapter-supplied placeholder.
+                for row in [*price, *status]:
+                    row["raw_sha256"] = receipt["sha256"]
+                    row.setdefault("symbol", symbol)
                 wanted = expected_days[symbol]
                 price_by_day = {str(row["trade_date"]): row for row in price}
                 status_by_day = {str(row["trade_date"]): row for row in status}
@@ -132,6 +137,27 @@ def promote_stock_candidate_raw(root: Path | str, durable_raw_root: Path | str) 
     if not promoted:
         raise ValueError("no completed candidate receipts to promote")
     return {"status": "PROMOTED_NOT_PUBLISHED", "symbols": promoted}
+
+
+def price_rows_from_stock_candidates(root: Path | str, symbols: Iterable[str] | None = None) -> list[dict[str, Any]]:
+    """Load complete raw-price candidates without treating a placeholder factor as a fact."""
+    root = Path(root)
+    stage = root / "stock-daily-candidates"
+    paths = ([stage / f"{symbol}.json" for symbol in symbols] if symbols is not None else sorted(stage.glob("*.json")))
+    rows: list[dict[str, Any]] = []
+    for path in paths:
+        candidate = json.loads(path.read_text(encoding="utf-8"))
+        if candidate.get("qualification") != "CANDIDATE_NOT_PUBLISHED" or candidate.get("price_qualification") != "CANDIDATE_NOT_PUBLISHED":
+            raise ValueError(f"price candidate is not qualified: {path.name}")
+        for price in candidate.get("price", []):
+            if price.get("symbol") != candidate.get("symbol") or price.get("raw_sha256") != candidate.get("raw_sha256"):
+                raise ValueError(f"price candidate provenance mismatch: {path.name}")
+            row = {key: price.get(key) for key in (
+                "trade_date", "symbol", "open", "high", "low", "close", "volume", "amount", "preclose",
+                "source", "raw_sha256", "adapter_version", "fetched_at", "available_date", "pit_status",
+            )}
+            rows.append({**row, "source_contract_id": "baostock-daily-v2", "unit_contract_version": "baostock-shares-yuan"})
+    return sorted(rows, key=lambda row: (str(row["trade_date"]), str(row["symbol"])))
 
 
 def replay_stock_daily_candidates_from_raw(

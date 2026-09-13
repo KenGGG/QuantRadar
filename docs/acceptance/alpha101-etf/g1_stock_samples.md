@@ -89,9 +89,15 @@ OHLCV/金额缺口。固定 R22 基础表在这 5 个键上为零行；BaoStock 
 原始候选及明确交易状态。该窗口为停牌日，OHLC 保留、成交量与成交额为零，未由零
 成交量推断状态。
 
-该数据仍为单源、`PARTIAL` 候选，未发布到价格 Provider：补充价格的发布必须同时
-完成仅填基础缺失键的门禁、固定版本 Reader 合并和回放验证，不能仅建一张未被读取的
-表来声称补数完成。
+该数据已在价格补充门禁通过后发布为 release `R7ea863e0f6468694`、补充 Dolt
+commit `m39143ud9fhbcfghbsbfunkkc3dogq8s`。发布前确认 5 个键与固定基础价格表零
+重叠，原始响应已存在于持久 RawStore；固定版本 Reader 与 Provider 离线回读均返回
+这 5 条记录。Provider 只在基础表没有该交易日时追加这些原始 OHLCV/成交额，且只
+暴露调用方请求的字段，不覆盖基础价格。
+
+BaoStock 本次接口响应没有经独立审计的历史复权因子。因此 release 明确标记
+`adjustment_factor: UNAVAILABLE`，这些记录仅可用于 `fq='none'` 原始价格读取；
+`qfq`/`hfq` 不会把候选中的占位 `1.0` 视为真实复权因子。
 
 第六个状态任务覆盖 28 只证券、2023-06-14 至 2026-09-01 的 21,868 行，发布为
 `R54f4889ece48b8ce` / `h15d4bij7r6ag36cjmtmjfliski4uvpa`。发布前二元状态、基础

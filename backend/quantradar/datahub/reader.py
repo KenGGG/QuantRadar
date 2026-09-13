@@ -135,6 +135,26 @@ class SupplementalReader:
                 grouped[symbol] = grouped[symbol][-int(count):]
         return grouped
 
+    def prices(self, symbols: list[str], start_date: str | None, end_date: str | None) -> dict[str, list[dict[str, Any]]]:
+        """Return raw, release-pinned price patches; Provider applies count semantics."""
+        if not symbols:
+            return {}
+        marks = ",".join(["%s"] * len(symbols))
+        where, values = [f"symbol IN ({marks})"], list(symbols)
+        if start_date:
+            where.append("trade_date >= %s"); values.append(start_date)
+        if end_date:
+            where.append("trade_date <= %s"); values.append(end_date)
+        rows = self._query(
+            "SELECT symbol, trade_date, open, high, low, close, volume, amount, preclose, unit_contract_version "
+            "FROM qr_a_stock_eod_price WHERE " + " AND ".join(where) + " ORDER BY symbol, trade_date",
+            tuple(values),
+        )
+        grouped = {symbol: [] for symbol in symbols}
+        for row in rows:
+            grouped.setdefault(row["symbol"], []).append(row)
+        return grouped
+
     def _query(self, sql: str, args: tuple[Any, ...]) -> list[dict[str, Any]]:
         connection = self._connect()
         try:

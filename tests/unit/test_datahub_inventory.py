@@ -379,6 +379,41 @@ def test_status_patch_adds_dates_absent_from_base_table():
     assert patched.loc["2023-09-01", "is_st"] == 0
 
 
+def test_price_patch_adds_only_dates_absent_from_base_table():
+    import pandas as pd
+    from quantradar.providers.investment_data.provider import overlay_price_patch
+
+    base = pd.DataFrame({"open": [10.0], "close": [11.0]}, index=pd.to_datetime(["2023-06-09"]))
+    rows = [
+        {"trade_date": "2023-06-09", "open": 1, "close": 2, "volume": 3, "amount": 4},
+        {"trade_date": "2023-06-12", "open": 3, "close": 4, "volume": 5, "amount": 6},
+    ]
+    patched = overlay_price_patch(base, rows)
+    assert patched.loc["2023-06-09", "close"] == 11
+    assert patched.loc["2023-06-12", "close"] == 4
+
+
+def test_provider_reads_release_pinned_raw_price_patch_when_base_has_no_date():
+    import pandas as pd
+    from types import SimpleNamespace
+    from quantradar.providers.investment_data.provider import InvestmentDataProvider
+
+    provider = object.__new__(InvestmentDataProvider)
+    provider._data_usage = {"price_calls": 0, "price_symbols": set(), "status_calls": 0, "status_patch_rows": 0, "price_patch_rows": 0, "valuation_calls": 0, "industry_calls": 0}
+    provider._price_units = "joinquant-shares-yuan-v2"
+    provider._release_scope = SimpleNamespace(release_id="R-price", manifest={"datasets": {"a_stock_eod_price": {"row_count": 1}}})
+    provider._fetch_raw_price = lambda *_args, **_kwargs: pd.DataFrame({"open": pd.Series(dtype="float64"), "close": pd.Series(dtype="float64")})
+    class Reader:
+        def prices(self, symbols, start, end):
+            assert symbols == ["600519.SH"] and start == "2020-08-19" and end == "2020-08-19"
+            return {"600519.SH": [{"trade_date": "2020-08-19", "symbol": "600519.SH", "open": 10, "high": 11, "low": 9, "close": 10.5, "volume": 100, "amount": 1050}]}
+    provider._supplemental_reader = Reader()
+    result = provider.get_price("600519.XSHG", start_date="2020-08-19", end_date="2020-08-19", fields=["open", "close"])
+    assert result.loc["2020-08-19", "close"] == 10.5
+    assert list(result.columns) == ["open", "close"]
+    assert provider.data_usage()["supplemental_price_rows"] == 1
+
+
 def test_paused_keeps_unknown_when_trade_status_is_missing():
     import pandas as pd
     from quantradar.providers.investment_data.provider import InvestmentDataProvider
@@ -421,7 +456,7 @@ def test_provider_usage_keeps_base_and_supplemental_contributions_separate():
     provider._data_usage = {"price_calls": 2, "price_symbols": {"SH600519", "SZ000001"}, "status_calls": 1,
                             "status_patch_rows": 3, "valuation_calls": 4, "industry_calls": 5}
     assert provider.data_usage() == {"base_final_price_calls": 2, "base_final_price_symbols": 2,
-                                     "trade_status_calls": 1, "supplemental_trade_status_rows": 3,
+                                     "trade_status_calls": 1, "supplemental_trade_status_rows": 3, "supplemental_price_rows": 0,
                                      "supplemental_valuation_calls": 4, "supplemental_industry_calls": 5}
 
 

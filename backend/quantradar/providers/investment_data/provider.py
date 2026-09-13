@@ -83,6 +83,24 @@ def overlay_status_patch(base: pd.DataFrame, rows: list[dict[str, Any]]) -> pd.D
         else:
             result[field] = result[field].where(result[field].notna(), values)
     return result
+
+
+def overlay_price_patch(base: pd.DataFrame, rows: list[dict[str, Any]]) -> pd.DataFrame:
+    """Append release-pinned raw prices only for dates absent from immutable base."""
+    if not rows:
+        return base
+    patch = pd.DataFrame(rows)
+    if patch.empty:
+        return base
+    patch.index = pd.to_datetime(patch.pop("trade_date"))
+    base = base.copy()
+    base.index = pd.to_datetime(base.index)
+    patch = patch.loc[~patch.index.isin(base.index)]
+    if patch.empty:
+        return base
+    # Base columns encode the caller's public field selection.  Supplement
+    # provenance and unrequested fields (for example preclose) stay internal.
+    return pd.concat([base, patch.reindex(columns=base.columns)], axis=0).sort_index()
 _INFO_DATE_COL = "tradedate"
 _INFO_ST_FIELDS = {"is_st", "tradestatus"}
 # 除权日识别阈值：正常交易日 preclose == 前一日 close；preclose 明显偏低即发生权益变动。
@@ -225,7 +243,7 @@ class InvestmentDataProvider(DataProvider):
         self._extras_cache: Dict[tuple, Dict[str, Dict[str, pd.DataFrame]]] = {}
         self._paused_cache: Dict[tuple, Dict[str, pd.Series]] = {}
         self._data_usage = {"price_calls": 0, "price_symbols": set(), "status_calls": 0,
-                            "status_patch_rows": 0, "valuation_calls": 0, "industry_calls": 0}
+                            "status_patch_rows": 0, "price_patch_rows": 0, "valuation_calls": 0, "industry_calls": 0}
 
     def data_usage(self) -> dict[str, Any]:
         """Actual provider calls for the current fixed-release backtest."""
@@ -233,6 +251,7 @@ class InvestmentDataProvider(DataProvider):
                 "base_final_price_symbols": len(self._data_usage["price_symbols"]),
                 "trade_status_calls": self._data_usage["status_calls"],
                 "supplemental_trade_status_rows": self._data_usage["status_patch_rows"],
+                "supplemental_price_rows": self._data_usage.get("price_patch_rows", 0),
                 "supplemental_valuation_calls": self._data_usage["valuation_calls"],
                 "supplemental_industry_calls": self._data_usage["industry_calls"]}
 
@@ -799,6 +818,15 @@ class InvestmentDataProvider(DataProvider):
                 )
                 for internal in jq_to_internal.values()
             }
+        # BaoStock candidate data has raw OHLCV/amount but no separately
+        # auditable adjustment factor. It only fills raw-price gaps.
+        scope = getattr(self, "_release_scope", None)
+        reader = getattr(self, "_supplemental_reader", None)
+        datasets = getattr(scope, "manifest", {}).get("datasets", {}) if scope is not None else {}
+        if reader is not None and datasets.get("a_stock_eod_price") and adj_mode is None:
+            patches = reader.prices([to_ts_symbol(symbol) for symbol in jq_to_internal.values()], _fmt_date(start_date), _fmt_date(end_date))
+            self._data_usage["price_patch_rows"] += sum(len(rows) for rows in patches.values())
+            raw_prices = {symbol: overlay_price_patch(frame, patches.get(to_ts_symbol(symbol), [])) for symbol, frame in raw_prices.items()}
         paused = {}
         if need_paused:
             scope = getattr(self, "_release_scope", None)

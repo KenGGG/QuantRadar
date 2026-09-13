@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from datetime import date
 from pathlib import Path
 
@@ -29,6 +30,37 @@ def validate_trade_status_patch(rows: list[dict]) -> dict:
         if row.get("tradestatus") not in (0, 1) or row.get("is_st") not in (0, 1):
             errors.append("invalid status")
         if len(str(row.get("raw_sha256") or "")) != 64 or not row.get("source") or not row.get("adapter_version") or row.get("source_contract_id") != "baostock-daily-v2":
+            errors.append("missing provenance")
+    return {"status": "PASS" if rows and not errors else "FAIL", "rows": len(rows), "errors": sorted(set(errors))}
+
+
+def validate_price_patch(rows: list[dict]) -> dict:
+    """Validate complete, raw-unit daily prices before any supplement write."""
+    seen, errors = set(), []
+    for row in rows:
+        key = (str(row.get("trade_date"))[:10], row.get("symbol"))
+        try:
+            date.fromisoformat(key[0])
+        except ValueError:
+            errors.append("invalid trade_date")
+        if not isinstance(key[1], str) or len(key[1]) != 9 or not key[1][:6].isdigit() or not key[1].endswith((".SH", ".SZ")):
+            errors.append("invalid symbol")
+        if key in seen:
+            errors.append("duplicate key")
+        seen.add(key)
+        for field in ("open", "high", "low", "close", "volume", "amount"):
+            try:
+                value = float(row.get(field))
+                if not math.isfinite(value) or value < 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                errors.append("invalid " + field)
+        try:
+            if float(row["low"]) > min(float(row["open"]), float(row["close"])) or float(row["high"]) < max(float(row["open"]), float(row["close"])):
+                errors.append("invalid ohlc bounds")
+        except (TypeError, ValueError):
+            pass
+        if len(str(row.get("raw_sha256") or "")) != 64 or row.get("source") != "baostock" or not row.get("adapter_version") or row.get("source_contract_id") != "baostock-daily-v2" or row.get("unit_contract_version") != "baostock-shares-yuan":
             errors.append("missing provenance")
     return {"status": "PASS" if rows and not errors else "FAIL", "rows": len(rows), "errors": sorted(set(errors))}
 
@@ -76,6 +108,19 @@ def status_patch_delta(rows: list[dict], existing: dict[tuple[str, str], dict]) 
         if prior is None:
             new.append(row)
         elif any(value(prior, field) != value(row, field) for field in comparable):
+            conflicts.append(key)
+    return {"new_rows": new, "conflicts": sorted(conflicts)}
+
+
+def price_patch_delta(rows: list[dict], existing: dict[tuple[str, str], dict]) -> dict:
+    comparable = ("open", "high", "low", "close", "volume", "amount", "preclose", "source", "adapter_version", "source_contract_id", "unit_contract_version", "available_date", "pit_status")
+    new, conflicts = [], []
+    for row in rows:
+        key = (str(row["trade_date"])[:10], str(row["symbol"]))
+        prior = existing.get(key)
+        if prior is None:
+            new.append(row)
+        elif any(prior.get(field) != row.get(field) for field in comparable):
             conflicts.append(key)
     return {"new_rows": new, "conflicts": sorted(conflicts)}
 
@@ -133,6 +178,52 @@ def publish_trade_status_patch(service, rows: list[dict]) -> dict:
     manifest = service.releases.publish(base_commit=old["base_commit"], supplemental_commit=commit, datasets=datasets,
         source_adapters={**old["source_adapters"], "trade_status": "baostock-daily-v2"},
         metadata={**old.get("metadata", {}), "trade_status_patch": {"rows": len(rows), "candidate": identity, "selection": "fill_base_missing_only"}})
+    return {"status": "PARTIAL", "release_id": manifest["release_id"], "supplemental_commit": commit, "rows": len(rows), "validation": {**check, "base_gap": base_gap}}
+
+
+def publish_price_patch(service, rows: list[dict]) -> dict:
+    """Publish an additive raw-price patch; adjusted price remains unavailable."""
+    check = validate_price_patch(rows)
+    if check["status"] != "PASS":
+        raise ValueError("price candidate failed: " + ", ".join(check["errors"]))
+    old = service.releases.current()
+    base_gap = validate_trade_status_base_gap(rows, service.base_price_keys(rows, base_commit=old["base_commit"]))
+    if base_gap["status"] != "PASS":
+        raise ValueError("price candidate overlaps immutable base observations: " + ", ".join(f"{day}/{symbol}" for day, symbol in base_gap["base_overlaps"]))
+    prior = service.supplemental_price_rows(rows, supplemental_commit=old.get("supplemental_commit"))
+    delta = price_patch_delta(rows, prior)
+    if delta["conflicts"]:
+        raise ValueError("price candidate conflicts with published supplemental observations: " + ", ".join(f"{day}/{symbol}" for day, symbol in delta["conflicts"]))
+    if not delta["new_rows"]:
+        return {"status": "NO_CHANGE", "release_id": old["release_id"], "rows": 0, "validation": {**check, "base_gap": base_gap}}
+    rows = delta["new_rows"]
+    conn = service._connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM dolt_status")
+            if cursor.fetchall():
+                raise ValueError("supplemental repository has uncommitted changes")
+            identity = hashlib.sha256(json.dumps(sorted((r["trade_date"], r["symbol"], r["raw_sha256"]) for r in rows)).encode()).hexdigest()[:16]
+            branch = "candidate_price_" + identity
+            cursor.execute("SELECT name FROM dolt_branches WHERE name=%s", (branch,))
+            if cursor.fetchone(): cursor.execute("CALL DOLT_CHECKOUT(%s)", (branch,))
+            else: cursor.execute("CALL DOLT_CHECKOUT('-b', %s, %s)", (branch, old["supplemental_commit"]))
+        writer = SupplementalStore(conn)
+        writer.ensure_schema()
+        writer.upsert_prices(rows)
+        commit = writer.commit("datahub: checked raw price patch " + identity)
+    finally:
+        conn.close()
+    with service._connection(service.config.supplemental_database + "/" + commit) as frozen, frozen.cursor() as cur:
+        cur.execute("SELECT COUNT(*) AS row_count, COUNT(DISTINCT symbol) AS stocks, MIN(trade_date) AS first_date, MAX(trade_date) AS latest_date FROM qr_a_stock_eod_price")
+        metrics = {k: str(v) if hasattr(v, "isoformat") else v for k, v in cur.fetchone().items()}
+        cur.execute("SELECT COUNT(*) AS invalid FROM qr_a_stock_eod_price WHERE open < 0 OR high < 0 OR low < 0 OR close < 0 OR volume < 0 OR amount < 0 OR low > LEAST(open, close) OR high < GREATEST(open, close)")
+        if cur.fetchone()["invalid"]:
+            raise ValueError("fixed-commit price verification failed")
+    datasets = {**old["datasets"], "a_stock_eod_price": {**metrics, "source": ["baostock"], "pit_status": "PARTIAL", "quality_status": "PARTIAL", "refresh_status": "UPDATED", "published_through": metrics["latest_date"], "adjustment_factor": "UNAVAILABLE"}}
+    manifest = service.releases.publish(base_commit=old["base_commit"], supplemental_commit=commit, datasets=datasets,
+        source_adapters={**old["source_adapters"], "a_stock_eod_price": "baostock-daily-v2"},
+        metadata={**old.get("metadata", {}), "price_patch": {"rows": len(rows), "candidate": identity, "selection": "fill_base_missing_only", "adjustment_factor": "UNAVAILABLE"}})
     return {"status": "PARTIAL", "release_id": manifest["release_id"], "supplemental_commit": commit, "rows": len(rows), "validation": {**check, "base_gap": base_gap}}
 
 

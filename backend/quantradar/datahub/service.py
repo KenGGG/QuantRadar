@@ -736,6 +736,56 @@ class DataHubService:
             connection.close()
         return result
 
+    def base_price_keys(self, rows: Iterable[dict[str, Any]], *, base_commit: str) -> set[tuple[str, str]]:
+        """Find immutable base price observations for a candidate's exact keys."""
+        grouped = group_trade_status_candidates_by_day(rows)
+        if not grouped:
+            return set()
+        connection = pymysql.connect(host=self.config.base_host, port=self.config.base_port, user=self.config.user,
+            password=self.config.password, database=f"{self.config.base_database}/{base_commit}",
+            connect_timeout=self.config.connect_timeout, read_timeout=self.config.read_timeout, charset="utf8mb4", cursorclass=DictCursor)
+        found: set[tuple[str, str]] = set()
+        try:
+            with connection.cursor() as cursor:
+                for day, external_by_internal in grouped.items():
+                    internal_symbols = sorted(external_by_internal)
+                    for offset in range(0, len(internal_symbols), 500):
+                        chunk = internal_symbols[offset:offset + 500]
+                        marks = ", ".join(["%s"] * len(chunk))
+                        cursor.execute("SELECT tradedate, symbol FROM final_a_stock_eod_price WHERE tradedate=%s AND symbol IN (" + marks + ")", (day, *chunk))
+                        for item in cursor.fetchall():
+                            external = external_by_internal.get(str(item["symbol"]))
+                            if external:
+                                found.add((day, external))
+        finally:
+            connection.close()
+        return found
+
+    def supplemental_price_rows(self, rows: Iterable[dict[str, Any]], *, supplemental_commit: str | None) -> dict[tuple[str, str], dict]:
+        if not supplemental_commit:
+            return {}
+        candidates = sorted({(str(row["trade_date"])[:10], str(row["symbol"])) for row in rows})
+        if not candidates:
+            return {}
+        connection = self._connection(f"{self.config.supplemental_database}/{supplemental_commit}")
+        result: dict[tuple[str, str], dict] = {}
+        try:
+            with connection.cursor() as cursor:
+                for offset in range(0, len(candidates), 500):
+                    chunk = candidates[offset:offset + 500]
+                    marks = ", ".join(["(%s, %s)"] * len(chunk))
+                    try:
+                        cursor.execute("SELECT trade_date, symbol, open, high, low, close, volume, amount, preclose, source, raw_sha256, adapter_version, source_contract_id, unit_contract_version, available_date, pit_status FROM qr_a_stock_eod_price WHERE (trade_date, symbol) IN (" + marks + ")", tuple(value for item in chunk for value in item))
+                    except pymysql.err.ProgrammingError as exc:
+                        if exc.args and int(exc.args[0]) == 1146:
+                            return {}
+                        raise
+                    for item in cursor.fetchall():
+                        result[(str(item["trade_date"])[:10], str(item["symbol"]))] = item
+        finally:
+            connection.close()
+        return result
+
     def _security_master_path(self) -> Path:
         return Path(self.config.supplemental_repo) / "security-master" / "sh_sz.json"
 
