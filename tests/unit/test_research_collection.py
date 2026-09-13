@@ -46,3 +46,14 @@ def test_oversize_response_and_unknown_endpoint_refused(tmp_path):
         c.fetch('https://push2his.eastmoney.com/api/qt/stock/kline/get',{},contract='v1')
     with pytest.raises(ValueError,match='endpoint'):
         c.fetch('https://unapproved.invalid/private',{},contract='v1')
+
+
+def test_official_etf_evidence_pdf_paths_are_allowlisted(tmp_path):
+    session = Session()
+    sse = rc.GovernedHttpSource(tmp_path, 'sse-etf-evidence', session=session, interval_seconds=0)
+    receipt = sse.fetch('https://www.sse.com.cn/disclosure/fund/announcement/c/new/2023-03-31/510300_20230331_G1XG.pdf', {}, contract='sse-etf-pdf-v1')
+    assert receipt['content'] == b'{"data": [1]}'
+    szse = rc.GovernedHttpSource(tmp_path, 'szse-etf-evidence', session=session, interval_seconds=0)
+    szse.fetch('https://disc.static.szse.cn/download/disc/disk03/finalpage/2025-08-29/0795f2c9-30a3-4825-bf25-37f08ddfe16a.PDF', {}, contract='szse-etf-pdf-v1')
+    with pytest.raises(ValueError, match='unapproved'):
+        sse.fetch('https://www.sse.com.cn/disclosure/fund/announcement/c/new/2023-03-31/not-a-pdf.html', {}, contract='sse-etf-pdf-v1')
