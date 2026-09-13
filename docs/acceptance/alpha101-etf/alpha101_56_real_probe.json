@@ -1,0 +1,12 @@
+{
+  "alpha_id": 56,
+  "price_mode": "RAW",
+  "market_cap": "eastmoney total_market_cap_cny from archived raw snapshots",
+  "symbols": ["000006.XSHE", "000008.XSHE", "000009.XSHE"],
+  "start": "2018-01-02",
+  "end": "2018-03-30",
+  "rows": 59,
+  "cap_cells": 177,
+  "finite_alpha_cells": 51,
+  "qualification": "PARTIAL_CANDIDATE_NOT_PUBLISHED"
+}
