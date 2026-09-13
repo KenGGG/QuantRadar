@@ -224,6 +224,23 @@ class SupplementalReader:
         )
         return {row['symbol']: row for row in rows}
 
+    def etf_corporate_actions(self, symbols: list[str], start_date: str, end_date: str, *, as_of: str) -> dict[str, list[dict[str, Any]]]:
+        """Read only action terms published by ``as_of`` from the pinned release."""
+        if not symbols:
+            return {}
+        marks = ','.join(['%s'] * len(symbols))
+        rows = self._query(
+            'SELECT symbol, ex_date, event_kind, cash_per_unit, record_date, pay_date, share_multiplier, '
+            'available_at, qualification, coverage FROM qr_etf_corporate_action '
+            f'WHERE symbol IN ({marks}) AND ex_date >= %s AND ex_date <= %s AND available_at <= %s '
+            'ORDER BY symbol, ex_date, event_kind',
+            (*symbols, start_date, end_date, as_of),
+        )
+        grouped = {symbol: [] for symbol in symbols}
+        for row in rows:
+            grouped.setdefault(row['symbol'], []).append(row)
+        return grouped
+
     def _query(self, sql: str, args: tuple[Any, ...]) -> list[dict[str, Any]]:
         connection = self._connect()
         try:

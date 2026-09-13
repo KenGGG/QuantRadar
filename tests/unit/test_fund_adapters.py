@@ -177,3 +177,21 @@ def test_fixed_reader_returns_release_pinned_etf_master_without_fallback():
     got = reader.etf_master(['510300.SH', '510500.SH'])
     assert got['510300.SH']['listing_date'] == '2012-05-28'
     assert '510500.SH' not in got
+
+
+def test_fixed_reader_filters_etf_actions_by_available_at():
+    from quantradar.datahub.reader import SupplementalReader
+    reader = SupplementalReader(lambda: None)
+    captured = {}
+    def query(sql, args):
+        captured['sql'], captured['args'] = sql, args
+        return [{'symbol': '510300.SH', 'ex_date': '2021-01-18', 'event_kind': 'CASH_DIVIDEND',
+                 'cash_per_unit': .072, 'record_date': '2021-01-15', 'pay_date': '2021-01-21',
+                 'share_multiplier': None, 'available_at': '2021-01-11',
+                 'qualification': 'OFFICIAL_DIVIDEND_DOCUMENT', 'coverage': 'SAMPLE_ONLY_NOT_POOL_COMPLETE'}]
+    reader._query = query
+    got = reader.etf_corporate_actions(['510300.SH', '510500.SH'], '2021-01-01', '2021-01-31', as_of='2021-01-12')
+    assert got['510300.SH'][0]['cash_per_unit'] == .072
+    assert got['510500.SH'] == []
+    assert 'available_at <= %s' in captured['sql']
+    assert captured['args'] == ('510300.SH', '510500.SH', '2021-01-01', '2021-01-31', '2021-01-12')
