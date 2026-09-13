@@ -142,3 +142,14 @@ def test_fixed_reader_returns_etf_announcement_evidence():
     assert reader.etf_announcements(['510300.SH']) == {'510300.SH': [{
         'symbol': '510300.SH', 'report_id': 'AN1', 'publish_date': '2024-01-11',
         'title': 'ETF分红公告', 'qualification': 'ANNOUNCEMENT_DIRECTORY_ONLY'}]}
+
+
+def test_fixed_reader_returns_release_pinned_etf_master_without_fallback():
+    from quantradar.datahub.reader import SupplementalReader
+    reader = SupplementalReader(lambda: None)
+    reader._query = lambda sql, args: [{'symbol': '510300.SH', 'fund_code': '510300',
+        'exchange': 'SSE', 'listing_date': '2012-05-28', 'termination_date': None,
+        'qualification': 'OFFICIAL_IDENTITY_DOCUMENT', 'listing_date_status': 'OFFICIAL_DOCUMENT_VERIFIED'}]
+    got = reader.etf_master(['510300.SH', '510500.SH'])
+    assert got['510300.SH']['listing_date'] == '2012-05-28'
+    assert '510500.SH' not in got

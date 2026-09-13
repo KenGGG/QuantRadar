@@ -213,6 +213,17 @@ class SupplementalReader:
             grouped.setdefault(row['symbol'], []).append(row)
         return grouped
 
+    def etf_master(self, symbols: list[str]) -> dict[str, dict[str, Any]]:
+        if not symbols:
+            return {}
+        marks = ','.join(['%s'] * len(symbols))
+        rows = self._query(
+            'SELECT symbol, fund_code, fund_name, exchange, listing_date, termination_date, '
+            'fund_established_date, tracking_index, fund_type, currency, qualification, listing_date_status '
+            f'FROM qr_etf_master WHERE symbol IN ({marks}) ORDER BY symbol', tuple(symbols),
+        )
+        return {row['symbol']: row for row in rows}
+
     def _query(self, sql: str, args: tuple[Any, ...]) -> list[dict[str, Any]]:
         connection = self._connect()
         try:
