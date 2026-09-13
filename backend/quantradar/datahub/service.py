@@ -737,7 +737,12 @@ class DataHubService:
         return result
 
     def base_price_keys(self, rows: Iterable[dict[str, Any]], *, base_commit: str) -> set[tuple[str, str]]:
-        """Find immutable base price observations for a candidate's exact keys."""
+        """Find any immutable base raw-price observation for candidate keys.
+
+        ``final`` is the primary raw source and BaoStock is the governed
+        fallback.  An external price patch is eligible only when both lack the
+        key, so an existing Bao row is deliberately treated as base coverage.
+        """
         grouped = group_trade_status_candidates_by_day(rows)
         if not grouped:
             return set()
@@ -752,11 +757,12 @@ class DataHubService:
                     for offset in range(0, len(internal_symbols), 500):
                         chunk = internal_symbols[offset:offset + 500]
                         marks = ", ".join(["%s"] * len(chunk))
-                        cursor.execute("SELECT tradedate, symbol FROM final_a_stock_eod_price WHERE tradedate=%s AND symbol IN (" + marks + ")", (day, *chunk))
-                        for item in cursor.fetchall():
-                            external = external_by_internal.get(str(item["symbol"]))
-                            if external:
-                                found.add((day, external))
+                        for table in ("final_a_stock_eod_price", "bao_a_stock_eod_info"):
+                            cursor.execute("SELECT tradedate, symbol FROM " + table + " WHERE tradedate=%s AND symbol IN (" + marks + ")", (day, *chunk))
+                            for item in cursor.fetchall():
+                                external = external_by_internal.get(str(item["symbol"]))
+                                if external:
+                                    found.add((day, external))
         finally:
             connection.close()
         return found

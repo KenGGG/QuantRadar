@@ -89,15 +89,15 @@ OHLCV/金额缺口。固定 R22 基础表在这 5 个键上为零行；BaoStock 
 原始候选及明确交易状态。该窗口为停牌日，OHLC 保留、成交量与成交额为零，未由零
 成交量推断状态。
 
-该数据已在价格补充门禁通过后发布为 release `R7ea863e0f6468694`、补充 Dolt
-commit `m39143ud9fhbcfghbsbfunkkc3dogq8s`。发布前确认 5 个键与固定基础价格表零
-重叠，原始响应已存在于持久 RawStore；固定版本 Reader 与 Provider 离线回读均返回
-这 5 条记录。Provider 只在基础表没有该交易日时追加这些原始 OHLCV/成交额，且只
-暴露调用方请求的字段，不覆盖基础价格。
+此前该窗口被错误地视为“基础价格缺失”，并短暂进入 release
+`R7ea863e0f6468694`。后续只读复核确认：虽然 `final_a_stock_eod_price` 对这 5 个
+键为零行，固定基础 `bao_a_stock_eod_info` 已含完整原始 OHLCV/金额及
+`adjclose`、`adjpreclose`、`adjfactor`。因此它属于基础 Raw Price Resolver 的
+`FINAL_ROW_MISSING` 修复，不是外部补数；后继 current release 会撤回重复补充行，旧
+release 仅保留审计与回放记录。
 
-BaoStock 本次接口响应没有经独立审计的历史复权因子。因此 release 明确标记
-`adjustment_factor: UNAVAILABLE`，这些记录仅可用于 `fq='none'` 原始价格读取；
-`qfq`/`hfq` 不会把候选中的占位 `1.0` 视为真实复权因子。
+原始研究价格固定使用 `final → bao → external` 的顺序。`FINAL_ADJ` 与 `BAO_ADJ`
+为不同价格模式，Bao 的复权字段不得填入 final 的 `adjclose` 缺口。
 
 ## 后续状态补丁
 
@@ -106,6 +106,11 @@ BaoStock 本次接口响应没有经独立审计的历史复权因子。因此 r
 二元值、原始哈希、基础状态表零重叠和既有补充零冲突检查后，已发布为 release
 `R07d590ee202e9d20`、补充 Dolt commit `i5g5vqnsn41m0mv7gmeiqnvddbsfupje`。
 该发布把状态数据集增加至 430,132 行、1,029 只证券，仍为 `PARTIAL`。
+
+按 Raw Price Resolver 修订，current release 现为 `Rf5c0c823fd8084cf`、补充
+commit `s5mtq2hr20jnlbdhhtco1810cjnuakdd`。它保留上述状态记录并从 current
+补充库撤回 5 条与基础 Bao 原始价格重复的行；旧 release 不删除，仍可按其固定
+commit 回放。
 
 第六个状态任务覆盖 28 只证券、2023-06-14 至 2026-09-01 的 21,868 行，发布为
 `R54f4889ece48b8ce` / `h15d4bij7r6ag36cjmtmjfliski4uvpa`。发布前二元状态、基础
