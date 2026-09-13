@@ -254,7 +254,7 @@ def parse_official_etf_identity_text(text: str, *, symbol: str) -> dict:
     exchange = 'SSE' if '上海证券交易所' in region else 'SZSE' if '深圳证券交易所' in region else None
     expected = 'SSE' if symbol.endswith('.SH') else 'SZSE'
     if exchange != expected: raise ValueError('official document exchange mismatch')
-    match=re.search(r'(\d{4}年\d{1,2}月\d{1,2}日)', region)
+    match=re.search(r'(\d{4}(?:年\d{1,2}月\d{1,2}日|-\d{1,2}-\d{1,2}))', region)
     if not match: raise ValueError('official document listing date missing')
     pieces=re.findall(r'\d+', match.group(1))
     try: listing=date(int(pieces[0]), int(pieces[1]), int(pieces[2])).isoformat()

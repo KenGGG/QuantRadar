@@ -129,6 +129,8 @@ def test_official_etf_identity_text_requires_symbol_exchange_and_listing_date():
     }
     with pytest.raises(ValueError, match='exchange'):
         fa.parse_official_etf_identity_text(text, symbol='510300.SZ')
+    iso = text.replace('2012 年 05 月 28 日', '2012-05-28')
+    assert fa.parse_official_etf_identity_text(iso, symbol='510300.SH')['listing_date'] == '2012-05-28'
 
 
 def test_fixed_reader_returns_etf_announcement_evidence():
