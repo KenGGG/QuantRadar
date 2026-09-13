@@ -1,7 +1,7 @@
 import json
 
 from quantradar.datahub.adapters import FetchedRows
-from quantradar.datahub.stock_candidates import collect_stock_daily_candidates
+from quantradar.datahub.stock_candidates import collect_stock_daily_candidates, promote_stock_candidate_raw
 
 
 def test_stock_candidate_stages_exact_sessions_and_raw_receipt(tmp_path):
@@ -22,6 +22,10 @@ def test_stock_candidate_stages_exact_sessions_and_raw_receipt(tmp_path):
     staged = json.loads((tmp_path / "stock-daily-candidates" / "000009.SZ.json").read_text())
     assert staged["price"][0]["volume_shares"] == 100
     assert staged["qualification"] == "CANDIDATE_NOT_PUBLISHED"
+    promoted = promote_stock_candidate_raw(tmp_path, tmp_path / "durable")
+    assert promoted["symbols"] == ["000009.SZ"]
+    digest = json.loads((tmp_path / "journals" / "stock-daily-candidates.json").read_text())["units"]["000009.SZ"]["raw_sha256"]
+    assert (tmp_path / "durable" / "raw" / digest).is_file()
 
 
 def test_stock_candidate_rejects_missing_session_without_completion(tmp_path):

@@ -28,6 +28,23 @@ OHLC 相同，BaoStock 的成交量（股）和成交额（元）分别与基础
 显示舍入界限；最终差异为零。机器可读报告为
 `quality_reconciliation.json`。
 
+## 首个交易状态补丁发布与回放
+
+以该流程的下一批为范围，已采集 39 只股票在 2023-06-12 至 2023-06-30 的 507 条
+日线/状态候选，并完成同一固定基础提交的价格与单位对拍（507 行、零差异）。所有
+39 个原始响应已从 task staging 哈希校验后提升到持久
+`/data/quantradar_data/raw-artifacts/`。
+
+发布前门禁确认 507 条 `tradestatus`/`is_st` 均为二元值、原始哈希和合同字段完整、
+与基础 `bao_a_stock_eod_info` 零重叠、与既有补充记录零冲突。补丁发布为 release
+`R140e969c0739e918`，补充 Dolt commit 为
+`lf1j4a47qectprtdbn5co1nftrbmcomo`；基础 commit 仍为
+`uhdpedb4pr97ve80aq6nrabr66atsqtq`。
+
+离线回读该 release 的三个跨市场样本均返回 13 条状态记录，39 个持久原始哈希全部
+可读取；该验证的网络调用数为零。此补丁仅覆盖上述精确日期/证券范围，数据集和
+release 仍标记 `PARTIAL`，不声明全市场状态或严格 PIT 完整。
+
 ## 巨潮实施公告
 
 对 `600519` 做了一次 Cninfo 历史分红接口烟测。HTTP 200 原始响应的 SHA-256 为

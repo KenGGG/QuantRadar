@@ -22,6 +22,7 @@ def collect_stock_daily_candidates(
     *,
     expected_days: dict[str, list[str]],
     adapter: Any | None = None,
+    raw_root: Path | str | None = None,
 ) -> dict[str, Any]:
     """Capture exact requested sessions; completion is never inferred from rows.
 
@@ -35,7 +36,7 @@ def collect_stock_daily_candidates(
     if any(not days or days != sorted(set(days)) for days in expected_days.values()):
         raise ValueError("expected sessions must be sorted, unique and non-empty")
     journal = UpdateJournal(root / "journals" / "stock-daily-candidates.json")
-    raw = RawStore(root / "raw-artifacts")
+    raw = RawStore(raw_root or root / "raw-artifacts")
     stage = root / "stock-daily-candidates"
     journal.start("stock-daily-candidates", dataset="stock_daily_candidate")
     journal.ensure_pending(selected, reason="exact research-session daily OHLC/status candidate")
@@ -99,3 +100,24 @@ def collect_stock_daily_candidates(
     except Exception as exc:
         return {"status": "PARTIAL", "completed": completed, "failed": failed, "error": str(exc), "remaining": [s for s in todo if s not in completed and s not in failed]}
     return {"status": "COMPLETE" if not failed else "PARTIAL", "completed": completed, "failed": failed, "remaining": [s for s in todo if s not in completed and s not in failed]}
+
+
+def promote_stock_candidate_raw(root: Path | str, durable_raw_root: Path | str) -> dict[str, Any]:
+    """Copy previously captured bytes into the release RawStore with hash checks."""
+    root = Path(root)
+    source = RawStore(root / "raw-artifacts")
+    durable = RawStore(durable_raw_root)
+    journal = UpdateJournal(root / "journals" / "stock-daily-candidates.json")
+    promoted: list[str] = []
+    for symbol, unit in sorted(journal.data.get("units", {}).items()):
+        if unit.get("status") != "COMPLETE":
+            continue
+        digest = str(unit.get("raw_sha256") or "")
+        content = source.read(digest)
+        receipt = durable.put(f"stock_daily/{symbol}", content)
+        if receipt["sha256"] != digest:
+            raise ValueError(f"raw hash changed during promotion: {symbol}")
+        promoted.append(symbol)
+    if not promoted:
+        raise ValueError("no completed candidate receipts to promote")
+    return {"status": "PROMOTED_NOT_PUBLISHED", "symbols": promoted}
