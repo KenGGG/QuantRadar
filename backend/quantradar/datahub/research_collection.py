@@ -24,6 +24,9 @@ ALLOWED_ENDPOINTS = {
     'eastmoney-fund-profile': {'https://fundf10.eastmoney.com/'},
     'sse-etf-evidence': {'https://www.sse.com.cn/'},
     'szse-etf-evidence': {'https://disc.static.szse.cn/'},
+    'cninfo-etf-evidence': {'https://static.cninfo.com.cn/'},
+    'chinaamc-etf-evidence': {'https://www.chinaamc.com/'},
+    'southernfund-etf-evidence': {'https://www.southernfund.com/'},
     'eastmoney-fund-nav': {'https://api.fund.eastmoney.com/f10/lsjz'},
     'cninfo-dividend': {'https://webapi.cninfo.com.cn/api/sysapi/p_sysapi1139'},
     'sina-etf': {'https://finance.sina.com.cn/realstock/company/'},
@@ -53,10 +56,18 @@ class GovernedHttpSource:
             allowed=bool(re.fullmatch(r'https://fundf10\.eastmoney\.com/jbgk_\d{6}\.html',url))
         if self.endpoint=='sse-etf-evidence':
             import re
-            allowed=bool(re.fullmatch(r'https://www\.sse\.com\.cn/disclosure/fund/announcement/c/new/\d{4}-\d{2}-\d{2}/\d{6}_\d{8}_[A-Za-z0-9]+\.pdf',url))
+            allowed=bool(re.fullmatch(r'https://www\.sse\.com\.cn/disclosure/fund/announcement/c/(?:new/)?\d{4}-\d{2}-\d{2}/\d{6}_[A-Za-z0-9_]+\.pdf',url))
         if self.endpoint=='szse-etf-evidence':
             import re
             allowed=bool(re.fullmatch(r'https://disc\.static\.szse\.cn/download/disc/disk03/finalpage/\d{4}-\d{2}-\d{2}/[0-9a-f-]+\.PDF',url))
+        if self.endpoint=='cninfo-etf-evidence':
+            import re
+            allowed=bool(re.fullmatch(r'https://static\.cninfo\.com\.cn/finalpage/\d{4}-\d{2}-\d{2}/\d+\.PDF',url))
+        if self.endpoint=='chinaamc-etf-evidence':
+            import re
+            allowed=bool(re.fullmatch(r'https://www\.chinaamc\.com/upload/resources/file/\d{4}/\d{2}/\d{2}/\d+\.pdf',url))
+        if self.endpoint=='southernfund-etf-evidence':
+            allowed=url == 'https://www.southernfund.com/nfwebApi/DownLoader.java'
         if not allowed or method not in {'GET','POST'} or not contract:
             raise ValueError('unapproved endpoint/method/contract')
         identity={'endpoint':self.endpoint,'url':url,'method':method,'params':params,'contract':contract}
