@@ -103,8 +103,10 @@ def qualify_etf_daily_units(rows: list[dict]) -> list[dict]:
     """Accept hand/yuan only when the source's price-volume identity proves it.
 
     The Eastmoney daily response does not carry a machine-readable unit label.
-    For an ETF, ``amount / (close * volume)`` must be approximately 100 for
-    hand volume and yuan amount.  Zero-volume observations are not evidence.
+    For an ETF, ``amount / (close * volume)`` must be near 100 for hand volume
+    and yuan amount.  It is not exactly 100 because amount uses the intraday
+    volume-weighted price rather than the close.  Zero-volume observations are
+    not evidence.
     """
     evidence=[]
     for row in rows:
@@ -113,7 +115,7 @@ def qualify_etf_daily_units(rows: list[dict]) -> list[dict]:
             raise ValueError('ETF unit qualification requires price, volume and amount')
         if volume > 0 and amount > 0 and close > 0:
             evidence.append(float(amount)/(float(close)*float(volume)))
-    if not evidence or any(not 95.0 <= value <= 105.0 for value in evidence):
+    if not evidence or any(not 85.0 <= value <= 115.0 for value in evidence):
         raise ValueError('ETF source units are not consistently hand/yuan')
     result=[]
     for row in rows:

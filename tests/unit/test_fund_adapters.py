@@ -50,3 +50,12 @@ def test_etf_daily_unit_qualification_normalizes_hands_and_yuan():
     assert qualified[0]['volume_shares'] == 10000.0
     assert qualified[0]['amount_cny'] == 34500.0
     assert qualified[0]['unit_status'] == 'HAND_AND_CNY_QUALIFIED'
+
+
+def test_etf_unit_qualification_allows_amount_weighted_price_not_close():
+    rows = [{
+        'symbol': '510300.SH', 'trade_date': '2015-06-30', 'close': 4.484,
+        'volume_source': 27653176.0, 'amount_source': 11729333504.0,
+        'unit_status': 'UNIT_UNVERIFIED',
+    }]
+    assert fa.qualify_etf_daily_units(rows)[0]['volume_units'] == 'HAND'
