@@ -57,3 +57,10 @@ def test_official_etf_evidence_pdf_paths_are_allowlisted(tmp_path):
     szse.fetch('https://disc.static.szse.cn/download/disc/disk03/finalpage/2025-08-29/0795f2c9-30a3-4825-bf25-37f08ddfe16a.PDF', {}, contract='szse-etf-pdf-v1')
     with pytest.raises(ValueError, match='unapproved'):
         sse.fetch('https://www.sse.com.cn/disclosure/fund/announcement/c/new/2023-03-31/not-a-pdf.html', {}, contract='sse-etf-pdf-v1')
+
+
+def test_jsfund_etf_evidence_requires_product_announcement_pdf_path(tmp_path):
+    source = rc.GovernedHttpSource(tmp_path, 'jsfund-etf-evidence', session=Session(), interval_seconds=0)
+    source.fetch('https://www.jsfund.cn/plat_files/upload/product_ann/20250314/202503141741951225663/dividend.pdf', {}, contract='jsfund-etf-pdf-v1')
+    with pytest.raises(ValueError, match='unapproved'):
+        source.fetch('https://www.jsfund.cn/plat_files/upload/product_ann/20250314/dividend.html', {}, contract='jsfund-etf-pdf-v1')

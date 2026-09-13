@@ -27,6 +27,7 @@ ALLOWED_ENDPOINTS = {
     'cninfo-etf-evidence': {'https://static.cninfo.com.cn/'},
     'chinaamc-etf-evidence': {'https://www.chinaamc.com/'},
     'southernfund-etf-evidence': {'https://www.southernfund.com/'},
+    'jsfund-etf-evidence': {'https://www.jsfund.cn/'},
     'eastmoney-fund-nav': {'https://api.fund.eastmoney.com/f10/lsjz'},
     'cninfo-dividend': {'https://webapi.cninfo.com.cn/api/sysapi/p_sysapi1139'},
     'sina-etf': {'https://finance.sina.com.cn/realstock/company/'},
@@ -68,6 +69,9 @@ class GovernedHttpSource:
             allowed=bool(re.fullmatch(r'https://www\.chinaamc\.com/upload/resources/file/\d{4}/\d{2}/\d{2}/\d+\.pdf',url))
         if self.endpoint=='southernfund-etf-evidence':
             allowed=url == 'https://www.southernfund.com/nfwebApi/DownLoader.java'
+        if self.endpoint=='jsfund-etf-evidence':
+            import re
+            allowed=bool(re.fullmatch(r'https://www\.jsfund\.cn/plat_files/upload/product_ann/\d{8}/\d+/[^/?]+\.pdf',url))
         if not allowed or method not in {'GET','POST'} or not contract:
             raise ValueError('unapproved endpoint/method/contract')
         identity={'endpoint':self.endpoint,'url':url,'method':method,'params':params,'contract':contract}
