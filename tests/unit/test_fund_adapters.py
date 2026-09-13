@@ -59,3 +59,19 @@ def test_etf_unit_qualification_allows_amount_weighted_price_not_close():
         'unit_status': 'UNIT_UNVERIFIED',
     }]
     assert fa.qualify_etf_daily_units(rows)[0]['volume_units'] == 'HAND'
+
+
+def test_etf_daily_candidate_requires_raw_provenance_and_normalized_units():
+    row = {
+        'symbol': '510300.SH', 'trade_date': '2024-01-02',
+        'open': 3.4, 'high': 3.5, 'low': 3.3, 'close': 3.45,
+        'volume_shares': 10000.0, 'amount_cny': 34500.0,
+        'source': 'eastmoney:push2his_etf_kline', 'raw_sha256': 'a' * 64,
+        'adapter_version': 'akshare-1.18.94-etf-raw-http-v1', 'fetched_at': '2026-09-13T00:00:00Z',
+        'available_at': None, 'pit_status': 'PARTIAL', 'adjustment': 'raw',
+        'unit_status': 'HAND_AND_CNY_QUALIFIED',
+    }
+    assert fa.validate_etf_daily_candidate([row]) == {'status': 'PASS', 'rows': 1, 'errors': []}
+    assert fa.validate_etf_daily_candidate([{**row, 'volume_shares': None}]) == {
+        'status': 'FAIL', 'rows': 1, 'errors': ['invalid normalized quantity']
+    }

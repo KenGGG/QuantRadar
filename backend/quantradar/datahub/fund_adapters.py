@@ -128,6 +128,31 @@ def qualify_etf_daily_units(rows: list[dict]) -> list[dict]:
     return result
 
 
+def validate_etf_daily_candidate(rows: list[dict]) -> dict:
+    """Reject incomplete ETF daily records before any supplemental write."""
+    errors=[];seen=set()
+    for row in rows:
+        day,symbol=str(row.get('trade_date') or '')[:10],row.get('symbol')
+        try: date.fromisoformat(day)
+        except ValueError: errors.append('invalid trade_date')
+        if not isinstance(symbol,str) or not re.fullmatch(r'\d{6}\.(SH|SZ)',symbol): errors.append('invalid symbol')
+        if (day,symbol) in seen: errors.append('duplicate key')
+        seen.add((day,symbol))
+        values=[]
+        try:
+            values=[float(row[field]) for field in ('open','high','low','close','volume_shares','amount_cny')]
+        except (TypeError,ValueError):
+            errors.append('invalid normalized quantity')
+        if values and (not all(math.isfinite(value) and value >= 0 for value in values) or
+                       values[2] > min(values[0],values[3]) or values[1] < max(values[0],values[3])):
+            errors.append('invalid normalized quantity')
+        if row.get('source')!='eastmoney:push2his_etf_kline' or len(str(row.get('raw_sha256') or ''))!=64 or not row.get('adapter_version') or not row.get('fetched_at'):
+            errors.append('missing raw provenance')
+        if row.get('unit_status')!='HAND_AND_CNY_QUALIFIED' or row.get('adjustment')!='raw' or row.get('pit_status')!='PARTIAL':
+            errors.append('invalid qualification')
+    return {'status':'PASS' if rows and not errors else 'FAIL','rows':len(rows),'errors':sorted(set(errors))}
+
+
 class EastmoneyFundAdapter:
     """One request per call; the caller qualifies scope before iterating symbols/pages."""
     def __init__(self, transport: GovernedHttpSource):self.transport=transport
