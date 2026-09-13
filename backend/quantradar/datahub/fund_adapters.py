@@ -234,6 +234,30 @@ def parse_etf_overview(content: bytes, *, fund_code: str) -> dict:
             'qualification': 'FUND_PROFILE_ONLY'}
 
 
+def parse_official_etf_identity_text(text: str, *, symbol: str) -> dict:
+    """Validate identity facts extracted from one archived official document."""
+    if not re.fullmatch(r'\d{6}\.(SH|SZ)', symbol): raise ValueError('explicit ETF symbol required')
+    if not isinstance(text, str) or len(text) > 20_000_000: raise ValueError('invalid official document text')
+    code=symbol[:6]
+    if not re.search(rf'(?:基金主代码|基金代码|交易代码)\s*{code}(?!\d)', text):
+        raise ValueError('official document code mismatch')
+    compact=re.sub(r'\s+', '', text)
+    region_match=re.search(r'(.{0,100})(?:上市交易所及上市日期|基金份额上市的证券交.{0,3}易所)(.{0,100})', compact)
+    if not region_match: raise ValueError('official document listing exchange missing')
+    region=region_match.group(0)
+    exchange = 'SSE' if '上海证券交易所' in region else 'SZSE' if '深圳证券交易所' in region else None
+    expected = 'SSE' if symbol.endswith('.SH') else 'SZSE'
+    if exchange != expected: raise ValueError('official document exchange mismatch')
+    match=re.search(r'(\d{4}年\d{1,2}月\d{1,2}日)', region)
+    if not match: raise ValueError('official document listing date missing')
+    date_text=match.group(1).replace('年','-').replace('月','-').replace('日','')
+    listing=_day(date_text)
+    if listing is None: raise ValueError('official document listing date invalid')
+    return {'symbol':symbol,'exchange':exchange,'listing_date':listing,
+            'currency':'CNY' if '人民币' in text else None,
+            'qualification':'OFFICIAL_IDENTITY_DOCUMENT'}
+
+
 class EastmoneyFundAdapter:
     """One request per call; the caller qualifies scope before iterating symbols/pages."""
     def __init__(self, transport: GovernedHttpSource):self.transport=transport

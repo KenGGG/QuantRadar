@@ -121,6 +121,16 @@ def test_etf_overview_parser_keeps_fund_establishment_distinct_from_listing():
     }
 
 
+def test_official_etf_identity_text_requires_symbol_exchange_and_listing_date():
+    text = '''基金代码 510300\n上市交易所及上市日期 上海证券交易所 2012 年 05 月 28 日\n交易币种 人民币'''
+    assert fa.parse_official_etf_identity_text(text, symbol='510300.SH') == {
+        'symbol': '510300.SH', 'exchange': 'SSE', 'listing_date': '2012-05-28',
+        'currency': 'CNY', 'qualification': 'OFFICIAL_IDENTITY_DOCUMENT',
+    }
+    with pytest.raises(ValueError, match='exchange'):
+        fa.parse_official_etf_identity_text(text, symbol='510300.SZ')
+
+
 def test_fixed_reader_returns_etf_announcement_evidence():
     from quantradar.datahub.reader import SupplementalReader
     reader = SupplementalReader(lambda: None)
