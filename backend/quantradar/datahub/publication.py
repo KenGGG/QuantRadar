@@ -8,6 +8,7 @@ from datetime import date
 from pathlib import Path
 
 from .dolt import SupplementalStore
+from .fund_adapters import validate_etf_daily_candidate
 from .market_cap import validate_market_cap_candidate
 from .quality import POLICY, valuation_contracts
 
@@ -200,6 +201,60 @@ def publish_market_cap_stage(service, stage_path: Path) -> dict:
             'selection': 'archived_total_market_cap_only', 'qualification': 'CANDIDATE_NOT_PUBLISHED'}})
     return {'status': 'PARTIAL', 'release_id': manifest['release_id'], 'supplemental_commit': commit,
             'rows': rows, 'validation': {'status': 'PASS', 'stage_sha256': digest.hexdigest(), 'first_date': first, 'latest_date': latest}}
+
+
+def _etf_daily_stage_rows(stage_path: Path):
+    with stage_path.open(encoding='utf-8') as handle:
+        for line_number, line in enumerate(handle, 1):
+            row = json.loads(line)
+            check = validate_etf_daily_candidate([row])
+            if check['status'] != 'PASS':
+                raise ValueError(f'ETF daily candidate row {line_number} failed: {check["errors"]}')
+            yield row
+
+
+def publish_etf_daily_stage(service, stage_path: Path) -> dict:
+    """Publish unadjusted, unit-qualified ETF daily candidates immutably."""
+    stage_path = Path(stage_path)
+    digest, rows = hashlib.sha256(), 0
+    for row in _etf_daily_stage_rows(stage_path):
+        digest.update((json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n').encode())
+        rows += 1
+    if not rows:
+        raise ValueError('ETF daily candidate is empty')
+    old = service.releases.current()
+    identity = digest.hexdigest()[:16]
+    conn = service._connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute('SELECT * FROM dolt_status')
+            if cursor.fetchall():
+                raise ValueError('supplemental repository has uncommitted changes')
+            branch = 'candidate_etf_daily_' + identity
+            cursor.execute('SELECT name FROM dolt_branches WHERE name=%s', (branch,))
+            if cursor.fetchone(): cursor.execute('CALL DOLT_CHECKOUT(%s)', (branch,))
+            else: cursor.execute('CALL DOLT_CHECKOUT(\'-b\', %s, %s)', (branch, old['supplemental_commit']))
+        writer = SupplementalStore(conn)
+        writer.ensure_schema()
+        writer.upsert_etf_prices(_etf_daily_stage_rows(stage_path))
+        commit = writer.commit('datahub: checked ETF daily candidate ' + identity)
+    finally:
+        conn.close()
+    with service._connection(service.config.supplemental_database + '/' + commit) as frozen, frozen.cursor() as cur:
+        cur.execute('SELECT COUNT(*) AS row_count, COUNT(DISTINCT symbol) AS stocks, MIN(trade_date) AS first_date, MAX(trade_date) AS latest_date FROM qr_etf_eod_price')
+        metrics = {k: str(v) if hasattr(v, 'isoformat') else v for k, v in cur.fetchone().items()}
+        cur.execute("SELECT COUNT(*) AS invalid FROM qr_etf_eod_price WHERE open < 0 OR high < 0 OR low < 0 OR close < 0 OR volume_shares < 0 OR amount_cny < 0 OR low > LEAST(open, close) OR high < GREATEST(open, close) OR adjustment <> 'raw' OR unit_status <> 'HAND_AND_CNY_QUALIFIED'")
+        if cur.fetchone()['invalid']:
+            raise ValueError('fixed-commit ETF daily verification failed')
+    datasets = {**old['datasets'], 'etf_eod_price': {**metrics, 'source': ['eastmoney:push2his_etf_kline'],
+        'pit_status': 'PARTIAL', 'quality_status': 'PARTIAL', 'qualification': 'CANDIDATE_NOT_PUBLISHED',
+        'adjustment': 'raw', 'volume_units': 'shares', 'amount_units': 'CNY', 'refresh_status': 'PUBLISHED'}}
+    manifest = service.releases.publish(base_commit=old['base_commit'], supplemental_commit=commit, datasets=datasets,
+        source_adapters={**old['source_adapters'], 'etf_eod_price': 'akshare-1.18.94-etf-raw-http-v1'},
+        metadata={**old.get('metadata', {}), 'etf_daily_candidate': {'rows': rows, 'stage_sha256': digest.hexdigest(),
+            'selection': 'fixed_g2_scope', 'qualification': 'CANDIDATE_NOT_PUBLISHED'}})
+    return {'status': 'PARTIAL', 'release_id': manifest['release_id'], 'supplemental_commit': commit,
+            'rows': rows, 'validation': {'status': 'PASS', 'stage_sha256': digest.hexdigest()}}
 
 
 def publish_trade_status_patch(service, rows: list[dict]) -> dict:

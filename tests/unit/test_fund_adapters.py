@@ -75,3 +75,17 @@ def test_etf_daily_candidate_requires_raw_provenance_and_normalized_units():
     assert fa.validate_etf_daily_candidate([{**row, 'volume_shares': None}]) == {
         'status': 'FAIL', 'rows': 1, 'errors': ['invalid normalized quantity']
     }
+
+
+def test_fixed_reader_returns_release_pinned_etf_raw_prices():
+    from quantradar.datahub.reader import SupplementalReader
+
+    reader = SupplementalReader(lambda: None)
+    reader._query = lambda sql, args: [{'symbol': '510300.SH', 'trade_date': '2024-01-02',
+                                        'open': 3.4, 'high': 3.5, 'low': 3.3, 'close': 3.45,
+                                        'volume_shares': 10000.0, 'amount_cny': 34500.0, 'pit_status': 'PARTIAL'}]
+    assert reader.etf_prices(['510300.SH'], '2024-01-02', '2024-01-02') == {
+        '510300.SH': [{'symbol': '510300.SH', 'trade_date': '2024-01-02',
+                       'open': 3.4, 'high': 3.5, 'low': 3.3, 'close': 3.45,
+                       'volume_shares': 10000.0, 'amount_cny': 34500.0, 'pit_status': 'PARTIAL'}]
+    }

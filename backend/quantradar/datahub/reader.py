@@ -184,6 +184,22 @@ class SupplementalReader:
             grouped.setdefault(row['symbol'], []).append(row)
         return grouped
 
+    def etf_prices(self, symbols: list[str], start_date: str, end_date: str) -> dict[str, list[dict[str, Any]]]:
+        """Read unadjusted ETF prices only from the release-pinned supplement."""
+        if not symbols:
+            return {}
+        marks = ','.join(['%s'] * len(symbols))
+        rows = self._query(
+            'SELECT symbol, trade_date, open, high, low, close, volume_shares, amount_cny, pit_status '
+            f'FROM qr_etf_eod_price WHERE symbol IN ({marks}) AND trade_date >= %s AND trade_date <= %s '
+            'ORDER BY symbol, trade_date',
+            (*symbols, start_date, end_date),
+        )
+        grouped = {symbol: [] for symbol in symbols}
+        for row in rows:
+            grouped.setdefault(row['symbol'], []).append(row)
+        return grouped
+
     def _query(self, sql: str, args: tuple[Any, ...]) -> list[dict[str, Any]]:
         connection = self._connect()
         try:
