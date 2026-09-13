@@ -1,0 +1,19 @@
+{
+  "dataset": "historical_total_market_cap_candidate",
+  "field": "market_cap_as_total_market_cap_cny",
+  "forbidden_substitute": "float_market_cap",
+  "missing_referenced_count": 5,
+  "missing_referenced_symbols": [
+    "300001.SZ",
+    "301236.SZ",
+    "600601.SH",
+    "600602.SH",
+    "603000.SH"
+  ],
+  "pit_status": "PARTIAL",
+  "qualification": "CANDIDATE_NOT_PUBLISHED",
+  "raw_rows": 1933230,
+  "source": "eastmoney:RPT_VALUEANALYSIS_DET",
+  "valid_snapshots": 997,
+  "valid_symbols": 997
+}
