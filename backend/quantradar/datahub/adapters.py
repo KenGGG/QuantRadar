@@ -39,6 +39,10 @@ class FetchedRows:
     rows: list[dict[str, Any]]
     source: str
     fetched_at: str
+    # One source response can produce several independently qualified domains.
+    # ``rows`` stays the legacy primary projection for existing callers.
+    candidate_domains: dict[str, list[dict[str, Any]]] | None = None
+    evidence_level: str | None = None
 
 
 class SourceResponseError(RuntimeError):
@@ -211,9 +215,26 @@ class BaostockAdapter:
             raise RuntimeError(f"baostock query failed: {result.error_code} {result.error_msg}")
         rows: list[dict[str, Any]] = []
         while result.next():
-            rows.append(dict(zip(result.fields, result.get_row_data())))
+            values = result.get_row_data()
+            if len(values) != len(result.fields):
+                raise ValueError("baostock row width differs from declared fields")
+            rows.append(dict(zip(result.fields, values)))
             if len(rows) > max_rows:
                 raise RuntimeError(f"baostock result exceeded row limit {max_rows}")
+        if result.error_code != "0":
+            evidence = json.dumps(
+                {
+                    "evidence_level": "SDK_RESPONSE_SNAPSHOT",
+                    "complete": False,
+                    "rows": rows,
+                    "error_code": result.error_code,
+                    "error_msg": result.error_msg,
+                },
+                ensure_ascii=False,
+            ).encode("utf-8")
+            raise SourceResponseError(
+                f"baostock iteration failed: {result.error_code} {result.error_msg}", evidence
+            )
         return rows
 
     def valuation(self, symbol: str, start_date: str, end_date: str) -> FetchedRows:
@@ -240,9 +261,18 @@ class BaostockAdapter:
                     fetched_at=fetched_at,
                 )
 
-    def daily_bundles(self, symbols: Iterable[str], start_date: str, end_date: str):
-        """Fetch one raw daily response per security and emit status candidates only."""
+    def daily_bundles(
+        self, symbols: Iterable[str], start_date: str, end_date: str, *, extended: bool = False
+    ):
+        """Fetch one raw daily response and split it into candidate domains.
+
+        Existing status repair calls retain their old source field contract.
+        Extended fields are an unqualified G1 candidate, never an implicit
+        publication change.
+        """
         fields = "date,code,open,high,low,close,volume,amount,turn,tradestatus,isST"
+        if extended:
+            fields += ",preclose,adjustflag,pctChg,peTTM,pbMRQ,psTTM,pcfNcfTTM"
         with self._session() as bs:
             for symbol in symbols:
                 raw_rows = self._rows(
@@ -261,7 +291,8 @@ class BaostockAdapter:
                 yield symbol, FetchedRows(
                     dataset="trade_status_daily", raw_bytes=raw_bytes,
                     rows=bundle["trade_status"], source=self.source,
-                    fetched_at=fetched_at,
+                    fetched_at=fetched_at, candidate_domains=bundle,
+                    evidence_level="SDK_RESPONSE_SNAPSHOT",
                 )
 
     def lifecycle(self) -> FetchedRows:

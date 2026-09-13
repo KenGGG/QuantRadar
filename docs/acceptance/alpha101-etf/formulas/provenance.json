@@ -1,0 +1,19 @@
+{
+  "title": "101 Formulaic Alphas",
+  "author": "Zura Kakushadze",
+  "paper_date": "2015-12-09",
+  "url": "https://arxiv.org/pdf/1601.00991",
+  "retrieved_date": "2026-09-13",
+  "sha256_pdf": "1f9c21afe32dcb3ee77b31548acdaea00451fbfa1c0ee10c907867bcc736fce9",
+  "appendix_pdf_pages_1_based": [
+    8,
+    16
+  ],
+  "extraction": "pdftotext -layout; isolate numbered mathematical expressions; remove standalone page numbers; fold whitespace; retain all function names and numeric literals",
+  "expression_sha256": "0c0b17e966520720efd923a2ce8b9211a0b34383b4201e2a190580666f58401b",
+  "arxiv_version": "1601.00991v3",
+  "arxiv_revision_date": "2016-03-18",
+  "version_reference": "https://arxiv.org/abs/1601.00991v3",
+  "runtime_expressions": "backend/quantradar/datahub/alpha101/_formulas.py",
+  "archived_expressions": "docs/acceptance/alpha101-etf/formulas/formulas.json"
+}

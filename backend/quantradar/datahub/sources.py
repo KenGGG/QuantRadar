@@ -91,6 +91,15 @@ def normalize_valuation_rows(
     return result
 
 
+def _binary_state(value: Any, field: str) -> int | None:
+    number = _number(value, field)
+    if number is None:
+        return None
+    if number not in (0, 1):
+        raise ValueError(f"{field} must be 0, 1 or unknown: {value!r}")
+    return int(number)
+
+
 def normalize_baostock_daily_bundle(
     rows: Iterable[dict[str, Any]], *, raw_sha256: str, fetched_at: str, adapter_version: str
 ) -> dict[str, list[dict[str, Any]]]:
@@ -104,11 +113,19 @@ def normalize_baostock_daily_bundle(
     valuation: list[dict[str, Any]] = []
     for raw in rows:
         day, symbol = _date(raw.get("date"), "date"), _symbol(raw.get("code"))
+        if not ((symbol.endswith('.SH') and symbol.startswith(('60', '68')))
+                or (symbol.endswith('.SZ') and symbol.startswith(('00', '30')))):
+            raise ValueError(f"unsupported A-share bundle identity: {symbol}")
         price.append({"trade_date": day, "symbol": symbol, **{
             field: _number(raw.get(field), field) for field in ("open", "high", "low", "close", "volume", "amount")
-        }, "source": "baostock", "raw_sha256": raw_sha256, "adapter_version": adapter_version, "fetched_at": fetched_at})
-        status.append({"trade_date": day, "symbol": symbol, "tradestatus": int(_number(raw.get("tradestatus"), "tradestatus")),
-                       "is_st": int(_number(raw.get("isST"), "isST")), "turn": _number(raw.get("turn"), "turn"),
+        }, "preclose": _number(raw.get("preclose"), "preclose"),
+            "source": "baostock", "raw_sha256": raw_sha256,
+            "adapter_version": adapter_version, "fetched_at": fetched_at,
+            "available_date": None, "pit_status": PIT_PARTIAL,
+            "evidence_level": "SDK_RESPONSE_SNAPSHOT",
+            "unit_contract_version": "baostock-shares-yuan"})
+        status.append({"trade_date": day, "symbol": symbol, "tradestatus": _binary_state(raw.get("tradestatus"), "tradestatus"),
+                       "is_st": _binary_state(raw.get("isST"), "isST"), "turn": _number(raw.get("turn"), "turn"),
                        "source": "baostock", "raw_sha256": raw_sha256, "adapter_version": adapter_version,
                        "fetched_at": fetched_at, "available_date": None, "pit_status": PIT_PARTIAL,
                        "source_contract_id": "baostock-daily-v2"})

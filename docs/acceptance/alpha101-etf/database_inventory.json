@@ -1,0 +1,271 @@
+{
+  "release": {
+    "release_id": "R22a53f013266373d",
+    "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+    "supplemental_commit": "ift7hg4vnjei2eqaqisg61s461nnodig",
+    "schema_version": "datahub-v1",
+    "source_adapters": {
+      "quality_policy": "valuation-quality-v2",
+      "trade_status": "baostock-daily-v2",
+      "valuation": "akshare-1.18.94"
+    },
+    "price_units": "joinquant-shares-yuan-v2",
+    "manifest_sha256": "12b50dad7ec48e011bc1d46e7f7e5998fd33f024d68d9975f03090b762954e92"
+  },
+  "schemas": {
+    "base": {
+      "bao_a_stock_eod_info": [
+        "tradedate",
+        "open",
+        "high",
+        "low",
+        "close",
+        "preclose",
+        "volume",
+        "amount",
+        "turn",
+        "tradestatus",
+        "is_st",
+        "adjclose",
+        "adjpreclose",
+        "adjfactor",
+        "symbol"
+      ],
+      "c_a_stock_eod_price": [
+        "tradedate",
+        "symbol",
+        "high",
+        "low",
+        "open",
+        "close",
+        "adjclose",
+        "volume"
+      ],
+      "c_link_table": [
+        "symbol",
+        "link_date",
+        "adj_ratio"
+      ],
+      "final_a_stock_eod_price": [
+        "tradedate",
+        "symbol",
+        "high",
+        "low",
+        "open",
+        "close",
+        "adjclose",
+        "volume",
+        "amount"
+      ],
+      "final_a_stock_limit": [
+        "tradedate",
+        "symbol",
+        "pre_close",
+        "up_limit",
+        "down_limit"
+      ],
+      "max_index_date": [
+        "MIN(index_max_date)"
+      ],
+      "ts_a_stock_eod_price": [
+        "tradedate",
+        "symbol",
+        "high",
+        "low",
+        "open",
+        "close",
+        "adjclose",
+        "volume",
+        "amount"
+      ],
+      "ts_a_stock_list": [
+        "ts_code",
+        "symbol",
+        "exchange",
+        "list_date",
+        "delist_date"
+      ],
+      "ts_index_weight": [
+        "index_code",
+        "stock_code",
+        "trade_date",
+        "weight"
+      ],
+      "ts_link_table": [
+        "w_symbol",
+        "link_symbol",
+        "link_date",
+        "adj_ratio"
+      ],
+      "ts_trade_day_calendar": [
+        "id",
+        "exchange",
+        "date",
+        "is_open"
+      ],
+      "w_a_stock_eod_price": [
+        "tradedate",
+        "symbol",
+        "high",
+        "low",
+        "open",
+        "close",
+        "adjclose",
+        "volume",
+        "amount"
+      ],
+      "yahoo_a_stock_eod_price": [
+        "tradedate",
+        "symbol",
+        "high",
+        "low",
+        "open",
+        "close",
+        "adjclose",
+        "volume"
+      ],
+      "yahoo_link_table": [
+        "symbol",
+        "link_date",
+        "adj_ratio"
+      ]
+    },
+    "supplement": {
+      "qr_security_lifecycle": [
+        "symbol",
+        "list_date",
+        "delist_date",
+        "status",
+        "source",
+        "raw_sha256",
+        "adapter_version",
+        "fetched_at",
+        "available_date",
+        "pit_status"
+      ],
+      "qr_sw_industry_history": [
+        "symbol",
+        "industry_code",
+        "effective_from",
+        "effective_to",
+        "source",
+        "raw_sha256",
+        "adapter_version",
+        "fetched_at",
+        "available_date",
+        "pit_status"
+      ],
+      "qr_trade_status_daily": [
+        "trade_date",
+        "symbol",
+        "tradestatus",
+        "is_st",
+        "turn",
+        "source",
+        "raw_sha256",
+        "adapter_version",
+        "source_contract_id",
+        "fetched_at",
+        "available_date",
+        "pit_status"
+      ],
+      "qr_valuation_daily": [
+        "trade_date",
+        "symbol",
+        "pe_ttm",
+        "pb_mrq",
+        "ps_ttm",
+        "pcf_ocf_ttm",
+        "source",
+        "raw_sha256",
+        "adapter_version",
+        "fetched_at",
+        "available_date",
+        "pit_status"
+      ]
+    }
+  },
+  "queries": {
+    "index_coverage": {
+      "sql": "SELECT index_code,MIN(trade_date) first_date,MAX(trade_date) last_date,COUNT(*) rows_count,COUNT(DISTINCT trade_date) snapshots FROM ts_index_weight GROUP BY index_code",
+      "rows": 6,
+      "sha256": "bc264cda1198dfcafa9c1595a0f0de5d36b2fdd99f0063696d8006450fb22d2a"
+    },
+    "etf_base": {
+      "sql": "SELECT symbol,MIN(tradedate) first_date,MAX(tradedate) last_date,COUNT(*) rows_count FROM final_a_stock_eod_price WHERE symbol IN ('SH510050','SH510300','SH510500','SZ159919','SZ159915','SZ159901','SZ159902','SZ159903','SH510180','SH510880') GROUP BY symbol",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "lifecycle": {
+      "sql": "SELECT * FROM ts_a_stock_list",
+      "rows": 5023,
+      "sha256": "ad1664805f25cdc6c7b5bbcb98d004df33aad58adb5fc7fd29ad8ca872c9dfdd"
+    },
+    "calendar": {
+      "sql": "SELECT date FROM ts_trade_day_calendar WHERE exchange='SSE' AND is_open=1 AND date BETWEEN '2010-01-01' AND '2026-09-11' ORDER BY date",
+      "rows": 4055,
+      "sha256": "c0dfcf8e3adeb5fd4135b18be844453addd3e23035b34c485ee20af6f82959c1"
+    },
+    "csi500": {
+      "sql": "SELECT index_code,stock_code,trade_date,weight FROM ts_index_weight WHERE index_code='000905.SH' AND trade_date BETWEEN '2010-01-01' AND '2026-08-31' ORDER BY trade_date,stock_code",
+      "rows": 287014,
+      "sha256": "05c2bb2423971dfb66efee312eb07610e15accd0d469ef2880297cbf529f8fe3"
+    },
+    "lifecycle_supplement": {
+      "sql": "SELECT * FROM qr_security_lifecycle",
+      "rows": 4916,
+      "sha256": "80496874bf8d9f583ec41f197e4ebdd7fc35d5f023480feb8841cca7398c8a5c"
+    },
+    "status_supplement": {
+      "sql": "SELECT * FROM qr_trade_status_daily",
+      "rows": 11347,
+      "sha256": "1711c7550c4a22042b31dd839dc4ad2fcba950abb5a35c21183e4090c89e2398"
+    }
+  },
+  "index_coverage": [
+    {
+      "index_code": "000300.SH",
+      "first_date": "2020-01-02",
+      "last_date": "2022-07-01",
+      "rows_count": 18300,
+      "snapshots": 61
+    },
+    {
+      "index_code": "000852.SH",
+      "first_date": "2014-10-31",
+      "last_date": "2026-08-31",
+      "rows_count": 136040,
+      "snapshots": 143
+    },
+    {
+      "index_code": "000905.SH",
+      "first_date": "2007-01-31",
+      "last_date": "2026-08-31",
+      "rows_count": 391514,
+      "snapshots": 783
+    },
+    {
+      "index_code": "000906.SH",
+      "first_date": "2007-01-22",
+      "last_date": "2026-08-31",
+      "rows_count": 705614,
+      "snapshots": 960
+    },
+    {
+      "index_code": "000985.SH",
+      "first_date": "2011-08-31",
+      "last_date": "2026-05-29",
+      "rows_count": 590174,
+      "snapshots": 173
+    },
+    {
+      "index_code": "399300.SZ",
+      "first_date": "2005-04-08",
+      "last_date": "2026-08-31",
+      "rows_count": 560394,
+      "snapshots": 1868
+    }
+  ],
+  "etf_base": [],
+  "base_scope": "fixed base final table; ten exact candidate symbols; no rows"
+}

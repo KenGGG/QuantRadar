@@ -1,0 +1,2057 @@
+[
+  {
+    "alpha_id": 1,
+    "formula": "(rank(Ts_ArgMax(SignedPower(((returns < 0) ? stddev(returns, 20) : close), 2.), 5)) - 0.5)",
+    "fields": [
+      "close",
+      "returns"
+    ],
+    "group": "price_volume",
+    "lookback_days": 25,
+    "delay_adaptation": "next_session",
+    "formula_hash": "cd92e26ec13458e6a764c536ab37749046cca4b71412a0980593b2f7709802f2",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 2,
+    "formula": "(-1 * correlation(rank(delta(log(volume), 2)), rank(((close - open) / open)), 6))",
+    "fields": [
+      "close",
+      "open",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 8,
+    "delay_adaptation": "next_session",
+    "formula_hash": "2a47f3627058e79f8e58d45dba19806af42a6a640bd6cdd8066fd29d80f9c9d8",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 3,
+    "formula": "(-1 * correlation(rank(open), rank(volume), 10))",
+    "fields": [
+      "open",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 10,
+    "delay_adaptation": "next_session",
+    "formula_hash": "044641cdc5ea8e3efb83ae940a1a38d47d07d7a40ea40c84eeaae34bd1cf78bc",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 4,
+    "formula": "(-1 * Ts_Rank(rank(low), 9))",
+    "fields": [
+      "low"
+    ],
+    "group": "price_volume",
+    "lookback_days": 9,
+    "delay_adaptation": "next_session",
+    "formula_hash": "d73c708b6c81661c4dca917f9f24cebea7c01a90c4d19f5b4e4e8b6a970a01de",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 5,
+    "formula": "(rank((open - (sum(vwap, 10) / 10))) * (-1 * abs(rank((close - vwap)))))",
+    "fields": [
+      "close",
+      "open",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 10,
+    "delay_adaptation": "next_session",
+    "formula_hash": "01f3e495b995727bd0c6a8534bea51a8dbdf6424ac563b81c9f841adedbeb8e4",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 6,
+    "formula": "(-1 * correlation(open, volume, 10))",
+    "fields": [
+      "open",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 10,
+    "delay_adaptation": "next_session",
+    "formula_hash": "0c60fa02af2606eb149e16d4dea130d07f85451257a9d2ed17065ec081e08b73",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 7,
+    "formula": "((adv20 < volume) ? ((-1 * ts_rank(abs(delta(close, 7)), 60)) * sign(delta(close, 7))) : (-1 * 1))",
+    "fields": [
+      "amount",
+      "close",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 67,
+    "delay_adaptation": "next_session",
+    "formula_hash": "63cd347f98ebb94fb0498251845f0513410e604794b6f0c4ce082cc8570dfeea",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 8,
+    "formula": "(-1 * rank(((sum(open, 5) * sum(returns, 5)) - delay((sum(open, 5) * sum(returns, 5)), 10))))",
+    "fields": [
+      "open",
+      "returns"
+    ],
+    "group": "price_volume",
+    "lookback_days": 16,
+    "delay_adaptation": "next_session",
+    "formula_hash": "144f440dcec71f7e5d87baf9a8613ce86df64361a64c5e81ae772271b014b8e2",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 9,
+    "formula": "((0 < ts_min(delta(close, 1), 5)) ? delta(close, 1) : ((ts_max(delta(close, 1), 5) < 0) ? delta(close, 1) : (-1 * delta(close, 1))))",
+    "fields": [
+      "close"
+    ],
+    "group": "price_volume",
+    "lookback_days": 6,
+    "delay_adaptation": "next_session",
+    "formula_hash": "5b8d1430209286f3b256db3228e0a99fce797c3a522a40af5b368472837802c4",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 10,
+    "formula": "rank(((0 < ts_min(delta(close, 1), 4)) ? delta(close, 1) : ((ts_max(delta(close, 1), 4) < 0) ? delta(close, 1) : (-1 * delta(close, 1)))))",
+    "fields": [
+      "close"
+    ],
+    "group": "price_volume",
+    "lookback_days": 5,
+    "delay_adaptation": "next_session",
+    "formula_hash": "8da231827e985c8c7885cddd703ff2effdfead7d7ff1413073ed59559a664e12",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 11,
+    "formula": "((rank(ts_max((vwap - close), 3)) + rank(ts_min((vwap - close), 3))) * rank(delta(volume, 3)))",
+    "fields": [
+      "close",
+      "volume",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 4,
+    "delay_adaptation": "next_session",
+    "formula_hash": "1ffda45b6192297dc5a9523a951dcc7759f56a47b1f3a469f1854f6aa42a5aba",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 12,
+    "formula": "(sign(delta(volume, 1)) * (-1 * delta(close, 1)))",
+    "fields": [
+      "close",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 2,
+    "delay_adaptation": "next_session",
+    "formula_hash": "b52a9c3fa41fab5ecda6f4333aeebaf04ce653b419276d3f178edda787bba0d2",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 13,
+    "formula": "(-1 * rank(covariance(rank(close), rank(volume), 5)))",
+    "fields": [
+      "close",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 5,
+    "delay_adaptation": "next_session",
+    "formula_hash": "1315739246c28ebe7e4c813bb5d3b76d3ce8d1769b0c902438c55cf5193b4846",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 14,
+    "formula": "((-1 * rank(delta(returns, 3))) * correlation(open, volume, 10))",
+    "fields": [
+      "open",
+      "returns",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 10,
+    "delay_adaptation": "next_session",
+    "formula_hash": "d76e2ec6668b7b6b51ad4a4f675d11c8a7b8c4a2b449861482d010eb593359ee",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 15,
+    "formula": "(-1 * sum(rank(correlation(rank(high), rank(volume), 3)), 3))",
+    "fields": [
+      "high",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 5,
+    "delay_adaptation": "next_session",
+    "formula_hash": "1c9bba3bff228491ac6006f6c5e5bf3ebda039b4507c096e9ef2c96a0ba9afea",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 16,
+    "formula": "(-1 * rank(covariance(rank(high), rank(volume), 5)))",
+    "fields": [
+      "high",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 5,
+    "delay_adaptation": "next_session",
+    "formula_hash": "3ffbf7f4b0fe182d1edce7fe7f0eae4cee310adea1873c4fe6eae243a1a338e0",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 17,
+    "formula": "(((-1 * rank(ts_rank(close, 10))) * rank(delta(delta(close, 1), 1))) * rank(ts_rank((volume / adv20), 5)))",
+    "fields": [
+      "amount",
+      "close",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 24,
+    "delay_adaptation": "next_session",
+    "formula_hash": "829f2a7e89c5a06063b1bf19adc090b452e7c951947fc2bb4d78d0aabf156688",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 18,
+    "formula": "(-1 * rank(((stddev(abs((close - open)), 5) + (close - open)) + correlation(close, open, 10))))",
+    "fields": [
+      "close",
+      "open"
+    ],
+    "group": "price_volume",
+    "lookback_days": 10,
+    "delay_adaptation": "next_session",
+    "formula_hash": "d84523de7d2b7785770518853f8ea3a5dc94bc6141b95d4cea9b0d2804f0710d",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 19,
+    "formula": "((-1 * sign(((close - delay(close, 7)) + delta(close, 7)))) * (1 + rank((1 + sum(returns, 250)))))",
+    "fields": [
+      "close",
+      "returns"
+    ],
+    "group": "price_volume",
+    "lookback_days": 251,
+    "delay_adaptation": "next_session",
+    "formula_hash": "4109d4daac818fd97f702f7a42ad3373be60648121f25fc272bebeae9e040a5c",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 20,
+    "formula": "(((-1 * rank((open - delay(high, 1)))) * rank((open - delay(close, 1)))) * rank((open - delay(low, 1))))",
+    "fields": [
+      "close",
+      "high",
+      "low",
+      "open"
+    ],
+    "group": "price_volume",
+    "lookback_days": 2,
+    "delay_adaptation": "next_session",
+    "formula_hash": "3649a9eb8ac2e2da9073fcd9738f9fad1f5e82cc8673aa02e5b6257c629c85ce",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 21,
+    "formula": "((((sum(close, 8) / 8) + stddev(close, 8)) < (sum(close, 2) / 2)) ? (-1 * 1) : (((sum(close, 2) / 2) < ((sum(close, 8) / 8) - stddev(close, 8))) ? 1 : (((1 < (volume / adv20)) || ((volume / adv20) == 1)) ? 1 : (-1 * 1))))",
+    "fields": [
+      "amount",
+      "close",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 20,
+    "delay_adaptation": "next_session",
+    "formula_hash": "08f9df4a1013fc366f7d630a03880a211f79d879f1f5c4dded424f1b3314f892",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 22,
+    "formula": "(-1 * (delta(correlation(high, volume, 5), 5) * rank(stddev(close, 20))))",
+    "fields": [
+      "close",
+      "high",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 20,
+    "delay_adaptation": "next_session",
+    "formula_hash": "e013a9ead6e5365fc63d650215e03ed3f650612f09861358c77b6b620016be95",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 23,
+    "formula": "(((sum(high, 20) / 20) < high) ? (-1 * delta(high, 2)) : 0)",
+    "fields": [
+      "high"
+    ],
+    "group": "price_volume",
+    "lookback_days": 20,
+    "delay_adaptation": "next_session",
+    "formula_hash": "ef0b4ed3dc8e693a12cac72832189e81172683203bbb673ee3a180cbc56b03d4",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 24,
+    "formula": "((((delta((sum(close, 100) / 100), 100) / delay(close, 100)) < 0.05) || ((delta((sum(close, 100) / 100), 100) / delay(close, 100)) == 0.05)) ? (-1 * (close - ts_min(close, 100))) : (-1 * delta(close, 3)))",
+    "fields": [
+      "close"
+    ],
+    "group": "price_volume",
+    "lookback_days": 200,
+    "delay_adaptation": "next_session",
+    "formula_hash": "503a98b4b81c8e6601cb45f968af3ac9309256293d689712b2f4618230771ea8",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 25,
+    "formula": "rank(((((-1 * returns) * adv20) * vwap) * (high - close)))",
+    "fields": [
+      "amount",
+      "close",
+      "high",
+      "returns",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 20,
+    "delay_adaptation": "next_session",
+    "formula_hash": "2d1a95c11ca58357c913740d06c6af1df7229106d298559061f6065eef1eb3df",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 26,
+    "formula": "(-1 * ts_max(correlation(ts_rank(volume, 5), ts_rank(high, 5), 5), 3))",
+    "fields": [
+      "high",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 11,
+    "delay_adaptation": "next_session",
+    "formula_hash": "db98b826b2c637bafeb2cabf4e4012504f9b80e16d6ecc0385ef7df6888c79e0",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 27,
+    "formula": "((0.5 < rank((sum(correlation(rank(volume), rank(vwap), 6), 2) / 2.0))) ? (-1 * 1) : 1)",
+    "fields": [
+      "volume",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 7,
+    "delay_adaptation": "next_session",
+    "formula_hash": "2c6b7a79943d5f1e1f4d4cf01a2b844e794478dccee04a516a087d31fa49228b",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 28,
+    "formula": "scale(((correlation(adv20, low, 5) + ((high + low) / 2)) - close))",
+    "fields": [
+      "amount",
+      "close",
+      "high",
+      "low"
+    ],
+    "group": "price_volume",
+    "lookback_days": 24,
+    "delay_adaptation": "next_session",
+    "formula_hash": "6972847ba1ec78e202b7aecef8f5da7ea3d5433482e0d129b3aea2b225b41d50",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 29,
+    "formula": "(min(product(rank(rank(scale(log(sum(ts_min(rank(rank((-1 * rank(delta((close - 1), 5))))), 2), 1))))), 1), 5) + ts_rank(delay((-1 * returns), 6), 5))",
+    "fields": [
+      "close",
+      "returns"
+    ],
+    "group": "price_volume",
+    "lookback_days": 12,
+    "delay_adaptation": "next_session",
+    "formula_hash": "aba6d3db804f87b5ac77cc1d34edc58ca6e7fa51f1c7d86480be31b7c6b37d55",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 30,
+    "formula": "(((1.0 - rank(((sign((close - delay(close, 1))) + sign((delay(close, 1) - delay(close, 2)))) + sign((delay(close, 2) - delay(close, 3)))))) * sum(volume, 5)) / sum(volume, 20))",
+    "fields": [
+      "close",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 20,
+    "delay_adaptation": "next_session",
+    "formula_hash": "9affa998436047b9ea79e78e85df7e74cfb9b712483ddefaca91c8fe0a16db4e",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 31,
+    "formula": "((rank(rank(rank(decay_linear((-1 * rank(rank(delta(close, 10)))), 10)))) + rank((-1 * delta(close, 3)))) + sign(scale(correlation(adv20, low, 12))))",
+    "fields": [
+      "amount",
+      "close",
+      "low"
+    ],
+    "group": "price_volume",
+    "lookback_days": 31,
+    "delay_adaptation": "next_session",
+    "formula_hash": "87be9a2a6b8b205a151e4cf79f9e4be2bf386f1c30b2e22206c5cda52ee61d5b",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 32,
+    "formula": "(scale(((sum(close, 7) / 7) - close)) + (20 * scale(correlation(vwap, delay(close, 5), 230))))",
+    "fields": [
+      "close",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 235,
+    "delay_adaptation": "next_session",
+    "formula_hash": "99c65a0203cdb4b62924339878d81a87456f54b0290095fce6f1e8d9d1909226",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 33,
+    "formula": "rank((-1 * ((1 - (open / close))^1)))",
+    "fields": [
+      "close",
+      "open"
+    ],
+    "group": "price_volume",
+    "lookback_days": 1,
+    "delay_adaptation": "next_session",
+    "formula_hash": "38899448da7ee6a151b8232b5e45ce8a0137f7992c999146f4892445f49f5c4a",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 34,
+    "formula": "rank(((1 - rank((stddev(returns, 2) / stddev(returns, 5)))) + (1 - rank(delta(close, 1)))))",
+    "fields": [
+      "close",
+      "returns"
+    ],
+    "group": "price_volume",
+    "lookback_days": 6,
+    "delay_adaptation": "next_session",
+    "formula_hash": "e0910bdf17a3c63bdce158f7a4762a91bbdc59c3a4e7725c1687c09d73b4b764",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 35,
+    "formula": "((Ts_Rank(volume, 32) * (1 - Ts_Rank(((close + high) - low), 16))) * (1 - Ts_Rank(returns, 32)))",
+    "fields": [
+      "close",
+      "high",
+      "low",
+      "returns",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 33,
+    "delay_adaptation": "next_session",
+    "formula_hash": "80302f5774b1a56dc969e9cf2aee48e0f55dc86098f24fccb63dc9b50dede748",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 36,
+    "formula": "(((((2.21 * rank(correlation((close - open), delay(volume, 1), 15))) + (0.7 * rank((open - close)))) + (0.73 * rank(Ts_Rank(delay((-1 * returns), 6), 5)))) + rank(abs(correlation(vwap, adv20, 6)))) + (0.6 * rank((((sum(close, 200) / 200) - open) * (close - open)))))",
+    "fields": [
+      "amount",
+      "close",
+      "open",
+      "returns",
+      "volume",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 200,
+    "delay_adaptation": "next_session",
+    "formula_hash": "e756e01a71ac25c54b52e6ed4b708b7b28facbd1a8970d5804103de2d7ad3cee",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 37,
+    "formula": "(rank(correlation(delay((open - close), 1), close, 200)) + rank((open - close)))",
+    "fields": [
+      "close",
+      "open"
+    ],
+    "group": "price_volume",
+    "lookback_days": 201,
+    "delay_adaptation": "next_session",
+    "formula_hash": "ebe66bc5e98e4c3a4f1db947abb597ee9df16b99f2ac72b7b34fe38b39819795",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 38,
+    "formula": "((-1 * rank(Ts_Rank(close, 10))) * rank((close / open)))",
+    "fields": [
+      "close",
+      "open"
+    ],
+    "group": "price_volume",
+    "lookback_days": 10,
+    "delay_adaptation": "next_session",
+    "formula_hash": "ba8c02081edee468b9a1e7f9f57a07a4fee46bb2c43ab667e6a6025c25605a10",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 39,
+    "formula": "((-1 * rank((delta(close, 7) * (1 - rank(decay_linear((volume / adv20), 9)))))) * (1 + rank(sum(returns, 250))))",
+    "fields": [
+      "amount",
+      "close",
+      "returns",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 251,
+    "delay_adaptation": "next_session",
+    "formula_hash": "56dacd11875b94e3e61361a11ff6e250de539bfda55170d578374a952ac6c378",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 40,
+    "formula": "((-1 * rank(stddev(high, 10))) * correlation(high, volume, 10))",
+    "fields": [
+      "high",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 10,
+    "delay_adaptation": "next_session",
+    "formula_hash": "adbbec19db022edaa19f63c808b2ef4fba5c4f40ec161458f0d027b4394e3c38",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 41,
+    "formula": "(((high * low)^0.5) - vwap)",
+    "fields": [
+      "high",
+      "low",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 1,
+    "delay_adaptation": "next_session",
+    "formula_hash": "0f2e104b5f884f56d3fb2dda5383a39a5dc18412b05a09f4e966562ff12114a6",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 42,
+    "formula": "(rank((vwap - close)) / rank((vwap + close)))",
+    "fields": [
+      "close",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 1,
+    "delay_adaptation": "delay0_to_next_session",
+    "formula_hash": "22f0e2884bf1db4a3bc60b35cf65e4d687fa4853e8b4cc239c456173dc5881b3",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 43,
+    "formula": "(ts_rank((volume / adv20), 20) * ts_rank((-1 * delta(close, 7)), 8))",
+    "fields": [
+      "amount",
+      "close",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 39,
+    "delay_adaptation": "next_session",
+    "formula_hash": "057d25f260ef9c9a744aa221a956e6a8e22b18ae330346702d61cc1400ddef11",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 44,
+    "formula": "(-1 * correlation(high, rank(volume), 5))",
+    "fields": [
+      "high",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 5,
+    "delay_adaptation": "next_session",
+    "formula_hash": "5280de20bd2a8a2426d0b4fa6c134e600f0229f5d855d63da78e07a0d4305a3b",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 45,
+    "formula": "(-1 * ((rank((sum(delay(close, 5), 20) / 20)) * correlation(close, volume, 2)) * rank(correlation(sum(close, 5), sum(close, 20), 2))))",
+    "fields": [
+      "close",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 25,
+    "delay_adaptation": "next_session",
+    "formula_hash": "df9a6d320a75dd328ac6b471455850c148dc707266b8c05b61a481ffd0d960bc",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 46,
+    "formula": "((0.25 < (((delay(close, 20) - delay(close, 10)) / 10) - ((delay(close, 10) - close) / 10))) ? (-1 * 1) : (((((delay(close, 20) - delay(close, 10)) / 10) - ((delay(close, 10) - close) / 10)) < 0) ? 1 : ((-1 * 1) * (close - delay(close, 1)))))",
+    "fields": [
+      "close"
+    ],
+    "group": "price_volume",
+    "lookback_days": 21,
+    "delay_adaptation": "next_session",
+    "formula_hash": "56d974be2a8f1e2acda94284a119db797e57f43da7c752528955f3b313a829da",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 47,
+    "formula": "((((rank((1 / close)) * volume) / adv20) * ((high * rank((high - close))) / (sum(high, 5) / 5))) - rank((vwap - delay(vwap, 5))))",
+    "fields": [
+      "amount",
+      "close",
+      "high",
+      "volume",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 20,
+    "delay_adaptation": "next_session",
+    "formula_hash": "350d31e0c244e3ab4a698fd57e26b0ce30874292faf4a6751acc1d6a5da8452f",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 48,
+    "formula": "(indneutralize(((correlation(delta(close, 1), delta(delay(close, 1), 1), 250) * delta(close, 1)) / close), IndClass.subindustry) / sum(((delta(close, 1) / delay(close, 1))^2), 250))",
+    "fields": [
+      "close",
+      "indclass.subindustry"
+    ],
+    "group": "industry",
+    "lookback_days": 252,
+    "delay_adaptation": "delay0_to_next_session",
+    "formula_hash": "63dc218b10dbae5c19271fcfae05c746e7e0ae8bf47f32ff11a9414787e38d9a",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 49,
+    "formula": "(((((delay(close, 20) - delay(close, 10)) / 10) - ((delay(close, 10) - close) / 10)) < (-1 * 0.1)) ? 1 : ((-1 * 1) * (close - delay(close, 1))))",
+    "fields": [
+      "close"
+    ],
+    "group": "price_volume",
+    "lookback_days": 21,
+    "delay_adaptation": "next_session",
+    "formula_hash": "c95c66c097a7155a2a323c9f92512d7b1c127a3487fcbb9f117a406c7e5e7afa",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 50,
+    "formula": "(-1 * ts_max(rank(correlation(rank(volume), rank(vwap), 5)), 5))",
+    "fields": [
+      "volume",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 9,
+    "delay_adaptation": "next_session",
+    "formula_hash": "5e5beeaa85383323b7cd63049247b044d0d675836b857b710de05800554ce6c0",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 51,
+    "formula": "(((((delay(close, 20) - delay(close, 10)) / 10) - ((delay(close, 10) - close) / 10)) < (-1 * 0.05)) ? 1 : ((-1 * 1) * (close - delay(close, 1))))",
+    "fields": [
+      "close"
+    ],
+    "group": "price_volume",
+    "lookback_days": 21,
+    "delay_adaptation": "next_session",
+    "formula_hash": "7d814dc82d72eabcdd23e89588a1e0e7f583d9851379e47869394199f021e8bd",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 52,
+    "formula": "((((-1 * ts_min(low, 5)) + delay(ts_min(low, 5), 5)) * rank(((sum(returns, 240) - sum(returns, 20)) / 220))) * ts_rank(volume, 5))",
+    "fields": [
+      "low",
+      "returns",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 241,
+    "delay_adaptation": "next_session",
+    "formula_hash": "714a9722d5579748dc7c4e66ba1a0d9025b27d39622366610fb9e4f1a9fd082e",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 53,
+    "formula": "(-1 * delta((((close - low) - (high - close)) / (close - low)), 9))",
+    "fields": [
+      "close",
+      "high",
+      "low"
+    ],
+    "group": "price_volume",
+    "lookback_days": 10,
+    "delay_adaptation": "delay0_to_next_session",
+    "formula_hash": "c7f704bfd1996546350ad5c494530a64367a5f2d84bb832adf934a7c50dae449",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 54,
+    "formula": "((-1 * ((low - close) * (open^5))) / ((low - high) * (close^5)))",
+    "fields": [
+      "close",
+      "high",
+      "low",
+      "open"
+    ],
+    "group": "price_volume",
+    "lookback_days": 1,
+    "delay_adaptation": "delay0_to_next_session",
+    "formula_hash": "bd2f4424f422dfe620f69516d5b672259d37f6404b983a1d31a5367b21654566",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 55,
+    "formula": "(-1 * correlation(rank(((close - ts_min(low, 12)) / (ts_max(high, 12) - ts_min(low, 12)))), rank(volume), 6))",
+    "fields": [
+      "close",
+      "high",
+      "low",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 17,
+    "delay_adaptation": "next_session",
+    "formula_hash": "46e96c1b61418d9b7bcd04f1732e069c2330f568b0e76d20bf9a076bc3388f10",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 56,
+    "formula": "(0 - (1 * (rank((sum(returns, 10) / sum(sum(returns, 2), 3))) * rank((returns * cap)))))",
+    "fields": [
+      "cap",
+      "returns"
+    ],
+    "group": "market_cap",
+    "lookback_days": 11,
+    "delay_adaptation": "next_session",
+    "formula_hash": "fc752cd4cb2b22089b51d0c8278a64e5e86794244401576786237beb6b911aad",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 57,
+    "formula": "(0 - (1 * ((close - vwap) / decay_linear(rank(ts_argmax(close, 30)), 2))))",
+    "fields": [
+      "close",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 31,
+    "delay_adaptation": "next_session",
+    "formula_hash": "939fbc5b34960a4e8a37d936301f9cd2c4126b280f3fe7fefcdfb305bbc811e3",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 58,
+    "formula": "(-1 * Ts_Rank(decay_linear(correlation(IndNeutralize(vwap, IndClass.sector), volume, 3.92795), 7.89291), 5.50322))",
+    "fields": [
+      "indclass.sector",
+      "volume",
+      "vwap"
+    ],
+    "group": "industry",
+    "lookback_days": 13,
+    "delay_adaptation": "next_session",
+    "formula_hash": "8cc0d28a6bbc4f40e9103c9046f405129db1e52716b3c0003b81b4b065edd098",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 59,
+    "formula": "(-1 * Ts_Rank(decay_linear(correlation(IndNeutralize(((vwap * 0.728317) + (vwap * (1 - 0.728317))), IndClass.industry), volume, 4.25197), 16.2289), 8.19648))",
+    "fields": [
+      "indclass.industry",
+      "volume",
+      "vwap"
+    ],
+    "group": "industry",
+    "lookback_days": 26,
+    "delay_adaptation": "next_session",
+    "formula_hash": "e26e420ff74c72e8e37d7e9644d2deef797d200da13a78761c8da6d1e8978d06",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 60,
+    "formula": "(0 - (1 * ((2 * scale(rank(((((close - low) - (high - close)) / (high - low)) * volume)))) - scale(rank(ts_argmax(close, 10))))))",
+    "fields": [
+      "close",
+      "high",
+      "low",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 10,
+    "delay_adaptation": "next_session",
+    "formula_hash": "ecd044b09ae3c2f204d3d44c53c2a5a87e1d99e9379c01f7de4997b1c0360312",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 61,
+    "formula": "(rank((vwap - ts_min(vwap, 16.1219))) < rank(correlation(vwap, adv180, 17.9282)))",
+    "fields": [
+      "amount",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 196,
+    "delay_adaptation": "next_session",
+    "formula_hash": "2c802e839d02697d1e0e644b50e6e293508b0093c453c709485a7688b1a5498d",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 62,
+    "formula": "((rank(correlation(vwap, sum(adv20, 22.4101), 9.91009)) < rank(((rank(open) + rank(open)) < (rank(((high + low) / 2)) + rank(high))))) * -1)",
+    "fields": [
+      "amount",
+      "high",
+      "low",
+      "open",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 49,
+    "delay_adaptation": "next_session",
+    "formula_hash": "1116705939430f30ce22f3c6630208978501bde97a199ee43f978b7ae6bf7361",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 63,
+    "formula": "((rank(decay_linear(delta(IndNeutralize(close, IndClass.industry), 2.25164), 8.22237)) - rank(decay_linear(correlation(((vwap * 0.318108) + (open * (1 - 0.318108))), sum(adv180, 37.2467), 13.557), 12.2883))) * -1)",
+    "fields": [
+      "amount",
+      "close",
+      "indclass.industry",
+      "open",
+      "vwap"
+    ],
+    "group": "industry",
+    "lookback_days": 239,
+    "delay_adaptation": "next_session",
+    "formula_hash": "4246b224c6153f6a876892c2fde0eb8e887c841acf3b9d4202e6fba5c1abeef7",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 64,
+    "formula": "((rank(correlation(sum(((open * 0.178404) + (low * (1 - 0.178404))), 12.7054), sum(adv120, 12.7054), 16.6208)) < rank(delta(((((high + low) / 2) * 0.178404) + (vwap * (1 - 0.178404))), 3.69741))) * -1)",
+    "fields": [
+      "amount",
+      "high",
+      "low",
+      "open",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 146,
+    "delay_adaptation": "next_session",
+    "formula_hash": "6ea8625719adbeb6bee1bdcfb990f09b64fa72522e986d495fd5e0135b0161ab",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 65,
+    "formula": "((rank(correlation(((open * 0.00817205) + (vwap * (1 - 0.00817205))), sum(adv60, 8.6911), 6.40374)) < rank((open - ts_min(open, 13.635)))) * -1)",
+    "fields": [
+      "amount",
+      "open",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 72,
+    "delay_adaptation": "next_session",
+    "formula_hash": "8710cd0b59b1cd83ada518e2e8b38ccc7af70fa6e85898c0533952fe624ae6e3",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 66,
+    "formula": "((rank(decay_linear(delta(vwap, 3.51013), 7.23052)) + Ts_Rank(decay_linear(((((low * 0.96633) + (low * (1 - 0.96633))) - vwap) / (open - ((high + low) / 2))), 11.4157), 6.72611)) * -1)",
+    "fields": [
+      "high",
+      "low",
+      "open",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 16,
+    "delay_adaptation": "next_session",
+    "formula_hash": "a6bce70e71a486aa5506b685ce235d09c72ea12d6aeddf78ff6294798645d911",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 67,
+    "formula": "((rank((high - ts_min(high, 2.14593)))^rank(correlation(IndNeutralize(vwap, IndClass.sector), IndNeutralize(adv20, IndClass.subindustry), 6.02936))) * -1)",
+    "fields": [
+      "amount",
+      "high",
+      "indclass.sector",
+      "indclass.subindustry",
+      "vwap"
+    ],
+    "group": "industry",
+    "lookback_days": 25,
+    "delay_adaptation": "next_session",
+    "formula_hash": "c4a4be57b5208dc6bddba4897951c8b968fb4deb250cf889c624422633018d2b",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 68,
+    "formula": "((Ts_Rank(correlation(rank(high), rank(adv15), 8.91644), 13.9333) < rank(delta(((close * 0.518371) + (low * (1 - 0.518371))), 1.06157))) * -1)",
+    "fields": [
+      "amount",
+      "close",
+      "high",
+      "low"
+    ],
+    "group": "price_volume",
+    "lookback_days": 34,
+    "delay_adaptation": "next_session",
+    "formula_hash": "95216abb1330cb4a52f2c971daf0697597c013b6ad40791ca473ee3e442484a9",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 69,
+    "formula": "((rank(ts_max(delta(IndNeutralize(vwap, IndClass.industry), 2.72412), 4.79344))^Ts_Rank(correlation(((close * 0.490655) + (vwap * (1 - 0.490655))), adv20, 4.92416), 9.0615)) * -1)",
+    "fields": [
+      "amount",
+      "close",
+      "indclass.industry",
+      "vwap"
+    ],
+    "group": "industry",
+    "lookback_days": 31,
+    "delay_adaptation": "next_session",
+    "formula_hash": "179cbc7e0351dee4e04ff35d4d8bf7197f187083555406a51f450023db20def6",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 70,
+    "formula": "((rank(delta(vwap, 1.29456))^Ts_Rank(correlation(IndNeutralize(close, IndClass.industry), adv50, 17.8256), 17.9171)) * -1)",
+    "fields": [
+      "amount",
+      "close",
+      "indclass.industry",
+      "vwap"
+    ],
+    "group": "industry",
+    "lookback_days": 82,
+    "delay_adaptation": "next_session",
+    "formula_hash": "42fee94c46fb4d82fa8af3734ad183ab732f4ef0c00eb4d1131137318558b83c",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 71,
+    "formula": "max(Ts_Rank(decay_linear(correlation(Ts_Rank(close, 3.43976), Ts_Rank(adv180, 12.0647), 18.0175), 4.20501), 15.6948), Ts_Rank(decay_linear((rank(((low + open) - (vwap + vwap)))^2), 16.4662), 4.4388))",
+    "fields": [
+      "amount",
+      "close",
+      "low",
+      "open",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 225,
+    "delay_adaptation": "next_session",
+    "formula_hash": "03f3469db704e686bddb3c2b1da4e05b9d8caf71dcb0abe5ed43b73ba2e5d39d",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [
+      "panel_minmax_elementwise"
+    ],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 72,
+    "formula": "(rank(decay_linear(correlation(((high + low) / 2), adv40, 8.93345), 10.1519)) / rank(decay_linear(correlation(Ts_Rank(vwap, 3.72469), Ts_Rank(volume, 18.5188), 6.86671), 2.95011)))",
+    "fields": [
+      "amount",
+      "high",
+      "low",
+      "volume",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 56,
+    "delay_adaptation": "next_session",
+    "formula_hash": "836b6f66d39b72a4e1fb2105d5e6d0783c58bfc3b73b9a5768ef64de8816529f",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 73,
+    "formula": "(max(rank(decay_linear(delta(vwap, 4.72775), 2.91864)), Ts_Rank(decay_linear(((delta(((open * 0.147155) + (low * (1 - 0.147155))), 2.03608) / ((open * 0.147155) + (low * (1 - 0.147155)))) * -1), 3.33829), 16.7411)) * -1)",
+    "fields": [
+      "low",
+      "open",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 20,
+    "delay_adaptation": "next_session",
+    "formula_hash": "2945b30ac6e542f10c6a9a9f0c449d58cd835c75219498d76c16136abfadbc5d",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [
+      "panel_minmax_elementwise"
+    ],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 74,
+    "formula": "((rank(correlation(close, sum(adv30, 37.4843), 15.1365)) < rank(correlation(rank(((high * 0.0261661) + (vwap * (1 - 0.0261661)))), rank(volume), 11.4791))) * -1)",
+    "fields": [
+      "amount",
+      "close",
+      "high",
+      "volume",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 80,
+    "delay_adaptation": "next_session",
+    "formula_hash": "57dd94f3127cf34326ef80b1c6ac97b86da7a8f9f5c7b762a6d195413b25c54a",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 75,
+    "formula": "(rank(correlation(vwap, volume, 4.24304)) < rank(correlation(rank(low), rank(adv50), 12.4413)))",
+    "fields": [
+      "amount",
+      "low",
+      "volume",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 61,
+    "delay_adaptation": "next_session",
+    "formula_hash": "c0ac2b1b5afac9ab539c8466b909010903fbe261bfdbc27a487f08edf7b6fdb1",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 76,
+    "formula": "(max(rank(decay_linear(delta(vwap, 1.24383), 11.8259)), Ts_Rank(decay_linear(Ts_Rank(correlation(IndNeutralize(low, IndClass.sector), adv81, 8.14941), 19.569), 17.1543), 19.383)) * -1)",
+    "fields": [
+      "amount",
+      "indclass.sector",
+      "low",
+      "vwap"
+    ],
+    "group": "industry",
+    "lookback_days": 140,
+    "delay_adaptation": "next_session",
+    "formula_hash": "1e72aa407db893ca169287bc1d5ef0dda0bbef91810e174c604c9fbe9f29876c",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [
+      "panel_minmax_elementwise"
+    ],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 77,
+    "formula": "min(rank(decay_linear(((((high + low) / 2) + high) - (vwap + high)), 20.0451)), rank(decay_linear(correlation(((high + low) / 2), adv40, 3.1614), 5.64125)))",
+    "fields": [
+      "amount",
+      "high",
+      "low",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 46,
+    "delay_adaptation": "next_session",
+    "formula_hash": "b6de1028081991a72d04e34f0e65efe8f9986d1551f1dbbcd161fa24a459d233",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [
+      "panel_minmax_elementwise"
+    ],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 78,
+    "formula": "(rank(correlation(sum(((low * 0.352233) + (vwap * (1 - 0.352233))), 19.7428), sum(adv40, 19.7428), 6.83313))^rank(correlation(rank(vwap), rank(volume), 5.77492)))",
+    "fields": [
+      "amount",
+      "low",
+      "volume",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 63,
+    "delay_adaptation": "next_session",
+    "formula_hash": "6982876c43a07c62df8248b192d17782bb127b3f6e31e22d7d4586dbd1cb97b0",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 79,
+    "formula": "(rank(delta(IndNeutralize(((close * 0.60733) + (open * (1 - 0.60733))), IndClass.sector), 1.23438)) < rank(correlation(Ts_Rank(vwap, 3.60973), Ts_Rank(adv150, 9.18637), 14.6644)))",
+    "fields": [
+      "amount",
+      "close",
+      "indclass.sector",
+      "open",
+      "vwap"
+    ],
+    "group": "industry",
+    "lookback_days": 171,
+    "delay_adaptation": "next_session",
+    "formula_hash": "85cff7490d50126143cf66a4534d0ecae86b39323ff7b15288efd8873efeb3a5",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 80,
+    "formula": "((rank(Sign(delta(IndNeutralize(((open * 0.868128) + (high * (1 - 0.868128))), IndClass.industry), 4.04545)))^Ts_Rank(correlation(high, adv10, 5.11456), 5.53756)) * -1)",
+    "fields": [
+      "amount",
+      "high",
+      "indclass.industry",
+      "open"
+    ],
+    "group": "industry",
+    "lookback_days": 18,
+    "delay_adaptation": "next_session",
+    "formula_hash": "ae8a476ecac8bb9daff6f68ebad6a848a66d2a812b415ac4636f973055e198c3",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 81,
+    "formula": "((rank(Log(product(rank((rank(correlation(vwap, sum(adv10, 49.6054), 8.47743))^4)), 14.9655))) < rank(correlation(rank(vwap), rank(volume), 5.07914))) * -1)",
+    "fields": [
+      "amount",
+      "volume",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 78,
+    "delay_adaptation": "next_session",
+    "formula_hash": "c4c119cb1ff3ff3e7de9c8438aaa38e36aa6f0707887d1c4b092595f0a63f3bd",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 82,
+    "formula": "(min(rank(decay_linear(delta(open, 1.46063), 14.8717)), Ts_Rank(decay_linear(correlation(IndNeutralize(volume, IndClass.sector), ((open * 0.634196) + (open * (1 - 0.634196))), 17.4842), 6.92131), 13.4283)) * -1)",
+    "fields": [
+      "indclass.sector",
+      "open",
+      "volume"
+    ],
+    "group": "industry",
+    "lookback_days": 34,
+    "delay_adaptation": "next_session",
+    "formula_hash": "9d17576c3c705da8758af5c85e4949b370d46a3aac54aa8ed450893928ce06c8",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [
+      "panel_minmax_elementwise"
+    ],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 83,
+    "formula": "((rank(delay(((high - low) / (sum(close, 5) / 5)), 2)) * rank(rank(volume))) / (((high - low) / (sum(close, 5) / 5)) / (vwap - close)))",
+    "fields": [
+      "close",
+      "high",
+      "low",
+      "volume",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 7,
+    "delay_adaptation": "next_session",
+    "formula_hash": "bdd8c026c422222eaca434fcdf83adb6260490bc7113066ece033095167ab240",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 84,
+    "formula": "SignedPower(Ts_Rank((vwap - ts_max(vwap, 15.3217)), 20.7127), delta(close, 4.96796))",
+    "fields": [
+      "close",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 34,
+    "delay_adaptation": "next_session",
+    "formula_hash": "91a3167057dc2ea6fd257d66bde302efe5e2337586dbfb79d3849054aed2bc98",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 85,
+    "formula": "(rank(correlation(((high * 0.876703) + (close * (1 - 0.876703))), adv30, 9.61331))^rank(correlation(Ts_Rank(((high + low) / 2), 3.70596), Ts_Rank(volume, 10.1595), 7.11408)))",
+    "fields": [
+      "amount",
+      "close",
+      "high",
+      "low",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 38,
+    "delay_adaptation": "next_session",
+    "formula_hash": "a00830d5d3e74fc4d701f095bd44d187f116842c2ed736b8d8cdacf73f126bc9",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 86,
+    "formula": "((Ts_Rank(correlation(close, sum(adv20, 14.7444), 6.00049), 20.4195) < rank(((open + close) - (vwap + open)))) * -1)",
+    "fields": [
+      "amount",
+      "close",
+      "open",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 57,
+    "delay_adaptation": "next_session",
+    "formula_hash": "d0313d5b349024725b2ee63cbd96a1c2540ffa42edd9a30b3268b0e4ea61af1e",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 87,
+    "formula": "(max(rank(decay_linear(delta(((close * 0.369701) + (vwap * (1 - 0.369701))), 1.91233), 2.65461)), Ts_Rank(decay_linear(abs(correlation(IndNeutralize(adv81, IndClass.industry), close, 13.4132)), 4.89768), 14.4535)) * -1)",
+    "fields": [
+      "amount",
+      "close",
+      "indclass.industry",
+      "vwap"
+    ],
+    "group": "industry",
+    "lookback_days": 109,
+    "delay_adaptation": "next_session",
+    "formula_hash": "a98016d29c3836e0e1875fc90f114e4bc45af1761e3fdd2f58bce5c22136578c",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [
+      "panel_minmax_elementwise"
+    ],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 88,
+    "formula": "min(rank(decay_linear(((rank(open) + rank(low)) - (rank(high) + rank(close))), 8.06882)), Ts_Rank(decay_linear(correlation(Ts_Rank(close, 8.44728), Ts_Rank(adv60, 20.6966), 8.01266), 6.65053), 2.61957))",
+    "fields": [
+      "amount",
+      "close",
+      "high",
+      "low",
+      "open"
+    ],
+    "group": "price_volume",
+    "lookback_days": 92,
+    "delay_adaptation": "next_session",
+    "formula_hash": "39170daa2047416bc2cb3545aeef7355babb1dc809f8c6273d13fac0cf34a15b",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [
+      "panel_minmax_elementwise"
+    ],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 89,
+    "formula": "(Ts_Rank(decay_linear(correlation(((low * 0.967285) + (low * (1 - 0.967285))), adv10, 6.94279), 5.51607), 3.79744) - Ts_Rank(decay_linear(delta(IndNeutralize(vwap, IndClass.industry), 3.48158), 10.1466), 15.3012))",
+    "fields": [
+      "amount",
+      "indclass.industry",
+      "low",
+      "vwap"
+    ],
+    "group": "industry",
+    "lookback_days": 27,
+    "delay_adaptation": "next_session",
+    "formula_hash": "06fa2c862985ff529afa0c604df89b3e65e3de008775e5d24b431bc98a819d67",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 90,
+    "formula": "((rank((close - ts_max(close, 4.66719)))^Ts_Rank(correlation(IndNeutralize(adv40, IndClass.subindustry), low, 5.38375), 3.21856)) * -1)",
+    "fields": [
+      "amount",
+      "close",
+      "indclass.subindustry",
+      "low"
+    ],
+    "group": "industry",
+    "lookback_days": 46,
+    "delay_adaptation": "next_session",
+    "formula_hash": "8ac60549eaacb8c0e0a9b8646688d23a92e24969b5ed450f743a22a36b38517e",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 91,
+    "formula": "((Ts_Rank(decay_linear(decay_linear(correlation(IndNeutralize(close, IndClass.industry), volume, 9.74928), 16.398), 3.83219), 4.8667) - rank(decay_linear(correlation(vwap, adv30, 4.01303), 2.6809))) * -1)",
+    "fields": [
+      "amount",
+      "close",
+      "indclass.industry",
+      "volume",
+      "vwap"
+    ],
+    "group": "industry",
+    "lookback_days": 34,
+    "delay_adaptation": "next_session",
+    "formula_hash": "c76bcbcd209d86c3bbd423d43621ccfc2443f4173b4c15c2a21cc271dc3a9c0c",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 92,
+    "formula": "min(Ts_Rank(decay_linear(((((high + low) / 2) + close) < (low + open)), 14.7221), 18.8683), Ts_Rank(decay_linear(correlation(rank(low), rank(adv30), 7.58555), 6.94024), 6.80584))",
+    "fields": [
+      "amount",
+      "close",
+      "high",
+      "low",
+      "open"
+    ],
+    "group": "price_volume",
+    "lookback_days": 46,
+    "delay_adaptation": "next_session",
+    "formula_hash": "eee574c9ee91092c1b420c293659e5a2f489eea27d731f20486751a78cdfe362",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [
+      "panel_minmax_elementwise"
+    ],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 93,
+    "formula": "(Ts_Rank(decay_linear(correlation(IndNeutralize(vwap, IndClass.industry), adv81, 17.4193), 19.848), 7.54455) / rank(decay_linear(delta(((close * 0.524434) + (vwap * (1 - 0.524434))), 2.77377), 16.2664)))",
+    "fields": [
+      "amount",
+      "close",
+      "indclass.industry",
+      "vwap"
+    ],
+    "group": "industry",
+    "lookback_days": 121,
+    "delay_adaptation": "next_session",
+    "formula_hash": "a1be1b7e29788ad24624d4e64546c9ba08512755bd142b45f5c51ce20a6a6805",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 94,
+    "formula": "((rank((vwap - ts_min(vwap, 11.5783)))^Ts_Rank(correlation(Ts_Rank(vwap, 19.6462), Ts_Rank(adv60, 4.02992), 18.0926), 2.70756)) * -1)",
+    "fields": [
+      "amount",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 81,
+    "delay_adaptation": "next_session",
+    "formula_hash": "048b5c7acd727587f6ac2410942fe48b51c50d4f5fcb1668df25762395beb3d8",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 95,
+    "formula": "(rank((open - ts_min(open, 12.4105))) < Ts_Rank((rank(correlation(sum(((high + low) / 2), 19.1351), sum(adv40, 19.1351), 12.8742))^5), 11.7584))",
+    "fields": [
+      "amount",
+      "high",
+      "low",
+      "open"
+    ],
+    "group": "price_volume",
+    "lookback_days": 79,
+    "delay_adaptation": "next_session",
+    "formula_hash": "56444b75a4eb81d59af1978ff13cf02909d4f5c45bda0a308c054be65502eeab",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 96,
+    "formula": "(max(Ts_Rank(decay_linear(correlation(rank(vwap), rank(volume), 3.83878), 4.16783), 8.38151), Ts_Rank(decay_linear(Ts_ArgMax(correlation(Ts_Rank(close, 7.45404), Ts_Rank(adv60, 4.13242), 3.65459), 12.6556), 14.0365), 13.4143)) * -1)",
+    "fields": [
+      "amount",
+      "close",
+      "volume",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 101,
+    "delay_adaptation": "next_session",
+    "formula_hash": "be56ba0034abb5f3ee6e9eab460bb9f09b2892e5fb2dfcb182b03dc98f987c48",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [
+      "panel_minmax_elementwise"
+    ],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 97,
+    "formula": "((rank(decay_linear(delta(IndNeutralize(((low * 0.721001) + (vwap * (1 - 0.721001))), IndClass.industry), 3.3705), 20.4523)) - Ts_Rank(decay_linear(Ts_Rank(correlation(Ts_Rank(low, 7.87871), Ts_Rank(adv60, 17.255), 4.97547), 18.5925), 15.7152), 6.71659)) * -1)",
+    "fields": [
+      "amount",
+      "indclass.industry",
+      "low",
+      "vwap"
+    ],
+    "group": "industry",
+    "lookback_days": 115,
+    "delay_adaptation": "next_session",
+    "formula_hash": "7c1b03fcc384b9be6aa8f1d179c360bb5d2d1c9cb99ad34f75ab9a81ac85ffbe",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 98,
+    "formula": "(rank(decay_linear(correlation(vwap, sum(adv5, 26.4719), 4.58418), 7.18088)) - rank(decay_linear(Ts_Rank(Ts_ArgMin(correlation(rank(open), rank(adv15), 20.8187), 8.62571), 6.95668), 8.07206)))",
+    "fields": [
+      "amount",
+      "open",
+      "vwap"
+    ],
+    "group": "price_volume",
+    "lookback_days": 53,
+    "delay_adaptation": "next_session",
+    "formula_hash": "be84839671ee28f103ba325f8086ee7f6d3678febaa9cc277a6383d9e6e6ca60",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 99,
+    "formula": "((rank(correlation(sum(((high + low) / 2), 19.8975), sum(adv60, 19.8975), 8.8136)) < rank(correlation(low, volume, 6.28259))) * -1)",
+    "fields": [
+      "amount",
+      "high",
+      "low",
+      "volume"
+    ],
+    "group": "price_volume",
+    "lookback_days": 85,
+    "delay_adaptation": "next_session",
+    "formula_hash": "0149f7a25659a65363a02aa1620bcf03e7e89312218786530fdb489687001f4a",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 100,
+    "formula": "(0 - (1 * (((1.5 * scale(indneutralize(indneutralize(rank(((((close - low) - (high - close)) / (high - low)) * volume)), IndClass.subindustry), IndClass.subindustry))) - scale(indneutralize((correlation(close, rank(adv20), 5) - rank(ts_argmin(close, 30))), IndClass.subindustry))) * (volume / adv20))))",
+    "fields": [
+      "amount",
+      "close",
+      "high",
+      "indclass.subindustry",
+      "low",
+      "volume"
+    ],
+    "group": "industry",
+    "lookback_days": 30,
+    "delay_adaptation": "next_session",
+    "formula_hash": "e147be23904fe54a2f4d56986a1fd380bd4eef6e45addbce3802ec6d5d33e376",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  },
+  {
+    "alpha_id": 101,
+    "formula": "((close - open) / ((high - low) + .001))",
+    "fields": [
+      "close",
+      "high",
+      "low",
+      "open"
+    ],
+    "group": "price_volume",
+    "lookback_days": 1,
+    "delay_adaptation": "next_session",
+    "formula_hash": "ba454f9af3817b45061a2f1f374b7ec70b9ed6ebe195950a591e5d77641bfb75",
+    "formula_status": "IMPLEMENTED_UNQUALIFIED",
+    "semantic_adaptations": [],
+    "semantics_version": "alpha101_research_v1",
+    "adv_basis": "amount",
+    "evaluation_status": "NOT_ASSESSED",
+    "execution_status": "NOT_ASSESSED",
+    "strict_pit_status": "NOT_ASSESSED"
+  }
+]
