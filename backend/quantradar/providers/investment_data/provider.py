@@ -856,10 +856,6 @@ class InvestmentDataProvider(DataProvider):
                 "InvestmentDataProvider: ETF 仅发布 ETF_RAW；"
                 "未发布复权因子，fq='qfq'/'hfq' 不可用"
             )
-        if etf_internal and limit_cols:
-            raise NotImplementedError(
-                "InvestmentDataProvider: ETF 涨跌停字段尚无逐日合格数据"
-            )
         stock_internal = [symbol for symbol in jq_to_internal.values() if symbol not in etf_internal]
         raw_prices: Dict[str, pd.DataFrame] = {}
         if len(stock_internal) > 1 and not limit_cols:
@@ -881,6 +877,9 @@ class InvestmentDataProvider(DataProvider):
             raw_prices.update(self._fetch_etf_raw_prices_many(
                 sorted(etf_internal), price_cols, start_date, end_date, count, fill_paused, reader,
             ))
+            for symbol in etf_internal:
+                for field in limit_cols:
+                    raw_prices[symbol][field] = float("nan")
         # BaoStock candidate data has raw OHLCV/amount but no separately
         # auditable adjustment factor. It only fills raw-price gaps.
         if reader is not None and datasets.get("a_stock_eod_price") and adj_mode is None:
