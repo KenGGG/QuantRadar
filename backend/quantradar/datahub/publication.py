@@ -11,8 +11,51 @@ from .dolt import SupplementalStore
 from .fund_adapters import validate_etf_daily_candidate
 from .market_cap import validate_market_cap_candidate
 from .quality import POLICY, valuation_contracts
+from .index_snapshots import validate_index_snapshot_candidate
 
 PUBLICATION_POLICY = 'canonical-valuation-base-lifecycle-units-v3'
+
+
+def publish_index_snapshot(service, version: dict, *, constituents: list[dict], weights: list[dict],
+                           sw_components: list[dict]) -> dict:
+    """Publish one validated V3 snapshot on an isolated supplemental branch."""
+    members = weights or sw_components or constituents
+    check = validate_index_snapshot_candidate(version, members)
+    if check["status"] != "PASS":
+        raise ValueError("index snapshot candidate failed: " + ", ".join(check["errors"]))
+    old = service.releases.current()
+    identity = str(version["content_hash"])[:16]
+    conn = service._connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM dolt_status")
+            if cursor.fetchall():
+                raise ValueError("supplemental repository has uncommitted changes")
+            branch = "candidate_index_snapshot_" + identity
+            cursor.execute("SELECT name FROM dolt_branches WHERE name=%s", (branch,))
+            if cursor.fetchone():
+                cursor.execute("CALL DOLT_CHECKOUT(%s)", (branch,))
+            else:
+                cursor.execute("CALL DOLT_CHECKOUT('-b', %s, %s)", (branch, old["supplemental_commit"]))
+        writer = SupplementalStore(conn); writer.ensure_schema()
+        write = writer.write_index_snapshot(version=version, constituents=constituents, weights=weights, sw_components=sw_components)
+        if write["action"] == "NO_CHANGE":
+            return {"status": "NO_CHANGE", "release_id": old["release_id"], "validation": check}
+        commit = writer.commit("datahub: checked index snapshot " + identity)
+    finally:
+        conn.close()
+    with service._connection(service.config.supplemental_database + "/" + commit) as frozen, frozen.cursor() as cursor:
+        cursor.execute("SELECT COUNT(*) AS row_count FROM qr_index_snapshot_version WHERE snapshot_id=%s", (write["snapshot_id"],))
+        if int(cursor.fetchone()["row_count"]) != 1:
+            raise ValueError("fixed-commit index snapshot verification failed")
+    dataset = f"index_snapshot:{version['dataset_type']}:{version['index_code']}"
+    datasets = {**old["datasets"], dataset: {"rows": len(members), "source": [version["source"]],
+                "pit_status": version["pit_status"], "quality_status": "PASS", "qualification": version["qualification"],
+                "source_date": version.get("source_date"), "refresh_status": "PUBLISHED"}}
+    manifest = service.releases.publish(base_commit=old["base_commit"], supplemental_commit=commit, datasets=datasets,
+        source_adapters={**old["source_adapters"], dataset: version["adapter_version"]},
+        metadata={**old.get("metadata", {}), "index_snapshot": {"snapshot_id": write["snapshot_id"], "content_hash": version["content_hash"], "revision_no": write["revision_no"]}})
+    return {"status": "PUBLISHED", "release_id": manifest["release_id"], "supplemental_commit": commit, "snapshot_id": write["snapshot_id"], "validation": check}
 
 
 def validate_trade_status_patch(rows: list[dict]) -> dict:

@@ -271,7 +271,8 @@ class SupplementalReader:
         if dataset_type:
             where.append("dataset_type=%s"); args.append(dataset_type)
         if observed_before:
-            where.append("observed_at <= %s"); args.append(observed_before)
+            cutoff = observed_before + "T23:59:59.999999+08:00" if len(observed_before) == 10 else observed_before
+            where.append("observed_at <= %s"); args.append(cutoff)
         # A source date is the market-date constraint. NULL is intentionally
         # excluded for as_of requests even in non-strict mode.
         if as_of:

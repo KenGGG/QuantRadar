@@ -36,3 +36,19 @@ def normalize_sw_components(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
              "member_effective_semantics": "SOURCE_MEMBER_INCLUSION_DATE",
              "member_effective_evidence": "akshare:index_component_sw:计入日期"}
             for row in rows]
+
+
+def validate_index_snapshot_candidate(version: dict[str, Any], members: list[dict[str, Any]]) -> dict[str, Any]:
+    required = ("dataset_type", "index_code", "observed_at", "raw_sha256", "content_hash", "source",
+                "adapter_version", "effective_semantics", "qualification", "pit_status")
+    errors = ["missing " + field for field in required if not version.get(field)]
+    if len(str(version.get("raw_sha256") or "")) != 64:
+        errors.append("invalid raw_sha256")
+    if len(str(version.get("content_hash") or "")) != 64:
+        errors.append("invalid content_hash")
+    if not members:
+        errors.append("empty member snapshot")
+    codes = [row.get("security_code") for row in members]
+    if len(codes) != len(set(codes)) or any(not code or len(str(code)) != 9 for code in codes):
+        errors.append("invalid or duplicate security_code")
+    return {"status": "PASS" if not errors else "FAIL", "members": len(members), "errors": errors}

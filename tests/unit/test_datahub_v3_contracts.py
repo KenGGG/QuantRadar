@@ -123,3 +123,21 @@ def test_explicit_snapshot_reader_keeps_unknown_source_date_out_of_as_of_reads(m
     monkeypatch.setattr(reader, "_query", lambda sql, args: [{"snapshot_id": "s", "source_date": None, "observed_at": "2026-09-14T20:30:00+08:00", "pit_status": "PARTIAL"}])
 
     assert reader.get_index_snapshot("000300.SH", as_of="2026-09-01") is None
+
+
+def test_observed_before_date_includes_all_observations_on_that_local_date():
+    from quantradar.datahub.v3_contracts import snapshot_eligibility
+    result = snapshot_eligibility({"source_date": "2026-09-14", "observed_at": "2026-09-14T20:30:00+08:00", "pit_status": "PARTIAL"}, observed_before="2026-09-14")
+    assert result["eligible"] is True
+
+
+def test_reader_expands_date_only_observed_before_to_end_of_day(monkeypatch):
+    from quantradar.datahub.reader import SupplementalReader
+    reader = SupplementalReader(lambda: None)
+    seen = []
+    def query(sql, args):
+        seen.append(args)
+        return []
+    monkeypatch.setattr(reader, "_query", query)
+    reader.get_index_snapshot("000300.SH", observed_before="2026-09-14")
+    assert seen[0][-1] == "2026-09-14T23:59:59.999999+08:00"
