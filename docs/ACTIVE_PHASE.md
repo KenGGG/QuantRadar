@@ -1,13 +1,13 @@
 # QuantRadar Active Phase
 
-**Milestone:** `DATAHUB_ALPHA101_ETF_REQUIRED_DATA_V2`
-**Active Goal:** `ALPHA_ETF_G4_RELEASE_AND_REPLAY`
-**Status:** COMPLETE
+**Milestone:** `WEBUI_ETF_FACTORLAB_V1`
+**Active Goal:** `WEBUI_P0_EXPERIMENT_IDENTITY_AND_RELEASE_GATE`
+**Status:** IN_PROGRESS
 
 ## Scope
 
-用户于 2026-09-13 明确要求执行附件 V1/V2。以 [V2](superpowers/specs/2026-09-13-alpha101-etf-v2.md) 为接口修订依据，保留 [V1](superpowers/specs/2026-09-13-alpha101-etf-v1.md) G0—G4 验收。五份相同粘贴说明是任务背景，示例参数和健康推测均须核验。
-沿用 main、双 Dolt、Provider、Governor、coordinator、journal、candidate 和既有页面。基础只读，不新增 Tushare 在线采集；无第三事实库；回测禁联网和静默 fallback。旧版本可回放。196 FAILED/123 未验证分母保留。
+在既有双 Dolt、Provider、BulletTrade、Worker 和 WebUI 上交付 ETF 研究与 Alpha101 FactorLab。先完成不可变实验身份与固定 release 贯通，再分别交付 ETF 实验组、FactorLab 计算评价，以及行业 ETF 池和因子精简。
+基础 Dolt 只读；不新增第三市场事实库，不在回测中联网或静默 fallback。ETF_RAW、调整价与严格 PIT/账户资格继续独立显示。
 
 ## Acceptance
 

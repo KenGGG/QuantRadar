@@ -1,148 +1,133 @@
 # QuantRadar
 
-基于**本地真实数据、可审计、可复现**的 A 股量化研究与回测平台。
+QuantRadar 是面向本地单用户的 A 股量化研究平台，基于 BulletTrade 回测引擎，提供策略编辑、日线回测、报告回放、数据治理，以及 Alpha101、ETF、Qlib 和 Kronos 研究入口。
 
-核心理念：以 [investment_data](https://github.com/chenditc/investment_data)（Dolt 只读事实源）为唯一数据真相，回测核心复用项目内 `vendor/bullet-trade` 的撮合/账户/组合会计，所有实验结果通过 Snapshot 指纹固化，保证可复现、防未来函数。
+数据遵循 **外部采集 → 本地版本化 → 审计发布 → Provider → 回测**。回测固定读取本地数据版本，禁止在执行过程中临时联网补数。
 
-> 当前交付：**本地日频回测 WebUI 三样例浏览器验收通过**，运行代码 `5118bd4`。
-> 打开 <http://127.0.0.1:7231/> → 策略回测 → 载入样例 → 编辑/保存 → 配置/运行 → 报告。
-> [操作与运行证据、支持范围](docs/acceptance/local-backtest/README.md) · [阶段状态](docs/ACTIVE_PHASE.md)。
+当前进度以 [ACTIVE_PHASE](docs/ACTIVE_PHASE.md) 为准；以下说明依据截至 **2026-09-14** 的代码和验收记录。Alpha101 / ETF 数据补充 V2 的 G0–G4 已记录完成，但这不代表全部市场数据完整，也不代表严格复现 WorldQuant 101 已通过。
 
----
+## 当前能力
 
-## 一、能力矩阵（功能型 V1）
+| 模块 | 已实现范围 | 当前边界 |
+| --- | --- | --- |
+| 本地回测工作台 | 策略保存与重开、日线回测、历史配置与源码回放、指标及 CSV / HTML 报告 | 已验收买入持有、双均线和周频多股票场景；不承诺完整 JoinQuant 兼容 |
+| DataHub | 基础与补充 Dolt 配对发布、候选分支、审计门禁、采集日志、统一日更协调、覆盖率与失败分组 | 下载成功与正式发布分开；覆盖范围按数据集、字段、日期及 release 判断 |
+| Alpha101 | 101 条公式依赖目录、原始量价输入、行业及总市值接入 | 原始工程模式的输入资格为 82 READY / 19 PARTIAL，不能据此宣称 101 条公式均完成独立验证 |
+| ETF 研究 | 固定 10 只 ETF 原始日线、证券身份、既有 BulletTrade 成交回放 | `ETF_RAW` 可作研究；ETF 复权研究序列与严格公司行为账户尚未合格 |
+| 行业与市值 | 归档申万资料重解析、三级代码分组、已有东财载荷总市值提取 | 历史可得时间不完整；行业名称、分类版本与 WorldQuant 行业口径等价性未验证 |
+| Qlib | 数据构建、参数选择、walk-forward 样本外研究及报告链路 | 依赖本地真实数据与对应运行环境 |
+| Kronos | 数据审计、独立 GPU 运行时、研究流水线 | 研究用途；不构成实盘准入，历史指数池与状态覆盖仍有限制 |
+| 研报工作流 | 企业预警通 → MinerU → Agnes → 证据与日报，配套查看页面和飞书 outbox | 需独立服务与凭据；NotebookLM 路线暂停，连续七日运行未完成验收 |
 
-> 状态：**QUANTRADAR_FUNCTIONAL_V1_PASS ✅**（历史工程门禁；当前浏览器交付证据见上方链接）。原 `QUANTRADAR_V1_PASS` 已降级为
-> 功能型——严谨研究型 V1（数据层完整性、复权口径统一、多模型/参数寻优、样本外稳健性）尚待后续阶段。
+本地工作台验收见 [日线回测记录](docs/acceptance/local-backtest/README.md)，DataHub 阶段记录见 [DataHub V2](docs/acceptance/datahub-v2/active-phase-completed.md)。历史验收结果只适用于记录中的版本和场景。
 
-| 标志 | 含义 |
-|------|------|
-| `FULL_AUDIT_REPRO_PASS` | 完整 Snapshot / Audit（Dolt HEAD、schema 哈希、结果指纹、确定性测试） |
-| `PERSIST_WORKER_PASS` | PostgreSQL + 异步回测 Worker 落库 |
-| `WEB_WORKBENCH_PASS` | 正式 React WebUI 工作台（AntD + Monaco + ECharts） |
-| `QLIB_BULLETTRADE_LOOP_PASS` | Qlib 最小闭环（Alpha158 + LightGBM → Target Weight → BulletTrade 回测） |
-| `QUANTRADAR_SMOKE_PASS` | 全链路冒烟（`make smoke` EXIT 0：数据→回测→快照→API→Web 入口） |
+## Alpha101 与 ETF：数据究竟齐不齐
 
-### Hardening 加固（已全绿）
+**基础 Dolt 已有原始价格和复权资料，应优先复用。** `FINAL_ADJ` 与 `BAO_ADJ` 是不同来源的价格模式，不能直接互相填补缺口。已有复权资料不等于已经发布跨来源统一调整序列，也不等于真实分红、送配及账户权益处理已完整。
 
-| 标志 | 含义 |
-|------|------|
-| `HARDENING_DEPS_PASS` | 依赖可重建（`pyproject` + 干净 `requirements.txt` + `make setup` 装前端 + 前端依赖补全） |
-| `HARDENING_TEST_ISOLATION_PASS` | 测试仅用 `_test` 库；`drop_all` 拒绝非 `_test` 库；`0.0.0.0` 强警告 |
-| `HARDENING_AUDIT_CHAIN_PASS` | snapshot config 完整 + 策略源码落库 + `run_id/snapshot_hash/result_hash` 语义分明 |
-| `HARDENING_QLIB_NOFUTURE_PASS` | bridge 同日前视修复 + Train/Valid/Test 不重叠守卫 + 复权训练 |
-| `HARDENING_WORKER_CI_PASS` | Worker 固定线程池 + 重启恢复 + GitHub Actions CI |
+最新阶段验收引用的固定研究版本如下；这是可复核的验收基线，不是自动跟随更新的“最新数据”指针。
 
----
+| 标识 | 固定值 |
+| --- | --- |
+| release_id | `R9c1b6c13965dc457` |
+| 基础 Dolt commit | `uhdpedb4pr97ve80aq6nrabr66atsqtq` |
+| 补充 Dolt commit | `r4t6rm3fdtb06rqpk0bmbtp2hn638a5r` |
 
-## 二、Kronos 投资研究门禁（能力分层，Goal 0/1/2 已冻结）
+该版本的 Alpha101 输入资格记录为：
 
-Kronos `predict()` 仅依赖 OHLC + 时间戳（volume/amount 可选）。当前 `investment_data` 持续更新的
-`final_a_stock_eod_price`（→2026-08-18，OHLC+volume+amount+adjclose）已足以支撑 Kronos 信号研究。
-门禁已从「全局阻断」重构为 4 层能力模型（详见 `docs/DATA_GATE_CLOSURE_PLAN.md`）：
+| 模式 | READY | PARTIAL | BLOCKED | 含义 |
+| --- | ---: | ---: | ---: | --- |
+| `ALPHA101_RAW_ENGINEERING` | 82 | 19 | 0 | 82 条量价依赖；18 条行业中性化与 #56 总市值依赖仍为 PARTIAL |
+| `ALPHA101_ADJ_RESEARCH` | 0 | 0 | 101 | 尚未发布跨来源审计的统一调整序列，不表示基础库没有复权数据 |
+| `ALPHA101_PIT_STRICT` | 0 | 0 | 101 | 历史股票池、行业公开时间及相关时点资格未完整合格 |
 
-| 门禁 | 状态 | 说明 |
-|------|------|------|
-| `kronos_signal_research_ready` | ✅ true | 默认宇宙 `all_a_liquid`（由持续行情构造，PIT-free）即可研究，不再被 000300 PIT 阻塞 |
-| `realistic_backtest_ready` | ⚠️ PARTIAL | 可用但保真度有限（tradeability 覆盖滞后至 2023） |
-| `real_assist_data_ready` | ⛔ false | tradeability 未达 PASS，不实盘辅助 |
-| `csi300_pit_ready` | ⚠️ PARTIAL | 独立能力（000300.SH 成分仅 2020-2022），不阻塞 Kronos 研究 |
+上述数量是**输入能力分组**，不是逐公式正确性、收益表现或严格 WorldQuant 复刻的验收数量。原始工程模式不要求先补齐所有公司行为公告，但不能将结果解释为复权或总回报结果。
 
-代码解绑：`list_signal_dates` / `collect_week_input_package` / `collect_real_input_package`
-宇宙可配置（`--universe all_a_liquid|csi300_pit|csi500_pit|csi1000_pit`），默认 `all_a_liquid`。
+行业资料已有 12,536 条规范化区间、553 个三级代码，并提供一级、二级、三级代码输入；归档文件缺少可验证的历史公开时间，因此不能宣称行业 PIT 齐全。总市值来自已有历史载荷，不应当作流通市值，历史时点可得性仍为 PARTIAL。
 
-## 三、架构与关键路径
+ETF 研究池为 `510050.SH`、`510300.SH`、`510500.SH`、`159919.SZ`、`159915.SZ`、`159901.SZ`、`159902.SZ`、`159903.SZ`、`510180.SH`、`510880.SH`。2020-01-01 至 2026-08-31 的检查区间内，159901 缺 2021-03-10、159915 缺 2021-02-08；缺日保留为未知，不能直接认定停牌。公司行为目前只有 7 只 ETF 的 8 条事件样本，交易规则也仅部分覆盖，严格账户回放仍不具备完整条件。
+
+详细依据：[价格模式规则](docs/acceptance/alpha101-etf/alpha101_price_mode_rules.md)、[行业发布记录](docs/acceptance/alpha101-etf/g3_sw_industry_hierarchy_release.md)、[模式资格](docs/acceptance/alpha101-etf/g3_alpha101_mode_qualification.md)、[ETF 原始价回放](docs/acceptance/alpha101-etf/g2_etf_provider_raw_replay.md)、[阶段验收](docs/acceptance/alpha101-etf/g4_final_acceptance.md)。
+
+## 数据架构与约束
 
 ```text
-investment_data (Dolt SQL server, 127.0.0.1:3307, 只读事实源)
-→ InvestmentDataProvider        (backend/quantradar/providers, 实现 DataProvider ABC)
-→ BulletTrade 回测引擎          (撮合 / 账户 / 订单 / 成交 / 调度，不重实现)
-→ Snapshot / 可复现指纹         (backend/quantradar/snapshot.py + audit.py)
-→ FastAPI (quantradar.api.app)  (/api/health, /api/price, /api/backtest, /api/backtest/strategy, 异步 + 实验)
-→ 前端工作台 (frontend/dist)    (React+TS+Vite+AntD+Monaco+ECharts，由 FastAPI 托管 GET /)
-→ Qlib 最小闭环 (可选研究)       (backend/quantradar/qml: dump→Alpha158/LightGBM→TopK Target Weight→BulletTrade)
-→ PostgreSQL + Worker           (异步回测落库, backend/quantradar/storage.py + worker.py)
+已有基础 Dolt（只读） ─────────────────────┐
+                                         ↓
+外部来源 → 原始资料留存 → 补充 Dolt 候选 → 审计 → 配对 release
+                                                  ↓
+                                           固定版本 Provider
+                                                  ↓
+                                      BulletTrade / 研究任务
+                                                  ↓
+                                         快照、报告、WebUI
 ```
 
-**整个运行时只需一个进程**：`uvicorn quantradar.api.app:app`。
-前端是静态产物由 FastAPI 托管；异步回测 Worker 以 daemon 线程运行在该进程内。
+- 基础库默认位于 `/data/investment_data`，SQL 端口 `3307`；补充库默认位于 `/data/quantradar_data`，端口 `3308`。新增事实在补充库治理，Provider 不写基础库。
+- 同一次运行固定 `release_id`、`base_commit`、`supplemental_commit` 与单位版本。新版本日线单位为股、元；旧版本保留其原有单位解释。
+- 优先复用已有 Dolt 和归档原始资料；外部接口只用于采集阶段，不能成为回测缺失数据的在线回退。
+- 行情、上市退市、代码变更、指数历史成分、停牌 / ST / 涨跌停、公司行为、财务可得时间分别审计。不能用今天的指数成分回填历史，也不能将行情更新日期当作全部字段的更新日期。
+- 估值基线仍保留 196 个失败项和 123 个历史未验证项，不能把成功子集称为全市场完整覆盖。严格 PIT 财务数据尚未齐备。
+- Git 保存源码、契约和验收证据；Dolt 数据库、原始下载、模型、凭据及本地运行产物独立存放。
 
----
+## 本地运行
 
-## 四、依赖（启动前需就绪）
-
-| 依赖 | 说明 | 由谁管理 |
-|------|------|----------|
-| Python 3 虚拟环境 `.venv` | 项目依赖（BulletTrade、qlib、fastapi、lightgbm 等） | `make setup` |
-| **investment_data (Dolt 3307)** | 只读行情事实源，**必须本机可达** | 用户本地启动 Dolt |
-| **PostgreSQL** | 异步回测落库（本机专用库，如 `quantradar`）；**必须**在 `.env` 设置 `QUANT_RADAR_PG_URL`（格式见 `.env.example`），否则 `/api/backtest/async` 等返回 503。`quantradar.sh` 启动会自动加载 `.env` 并导出该变量 | 用户本地数据库 |
-
-> 本仓库**不**管理 Dolt / PostgreSQL 的启停，只在使用时读取。`.env`（复制自 `.env.example`）配置 Dolt 连接；PostgreSQL 连接串见 `backend/quantradar/storage.py`。
-
----
-
-## 五、一键启停（推荐）
-
-根目录提供 `quantradar.sh` 管理启动 / 重启 / 关闭：
+需要 Python **3.11 或 3.12**、Node.js / npm，以及所用功能对应的本地数据库。BulletTrade 使用仓库内 `vendor/bullet-trade` 的 editable 安装。
 
 ```bash
-chmod +x quantradar.sh        # 首次需赋可执行权限（已默认提交）
-
-./quantradar.sh start         # 启动（后台，写 logs/quantradar.pid + logs/quantradar.log）
-./quantradar.sh stop          # 优雅停止；超时(~10s)则 SIGKILL
-./quantradar.sh restart       # stop + start
-./quantradar.sh status        # 查看运行状态与访问地址
+make setup
+cp .env.example .env
+# 编辑 .env，配置本地连接后启动
+./quantradar.sh start
 ```
 
-- 默认监听 `127.0.0.1:7231`。可用环境变量覆盖：
-  ```bash
-  QUANTRADAR_HOST=0.0.0.0 QUANTRADAR_PORT=8010 ./quantradar.sh start
-  ```
-  > ⚠️ **安全边界**：`QUANTRADAR_HOST=0.0.0.0` 会把应用暴露到所有网络接口。`/api/backtest/strategy`
-  > 接受任意策略源码并在本进程内执行（**无认证、等价于远程代码执行**）。仅限本机可信研究使用；
-  > 共享/LAN/公网环境请保持默认 `127.0.0.1` 并在前面加鉴权网关。`quantradar.sh` 在检测到 `0.0.0.0` 时会强警告。
-- 启动前会预检 Dolt(3307) 可达性；不可达仅**警告**不阻断（避免误杀）。
-- 端口冲突时 uvicorn 会退出，脚本报“启动失败”并指向日志，请用上面的端口变量换端口。
+访问 **http://127.0.0.1:7231**。FastAPI 托管构建后的 React 前端，异步回测 Worker 运行在应用进程内。Dolt、PostgreSQL 及独立研究服务需要另外准备，启动脚本不负责安装或启动这些依赖。
 
-启动后访问：
+| 配置 | 用途 |
+| --- | --- |
+| `INVESTMENT_DATA_*` | 基础行情 Provider 只读连接，示例见 [.env.example](.env.example) |
+| `DATAHUB_BASE_HOST` / `DATAHUB_BASE_PORT` | DataHub 基础库连接，默认 `127.0.0.1:3307` |
+| `DATAHUB_SUPPLEMENTAL_HOST` / `DATAHUB_SUPPLEMENTAL_PORT` | 补充库连接，默认 `127.0.0.1:3308` |
+| `DATAHUB_USER` / `DATAHUB_PASSWORD` | DataHub 数据库凭据 |
+| `DATAHUB_SUPPLEMENTAL_REPO` / `DATAHUB_RELEASE_ROOT` | 补充库与配对发布目录 |
+| `QUANT_RADAR_PG_URL` | 异步回测 PostgreSQL 连接；未配置时相关接口返回 503 |
+| `QUANTRADAR_HOST` / `QUANTRADAR_PORT` | Web 监听地址，默认 `127.0.0.1:7231` |
 
-- Web 工作台：<http://127.0.0.1:7231/>
-- 健康检查：<http://127.0.0.1:7231/api/health>
-
----
-
-## 六、开发命令（Makefile）
+DataHub 完整默认值见 [config.py](backend/quantradar/config.py)。基础库与 DataHub 的连接配置应保持一致；`.env.example` 尚未列出全部 DataHub 参数。启动预检仅检查默认 `3307` 端口，可达不代表补充库、发布清单及所有研究依赖就绪。
 
 ```bash
-make setup      # 安装依赖（BulletTrade editable + 本项目 + 测试依赖 + 前端构建）
-make test       # 运行单元测试（pytest tests/unit；PG 集成测试需 QUANT_RADAR_TEST_PG_URL 指向 `_test` 库）
-make smoke      # 端到端冒烟（scripts/smoke.py，全链路）
-make dev        # 开发服务器（uvicorn --reload，等价于 start 的 reload 版）
+./quantradar.sh status
+./quantradar.sh restart
+./quantradar.sh stop
 ```
 
-> 集成测试安全隔离：PG 相关测试仅当 `QUANT_RADAR_TEST_PG_URL` 指向**库名含 `_test`** 的专用库时才运行，
-> 否则整文件 skip；`drop_all` 对任何非 `_test` 库名拒绝执行。切勿将正式 `QUANT_RADAR_PG_URL` 用于测试。
+应用日志位于 `logs/quantradar.log`。此应用允许执行用户策略代码，面向本地可信单用户使用；对外提供服务前需要鉴权和执行隔离。部分详细交互报告使用 CDN，不能据此承诺报告在断网浏览器中完整渲染。
 
----
+## 开发与验证
 
-## 七、目录速览
-
-```text
-backend/quantradar/   后端核心（provider / backtest / snapshot / audit / worker / storage / qml / api）
-frontend/             React+TS+Vite 工作台（npm run build -> dist，由 GET / 托管）
-docs/                 阶段文档（CURRENT_STATE.md / ACTIVE_PHASE.md / 00~06 规范）
-scripts/smoke.py      全链路冒烟
-quantradar.sh         一键启停脚本（本文件同目录）
-logs/                 运行时日志（quantradar.log / quantradar.pid）
+```bash
+make test       # tests/unit 单元测试
+make smoke      # 核心链路冒烟，需对应本地数据与服务
+make dev        # FastAPI 开发服务
+make research   # Qlib 参数选择与 walk-forward OOS 研究
+make help       # 更多研报、Kronos 等命令
 ```
 
----
+涉及 PostgreSQL 的测试需使用独立测试库并遵守仓库测试库保护规则。研报采集、模型安装和研究任务可能访问外部服务；`make research-deliver` 会发送日报，配置与运行前应明确其外部服务及发送目标。
 
-## 八、注意事项
+本次 README 更新不替代运行环境验收。具体测试结果应查阅对应版本的验收记录。
 
-- **禁止**向仓库写入 investment_data 的写操作（只读事实源）。
-- **禁止**用 Qlib 替换 BulletTrade 撮合与组合会计；Qlib 仅用于因子研究 / 模型 / 预测。
-- **安全**：`/api/backtest/strategy` 为无认证代码执行接口，默认仅绑 `127.0.0.1`，禁止暴露到 LAN/公网。
-- **测试隔离**：集成测试仅连接 `QUANT_RADAR_TEST_PG_URL` 指向的 `_test` 库，`storage.drop_all` 拒绝任何非 `_test` 库名，杜绝误 DROP 正式库。
-- 任意回测结果均以 Snapshot 指纹固化，相同配置应可复现；若指纹变化说明配置/数据/代码有变。
-- 后续（Phase 10，非 V1 范围）：Qlib 高级研究、多模型、参数寻优；ETF / QMT / 实盘为 BLOCKED。
+## 代码与文档导航
+
+| 路径 | 内容 |
+| --- | --- |
+| [backend/quantradar](backend/quantradar) | API、Provider、DataHub、回测与研究业务 |
+| [frontend](frontend) | React / TypeScript 工作台 |
+| [vendor/bullet-trade](vendor/bullet-trade) | 回测引擎源码基线 |
+| [scripts](scripts) | 冒烟、采集、研究及运行辅助脚本 |
+| [tests](tests) | 单元与集成验证 |
+| [docs/ACTIVE_PHASE.md](docs/ACTIVE_PHASE.md) | 当前目标与阶段状态，唯一目标来源 |
+| [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) | 已记录系统事实；具体版本范围以对应验收证据为准 |
+| [docs/acceptance](docs/acceptance) | 分阶段验收记录与数据限制 |
+
+分钟线、实盘交易、完整证券生命周期、完整历史指数成分 PIT、严格财务 PIT，以及完整 ETF 公司行为账户，均不在当前完整交付承诺内。

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Card, Checkbox, Empty, Spin } from "antd";
+import { Alert, Card, Checkbox, Empty, Spin, Table } from "antd";
 import ReactECharts from "echarts-for-react";
 import { listExperiments, getExperiment, type ExperimentResp } from "../api";
 
 export function ExperimentCompare() {
-  const [names, setNames] = useState<string[]>([]);
+  const [experiments, setExperiments] = useState<ExperimentResp[]>([]);
   const [checked, setChecked] = useState<string[]>([]);
   const [exps, setExps] = useState<Record<string, ExperimentResp>>({});
   const [loading, setLoading] = useState(false);
@@ -15,9 +15,9 @@ export function ExperimentCompare() {
     setError(null);
     listExperiments()
       .then((r) => {
-        setNames(r.experiments);
+        setExperiments(r.experiments);
         if (r.experiments.length && checked.length === 0) {
-          setChecked(r.experiments.slice(0, 2));
+          setChecked(r.experiments.slice(0, 2).map(e => e.experiment_id));
         }
       })
       .catch((e) => setError(String(e)))
@@ -35,8 +35,8 @@ export function ExperimentCompare() {
       for (const n of checked) {
         try {
           out[n] = await getExperiment(n);
-        } catch {
-          /* skip missing */
+        } catch (e) {
+          out[n] = { experiment_id: n, display_name: n, kind: "unavailable", error: String(e) };
         }
       }
       if (alive) setExps(out);
@@ -53,7 +53,7 @@ export function ExperimentCompare() {
       const daily = exps[n]?.snapshot?.daily_records ?? [];
       daily.forEach((d) => d.date && allDates.add(String(d.date).slice(0, 10)));
       series.push({
-        name: n,
+        name: exps[n]?.display_name || n,
         type: "line",
         showSymbol: false,
         data: daily.map((d) => [String(d.date).slice(0, 10), d.total_value ?? null]),
@@ -62,7 +62,7 @@ export function ExperimentCompare() {
     const dates = Array.from(allDates).sort();
     return {
       tooltip: { trigger: "axis" },
-      legend: { data: checked },
+      legend: { data: checked.map(id => exps[id]?.display_name || id) },
       grid: { left: 64, right: 16, top: 32, bottom: 28 },
       xAxis: { type: "category", data: dates },
       yAxis: { type: "value", scale: true },
@@ -74,11 +74,11 @@ export function ExperimentCompare() {
     <Card size="small" title="实验对比（基于 Snapshot 指纹的本地实验存证）">
       {loading && <Spin />}
       {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 12 }} />}
-      {!names.length && !loading && <Empty description="暂无实验；可在策略回测后通过 /api/experiments/save 保存" />}
-      {names.length > 0 && (
+      {!experiments.length && !loading && <Empty description="暂无实验；请从成功的运行记录保存实验" />}
+      {experiments.length > 0 && (
         <>
           <Checkbox.Group
-            options={names.map((n) => ({ label: n, value: n }))}
+            options={experiments.map((e) => ({ label: `${e.display_name}${e.legacy ? "（旧存证）" : ""}`, value: e.experiment_id }))}
             value={checked}
             onChange={(v) => setChecked(v as string[])}
             style={{ marginBottom: 12 }}
@@ -91,6 +91,9 @@ export function ExperimentCompare() {
           ) : (
             <ReactECharts option={option} style={{ height: 360 }} notMerge />
           )}
+          <Table size="small" pagination={false} style={{ marginTop: 16 }} rowKey="experiment_id"
+            dataSource={checked.map(id => exps[id]).filter(Boolean)}
+            columns={[{ title: "实验", dataIndex: "display_name" }, { title: "状态", render: (_, row) => row.error ? <span className="error">{String(row.error)}</span> : row.legacy ? "旧存证：版本未知" : "可复现" }, { title: "版本", render: (_, row) => String((row.config || {}).release_id || "未记录") }]} />
         </>
       )}
     </Card>

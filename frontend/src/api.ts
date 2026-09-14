@@ -164,6 +164,7 @@ export interface BacktestPayload {
   fq?: string;
   strategy_name?: string;
   extras?: Record<string, unknown> | null;
+  release_id?: string | null;
 }
 
 export interface RunArtifact {
@@ -202,8 +203,11 @@ export interface RunSubmitResp {
 }
 
 export interface ExperimentResp {
-  name: string;
+  experiment_id: string;
+  display_name: string;
   kind?: string;
+  run_id?: string | null;
+  legacy?: boolean;
   config?: Record<string, unknown>;
   result_fingerprint?: string;
   metrics?: Metric;
@@ -399,12 +403,21 @@ export function listRuns(limit = 50): Promise<{ runs: RunRecord[] }> {
   return httpJson<{ runs: RunRecord[] }>(`/api/backtest/runs?limit=${limit}`);
 }
 
-export function listExperiments(): Promise<{ experiments: string[] }> {
-  return httpJson<{ experiments: string[] }>("/api/experiments");
+export function listExperiments(): Promise<{ experiments: ExperimentResp[] }> {
+  return httpJson<{ experiments: ExperimentResp[] }>("/api/experiments");
 }
 
-export function getExperiment(name: string): Promise<ExperimentResp> {
-  return httpJson<ExperimentResp>(`/api/experiments/${encodeURIComponent(name)}`);
+export function getExperiment(experimentId: string): Promise<ExperimentResp> {
+  return httpJson<ExperimentResp>(`/api/experiments/${encodeURIComponent(experimentId)}`);
+}
+
+export function saveExperimentFromRun(runId: string, displayName: string, idempotencyKey: string): Promise<ExperimentResp> {
+  return httpJson<ExperimentResp>("/api/experiments/save", { method: "POST", body: JSON.stringify({ run_id: runId, display_name: displayName, idempotency_key: idempotencyKey }) });
+}
+
+export interface ReleaseSummary { release_id: string; base_commit: string; supplemental_commit: string | null; published_at: string | null; }
+export function listDataHubReleases(): Promise<{ current_release_id: string; releases: ReleaseSummary[] }> {
+  return httpJson("/api/datahub/releases");
 }
 
 export function getSnapshotLoad(path: string): Promise<Snapshot> {

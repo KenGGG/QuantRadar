@@ -14,6 +14,8 @@ import type { editor } from "monaco-editor";
 import {
   listStrategies, saveStrategy, type StrategyRecord,
   submitAsync,
+  listDataHubReleases, type ReleaseSummary,
+  saveExperimentFromRun,
   getRun,
   type RunRecord,
   type BacktestPayload,
@@ -49,6 +51,7 @@ export function StrategyWorkbench({
   const [strategies, setStrategies] = useState<StrategyRecord[]>([]);
   const [saved, setSaved] = useState("");
   const [saving, setSaving] = useState(false);
+  const [experimentSaved, setExperimentSaved] = useState<string | null>(null);
   const [amount, setAmount] = useState(100);
   const [extras, setExtras] = useState<Record<string, unknown> | null>(null);
   const [security, setSecurity] = useState("600519.XSHG");
@@ -57,6 +60,8 @@ export function StrategyWorkbench({
   const [cash, setCash] = useState(500000);
   const [benchmark, setBenchmark] = useState("000300.XSHG");
   const [fq, setFq] = useState("none");
+  const [releaseId, setReleaseId] = useState<string | null>(null);
+  const [releases, setReleases] = useState<ReleaseSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState<RunRecord | null>(null);
@@ -84,6 +89,7 @@ export function StrategyWorkbench({
   const pollGeneration = useRef(0);
 
   useEffect(() => { listStrategies().then(r => setStrategies(r.strategies)).catch(e => setError(String(e))); }, []);
+  useEffect(() => { listDataHubReleases().then(r => { setReleases(r.releases); setReleaseId(r.current_release_id); }).catch(e => setError(String(e))); }, []);
   useEffect(() => {
     if (!restoreRun) return;
     stopPoll(); setLoading(false); setRun(restoreRun);
@@ -96,6 +102,7 @@ export function StrategyWorkbench({
     setStart(String(cfg.start_date || "")); setEnd(String(cfg.end_date || ""));
     setCash(Number(cfg.initial_cash)); setAmount(Number(cfg.amount || 100));
     setBenchmark(String(cfg.benchmark || "")); setFq(String(cfg.fq || "none"));
+    setReleaseId(cfg.release_id ? String(cfg.release_id) : null);
     setExtras((cfg.extras as Record<string, unknown>) || null);
     setSaved(`已恢复历史源码与配置：${restoreRun.run_id}`); setError(null);
     if (["PENDING", "RUNNING"].includes(restoreRun.status)) {
@@ -156,6 +163,7 @@ export function StrategyWorkbench({
       frequency: "day",
       benchmark: benchmark || null,
       fq,
+      release_id: releaseId,
       strategy_name: name, amount, extras,
     };
     const payload: BacktestPayload =
@@ -169,6 +177,14 @@ export function StrategyWorkbench({
         setError(String(e));
         setLoading(false);
       });
+  };
+
+  const onSaveExperiment = async () => {
+    if (!run || run.status !== "SUCCESS") return;
+    try {
+      const exp = await saveExperimentFromRun(run.run_id, name, `run:${run.run_id}`);
+      setExperimentSaved(`已保存实验：${exp.display_name} · ${exp.experiment_id}`);
+    } catch (e) { setError(String(e)); }
   };
 
   // 组件卸载时停止轮询
@@ -217,6 +233,7 @@ export function StrategyWorkbench({
       <div className="secondary-toolbar">
         <label>基准 <Input aria-label="基准" value={benchmark} onChange={e => setBenchmark(e.target.value)} placeholder="不使用基准" /></label>
         <label>复权 <Select aria-label="复权" value={fq} onChange={setFq} options={FQ_OPTIONS} /></label>
+        <label>数据版本 <Select aria-label="数据版本" value={releaseId} onChange={setReleaseId} style={{ minWidth: 250 }} options={releases.map(r => ({ value: r.release_id, label: `${r.release_id} · base ${r.base_commit.slice(0, 8)} · supp ${(r.supplemental_commit || "—").slice(0, 8)}` }))} /></label>
         {mode === "builtin" && <><label>标的 <Input aria-label="标的" value={security} onChange={e => setSecurity(e.target.value)} /></label><label>目标股数 <InputNumber aria-label="目标股数" value={amount} min={100} step={100} onChange={v => setAmount(v || 100)} /></label></>}
         <span className="parameter-note" title="策略内 set_benchmark 会覆盖页面基准；显式 get_price(fq=…) 以源码为准。">源码设置优先 ⓘ</span>
       </div>
@@ -225,9 +242,10 @@ export function StrategyWorkbench({
         {run?.status === "FAILED" && <Alert type="error" showIcon message="回测失败" description={run.error} />}
         <ReturnOverview data={data} compact />
         <div className="run-status" role="status"><span>{loading ? "回测执行中…" : run ? `状态：${run.status} · ${run.run_id}` : "就绪 · 等待运行"}</span>
-          {run?.status === "SUCCESS" && <Button type="link" onClick={() => onOpenReport(run.run_id)}>打开完整回测报告 →</Button>}
+          {run?.status === "SUCCESS" && <><Button type="link" onClick={() => onOpenReport(run.run_id)}>打开完整回测报告 →</Button><Button type="link" onClick={onSaveExperiment}>保存为实验</Button></>}
           {run && ["RUNNING", "PENDING"].includes(run.status) && <Button type="link" onClick={() => onOpenReport(run.run_id)}>查看实时进度 →</Button>}
         </div>
+        {experimentSaved && <Alert type="success" showIcon message={experimentSaved} />}
       </div>
       <div className="console-pane">
         <div className="console-tabs"><button className={consoleTab === "log" ? "active" : ""} onClick={() => setConsoleTab("log")}>日志</button><button className={consoleTab === "error" ? "active" : ""} onClick={() => setConsoleTab("error")}>错误{run?.status === "FAILED" ? " · 1" : ""}</button><span>{run ? "本次回测输出" : "运行输出"}</span></div>

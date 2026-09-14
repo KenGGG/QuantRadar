@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import datetime
 import os
+import uuid
 from typing import Any, Dict, List, Optional, Union
 
 from sqlalchemy import (
@@ -36,6 +37,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     create_engine,
+    inspect,
+    text,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -92,8 +95,55 @@ def get_session():
 
 
 def init_db() -> None:
-    """幂等建表（不 DROP）。"""
-    Base.metadata.create_all(get_engine())
+    """Create tables and migrate the additive Experiment identity change.
+
+    ``create_all`` deliberately does not alter an existing production table.  The
+    small migration below is idempotent and only changes the old experiment
+    naming semantics: names become labels, while UUIDs become public identities.
+    It never drops experiment rows.
+    """
+    engine = get_engine()
+    Base.metadata.create_all(engine)
+    _migrate_experiment_identity(engine)
+
+
+def _migrate_experiment_identity(engine) -> None:
+    inspector = inspect(engine)
+    if "experiments" not in inspector.get_table_names():
+        return
+    columns = {item["name"] for item in inspector.get_columns("experiments")}
+    # Fresh tables already have the final shape.
+    if {"display_name", "experiment_id", "run_id", "source_refs", "artifact_refs", "idempotency_key"} <= columns:
+        return
+    dialect = engine.dialect.name
+    if dialect != "postgresql":
+        # SQLite is used only by isolated tests.  Fresh test schemas get the
+        # final model; refuse an implicit destructive table rebuild for legacy
+        # files, which keeps the migration safe on unknown engines.
+        return
+    with engine.begin() as conn:
+        if "display_name" not in columns and "name" in columns:
+            conn.execute(text("ALTER TABLE experiments RENAME COLUMN name TO display_name"))
+        if "experiment_id" not in columns:
+            conn.execute(text("ALTER TABLE experiments ADD COLUMN experiment_id VARCHAR(36)"))
+            rows = conn.execute(text("SELECT id FROM experiments WHERE experiment_id IS NULL")).fetchall()
+            for row in rows:
+                conn.execute(text("UPDATE experiments SET experiment_id=:eid WHERE id=:id"),
+                             {"eid": str(uuid.uuid4()), "id": row.id})
+            conn.execute(text("ALTER TABLE experiments ALTER COLUMN experiment_id SET NOT NULL"))
+            conn.execute(text("ALTER TABLE experiments ADD CONSTRAINT uq_experiment_experiment_id UNIQUE (experiment_id)"))
+        for constraint in inspector.get_unique_constraints("experiments"):
+            if constraint.get("name") == "uq_experiment_name":
+                conn.execute(text("ALTER TABLE experiments DROP CONSTRAINT uq_experiment_name"))
+        for ddl in (
+            "ALTER TABLE experiments ADD COLUMN IF NOT EXISTS run_id VARCHAR(64)",
+            "ALTER TABLE experiments ADD COLUMN IF NOT EXISTS source_refs JSON",
+            "ALTER TABLE experiments ADD COLUMN IF NOT EXISTS artifact_refs JSON",
+            "ALTER TABLE experiments ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(128)",
+        ):
+            conn.execute(text(ddl))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_experiment_idempotency_key "
+                          "ON experiments (idempotency_key) WHERE idempotency_key IS NOT NULL"))
 
 
 def drop_all() -> None:
@@ -167,11 +217,16 @@ class BacktestRun(Base):
 
 class Experiment(Base):
     __tablename__ = "experiments"
-    __table_args__ = (UniqueConstraint("name", name="uq_experiment_name"),)
+    __table_args__ = (UniqueConstraint("experiment_id", name="uq_experiment_experiment_id"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(255), nullable=False)
+    experiment_id = Column(String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4()), index=True)
+    display_name = Column(String(255), nullable=False)
     kind = Column(String(32), nullable=False, default="backtest")
+    run_id = Column(String(64), ForeignKey("backtest_runs.run_id"), nullable=True, index=True)
+    source_refs = Column(JSON, nullable=True)
+    artifact_refs = Column(JSON, nullable=True)
+    idempotency_key = Column(String(128), nullable=True, unique=True)
     config = Column(JSON, nullable=True)
     result_fingerprint = Column(String(64), nullable=True, index=True)
     metrics = Column(JSON, nullable=True)
@@ -181,8 +236,12 @@ class Experiment(Base):
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
-            "name": self.name,
+            "experiment_id": self.experiment_id,
+            "display_name": self.display_name,
             "kind": self.kind,
+            "run_id": self.run_id,
+            "source_refs": self.source_refs,
+            "artifact_refs": self.artifact_refs,
             "config": self.config,
             "result_fingerprint": self.result_fingerprint,
             "metrics": self.metrics,
@@ -374,12 +433,20 @@ def save_metrics(run_id: str, metrics: Dict[str, Any], session=None) -> Metrics:
             s.close()
 
 
-def save_experiment(name: str, kind: str, config: Dict[str, Any], result_fingerprint: str,
-                    metrics: Dict[str, Any], snapshot: Optional[Dict[str, Any]], session=None) -> Experiment:
+def save_experiment(display_name: str, kind: str, config: Dict[str, Any], result_fingerprint: str,
+                    metrics: Dict[str, Any], snapshot: Optional[Dict[str, Any]], *, run_id: str | None = None,
+                    source_refs: Dict[str, Any] | None = None, artifact_refs: Dict[str, Any] | None = None,
+                    idempotency_key: str | None = None, session=None) -> Experiment:
     own = session is None
     s = session or get_session()
     try:
-        obj = Experiment(name=name, kind=kind, config=config,
+        if idempotency_key:
+            existing = s.query(Experiment).filter(Experiment.idempotency_key == idempotency_key).first()
+            if existing is not None:
+                return existing
+        obj = Experiment(display_name=display_name, kind=kind, run_id=run_id,
+                         source_refs=source_refs, artifact_refs=artifact_refs,
+                         idempotency_key=idempotency_key, config=config,
                          result_fingerprint=result_fingerprint, metrics=metrics, snapshot=snapshot)
         s.add(obj)
         s.commit()
@@ -390,22 +457,22 @@ def save_experiment(name: str, kind: str, config: Dict[str, Any], result_fingerp
             s.close()
 
 
-def get_experiment(name: str, session=None) -> Optional[Dict[str, Any]]:
+def get_experiment(experiment_id: str, session=None) -> Optional[Dict[str, Any]]:
     own = session is None
     s = session or get_session()
     try:
-        obj = s.query(Experiment).filter(Experiment.name == name).first()
+        obj = s.query(Experiment).filter(Experiment.experiment_id == experiment_id).first()
         return obj.to_dict() if obj else None
     finally:
         if own:
             s.close()
 
 
-def list_experiments(session=None) -> List[str]:
+def list_experiments(session=None) -> List[Dict[str, Any]]:
     own = session is None
     s = session or get_session()
     try:
-        return [r[0] for r in s.query(Experiment.name).order_by(Experiment.created_at).all()]
+        return [r.to_dict() for r in s.query(Experiment).order_by(Experiment.created_at.desc()).all()]
     finally:
         if own:
             s.close()

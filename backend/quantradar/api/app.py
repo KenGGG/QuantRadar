@@ -656,10 +656,28 @@ def backtest_async(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
                 "fq": payload.get("fq", "none"),
                 "strategy_name": payload.get("strategy_name"),
                 "extras": payload.get("extras"),
+                "release_id": payload.get("release_id"),
             }
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+
+
+@app.get("/api/datahub/releases")
+def datahub_releases() -> Dict[str, Any]:
+    """Return locally published immutable releases; no external lookup."""
+    from quantradar.config import load_datahub_config
+    from quantradar.datahub.release import ReleaseStore
+    store = ReleaseStore(load_datahub_config().release_root)
+    try:
+        current = store.current().get("release_id")
+        rows = []
+        for path in sorted(store.releases.glob("R*.json"), reverse=True):
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+            rows.append({key: manifest.get(key) for key in ("release_id", "base_commit", "supplemental_commit", "published_at")})
+        return {"current_release_id": current, "releases": rows}
+    except (OSError, ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=503, detail=f"本地 release 清单不可用：{exc}")
 
 
 @app.get("/api/backtest/runs/{run_id}")
@@ -816,40 +834,77 @@ def backtest_run_artifact_file(run_id: str, name: str):
 
 @app.get("/api/experiments")
 def experiments_list() -> Dict[str, Any]:
-    from quantradar.experiment import list_experiments
-
-    return {"experiments": list_experiments()}
-
-
-@app.get("/api/experiments/{name}")
-def experiments_load(name: str) -> Dict[str, Any]:
-    from quantradar.experiment import load_experiment
+    """List immutable PostgreSQL experiments and read-only legacy JSON records."""
+    from quantradar.storage import init_db, list_experiments
+    from quantradar.experiment import list_experiments as list_legacy
 
     try:
-        exp = load_experiment(name)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Experiment 不存在：{name}")
-    return exp.to_dict()
+        init_db()
+        records = list_experiments()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    legacy = [{"experiment_id": f"legacy:{name}", "display_name": name,
+               "kind": "legacy", "legacy": True} for name in list_legacy()]
+    return {"experiments": records + legacy}
+
+
+@app.get("/api/experiments/{experiment_id}")
+def experiments_load(experiment_id: str) -> Dict[str, Any]:
+    if experiment_id.startswith("legacy:"):
+        from quantradar.experiment import load_experiment
+        name = experiment_id.removeprefix("legacy:")
+        try:
+            row = load_experiment(name).to_dict()
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Legacy Experiment 不存在：{name}")
+        row.update({"experiment_id": experiment_id, "display_name": row.pop("name"), "legacy": True,
+                    "replay_status": "VERSION_UNKNOWN"})
+        return row
+    from quantradar.storage import get_experiment, init_db
+    try:
+        init_db()
+        row = get_experiment(experiment_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"Experiment 不存在：{experiment_id}")
+    return row
 
 
 @app.post("/api/experiments/save")
 def experiments_save(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
-    from quantradar.experiment import Experiment, save_experiment
+    """Create an immutable experiment from a server-side completed run.
 
-    name = payload.get("name")
-    if not name:
-        raise HTTPException(status_code=400, detail="缺少 name")
-    snap = payload.get("snapshot") or {}
-    exp = Experiment(
-        name=name,
-        kind=payload.get("kind", "backtest"),
-        config=payload.get("config", {}),
-        result_fingerprint=snap.get("result_fingerprint", "") or payload.get("result_fingerprint", ""),
-        metrics=payload.get("metrics", {}),
-        snapshot=snap or None,
+    Client supplied snapshots are intentionally rejected: they are display data,
+    not an auditable experiment source.
+    """
+    run_id = str(payload.get("run_id") or "").strip()
+    display_name = str(payload.get("display_name") or payload.get("name") or "").strip()
+    if not run_id or not display_name:
+        raise HTTPException(status_code=400, detail="缺少 run_id 或 display_name")
+    from quantradar.storage import get_run, init_db, save_experiment
+    try:
+        init_db()
+        run = get_run(run_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"运行不存在：{run_id}")
+    if run["status"] != "SUCCESS" or not run.get("snapshot"):
+        raise HTTPException(status_code=409, detail="只有成功且已保存快照的运行可以保存为实验")
+    config = dict(run.get("config") or {})
+    snapshot = run["snapshot"]
+    release = {key: config.get(key) for key in ("release_id", "base_commit", "supplemental_commit")}
+    row = save_experiment(
+        display_name, str(payload.get("kind") or "backtest"), config,
+        str(run.get("result_hash") or snapshot.get("result_fingerprint") or ""),
+        dict(run.get("metrics") or snapshot.get("metrics") or {}), snapshot,
+        run_id=run_id, source_refs={"run_id": run_id, "release": release},
+        artifact_refs={"run_dir": config.get("run_dir"), "report_html": config.get("report_html"),
+                       "standard_report_html": config.get("standard_report_html")},
+        idempotency_key=str(payload.get("idempotency_key") or "").strip() or None,
     )
-    path = save_experiment(exp)
-    return {"path": path, "name": name}
+    return row.to_dict()
 
 
 @app.post("/api/snapshot/save")
