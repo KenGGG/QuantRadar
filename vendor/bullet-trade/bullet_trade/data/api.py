@@ -1728,7 +1728,10 @@ class BacktestCurrentData:
                     frequency=freq_text,
                     fields=fields,
                     count=1,
-                    fq="pre",
+                    # ETF_RAW strategies explicitly declare this setting in
+                    # initialize.  The default remains the established stock
+                    # current-bar contract.
+                    fq=_get_setting("current_bar_fq", "pre"),
                 )
                 pre_ref = _resolve_fq_ref_date(current_date or current_dt, use_real_price)
                 if pre_ref is not None:
@@ -1775,7 +1778,8 @@ class BacktestCurrentData:
                             if pd.notna(row.get("low_limit", 0.0))
                             else 0.0
                         )
-                        paused = bool(row.get("paused", False))
+                        paused_value = row.get("paused", False)
+                        paused = bool(paused_value) if pd.notna(paused_value) else False
                     else:
                         high_limit = 0.0
                         low_limit = 0.0

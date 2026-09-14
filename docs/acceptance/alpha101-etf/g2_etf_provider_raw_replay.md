@@ -24,15 +24,19 @@ ETF 主数据也已由 `qr_etf_master` 提供给 `get_security_info()`，使现�
 | 区间 | 2021-01-04 至 2021-03-31 |
 | 数据模式 | `ETF_RAW` |
 | 交易日记录 | 58 |
-| 成交 | 0 |
-| 结果 | `BLOCKED_ENGINE_FQ_PRE_REQUEST` |
+| 成交 | 5 |
+| 结果 | `ETF_RAW_RESEARCH_REPLAY_PASS` |
 
-阻断并不在原始历史价：例如 `159915.XSHE` 于 `2021-01-04` 可直接读到 open、close、volume 与 money。
-订单阶段的 `BacktestCurrentData` 固定以 `fq='pre'` 请求 current bar；ETF 没有已发布复权因子，Provider
-按门禁拒绝该请求，因此引擎把该 bar 视为空并拒单。不能以 ETF_RAW 冒充前复权来绕过此门禁。
+`BacktestCurrentData` 允许策略在 `initialize` 中通过
+`set_option('current_bar_fq', 'none')` 明确声明原始价 current-bar 口径；默认股票行为仍是
+`fq='pre'`。它不会将 ETF_RAW 冒充前复权。ETF 当前 bar 请求的 `high_limit`、`low_limit`
+和 `paused` 为未知时，Provider 返回空值；current-data 仅为 ETF_RAW 研究回放将其视为不阻断的未知，
+不形成“可交易/未停牌/未触及涨跌停”的事实判断。
 
-下一项最小工作是为现有引擎增加明确的 `ETF_RAW` current-bar 请求模式，保持 `ETF_HFQ_RESEARCH`
-和严格账户关闭，且不新增引擎或 WebUI。
+实跑交易为：2021-01-04 买入 `159915.XSHE`，2021-02-01 卖出该标的并买入
+`159902.XSHE`，2021-03-01 卖出并买入 `510880.XSHG`。共 58 个交易日、5 笔成交，
+期末资产 499,989.10 元。该结果只证明固定本地数据和既有引擎的 ETF_RAW 研究链路；
+`ETF_HFQ_RESEARCH` 和严格账户仍关闭。
 
 ## 既有原始资料的二次核验
 
