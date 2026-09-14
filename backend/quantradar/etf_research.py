@@ -33,7 +33,12 @@ def load_close_panel(release_id: str, symbols: list[str], start: str, end: str) 
     from quantradar.datahub.reader import ReleaseReader
     scope = ReleaseReader(load_datahub_config()).resolve(release_id)
     reader = ReleaseReader(load_datahub_config()).supplemental_reader(scope)
-    rows = reader.etf_prices(symbols, start, end)
+    # The displayed/evaluated interval starts at ``start``; signals may require
+    # up to 120 prior trading observations.  Fetch a conservative calendar
+    # warmup here rather than silently treating a valid historical window as a
+    # data gap.
+    read_start = (pd.Timestamp(start) - pd.Timedelta(days=220)).date().isoformat()
+    rows = reader.etf_prices(symbols, read_start, end)
     records = [dict(item, symbol=symbol) for symbol, values in rows.items() for item in values]
     if not records:
         raise ValueError("所选 release 没有 ETF_RAW 日线")
