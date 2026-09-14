@@ -39,7 +39,8 @@ def create_batch(config: dict[str, Any]) -> dict[str, Any]:
               "operator_bundle_hash": operator_bundle_hash(), "status": "PENDING", "items": []}
     if not frozen["start_date"] or not frozen["end_date"] or frozen["start_date"] > frozen["end_date"]:
         raise ValueError("valid start_date/end_date are required")
-    from quantradar.storage import save_experiment
+    from quantradar.storage import init_db, save_experiment
+    init_db()
     batch = save_experiment("FactorLab 批次", "factor", frozen, "", {}, None, source_refs={"release_id": release_id})
     _EXECUTOR.submit(_run, batch.experiment_id, frozen)
     return batch.to_dict()

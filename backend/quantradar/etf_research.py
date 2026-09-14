@@ -142,7 +142,8 @@ def create_experiment_group(*, release_id: str, start: str, end: str, templates:
     from quantradar.config import load_datahub_config
     from quantradar.datahub.reader import ReleaseReader
     scope = ReleaseReader(load_datahub_config()).resolve(release_id)
-    from quantradar.storage import save_experiment
+    from quantradar.storage import init_db, save_experiment
+    init_db()
     config = {"release_id": scope.release_id, "base_commit": scope.manifest["base_commit"],
               "supplemental_commit": scope.manifest["supplemental_commit"], "start_date": start, "end_date": end,
               "templates": templates, "initial_cash": initial_cash, "slippage_bps": slippage_bps,
