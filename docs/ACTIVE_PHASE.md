@@ -1,7 +1,7 @@
 # QuantRadar Active Phase
 
 **Milestone:** `DATAHUB_ALPHA101_ETF_REQUIRED_DATA_V2`
-**Active Goal:** `ALPHA_ETF_G2_ETF_PACKAGE`
+**Active Goal:** `ALPHA_ETF_G3_RESEARCH_AND_ACCOUNTING`
 **Status:** IN_PROGRESS
 
 ## Scope
@@ -15,12 +15,17 @@ G0 已通过：固定 release 与两个 commit，检查 SDK 本地契约、实�
 
 G1 已通过 Alpha RAW 输入范围：固定原始量价、明确交易状态和历史总市值候选均已按候选→质量→固定版本回放发布。公司行为完整性属于 G3 账户门禁；行业三层映射只阻塞 18 条行业公式。验收见 [G1 报告](acceptance/alpha101-etf/g1_completion_report.md)。
 
-当前 G2：冻结 10 只境内权益 ETF 的身份范围，逐项补齐非复权日线、真实分红拆分、必要主数据及交易规则；每个候选数据集依次小样本、质量验收、固定版本回放后才发布。未具备外部证据的范围保持 UNKNOWN/BLOCKED。
+G2 已通过 ETF_RAW 研究包：10 只 ETF 的固定主数据和原始日线由补充版本提供，Provider 与既有
+BulletTrade 引擎已在固定版本上完成实际成交的月度轮动回放。完整证据见
+[G2 Provider 回放记录](acceptance/alpha101-etf/g2_etf_provider_raw_replay.md)。公司行为仅样本覆盖、
+历史规则/状态不完整，故 `ETF_HFQ_RESEARCH` 与严格账户仍保持关闭；该限制不阻塞 ETF_RAW 研究。
+
+当前 G3：完成 Alpha101 与 ETF 的研究/会计/PIT 门禁，明确原始价研究、复权研究和严格账户的
+输入、评价与可执行范围；行业多层与市值从已存原始资料重解析，不新增外部采集。
 
 ## Queued Goals
 
-1. `ALPHA_ETF_G3_RESEARCH_AND_ACCOUNTING`：公式/评价/执行/PIT 四级门禁，输入及账户对账和轮动。
-2. `ALPHA_ETF_G4_RELEASE_AND_REPLAY`：逐项发布、断网同 hash、故障注入、旧版回放和现有数据页资格展示；市值/行业只阻塞依赖项。
+1. `ALPHA_ETF_G4_RELEASE_AND_REPLAY`：逐项发布、断网同 hash、故障注入、旧版回放和现有数据页资格展示；市值/行业只阻塞依赖项。
 
 ## Previous milestone
 
