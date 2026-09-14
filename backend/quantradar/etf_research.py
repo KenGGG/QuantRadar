@@ -163,6 +163,16 @@ def _run_group(experiment_id: str, panel: pd.DataFrame, config: dict[str, Any]) 
     root.mkdir(parents=True, exist_ok=True)
     items = config["items"]
     for item in items:
+        # Recovery is idempotent: a persisted child run is authoritative.  Do
+        # not submit the same template again merely because the group process
+        # was restarted while the Worker was already handling it.
+        if item.get("run_id"):
+            existing = get_worker().get_status(item["run_id"])
+            if existing is not None:
+                item["status"] = existing["status"]
+                item["error"] = existing.get("error")
+                update_experiment(experiment_id, config=config)
+                continue
         if item["status"] != "WAITING":
             continue
         item["status"] = "SUBMITTED"; update_experiment(experiment_id, config=config)
