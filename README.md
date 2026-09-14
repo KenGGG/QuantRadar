@@ -12,14 +12,26 @@ QuantRadar 是面向本地单用户的 A 股量化研究平台，基于 BulletTr
 | --- | --- | --- |
 | 本地回测工作台 | 策略保存与重开、日线回测、历史配置与源码回放、指标及 CSV / HTML 报告 | 已验收买入持有、双均线和周频多股票场景；不承诺完整 JoinQuant 兼容 |
 | DataHub | 基础与补充 Dolt 配对发布、候选分支、审计门禁、采集日志、统一日更协调、覆盖率与失败分组 | 下载成功与正式发布分开；覆盖范围按数据集、字段、日期及 release 判断 |
-| Alpha101 | 101 条公式依赖目录、原始量价输入、行业及总市值接入 | 原始工程模式的输入资格为 82 READY / 19 PARTIAL，不能据此宣称 101 条公式均完成独立验证 |
-| ETF 研究 | 固定 10 只 ETF 原始日线、证券身份、既有 BulletTrade 成交回放 | `ETF_RAW` 可作研究；ETF 复权研究序列与严格公司行为账户尚未合格 |
+| Alpha101 / FactorLab | 101 条公式目录、82 个量价批量计算、双缓存、研究／验证／保留段评价、相关性与人工代表冻结 | 原始工程模式的输入资格为 82 READY / 19 PARTIAL；保留段必须在研究者冻结代表因子后访问 |
+| ETF 研究 | 固定 release 五模板实验组、按依赖预检、串行 Worker 编排、BulletTrade 原生费用与执行证据 | `ETF_RAW` 可作研究；ETF 复权研究序列与严格公司行为账户尚未合格 |
 | 行业与市值 | 归档申万资料重解析、三级代码分组、已有东财载荷总市值提取 | 历史可得时间不完整；行业名称、分类版本与 WorldQuant 行业口径等价性未验证 |
 | Qlib | 数据构建、参数选择、walk-forward 样本外研究及报告链路 | 依赖本地真实数据与对应运行环境 |
 | Kronos | 数据审计、独立 GPU 运行时、研究流水线 | 研究用途；不构成实盘准入，历史指数池与状态覆盖仍有限制 |
 | 研报工作流 | 企业预警通 → MinerU → Agnes → 证据与日报，配套查看页面和飞书 outbox | 需独立服务与凭据；NotebookLM 路线暂停，连续七日运行未完成验收 |
 
 本地工作台验收见 [日线回测记录](docs/acceptance/local-backtest/README.md)，DataHub 阶段记录见 [DataHub V2](docs/acceptance/datahub-v2/active-phase-completed.md)。历史验收结果只适用于记录中的版本和场景。
+
+## WebUI ETF 研究与 FactorLab
+
+工作台的研究功能以本地已发布 release 为唯一输入。网页会显示 `release_id`、基础 Dolt commit 和补充 Dolt commit；未知或已缺失的 release 会失败，绝不自动改用 latest。
+
+- **实验存证**：新实验以 PostgreSQL `experiment_id` 作为不可变公开身份，`display_name` 可重复。旧 `experiments/*.json` 仅通过 `legacy:` 标识只读展示。
+- **ETF 研究**：定期等权、动量 Top-K、趋势过滤、逆波动率与 ERC 均由一个实验组逐个提交。信号为前一交易日收盘，生效为下一交易日开盘；页面预检同时检查信号窗口、生效价及实际持仓日度估值。买卖佣金各 3bp、最低 5 元、ETF 印花税 0，单边滑点以 bp 配置并映射到 BulletTrade 原生滑点。报告页可打开原生报告、目标／实际权重、订单与执行诊断。
+- **FactorLab**：支持 `CUSTOM_STATIC_POOL` 与 `INDEX_SNAPSHOT_STATIC_POOL`。后者显式标注为静态快照，绝不命名为历史 PIT 指数池。可先提交 Alpha 1–5 的样本，再提交 82 个量价项；计算和评价缓存分离，因子矩阵逐项保存为 Parquet。标签为 `open(t+h+1) / open(t+1) - 1`，默认 1／5／20 日，研究／验证／保留段默认按 60%／20%／20% 交易日切分。
+- **因子精简**：相关性只使用研究／验证段，保留符号；完全链接阈值为 `1 - |rho| <= 0.2`，并要求单日共同证券至少 20、长期有效日期至少 60。系统不会按表现自动选择因子；研究者填写理由并冻结代表后，才会访问并留痕保留段。
+- **行业 ETF**：金融、消费、医药、科技、周期均先冻结跟踪指数身份和定义，再读取收益。当前固定本地 release 没有可证明的五类身份，因此页面如实显示 BLOCKED，绝不按基金名称猜测。
+
+WebUI 阶段的实际验收记录包括：[Experiment 身份迁移](docs/acceptance/webui-etf-factorlab/experiment-identity-migration.md)、[ETF 模板依赖预检](docs/acceptance/webui-etf-factorlab/etf-template-dependency-preflight.md)、[行业 ETF 身份资格](docs/acceptance/webui-etf-factorlab/industry-etf-eligibility.md) 和 [FactorLab 缓存与指纹](docs/acceptance/webui-etf-factorlab/factorlab-cache-and-fingerprint.md)。
 
 ## Alpha101 与 ETF：数据究竟齐不齐
 
