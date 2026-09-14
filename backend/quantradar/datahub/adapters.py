@@ -20,7 +20,7 @@ import pandas as pd
 import requests
 
 from .governor import RequestGovernor
-from .sources import build_sw_level_one_intervals, normalize_baostock_daily_bundle, normalize_eastmoney_valuation_rows, normalize_lifecycle_row, normalize_valuation_rows
+from .sources import build_sw_industry_intervals, normalize_baostock_daily_bundle, normalize_eastmoney_valuation_rows, normalize_lifecycle_row, normalize_valuation_rows
 
 
 ASTOCK_DATA_COMMIT = "2012ce7cd0e75d379c5e6cbd3115514f300f3bc8"
@@ -335,7 +335,7 @@ class SwIndustryAdapter:
         return FetchedRows(
             dataset="sw_industry_history",
             raw_bytes=raw_bytes,
-            rows=build_sw_level_one_intervals(rows, raw_sha256=hashlib.sha256(raw_bytes).hexdigest(), fetched_at=fetched_at, adapter_version=ADAPTER_VERSION),
+            rows=build_sw_industry_intervals(rows, raw_sha256=hashlib.sha256(raw_bytes).hexdigest(), fetched_at=fetched_at, adapter_version=ADAPTER_VERSION),
             source=self.source,
             fetched_at=fetched_at,
         )

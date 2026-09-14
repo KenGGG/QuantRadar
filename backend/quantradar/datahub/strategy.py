@@ -91,5 +91,11 @@ def industry(provider, securities, date=None):
         value = reader.industry_as_of(symbol, str(date)[:10])
         if not value:
             raise DataUnavailable(f'{date} 缺少 {symbol} 的行业记录')
-        result[to_joinquant_symbol(symbol)] = {'sw_l1': {'industry_code': value['industry_code'], 'industry_name': None}, 'pit_status': value['pit_status']}
+        code = str(value['industry_code']).zfill(6)
+        result[to_joinquant_symbol(symbol)] = {
+            'sw_l1': {'industry_code': code[:2] + '0000', 'industry_name': None},
+            'sw_l2': {'industry_code': code[:4] + '00', 'industry_name': None},
+            'sw_l3': {'industry_code': code, 'industry_name': None},
+            'pit_status': value['pit_status'],
+        }
     return result

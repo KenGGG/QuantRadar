@@ -192,10 +192,15 @@ def lifecycle_active_as_of(row: dict[str, Any], as_of: str) -> bool:
     return not row.get("delist_date") or day < row["delist_date"]
 
 
-def build_sw_level_one_intervals(
+def build_sw_industry_intervals(
     rows: Iterable[dict[str, Any]], *, raw_sha256: str, fetched_at: str, adapter_version: str = "a-stock-data@2012ce7"
 ) -> list[dict[str, Any]]:
-    """Turn industry change events into non-overlapping effective-dated L1 intervals."""
+    """Preserve SW six-digit classifications in non-overlapping dated intervals.
+
+    The raw SW file identifies the hierarchy in one six-digit code.  Reducing
+    it to level one here loses information irreversibly and must not be used as
+    a shortcut for Alpha101 sector/industry/subindustry inputs.
+    """
     events: dict[str, list[tuple[str, str]]] = {}
     for raw in rows:
         code = _six_digit(raw.get("code"), "code")
@@ -204,7 +209,7 @@ def build_sw_level_one_intervals(
             continue
         symbol = f"{code}.{prefix}"
         industry = _six_digit(raw.get("industry_code"), "industry_code")
-        events.setdefault(symbol, []).append((_date(raw.get("start_date"), "start_date"), industry[:2] + "0000"))
+        events.setdefault(symbol, []).append((_date(raw.get("start_date"), "start_date"), industry))
 
     result: list[dict[str, Any]] = []
     for symbol, values in events.items():

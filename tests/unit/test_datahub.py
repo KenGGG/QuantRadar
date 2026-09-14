@@ -317,10 +317,10 @@ def test_lifecycle_as_of_never_excludes_a_security_before_known_delisting():
     assert lifecycle_active_as_of(row, "2017-02-15") is False
 
 
-def test_sw_level_one_intervals_are_effective_dated_and_same_day_conflicts_fail():
-    from quantradar.datahub.sources import build_sw_level_one_intervals
+def test_sw_industry_intervals_preserve_six_digit_codes_and_same_day_conflicts_fail():
+    from quantradar.datahub.sources import build_sw_industry_intervals
 
-    intervals = build_sw_level_one_intervals(
+    intervals = build_sw_industry_intervals(
         [
             {"code": "000001", "start_date": "1991-04-03", "industry_code": "440101"},
             {"code": "000001", "start_date": "2014-02-21", "industry_code": "480101"},
@@ -329,20 +329,20 @@ def test_sw_level_one_intervals_are_effective_dated_and_same_day_conflicts_fail(
         fetched_at="2026-09-09T08:00:00+00:00",
     )
     assert [(row["industry_code"], row["effective_to"]) for row in intervals] == [
-        ("440000", "2014-02-20"),
-        ("480000", None),
+        ("440101", "2014-02-20"),
+        ("480101", None),
     ]
 
-    numeric_code = build_sw_level_one_intervals(
+    numeric_code = build_sw_industry_intervals(
         [{"code": 1.0, "start_date": "2016-01-04", "industry_code": 440101.0}],
         raw_sha256="c" * 64,
         fetched_at="2026-09-09T08:00:00+00:00",
     )
     assert numeric_code[0]["symbol"] == "000001.SZ"
-    assert numeric_code[0]["industry_code"] == "440000"
+    assert numeric_code[0]["industry_code"] == "440101"
 
     with pytest.raises(ValueError, match="conflicting"):
-        build_sw_level_one_intervals(
+        build_sw_industry_intervals(
             [
                 {"code": "000001", "start_date": "2014-02-21", "industry_code": "480101"},
                 {"code": "000001", "start_date": "2014-02-21", "industry_code": "490101"},
