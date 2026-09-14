@@ -114,6 +114,41 @@ _SCHEMA = (
       qualification VARCHAR(64) NOT NULL, PRIMARY KEY (symbol, effective_from)
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS qr_index_snapshot_version (
+      snapshot_id VARCHAR(64) NOT NULL, dataset_type VARCHAR(48) NOT NULL, index_code VARCHAR(16) NOT NULL,
+      source_date DATE NULL, observed_at VARCHAR(40) NOT NULL,
+      content_hash CHAR(64) NOT NULL, raw_sha256 CHAR(64) NOT NULL,
+      source VARCHAR(96) NOT NULL, adapter_version VARCHAR(128) NOT NULL,
+      revision_no INT NOT NULL, supersedes_snapshot_id VARCHAR(64) NULL,
+      effective_date DATE NULL, effective_semantics VARCHAR(96) NOT NULL,
+      effective_evidence_ref VARCHAR(256) NULL, qualification VARCHAR(64) NOT NULL, pit_status VARCHAR(16) NOT NULL,
+      PRIMARY KEY (snapshot_id), UNIQUE KEY qr_index_snapshot_revision (dataset_type, index_code, source_date, revision_no)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS qr_index_constituent_snapshot (
+      snapshot_id VARCHAR(64) NOT NULL, security_code VARCHAR(16) NOT NULL,
+      security_name VARCHAR(256) NULL, exchange VARCHAR(16) NULL,
+      PRIMARY KEY (snapshot_id, security_code)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS qr_index_weight_snapshot (
+      snapshot_id VARCHAR(64) NOT NULL, security_code VARCHAR(16) NOT NULL,
+      weight_raw DOUBLE NULL, weight_unit VARCHAR(32) NOT NULL, weight_fraction DOUBLE NULL,
+      PRIMARY KEY (snapshot_id, security_code)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS qr_sw_index_component_snapshot (
+      snapshot_id VARCHAR(64) NOT NULL, security_code VARCHAR(16) NOT NULL,
+      security_name VARCHAR(256) NULL, weight_raw DOUBLE NULL,
+      member_effective_date DATE NULL, member_effective_semantics VARCHAR(96) NOT NULL,
+      member_effective_evidence VARCHAR(256) NULL,
+      PRIMARY KEY (snapshot_id, security_code)
+    )
+    """,
 )
 
 

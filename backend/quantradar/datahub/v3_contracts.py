@@ -50,3 +50,13 @@ def statement_mapping_identity(statement_version_id: str, mapping_version: str) 
     if not str(mapping_version).strip():
         raise ValueError("mapping_version is required")
     return str(statement_version_id), str(mapping_version)
+
+
+def snapshot_revision_plan(existing: dict[str, Any] | None, content_hash: str) -> dict[str, Any]:
+    """Decide whether a source receipt is identical or an immutable revision."""
+    if existing and existing.get("content_hash") == content_hash:
+        return {"action": "NO_CHANGE", "revision_no": int(existing["revision_no"]), "supersedes_snapshot_id": None}
+    return {
+        "action": "APPEND", "revision_no": 1 if existing is None else int(existing["revision_no"]) + 1,
+        "supersedes_snapshot_id": None if existing is None else str(existing["snapshot_id"]),
+    }

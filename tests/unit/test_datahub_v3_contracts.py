@@ -75,3 +75,23 @@ def test_source_audit_runner_records_success_and_failure_per_probe(tmp_path):
     assert result["status"] == "PARTIAL"
     assert result["receipts"][0]["request"] == {"code": "A"}
     assert result["failures"] == [{"dataset": "two", "request": {"code": "B"}, "error_type": "TimeoutError", "error": "slow"}]
+
+
+def test_snapshot_revision_plan_appends_only_when_business_content_changes():
+    from quantradar.datahub.v3_contracts import snapshot_revision_plan
+
+    existing = {"snapshot_id": "old", "content_hash": "same", "revision_no": 1}
+    assert snapshot_revision_plan(existing, "same") == {"action": "NO_CHANGE", "revision_no": 1, "supersedes_snapshot_id": None}
+    assert snapshot_revision_plan(existing, "changed") == {"action": "APPEND", "revision_no": 2, "supersedes_snapshot_id": "old"}
+    assert snapshot_revision_plan(None, "first") == {"action": "APPEND", "revision_no": 1, "supersedes_snapshot_id": None}
+
+
+def test_supplemental_schema_has_immutable_snapshot_version_and_member_tables():
+    from quantradar.datahub.dolt import _SCHEMA
+
+    schema = "\n".join(_SCHEMA)
+    assert "CREATE TABLE IF NOT EXISTS qr_index_snapshot_version" in schema
+    assert "UNIQUE KEY qr_index_snapshot_revision" in schema
+    assert "CREATE TABLE IF NOT EXISTS qr_index_constituent_snapshot" in schema
+    assert "CREATE TABLE IF NOT EXISTS qr_index_weight_snapshot" in schema
+    assert "CREATE TABLE IF NOT EXISTS qr_sw_index_component_snapshot" in schema
