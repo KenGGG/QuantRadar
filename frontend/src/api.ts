@@ -428,7 +428,7 @@ export function getFactorCatalog(): Promise<{ factors: FactorCatalogRow[]; defau
 export function createFactorBatch(payload: Record<string, unknown>): Promise<ExperimentResp> { return httpJson("/api/factorlab/batches", { method: "POST", body: JSON.stringify(payload) }); }
 export interface FactorBatchSummary { status: string; error?: string; requested: number; completed: number; items: Array<{ alpha_id: number; calculation: string; evaluations: Record<string, { status: string; summary: { valid_dates: number; ic_mean: number | null; rank_ic_mean: number | null } }> }>; }
 export function getFactorBatchSummary(id: string): Promise<FactorBatchSummary> { return httpJson(`/api/factorlab/batches/${encodeURIComponent(id)}/summary`); }
-export function getIndexSnapshot(indexCode: string, snapshotDate: string): Promise<{ members: string[]; pool_type: string; pit_status: string }> { const q=new URLSearchParams({index_code:indexCode,snapshot_date:snapshotDate}); return httpJson(`/api/factorlab/index-snapshots?${q}`); }
+export function getIndexSnapshot(releaseId: string, indexCode: string, snapshotDate: string): Promise<{ members: string[]; pool_type: string; pit_status: string }> { const q=new URLSearchParams({release_id:releaseId,index_code:indexCode,snapshot_date:snapshotDate}); return httpJson(`/api/factorlab/index-snapshots?${q}`); }
 
 export function getSnapshotLoad(path: string): Promise<Snapshot> {
   const qs = new URLSearchParams();

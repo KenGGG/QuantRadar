@@ -756,17 +756,17 @@ def factorlab_catalog() -> Dict[str, Any]:
 
 
 @app.get("/api/factorlab/index-snapshots")
-def factorlab_index_snapshots(index_code: str = Query("000300.SH"), snapshot_date: str = Query(...)) -> Dict[str, Any]:
+def factorlab_index_snapshots(index_code: str = Query("000300.SH"), snapshot_date: str = Query(...), release_id: str = Query(...)) -> Dict[str, Any]:
     """Read a named static constituent snapshot; never label it historical PIT."""
     from quantradar.config import load_datahub_config
     from quantradar.datahub.reader import ReleaseReader
     try:
-        scope = ReleaseReader(load_datahub_config()).resolve()
+        scope = ReleaseReader(load_datahub_config()).resolve(release_id)
         conn = ReleaseReader(load_datahub_config()).base_connection(scope)
         rows = conn.query("SELECT DISTINCT stock_code FROM ts_index_weight WHERE index_code=%s AND trade_date=%s ORDER BY stock_code", (index_code, snapshot_date))
         members = [str(row["stock_code"]) for row in rows]
         import hashlib
-        return {"pool_type": "INDEX_SNAPSHOT_STATIC_POOL", "index_code": index_code, "snapshot_date": snapshot_date,
+        return {"release_id":scope.release_id,"pool_type": "INDEX_SNAPSHOT_STATIC_POOL", "index_code": index_code, "snapshot_date": snapshot_date,
                 "members": members, "members_hash": hashlib.sha256("\n".join(members).encode()).hexdigest(), "pit_status": "NOT_PIT"}
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"静态指数快照不可用：{exc}")
