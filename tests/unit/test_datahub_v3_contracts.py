@@ -95,3 +95,31 @@ def test_supplemental_schema_has_immutable_snapshot_version_and_member_tables():
     assert "CREATE TABLE IF NOT EXISTS qr_index_constituent_snapshot" in schema
     assert "CREATE TABLE IF NOT EXISTS qr_index_weight_snapshot" in schema
     assert "CREATE TABLE IF NOT EXISTS qr_sw_index_component_snapshot" in schema
+
+
+def test_snapshot_writer_does_not_rewrite_identical_business_content():
+    from quantradar.datahub.dolt import SupplementalStore
+
+    executed = []
+    class Cursor:
+        def execute(self, sql, args=()): executed.append((sql, args))
+        def fetchone(self): return {"snapshot_id": "old", "content_hash": "same", "revision_no": 1}
+        def __enter__(self): return self
+        def __exit__(self, *_): return False
+    class Connection:
+        def cursor(self): return Cursor()
+        def commit(self): executed.append(("COMMIT", ()))
+    result = SupplementalStore(Connection()).write_index_snapshot(
+        version={"dataset_type": "CSI_CONSTITUENTS", "index_code": "000300.SH", "source_date": "2026-09-14", "observed_at": "2026-09-14T20:30:00+08:00", "content_hash": "same", "raw_sha256": "a" * 64, "source": "akshare", "adapter_version": "x", "effective_semantics": "UNKNOWN", "qualification": "RAW_EVIDENCE_ONLY", "pit_status": "PARTIAL"},
+        constituents=[{"security_code": "600000.SH"}], weights=[], sw_components=[],
+    )
+    assert result["action"] == "NO_CHANGE"
+    assert not any("INSERT INTO qr_index_snapshot_version" in sql for sql, _ in executed)
+
+
+def test_explicit_snapshot_reader_keeps_unknown_source_date_out_of_as_of_reads(monkeypatch):
+    from quantradar.datahub.reader import SupplementalReader
+    reader = SupplementalReader(lambda: None)
+    monkeypatch.setattr(reader, "_query", lambda sql, args: [{"snapshot_id": "s", "source_date": None, "observed_at": "2026-09-14T20:30:00+08:00", "pit_status": "PARTIAL"}])
+
+    assert reader.get_index_snapshot("000300.SH", as_of="2026-09-01") is None

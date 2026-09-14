@@ -262,6 +262,42 @@ class SupplementalReader:
             result.setdefault(row['symbol'], row)
         return result
 
+    def get_index_snapshot(self, index_code: str, *, as_of: str | None = None,
+                           observed_before: str | None = None, strict_pit: bool = False,
+                           dataset_type: str | None = None) -> dict[str, Any] | None:
+        """Read one V3 snapshot explicitly; legacy index APIs keep their semantics."""
+        from .v3_contracts import snapshot_eligibility
+        where, args = ["index_code=%s"], [index_code]
+        if dataset_type:
+            where.append("dataset_type=%s"); args.append(dataset_type)
+        if observed_before:
+            where.append("observed_at <= %s"); args.append(observed_before)
+        # A source date is the market-date constraint. NULL is intentionally
+        # excluded for as_of requests even in non-strict mode.
+        if as_of:
+            where.append("source_date IS NOT NULL AND source_date <= %s"); args.append(as_of)
+        rows = self._query("SELECT * FROM qr_index_snapshot_version WHERE " + " AND ".join(where) +
+                           " ORDER BY source_date DESC, observed_at DESC, revision_no DESC", tuple(args))
+        for row in rows:
+            eligibility = snapshot_eligibility(row, as_of=as_of, observed_before=observed_before, strict_pit=strict_pit)
+            if not eligibility["eligible"]:
+                continue
+            members = self._snapshot_members(str(row["snapshot_id"]), str(row["dataset_type"]))
+            return {**row, "members": members, "pit_reason": eligibility["reason"]}
+        return None
+
+    def get_index_weight_snapshot(self, index_code: str, *, as_of: str | None = None,
+                                  observed_before: str | None = None, strict_pit: bool = False) -> dict[str, Any] | None:
+        """Return only a V3 weight snapshot, without changing legacy weights."""
+        return self.get_index_snapshot(index_code, as_of=as_of, observed_before=observed_before,
+                                       strict_pit=strict_pit, dataset_type="CSI_WEIGHTS")
+
+    def _snapshot_members(self, snapshot_id: str, dataset_type: str) -> list[dict[str, Any]]:
+        table = "qr_index_weight_snapshot" if dataset_type == "CSI_WEIGHTS" else (
+            "qr_sw_index_component_snapshot" if dataset_type == "SW_COMPONENTS" else "qr_index_constituent_snapshot"
+        )
+        return self._query(f"SELECT * FROM {table} WHERE snapshot_id=%s ORDER BY security_code", (snapshot_id,))
+
     def _query(self, sql: str, args: tuple[Any, ...]) -> list[dict[str, Any]]:
         connection = self._connect()
         try:

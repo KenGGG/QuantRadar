@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from typing import Any, Iterable
+from uuid import uuid4
+
+from .v3_contracts import snapshot_revision_plan
 
 
 _SCHEMA = (
@@ -261,6 +264,41 @@ class SupplementalStore:
         self._upsert("qr_etf_trading_rule", ("symbol", "effective_from", "effective_to", "exchange", "lot_size",
             "tick_size", "limit_pct", "turnover_status", "fee_status", "special_status", "rule_scope", "source",
             "raw_sha256", "adapter_version", "fetched_at", "available_at", "qualification"), rows)
+
+    def write_index_snapshot(self, *, version: dict[str, Any], constituents: list[dict[str, Any]],
+                             weights: list[dict[str, Any]], sw_components: list[dict[str, Any]]) -> dict[str, Any]:
+        """Append an immutable source revision, or retain an identical receipt."""
+        required = ("dataset_type", "index_code", "observed_at", "content_hash", "raw_sha256", "source", "adapter_version", "effective_semantics", "qualification", "pit_status")
+        missing = [key for key in required if not version.get(key)]
+        if missing:
+            raise ValueError(f"snapshot version missing fields: {missing}")
+        with self.connection.cursor() as cursor:
+            cursor.execute("SELECT snapshot_id, content_hash, revision_no FROM qr_index_snapshot_version "
+                           "WHERE dataset_type=%s AND index_code=%s AND source_date <=> %s ORDER BY revision_no DESC LIMIT 1",
+                           (version["dataset_type"], version["index_code"], version.get("source_date")))
+            plan = snapshot_revision_plan(cursor.fetchone(), str(version["content_hash"]))
+            if plan["action"] == "NO_CHANGE":
+                return {**plan, "snapshot_id": None}
+            snapshot_id = str(uuid4())
+            fields = ("snapshot_id", "dataset_type", "index_code", "source_date", "observed_at", "content_hash", "raw_sha256", "source", "adapter_version", "revision_no", "supersedes_snapshot_id", "effective_date", "effective_semantics", "effective_evidence_ref", "qualification", "pit_status")
+            values = {**version, "snapshot_id": snapshot_id, **plan}
+            cursor.execute(f"INSERT INTO qr_index_snapshot_version ({', '.join(fields)}) VALUES ({', '.join(['%s'] * len(fields))})",
+                           tuple(values.get(field) for field in fields))
+            self._insert_snapshot_members(cursor, "qr_index_constituent_snapshot", ("snapshot_id", "security_code", "security_name", "exchange"), snapshot_id, constituents)
+            self._insert_snapshot_members(cursor, "qr_index_weight_snapshot", ("snapshot_id", "security_code", "weight_raw", "weight_unit", "weight_fraction"), snapshot_id, weights)
+            self._insert_snapshot_members(cursor, "qr_sw_index_component_snapshot", ("snapshot_id", "security_code", "security_name", "weight_raw", "member_effective_date", "member_effective_semantics", "member_effective_evidence"), snapshot_id, sw_components)
+        self.connection.commit()
+        return {**plan, "snapshot_id": snapshot_id}
+
+    @staticmethod
+    def _insert_snapshot_members(cursor: Any, table: str, fields: tuple[str, ...], snapshot_id: str, rows: list[dict[str, Any]]) -> None:
+        if not rows:
+            return
+        if any(not row.get("security_code") for row in rows):
+            raise ValueError(f"{table} has a member without security_code")
+        sql = f"INSERT INTO {table} ({', '.join(fields)}) VALUES ({', '.join(['%s'] * len(fields))})"
+        values = [tuple(snapshot_id if field == "snapshot_id" else row.get(field) for field in fields) for row in rows]
+        SupplementalStore._write_batch(cursor, sql, values)
 
     _PROVENANCE = ("source", "raw_sha256", "adapter_version", "fetched_at", "available_date", "pit_status")
 
