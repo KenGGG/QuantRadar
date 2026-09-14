@@ -405,8 +405,26 @@ class InvestmentDataProvider(DataProvider):
         security: str,
         date: Optional[Union[str, datetime]] = None,
     ) -> Dict[str, Any]:
-        _ = date  # 单证券元信息不依赖 date（上市/退市区间已由 list/delist_date 表达）
         ts_code = to_ts_symbol(security)
+        scope = getattr(self, "_release_scope", None)
+        reader = getattr(self, "_supplemental_reader", None)
+        datasets = getattr(scope, "manifest", {}).get("datasets", {}) if scope is not None else {}
+        if reader is not None and "etf_master" in datasets:
+            etf = reader.etf_master([ts_code]).get(ts_code)
+            if etf is not None:
+                start = pd.to_datetime(etf.get("listing_date"), errors="coerce")
+                end = pd.to_datetime(etf.get("termination_date"), errors="coerce")
+                target = pd.to_datetime(date) if date is not None else None
+                if target is not None and (pd.notna(start) and target < start or pd.notna(end) and target > end):
+                    return {}
+                return {
+                    "type": "fund",
+                    "display_name": etf.get("fund_name"),
+                    "name": etf.get("fund_name"),
+                    "start_date": start,
+                    "end_date": end,
+                    "exchange": etf.get("exchange"),
+                }
         row = self._connection.query_one(
             "SELECT ts_code, exchange, list_date, delist_date "
             "FROM ts_a_stock_list WHERE ts_code = %s",
@@ -823,42 +841,66 @@ class InvestmentDataProvider(DataProvider):
         ordered_jq = list(jq_to_internal.keys())
         self._data_usage["price_calls"] += 1
         self._data_usage["price_symbols"].update(jq_to_internal.values())
-        if len(jq_to_internal) > 1 and not limit_cols:
+        scope = getattr(self, "_release_scope", None)
+        reader = getattr(self, "_supplemental_reader", None)
+        datasets = getattr(scope, "manifest", {}).get("datasets", {}) if scope is not None else {}
+        etf_internal: set[str] = set()
+        if reader is not None and "etf_eod_price" in datasets:
+            masters = reader.etf_master([to_ts_symbol(symbol) for symbol in jq_to_internal.values()])
+            etf_internal = {
+                symbol for symbol in jq_to_internal.values()
+                if to_ts_symbol(symbol) in masters
+            }
+        if etf_internal and adj_mode is not None:
+            raise NotImplementedError(
+                "InvestmentDataProvider: ETF 仅发布 ETF_RAW；"
+                "未发布复权因子，fq='qfq'/'hfq' 不可用"
+            )
+        if etf_internal and limit_cols:
+            raise NotImplementedError(
+                "InvestmentDataProvider: ETF 涨跌停字段尚无逐日合格数据"
+            )
+        stock_internal = [symbol for symbol in jq_to_internal.values() if symbol not in etf_internal]
+        raw_prices: Dict[str, pd.DataFrame] = {}
+        if len(stock_internal) > 1 and not limit_cols:
             raw_prices = self._fetch_raw_prices_many(
-                list(jq_to_internal.values()), price_cols, need_paused,
+                stock_internal, price_cols, need_paused,
                 start_date, end_date, count, fill_paused,
                 adj_mode=adj_mode, pre_factor_ref_date=pre_factor_ref_date,
             )
-        else:
-            raw_prices = {
+        elif stock_internal:
+            raw_prices.update({
                 internal: self._fetch_raw_price(
                     internal, price_cols, limit_cols, need_paused,
                     start_date, end_date, count, fill_paused,
                     adj_mode=adj_mode, pre_factor_ref_date=pre_factor_ref_date,
                 )
-                for internal in jq_to_internal.values()
-            }
+                for internal in stock_internal
+            })
+        if etf_internal:
+            raw_prices.update(self._fetch_etf_raw_prices_many(
+                sorted(etf_internal), price_cols, start_date, end_date, count, fill_paused, reader,
+            ))
         # BaoStock candidate data has raw OHLCV/amount but no separately
         # auditable adjustment factor. It only fills raw-price gaps.
-        scope = getattr(self, "_release_scope", None)
-        reader = getattr(self, "_supplemental_reader", None)
-        datasets = getattr(scope, "manifest", {}).get("datasets", {}) if scope is not None else {}
         if reader is not None and datasets.get("a_stock_eod_price") and adj_mode is None:
-            patches = reader.prices([to_ts_symbol(symbol) for symbol in jq_to_internal.values()], _fmt_date(start_date), _fmt_date(end_date))
+            patches = reader.prices([to_ts_symbol(symbol) for symbol in stock_internal], _fmt_date(start_date), _fmt_date(end_date))
             self._data_usage["price_patch_rows"] += sum(len(rows) for rows in patches.values())
-            raw_prices = {symbol: overlay_price_patch(frame, patches.get(to_ts_symbol(symbol), [])) for symbol, frame in raw_prices.items()}
+            raw_prices.update({symbol: overlay_price_patch(raw_prices[symbol], patches.get(to_ts_symbol(symbol), [])) for symbol in stock_internal})
         paused = {}
         if need_paused:
             scope = getattr(self, "_release_scope", None)
             cache_key = (getattr(scope, "release_id", None), tuple(jq_to_internal.values()), _fmt_date(start_date), _fmt_date(end_date), count)
             paused = self._paused_cache.get(cache_key, {})
-            if not paused:
+            if not paused and stock_internal:
                 self._data_usage["status_calls"] += 1
                 paused = self._paused_from_trade_status_many(
-                    list(jq_to_internal.values()), start_date, end_date, count,
-                    {symbol: raw_prices[symbol].index for symbol in jq_to_internal.values()},
+                    stock_internal, start_date, end_date, count,
+                    {symbol: raw_prices[symbol].index for symbol in stock_internal},
                 )
-                self._paused_cache[cache_key] = paused
+            for symbol in etf_internal:
+                paused[symbol] = pd.Series(pd.NA, index=raw_prices[symbol].index, dtype="boolean")
+            self._paused_cache[cache_key] = paused
 
         per_security: Dict[str, pd.DataFrame] = {}
         for jq, internal in jq_to_internal.items():
@@ -868,9 +910,9 @@ class InvestmentDataProvider(DataProvider):
                 df["paused"] = paused[internal]
             if self._price_units == 'joinquant-shares-yuan-v2':
                 df = df.copy()
-                if 'volume' in df.columns and internal not in _NATIVE_SHARE_VOLUME_INDEXES:
+                if 'volume' in df.columns and internal not in _NATIVE_SHARE_VOLUME_INDEXES and internal not in etf_internal:
                     df['volume'] = df['volume'] * 100
-                if 'amount' in df.columns:
+                if 'amount' in df.columns and internal not in etf_internal:
                     df['amount'] = df['amount'] * 1000
             if drop_volume and "volume" in df.columns:
                 df = df.drop(columns=["volume"])
@@ -890,6 +932,39 @@ class InvestmentDataProvider(DataProvider):
         )
         combined = combined.swaplevel(0, 1, axis=1).sort_index(axis=1)
         return combined
+
+    def _fetch_etf_raw_prices_many(
+        self,
+        internal_symbols: List[str],
+        price_cols: List[str],
+        start_date: Optional[Union[str, datetime]],
+        end_date: Optional[Union[str, datetime]],
+        count: Optional[int],
+        fill_paused: bool,
+        reader: Any,
+    ) -> Dict[str, pd.DataFrame]:
+        """Read release-pinned ETF_RAW rows without stock-table fallback or unit conversion."""
+        symbols = [to_ts_symbol(symbol) for symbol in internal_symbols]
+        grouped = reader.etf_prices(symbols, _fmt_date(start_date), _fmt_date(end_date))
+        calendar_index = None
+        if fill_paused and start_date is not None and end_date is not None:
+            calendar_index = pd.DatetimeIndex(pd.to_datetime(self.get_trade_days(start_date, end_date)))
+        result: Dict[str, pd.DataFrame] = {}
+        for internal, symbol in zip(internal_symbols, symbols):
+            rows = grouped.get(symbol, [])
+            frame = pd.DataFrame(rows)
+            if frame.empty:
+                frame = pd.DataFrame(columns=price_cols, index=pd.DatetimeIndex([]))
+            else:
+                frame.index = pd.to_datetime(frame.pop("trade_date"))
+                frame = frame.rename(columns={"volume_shares": "volume", "amount_cny": "amount"})
+                frame = frame.reindex(columns=price_cols)
+            if count is not None:
+                frame = frame.tail(int(count))
+            if calendar_index is not None:
+                frame = frame.reindex(calendar_index)
+            result[internal] = frame
+        return result
 
     def _fetch_table_cols(
         self,

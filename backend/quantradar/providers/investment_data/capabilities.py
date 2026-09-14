@@ -68,8 +68,10 @@ CAPABILITIES: Dict[str, Dict[str, str]] = {
         "支持 df=True(DataFrame)/df=False(dict)，缺数据显式 NaN",
     },
     "etf": {
-        "status": "BLOCKED",
-        "note": "investment_data 无 ETF 表；Phase 11 前不建设（不阻塞股票主线）",
+        "status": "PARTIAL",
+        "note": "固定补充版本 qr_etf_eod_price 的 ETF_RAW 日频 OHLC、成交股数和成交额；"
+        "仅已发布标的，缺测保持缺测；无 ETF 复权因子、逐日交易状态、涨跌停或完整公司行为，"
+        "故仅 ETF_RAW 研究可用，严格账户不可用",
     },
 }
 

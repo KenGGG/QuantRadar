@@ -238,3 +238,52 @@ def test_new_units_are_converted_once_and_legacy_release_units_are_preserved(mon
     provider._price_units = 'legacy-v1'
     frame = provider.get_price('600519.XSHG', '2023-09-08', '2023-09-08', fields=['volume', 'money'])
     assert frame.iloc[0].to_dict() == {'volume': 2.5, 'money': 12.4}
+
+
+def test_release_pinned_etf_raw_prices_keep_native_share_and_yuan_units(monkeypatch):
+    import pandas as pd
+    from types import SimpleNamespace
+    from quantradar.providers.investment_data.provider import InvestmentDataProvider
+
+    class Reader:
+        def etf_master(self, symbols):
+            return {symbol: {'symbol': symbol} for symbol in symbols}
+
+        def etf_prices(self, symbols, start, end):
+            return {
+                '510300.SH': [{
+                    'symbol': '510300.SH', 'trade_date': '2024-01-02',
+                    'open': 3.4, 'high': 3.5, 'low': 3.3, 'close': 3.45,
+                    'volume_shares': 10000.0, 'amount_cny': 34500.0,
+                    'pit_status': 'PARTIAL',
+                }],
+            }
+
+    provider = InvestmentDataProvider()
+    provider._release_scope = SimpleNamespace(manifest={'datasets': {'etf_eod_price': {}}})
+    provider._supplemental_reader = Reader()
+    monkeypatch.setattr(provider, 'get_trade_days', lambda start, end: [pd.Timestamp('2024-01-02')])
+    monkeypatch.setattr(provider, '_fetch_raw_price', lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('ETF must not query stock tables')))
+
+    frame = provider.get_price('510300.XSHG', '2024-01-02', '2024-01-02', fields=['volume', 'money'])
+    assert frame.iloc[0].to_dict() == {'volume': 10000.0, 'money': 34500.0}
+
+
+def test_release_pinned_etf_master_is_available_to_the_backtest_engine():
+    from types import SimpleNamespace
+    from quantradar.providers.investment_data.provider import InvestmentDataProvider
+
+    class Reader:
+        def etf_master(self, symbols):
+            return {'510300.SH': {
+                'symbol': '510300.SH', 'fund_name': '沪深300ETF', 'exchange': 'SSE',
+                'listing_date': '2012-05-28', 'termination_date': None,
+            }}
+
+    provider = InvestmentDataProvider()
+    provider._release_scope = SimpleNamespace(manifest={'datasets': {'etf_master': {}}})
+    provider._supplemental_reader = Reader()
+    info = provider.get_security_info('510300.XSHG')
+    assert info['type'] == 'fund'
+    assert info['name'] == '沪深300ETF'
+    assert str(info['start_date'].date()) == '2012-05-28'
