@@ -749,6 +749,22 @@ def etf_experiment_get(experiment_id: str) -> Dict[str, Any]:
     return row
 
 
+@app.get("/api/etf/experiments/{experiment_id}/artifacts/{template}/{name}")
+def etf_experiment_artifact(experiment_id: str, template: str, name: str):
+    """Serve only an artifact registered by this immutable ETF experiment."""
+    from quantradar.storage import get_experiment
+    row = get_experiment(experiment_id)
+    if not row or row.get("kind") != "etf_group":
+        raise HTTPException(status_code=404, detail="ETF 实验组不存在")
+    item = next((x for x in (row.get("config") or {}).get("items", []) if x.get("template") == template), None)
+    allowed = (item or {}).get("execution_artifacts") or {}
+    path = Path(str(allowed.get(name) or "")).resolve()
+    root = (Path.cwd() / "runs" / "etf_groups" / experiment_id).resolve()
+    if not path.is_file() or root not in path.parents:
+        raise HTTPException(status_code=404, detail="ETF 实验产物不存在")
+    return FileResponse(path, media_type="text/csv; charset=utf-8" if path.suffix == ".csv" else "application/json", filename=path.name)
+
+
 @app.get("/api/factorlab/catalog")
 def factorlab_catalog() -> Dict[str, Any]:
     from quantradar.datahub.alpha101.catalog import dependency_matrix

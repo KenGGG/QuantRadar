@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from quantradar.etf_research import build_weights, preflight
+from quantradar.etf_research import build_execution_artifacts, build_weights, preflight
 from quantradar.portfolio.target_weight_bridge import build_effective_weight_strategy
 
 
@@ -50,3 +50,15 @@ def test_etf_strategy_uses_native_fund_cost_and_bps_slippage(tmp_path):
         slippage_ratio=.0004)
     assert "set_order_cost(OrderCost" in code and "type='fund'" in code
     assert "PriceRelatedSlippage(0.0004)" in code and 'current_bar_fq", "none' in code
+
+
+def test_execution_artifacts_keep_target_actual_and_native_orders(tmp_path):
+    weights = tmp_path / "weights.csv"
+    pd.DataFrame([{"signal_date":"2021-01-01","effective_date":"2021-01-04","security":"510050.SH","target_weight":1.0,"signal_value":"x","reason":"x"}]).to_csv(weights,index=False)
+    run = tmp_path / "run"; run.mkdir()
+    pd.DataFrame([{"date":"2021-01-04 15:00:00","code":"510050.SH","value":900,"total_value":1000}]).to_csv(run / "daily_positions.csv",index=False)
+    pd.DataFrame([{"标的":"510050.SH","方向":"买入"}]).to_csv(run / "trades.csv",index=False,encoding="utf-8-sig")
+    artifacts = build_execution_artifacts(weights, run, tmp_path / "artifacts")
+    compare = pd.read_csv(artifacts["target_vs_actual"])
+    assert np.isclose(compare.loc[0,"actual_weight"], .9) and np.isclose(compare.loc[0,"weight_difference"], -.1)
+    assert (tmp_path / "artifacts" / "orders.csv").is_file()

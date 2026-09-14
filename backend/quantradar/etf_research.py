@@ -145,6 +145,35 @@ def build_weights(panel: pd.DataFrame, template: str, start: str, end: str, *, m
     return pd.DataFrame(rows)
 
 
+def build_execution_artifacts(weights_path: Path, run_dir: Path, artifact_root: Path) -> dict[str, str]:
+    """Persist target-versus-observed EOD weights and native order evidence.
+
+    The engine's CSV does not expose a rejected-order stream.  Preserve that
+    fact in diagnostics rather than inventing rejected orders or fill reasons.
+    """
+    artifact_root.mkdir(parents=True, exist_ok=True)
+    weights = pd.read_csv(weights_path, parse_dates=["effective_date"])
+    positions_path, trades_path = run_dir / "daily_positions.csv", run_dir / "trades.csv"
+    actual = pd.DataFrame(columns=["effective_date", "security", "actual_weight"])
+    if positions_path.is_file():
+        positions = pd.read_csv(positions_path, encoding="utf-8-sig")
+        positions["effective_date"] = pd.to_datetime(positions["date"]).dt.normalize()
+        totals = positions.groupby("effective_date")["total_value"].first()
+        positions["actual_weight"] = positions.apply(lambda x: float(x["value"]) / float(totals[x["effective_date"]]) if float(totals[x["effective_date"]]) else np.nan, axis=1)
+        actual = positions.rename(columns={"code": "security"})[["effective_date", "security", "actual_weight"]]
+    compare = weights.merge(actual, how="left", on=["effective_date", "security"])
+    compare["actual_weight"] = compare["actual_weight"].fillna(0.0)
+    compare["weight_difference"] = compare["actual_weight"] - compare["target_weight"]
+    compare["execution_status"] = np.where(compare["actual_weight"] > 0, "OBSERVED_EOD", "NO_EOD_POSITION")
+    compare_path = artifact_root / "target_vs_actual.csv"; compare.to_csv(compare_path, index=False)
+    order_path = artifact_root / "orders.csv"
+    if trades_path.is_file(): pd.read_csv(trades_path, encoding="utf-8-sig").to_csv(order_path, index=False)
+    else: pd.DataFrame().to_csv(order_path, index=False)
+    diagnostics_path = artifact_root / "execution_diagnostics.json"
+    diagnostics_path.write_text(json.dumps({"rejected_orders": [], "rejection_status": "NOT_EXPOSED_BY_ENGINE_ARTIFACT", "unfilled_reason": "NOT_EXPOSED_BY_ENGINE_ARTIFACT"}))
+    return {"target_weights": str(weights_path), "target_vs_actual": str(compare_path), "orders": str(order_path), "diagnostics": str(diagnostics_path)}
+
+
 def create_experiment_group(*, release_id: str, start: str, end: str, templates: list[str],
                             initial_cash: float = 500000, slippage_bps: float = 0,
                             symbols: list[str] | None = None) -> dict[str, Any]:
@@ -213,6 +242,9 @@ def _run_group(experiment_id: str, panel: pd.DataFrame, config: dict[str, Any]) 
             get_worker().wait(result["run_id"], timeout=None)
             status = get_worker().get_status(result["run_id"])
             item["status"] = status["status"]; item["error"] = status.get("error")
+            if item["status"] == "SUCCESS":
+                run_dir = Path((status.get("config") or {}).get("run_dir") or Path.cwd() / "runs" / result["run_id"])
+                item["execution_artifacts"] = build_execution_artifacts(path, run_dir, root / item["template"])
         except Exception as exc:
             item["status"] = "FAILED"; item["error"] = str(exc)
         update_experiment(experiment_id, config=config)

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Checkbox, DatePicker, InputNumber, Select, Spin, Table } from "antd";
 import dayjs from "dayjs";
-import { createETFExperiment, getETFExperiment, getETFTemplates, getIndustryETFPool, getRunReportUrl, listDataHubReleases, preflightETF, type ETFGroup, type IndustryETFCategory, type ETFTemplate, type ReleaseSummary } from "../api";
+import { createETFExperiment, getETFExperiment, getETFExperimentArtifactUrl, getETFTemplates, getIndustryETFPool, getRunReportUrl, listDataHubReleases, preflightETF, type ETFGroup, type IndustryETFCategory, type ETFTemplate, type ReleaseSummary } from "../api";
 
 export function ETFResearch() {
   const [templates, setTemplates] = useState<ETFTemplate[]>([]); const [releases, setReleases] = useState<ReleaseSummary[]>([]);
@@ -24,7 +24,7 @@ export function ETFResearch() {
     <Table size="small" style={{ marginTop: 16 }} rowKey="template" pagination={false} dataSource={result} columns={[{ title: "模板", dataIndex: "template" }, { title: "状态", render: (_, r) => r.blocked ? "阻塞" : "可提交" }, { title: "缺失依赖", render: (_, r) => r.missing.length }]} />
     <Card size="small" title="五类行业 ETF（身份先于收益）" style={{marginTop:12}}><Table size="small" pagination={false} rowKey="label" dataSource={Object.entries(industry).map(([key,row])=>({key,...row}))} columns={[{title:"类别",dataIndex:"label"},{title:"冻结定义",dataIndex:"definition"},{title:"资格",dataIndex:"status"},{title:"入选 ETF",render:(_,r)=>r.selected?.symbol || "—"},{title:"原因",dataIndex:"reason"}]} /></Card>
     {group && <Card size="small" title={`实验组 ${group.experiment_id}`} style={{marginTop:12}}><p>固定版本：{String(group.config?.release_id || "—")} · base {String(group.config?.base_commit || "—").slice(0,8)} · supplemental {String(group.config?.supplemental_commit || "—").slice(0,8)}</p>
-      <Table size="small" rowKey="template" pagination={false} dataSource={group.config?.items || []} columns={[{title:"模板",dataIndex:"template"},{title:"状态",dataIndex:"status"},{title:"运行",render:(_,r)=>r.run_id?<a href={getRunReportUrl(r.run_id)} target="_blank" rel="noreferrer">{r.run_id}</a>:"—"},{title:"原因",dataIndex:"error"}]} />
+      <Table size="small" rowKey="template" pagination={false} dataSource={group.config?.items || []} columns={[{title:"模板",dataIndex:"template"},{title:"状态",dataIndex:"status"},{title:"运行",render:(_,r)=>r.run_id?<a href={getRunReportUrl(r.run_id)} target="_blank" rel="noreferrer">{r.run_id}</a>:"—"},{title:"执行证据",render:(_,r)=>r.execution_artifacts?<><a href={getETFExperimentArtifactUrl(group.experiment_id,r.template,"target_vs_actual")} target="_blank" rel="noreferrer">目标／实际</a>　<a href={getETFExperimentArtifactUrl(group.experiment_id,r.template,"orders")} target="_blank" rel="noreferrer">订单</a>　<a href={getETFExperimentArtifactUrl(group.experiment_id,r.template,"diagnostics")} target="_blank" rel="noreferrer">诊断</a></>:"—"},{title:"原因",dataIndex:"error"}]} />
     </Card>}
   </Card>;
 }
