@@ -293,6 +293,18 @@ class SupplementalReader:
         return self.get_index_snapshot(index_code, as_of=as_of, observed_before=observed_before,
                                        strict_pit=strict_pit, dataset_type="CSI_WEIGHTS")
 
+    def financial_statement(self, symbol: str, statement_type: str, *, as_of: str) -> list[dict[str, Any]]:
+        """Read only conservative-availability-qualified mappings from this release."""
+        table = {"balance": "qr_stock_balance_sheet", "income": "qr_stock_income_statement", "cashflow": "qr_stock_cashflow_statement"}.get(statement_type)
+        if table is None:
+            raise ValueError("unsupported statement_type")
+        return self._query(
+            "SELECT v.symbol,v.report_period,v.source_announcement_date,v.pit_status,m.* "
+            f"FROM qr_stock_statement_version v JOIN {table} m ON v.statement_version_id=m.statement_version_id "
+            "WHERE v.symbol=%s AND m.conservative_available_at IS NOT NULL AND m.conservative_available_at<=%s "
+            "ORDER BY v.report_period, v.statement_version_id", (symbol, as_of),
+        )
+
     def _snapshot_members(self, snapshot_id: str, dataset_type: str) -> list[dict[str, Any]]:
         table = "qr_index_weight_snapshot" if dataset_type == "CSI_WEIGHTS" else (
             "qr_sw_index_component_snapshot" if dataset_type == "SW_COMPONENTS" else "qr_index_constituent_snapshot"
