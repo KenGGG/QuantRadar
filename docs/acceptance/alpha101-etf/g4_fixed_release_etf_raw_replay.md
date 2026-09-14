@@ -13,3 +13,8 @@
 策略在 `initialize` 中显式设置 `current_bar_fq='none'`；回放只读取固定 Dolt 版本，
 不进行网络请求。此验证证明 ETF_RAW 研究重放可复现，不改变 ETF 调整因子、公司行为或严格账户的
 `BLOCKED` 状态。
+
+旧 release `Raa7aa73162640eb9` 也以相同策略完成回放，结果指纹仍为同一值，但其补充
+commit 是 `pdslpnia1j1a3oro4f2qp89e4tbt7889`。行业读回刻意不同：旧 release 的
+`000001.SZ` 在 2023-03-31 是历史一级码 `480000`，新 release 为完整 `480301`。
+这证明新行业发布没有改写旧版本。
