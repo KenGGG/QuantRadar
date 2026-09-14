@@ -140,9 +140,16 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
             config["items"].append({"alpha_id": alpha_id, "calculation": calc_status, "value_artifact": str(value_path), "evaluations": evaluations})
             update_experiment(batch_id, config=config)
         config["status"] = "SUCCESS"
+        fingerprint = cache_key({
+            "release_id": config["release_id"], "base_commit": config["base_commit"],
+            "supplemental_commit": config["supplemental_commit"], "members_hash": config["members_hash"],
+            "split_dates": config["split_dates"], "alpha_ids": config["alpha_ids"], "horizons": config["horizons"],
+            "results": [{"alpha_id": item["alpha_id"], "evaluations": {h: v["summary"] for h, v in item["evaluations"].items()}}
+                        for item in config["items"]],
+        })
     except Exception as exc:
         config["status"] = "FAILED"; config["error"] = str(exc)
-    update_experiment(batch_id, config=config)
+    update_experiment(batch_id, config=config, result_fingerprint=fingerprint if config["status"] == "SUCCESS" else None)
 
 
 def evaluate_holdout(batch_id: str) -> dict[str, Any]:

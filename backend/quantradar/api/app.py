@@ -824,6 +824,7 @@ def factorlab_batch_summary(experiment_id: str) -> Dict[str, Any]:
         evaluations={h:{"status":v.get("status"), "summary":v.get("summary")} for h,v in item.get("evaluations", {}).items()}
         items.append({"alpha_id":item.get("alpha_id"),"calculation":item.get("calculation"),"evaluations":evaluations})
     return {"experiment_id":experiment_id,"status":config.get("status"),"error":config.get("error"),
+            "result_fingerprint":row.get("result_fingerprint"),
             "requested":len(config.get("alpha_ids", [])),"completed":len(items),"items":items,
             "pool":{"type":config.get("pool_type"),"members_hash":config.get("members_hash"),"snapshot_date":config.get("snapshot_date")},
             "representative_selection":config.get("representative_selection"),
