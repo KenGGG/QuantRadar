@@ -43,6 +43,7 @@ def load_close_panel(release_id: str, symbols: list[str], start: str, end: str) 
     if not records:
         raise ValueError("所选 release 没有 ETF_RAW 日线")
     frame = pd.DataFrame(records)
+    frame["trade_date"] = pd.to_datetime(frame["trade_date"])
     closes = frame.pivot(index="trade_date", columns="symbol", values="close").sort_index().astype(float)
     # The signal is t close and the order is submitted at t+1 open.  Preserve
     # the execution field alongside the close panel without changing the
@@ -62,6 +63,9 @@ def preflight(panel: pd.DataFrame, template: str, start: str, end: str) -> dict[
         raise ValueError(f"unknown ETF template: {template}")
     lookback = TEMPLATES[template]["lookback"]
     opens = panel.attrs.get("open")
+    # pandas propagates DataFrame.attrs into intermediate Series.  The open
+    # panel is metadata for dependency checks, never computation input.
+    panel = panel.copy(); panel.attrs = {}
     dates = rebalance_dates(panel, start, end)
     missing: list[dict[str, Any]] = []
     for effective in dates:
@@ -115,6 +119,7 @@ def build_weights(panel: pd.DataFrame, template: str, start: str, end: str, *, m
     check = preflight(panel, template, start, end)
     if check["blocked"]:
         raise ValueError(f"ETF preflight blocked: {len(check['missing'])} required observations missing")
+    panel = panel.copy(); panel.attrs = {}
     rows: list[dict[str, Any]] = []
     for effective in pd.to_datetime(check["rebalance_dates"]):
         loc = panel.index.get_indexer([effective])[0]
