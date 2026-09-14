@@ -152,6 +152,53 @@ _SCHEMA = (
       PRIMARY KEY (snapshot_id, security_code)
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS qr_stock_statement_version (
+      statement_version_id VARCHAR(64) NOT NULL, symbol VARCHAR(16) NOT NULL,
+      statement_type VARCHAR(24) NOT NULL, report_period DATE NOT NULL,
+      report_type VARCHAR(64) NULL, statement_scope VARCHAR(24) NOT NULL, period_type VARCHAR(24) NOT NULL,
+      source_announcement_date DATE NULL, announcement_precision VARCHAR(24) NOT NULL,
+      source_fetch_at VARCHAR(40) NOT NULL, currency VARCHAR(16) NULL,
+      source VARCHAR(96) NOT NULL, raw_sha256 CHAR(64) NOT NULL, adapter_version VARCHAR(128) NOT NULL,
+      pit_status VARCHAR(16) NOT NULL, qualification VARCHAR(64) NOT NULL, raw_payload_json LONGTEXT NOT NULL,
+      PRIMARY KEY (statement_version_id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS qr_stock_balance_sheet (
+      statement_version_id VARCHAR(64) NOT NULL, mapping_version VARCHAR(64) NOT NULL,
+      conservative_available_at VARCHAR(40) NULL, availability_rule_version VARCHAR(96) NULL,
+      total_assets DOUBLE NULL, total_liabilities DOUBLE NULL, total_equity DOUBLE NULL, cash DOUBLE NULL,
+      accounts_receivable DOUBLE NULL, inventory DOUBLE NULL, short_term_debt DOUBLE NULL, long_term_debt DOUBLE NULL,
+      PRIMARY KEY (statement_version_id, mapping_version)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS qr_stock_income_statement (
+      statement_version_id VARCHAR(64) NOT NULL, mapping_version VARCHAR(64) NOT NULL,
+      conservative_available_at VARCHAR(40) NULL, availability_rule_version VARCHAR(96) NULL,
+      operating_revenue DOUBLE NULL, operating_profit DOUBLE NULL, total_profit DOUBLE NULL,
+      net_profit DOUBLE NULL, net_profit_parent DOUBLE NULL,
+      PRIMARY KEY (statement_version_id, mapping_version)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS qr_stock_cashflow_statement (
+      statement_version_id VARCHAR(64) NOT NULL, mapping_version VARCHAR(64) NOT NULL,
+      conservative_available_at VARCHAR(40) NULL, availability_rule_version VARCHAR(96) NULL,
+      operating_cash_flow DOUBLE NULL, investing_cash_flow DOUBLE NULL, financing_cash_flow DOUBLE NULL,
+      cash_change DOUBLE NULL, capex DOUBLE NULL,
+      PRIMARY KEY (statement_version_id, mapping_version)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS qr_stock_earnings_report (
+      symbol VARCHAR(16) NOT NULL, report_period DATE NOT NULL, observed_at VARCHAR(40) NOT NULL,
+      latest_announcement_date DATE NULL, source VARCHAR(96) NOT NULL, raw_sha256 CHAR(64) NOT NULL,
+      adapter_version VARCHAR(128) NOT NULL, qualification VARCHAR(64) NOT NULL,
+      PRIMARY KEY (symbol, report_period, observed_at)
+    )
+    """,
 )
 
 
