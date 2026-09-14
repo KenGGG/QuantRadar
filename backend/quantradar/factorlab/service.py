@@ -29,8 +29,11 @@ def create_batch(config: dict[str, Any]) -> dict[str, Any]:
     release_id, members = str(config.get("release_id") or ""), sorted(set(config.get("members") or []))
     if not release_id or len(members) < 20:
         raise ValueError("release_id and at least 20 explicit pool members are required")
-    ids = [int(x) for x in config.get("alpha_ids") or []]
-    horizons = [int(x) for x in config.get("horizons", [1, 5, 20])]
+    try:
+        ids = [int(x) for x in config.get("alpha_ids") or []]
+        horizons = [int(x) for x in config.get("horizons", [1, 5, 20])]
+    except (TypeError, ValueError) as exc:
+        raise ValueError("alpha_ids and horizons must be integers") from exc
     if not horizons or any(x not in (1, 5, 20) for x in horizons):
         raise ValueError("horizons must be a non-empty subset of 1, 5, 20")
     from quantradar.datahub.alpha101.catalog import dependency_matrix
