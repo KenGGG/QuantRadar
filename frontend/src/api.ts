@@ -425,6 +425,7 @@ export function preflightETF(payload: { release_id: string; start_date: string; 
 export function createETFExperiment(payload: { release_id: string; start_date: string; end_date: string; templates: string[]; initial_cash?: number; slippage_bps?: number }): Promise<ExperimentResp> { return httpJson("/api/etf/experiments", { method: "POST", body: JSON.stringify(payload) }); }
 export interface FactorCatalogRow { alpha_id: number; formula: string; fields: string[]; group: string; lookback_days: number; formula_hash: string; evaluation_status: string; }
 export function getFactorCatalog(): Promise<{ factors: FactorCatalogRow[]; defaults: Record<string, unknown> }> { return httpJson("/api/factorlab/catalog"); }
+export function createFactorBatch(payload: Record<string, unknown>): Promise<ExperimentResp> { return httpJson("/api/factorlab/batches", { method: "POST", body: JSON.stringify(payload) }); }
 
 export function getSnapshotLoad(path: string): Promise<Snapshot> {
   const qs = new URLSearchParams();

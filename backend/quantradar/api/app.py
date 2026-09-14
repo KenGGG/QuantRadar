@@ -740,6 +740,26 @@ def factorlab_catalog() -> Dict[str, Any]:
             "min_cross_section": 20}}
 
 
+@app.post("/api/factorlab/batches")
+def factorlab_batch_create(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    from quantradar.factorlab.service import create_batch
+    try:
+        return create_batch(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
+@app.get("/api/factorlab/batches/{experiment_id}")
+def factorlab_batch_get(experiment_id: str) -> Dict[str, Any]:
+    from quantradar.storage import get_experiment
+    try: row = get_experiment(experiment_id)
+    except RuntimeError as exc: raise HTTPException(status_code=503, detail=str(exc))
+    if not row or row.get("kind") != "factor": raise HTTPException(status_code=404, detail="FactorLab 批次不存在")
+    return row
+
+
 @app.get("/api/backtest/runs/{run_id}")
 def backtest_run_status(run_id: str) -> Dict[str, Any]:
     """查询运行结果：PENDING/RUNNING/SUCCESS/FAILED + 落库快照/指标。"""
