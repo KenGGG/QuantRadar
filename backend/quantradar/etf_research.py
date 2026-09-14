@@ -43,7 +43,12 @@ def load_close_panel(release_id: str, symbols: list[str], start: str, end: str) 
     if not records:
         raise ValueError("所选 release 没有 ETF_RAW 日线")
     frame = pd.DataFrame(records)
-    return frame.pivot(index="trade_date", columns="symbol", values="close").sort_index().astype(float)
+    closes = frame.pivot(index="trade_date", columns="symbol", values="close").sort_index().astype(float)
+    # The signal is t close and the order is submitted at t+1 open.  Preserve
+    # the execution field alongside the close panel without changing the
+    # public close-panel contract used by existing callers.
+    closes.attrs["open"] = frame.pivot(index="trade_date", columns="symbol", values="open").sort_index().astype(float)
+    return closes
 
 
 def rebalance_dates(panel: pd.DataFrame, start: str, end: str) -> list[pd.Timestamp]:
@@ -56,20 +61,31 @@ def preflight(panel: pd.DataFrame, template: str, start: str, end: str) -> dict[
     if template not in TEMPLATES:
         raise ValueError(f"unknown ETF template: {template}")
     lookback = TEMPLATES[template]["lookback"]
+    opens = panel.attrs.get("open")
     dates = rebalance_dates(panel, start, end)
     missing: list[dict[str, Any]] = []
     for effective in dates:
         loc = panel.index.get_indexer([effective])[0]
-        if loc < lookback:
+        # ``effective`` is t+1.  All research inputs end at the prior close.
+        if lookback and loc < lookback + 1:
             missing.append({"template": template, "effective_date": str(pd.Timestamp(effective).date()),
                             "date": None, "security": "*", "field": f"{lookback}_day_warmup"})
             continue
-        begin = max(0, loc - lookback)
-        needed = panel.iloc[begin : loc + 1] if lookback else panel.iloc[loc : loc + 1]
+        needed = panel.iloc[loc - lookback : loc] if lookback else panel.iloc[0:0]
         for day, row in needed.iterrows():
             for symbol in row.index[row.isna()]:
                 missing.append({"template": template, "effective_date": str(pd.Timestamp(effective).date()),
                                 "date": str(pd.Timestamp(day).date()), "security": symbol, "field": "close"})
+        if opens is not None:
+            signal = panel.iloc[loc - 1]
+            if template == "equal_weight": targets = list(panel.columns)
+            elif template == "momentum": targets = sorted((signal / panel.iloc[loc - 1 - 60] - 1).nlargest(3).index)
+            elif template == "trend": targets = list(signal[signal > panel.iloc[loc - 120 : loc].mean()].index)
+            else: targets = list(panel.columns)
+            for symbol in targets:
+                if pd.isna(opens.loc[effective, symbol]):
+                    missing.append({"template": template, "effective_date": str(pd.Timestamp(effective).date()),
+                                    "date": str(pd.Timestamp(effective).date()), "security": symbol, "field": "open"})
     return {"template": template, "lookback": lookback, "rebalance_dates": [str(d.date()) for d in dates],
             "blocked": bool(missing), "missing": missing}
 
@@ -102,25 +118,27 @@ def build_weights(panel: pd.DataFrame, template: str, start: str, end: str, *, m
     rows: list[dict[str, Any]] = []
     for effective in pd.to_datetime(check["rebalance_dates"]):
         loc = panel.index.get_indexer([effective])[0]
-        close = panel.iloc[loc]
+        # Signal t close, execute at the following trading day's open.
+        signal_loc = loc - 1
+        close = panel.iloc[signal_loc]
         reason = template
         if template == "equal_weight":
             weights = pd.Series(1 / len(close), index=close.index)
         elif template == "momentum":
-            score = close / panel.iloc[loc - momentum_days] - 1
+            score = close / panel.iloc[signal_loc - momentum_days] - 1
             winners = sorted(score.nlargest(top_k).index)
             weights = pd.Series(1 / len(winners), index=winners)
         elif template == "trend":
-            eligible = close[close > panel.iloc[loc - trend_days + 1 : loc + 1].mean()]
+            eligible = close[close > panel.iloc[loc - trend_days : loc].mean()]
             weights = pd.Series(1 / len(eligible), index=eligible.index) if len(eligible) else pd.Series(dtype=float)
         else:
-            returns = panel.iloc[loc - volatility_days : loc + 1].pct_change().iloc[1:]
+            returns = panel.iloc[signal_loc - volatility_days : signal_loc + 1].pct_change().iloc[1:]
             if template == "inverse_vol":
                 inverse = 1 / returns.std(ddof=1)
                 weights = inverse / inverse.sum()
             else:
                 weights = _erc(returns.cov())
-        signal_date = panel.index[max(0, loc - 1)]
+        signal_date = panel.index[signal_loc]
         for security, weight in weights.items():
             rows.append({"signal_date": str(pd.Timestamp(signal_date).date()), "effective_date": str(pd.Timestamp(effective).date()),
                          "security": security, "target_weight": float(weight), "signal_value": reason, "reason": reason})

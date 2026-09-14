@@ -31,6 +31,19 @@ def test_weight_artifact_has_signal_and_effective_dates():
     assert (pd.to_datetime(result.effective_date) > pd.to_datetime(result.signal_date)).all()
 
 
+def test_effective_open_is_a_dependency_but_not_the_signal_close():
+    panel = _panel()
+    opens = panel.copy()
+    opens.loc[pd.Timestamp("2021-03-01"), "510050.SH"] = np.nan
+    panel.attrs["open"] = opens
+    check = preflight(panel, "equal_weight", "2021-03-01", "2021-03-31")
+    assert check["blocked"]
+    assert any(x["field"] == "open" and x["effective_date"] == "2021-03-01" for x in check["missing"])
+
+    result = build_weights(_panel(), "momentum", "2021-04-01", "2021-06-30")
+    assert (pd.to_datetime(result.effective_date) > pd.to_datetime(result.signal_date)).all()
+
+
 def test_etf_strategy_uses_native_fund_cost_and_bps_slippage(tmp_path):
     code = build_effective_weight_strategy(tmp_path / "weights.csv", etf_raw=True,
         order_cost={"open_tax": 0, "close_tax": 0, "open_commission": .0003, "close_commission": .0003, "min_commission": 5},
