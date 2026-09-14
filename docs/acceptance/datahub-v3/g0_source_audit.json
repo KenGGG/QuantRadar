@@ -1,0 +1,64 @@
+{
+  "adapter_version": "akshare-1.18.94",
+  "failures": [],
+  "gate": "G0",
+  "observed_at": "2026-09-14T20:10:39.239692+08:00",
+  "receipts": [
+    {
+      "adapter_version": "akshare-1.18.94",
+      "dataset": "index_constituents",
+      "observed_at": "2026-09-14T20:10:17.674835+08:00",
+      "pit_status": "PARTIAL",
+      "qualification": "RAW_EVIDENCE_ONLY",
+      "raw_bytes": 97409,
+      "raw_sha256": "9e4204e845eb583ea115e15a5f31ffb34766bd5bdf98fe98fcb3a96f2570ff11",
+      "request": {
+        "index_code": "000300"
+      },
+      "row_count": 300,
+      "schema": {
+        "columns": [
+          "交易所",
+          "交易所英文名称",
+          "成分券代码",
+          "成分券名称",
+          "成分券英文名称",
+          "指数代码",
+          "指数名称",
+          "指数英文名称",
+          "日期"
+        ]
+      },
+      "source": "akshare:index_stock_cons_csindex"
+    },
+    {
+      "adapter_version": "akshare-1.18.94",
+      "dataset": "index_weights",
+      "observed_at": "2026-09-14T20:10:39.239692+08:00",
+      "pit_status": "PARTIAL",
+      "qualification": "RAW_EVIDENCE_ONLY",
+      "raw_bytes": 101874,
+      "raw_sha256": "7e9eaecbe11087deacb192ff67f7814b37c113930e7c5dabea399a683e2f6904",
+      "request": {
+        "index_code": "000300"
+      },
+      "row_count": 300,
+      "schema": {
+        "columns": [
+          "交易所",
+          "交易所英文名称",
+          "成分券代码",
+          "成分券名称",
+          "成分券英文名称",
+          "指数代码",
+          "指数名称",
+          "指数英文名称",
+          "日期",
+          "权重"
+        ]
+      },
+      "source": "akshare:index_stock_cons_weight_csindex"
+    }
+  ],
+  "status": "PARTIAL"
+}

@@ -1,15 +1,29 @@
 # QuantRadar Active Phase
 
-**Milestone:** `WEBUI_ETF_FACTORLAB_V1`
-**Active Goal:** `WEBUI_P3_FACTOR_SELECTION_AND_INDUSTRY_ETF`
+**Milestone:** `DATAHUB_V3_RESEARCH_DATA_EXPANSION`
+**Active Goal:** `DATA_V3_P0_CANONICAL_DATA_FOUNDATION`
 **Status:** IN_PROGRESS
 
 ## Scope
 
-在既有双 Dolt、Provider、BulletTrade、Worker 和 WebUI 上交付 ETF 研究与 Alpha101 FactorLab。先完成不可变实验身份与固定 release 贯通，再分别交付 ETF 实验组、FactorLab 计算评价，以及行业 ETF 池和因子精简。
-基础 Dolt 只读；不新增第三市场事实库，不在回测中联网或静默 fallback。ETF_RAW、调整价与严格 PIT/账户资格继续独立显示。
+在既有双 Dolt、ReleaseReader、Provider、Publication 和 CLI 上建设两类研究事实：从当前开始累计的版本化指数快照，以及五只样本股票的可审计财务 canonical。基础 Dolt 只读；所有新事实必须走 raw evidence → candidate/quality → supplemental Dolt commit → release manifest，研究和回测不得联网或静默 fallback。
+
+本轮唯一顺序为 **G0 → G1 → G2 → G3**。任何不能证明日期语义、单位、版本或来源的数据可以保存为 raw evidence，但不得提升为严格 PIT canonical。
 
 ## Acceptance
+
+### DataHub V3 P0 gates
+
+- **G0 Source Audit — IN_PROGRESS.** 对 CSI300/500/1000、申万一级样本和五只财务样本进行真实接口探针；保留原始响应、字段、单位和日期语义。`source_date`、`observed_at`、`effective_date` 绝不混同。财务 raw statement version 与 canonical mapping 物理分层；映射更正只增加 `mapping_version`。
+- **G1 Index Snapshot — QUEUED.** 使用 `qr_index_snapshot_version` 和引用其不可变 `snapshot_id` 的成员/权重表保存 CSI 每交易日和申万一级每周快照。业务 `content_hash` 不含抓取元数据或行顺序；同内容为 `NO_CHANGE`，变更追加 revision。20:30 Asia/Shanghai 必须读取固定交易日历；不伪造非交易日快照。
+- **G2 Financial Canonical — QUEUED.** 仅覆盖 600519.SH、000333.SZ、300750.SZ、600036.SH、601318.SH，自 2018 至最新报告期。原公告事实与 `conservative_available_at`/规则版本分开；银行、保险只验证 schema 与 NULL 语义。
+- **G3 Release & Replay — QUEUED.** 验证版本固定查询、调度、旧 release 隔离和 FactorLab 冻结基线未变；之后结束 V3 P0，不进入 ETF NAV 或基金域。
+
+### Frozen preceding milestone
+
+`WEBUI_ETF_FACTORLAB_V1` 状态为 `PAUSED_AT_RESEARCH_DECISION`。P0、P1、P2 已完成；P3-A 保留批次 `c47d9a1c-2e25-4c3c-9759-92e073aa04ed`，尚未冻结代表因子且未访问 holdout；P3-B 为 `BLOCKED_DATA_IDENTITY`。DataHub V3 不得修改该批次成员、配置、缓存、产物或 holdout 状态。
+
+### Prior acceptance retained
 
 G0 已通过：固定 release 与两个 commit，检查 SDK 本地契约、实际 schema、原始资料和精确字段依赖；提交 Alpha101/ETF gap_plan 和最小实施计划。详细结果见 [G0 审计报告](acceptance/alpha101-etf/g0_inventory_report.md)。接口签名通过不代表网络健康。
 

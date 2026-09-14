@@ -1,0 +1,58 @@
+from __future__ import annotations
+
+import pytest
+
+
+def test_snapshot_content_hash_ignores_observation_metadata_and_row_order():
+    from quantradar.datahub.v3_contracts import snapshot_content_hash
+
+    first = [
+        {"security_code": "600000.SH", "weight_raw": 0.5, "weight_unit": "PERCENT", "observed_at": "2026-09-14T20:30:00+08:00", "raw_sha256": "a" * 64},
+        {"security_code": "000001.SZ", "weight_raw": 1.25, "weight_unit": "PERCENT", "fetched_at": "2026-09-14T20:30:02+08:00"},
+    ]
+    reordered = [
+        {"security_code": "000001.SZ", "weight_raw": 1.25, "weight_unit": "PERCENT", "observed_at": "2026-09-15T20:30:00+08:00", "raw_sha256": "b" * 64},
+        {"security_code": "600000.SH", "weight_raw": 0.5, "weight_unit": "PERCENT"},
+    ]
+    changed = [dict(first[0]), {"security_code": "000001.SZ", "weight_raw": 1.26, "weight_unit": "PERCENT"}]
+
+    assert snapshot_content_hash(first) == snapshot_content_hash(reordered)
+    assert snapshot_content_hash(first) != snapshot_content_hash(changed)
+
+
+def test_snapshot_query_refuses_unknown_source_date_for_as_of_and_strict_pit():
+    from quantradar.datahub.v3_contracts import snapshot_eligibility
+
+    unknown = {"source_date": None, "observed_at": "2026-09-14T20:30:00+08:00", "pit_status": "PARTIAL"}
+    assert snapshot_eligibility(unknown, observed_before="2026-09-20") == {"eligible": True, "reason": "SOURCE_DATE_UNKNOWN"}
+    assert snapshot_eligibility(unknown, as_of="2026-09-01") == {"eligible": False, "reason": "SOURCE_DATE_UNKNOWN"}
+    assert snapshot_eligibility(unknown, observed_before="2026-09-20", strict_pit=True) == {"eligible": False, "reason": "SOURCE_DATE_UNKNOWN"}
+
+
+def test_statement_mapping_identity_keeps_supplier_version_separate_from_mapping_version():
+    from quantradar.datahub.v3_contracts import statement_mapping_identity
+
+    assert statement_mapping_identity("statement-A", "v1") == ("statement-A", "v1")
+    assert statement_mapping_identity("statement-A", "v2") == ("statement-A", "v2")
+    with pytest.raises(ValueError, match="statement_version_id"):
+        statement_mapping_identity("", "v1")
+
+
+def test_g0_audit_records_raw_evidence_without_claiming_strict_pit(tmp_path):
+    from quantradar.datahub.store import RawStore
+    from quantradar.datahub.v3_audit import record_probe
+
+    result = record_probe(
+        RawStore(tmp_path),
+        dataset="financial_balance_sheet",
+        source="akshare:stock_balance_sheet_by_report_em",
+        request={"symbol": "SH600519"},
+        rows=[{"REPORT_DATE": "2025-12-31", "NOTICE_DATE": "2026-03-30", "TOTAL_ASSETS": 1}],
+        observed_at="2026-09-14T20:30:00+08:00",
+        adapter_version="akshare-test",
+    )
+
+    assert result["raw_sha256"]
+    assert result["qualification"] == "RAW_EVIDENCE_ONLY"
+    assert result["pit_status"] == "PARTIAL"
+    assert result["schema"]["columns"] == ["NOTICE_DATE", "REPORT_DATE", "TOTAL_ASSETS"]

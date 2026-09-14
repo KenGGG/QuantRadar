@@ -1,0 +1,54 @@
+{
+  "artifact_hashes": [
+    {
+      "alpha_id": 1,
+      "evaluation_artifacts_sha256": {
+        "1": "861296893a8a22c1921ec4e03743c79946f06235cc55298b61338333a054889d",
+        "5": "34bcb8ee1404570a161a7111ff1356032ab348701dbd4f01d787548be9d743d1"
+      },
+      "value_artifact_sha256": "e88be430ed719ab041400870e7f72230fa7c18a2c97eed9cf3cacae545eb66a8"
+    },
+    {
+      "alpha_id": 2,
+      "evaluation_artifacts_sha256": {
+        "1": "d943fc6fceb9ca1d78d1a12c436ef1683522c1dfd27f358f14dd2692985b7a30",
+        "5": "376d9d4aacaa48071e7e58fea404dd36c55badfe11a09bff1e14328132ad1c3b"
+      },
+      "value_artifact_sha256": "e240ac621fd7bdd8f6c876e3cbc165b4a8cad52a4b07d489d0a35d0b4f512166"
+    },
+    {
+      "alpha_id": 3,
+      "evaluation_artifacts_sha256": {
+        "1": "7dcc15dcdb9033ebbcc0216a94f1cd7257eaec0a86baac42320b866265f7e534",
+        "5": "2526f9d9382588264eadf254e4f512b92e3f1b672550656d888256cd87fa4faa"
+      },
+      "value_artifact_sha256": "150cf429aaf443765284a778aabbb4707ffb8e263e80a434d4fc754fbe2911ac"
+    },
+    {
+      "alpha_id": 4,
+      "evaluation_artifacts_sha256": {
+        "1": "3422cf046fe2550105e305f90e2d886dc3a78136a8aa3d5a8b5b3ab9e5378a1b",
+        "5": "a6bb32c8a9abb85d9884ebe5c3a6cf937ca5dfe77178fc2b8b8d74c098d06a38"
+      },
+      "value_artifact_sha256": "04a1ecad7953f0697ae07c0a12ad1b850fa4c966a2baab74a9dde34499807f7d"
+    },
+    {
+      "alpha_id": 5,
+      "evaluation_artifacts_sha256": {
+        "1": "2c32cd60cd13befa8f23d0093b9ecb0d3b52e540253aa9e4c88d638433a1611d",
+        "5": "26f0999baef6fe175908e722f887ee53ce644549311b61865cf88ebcbc3e813b"
+      },
+      "value_artifact_sha256": "ce379d280b78b1aab7ea68dbb38dfabda6f8df733d299003bdea8673cd7101c6"
+    }
+  ],
+  "base_commit": "uhdpedb4pr97ve80aq6nrabr66atsqtq",
+  "batch_id": "c47d9a1c-2e25-4c3c-9759-92e073aa04ed",
+  "candidate_member_hash": "546fe24451b061a3035953faa7680ba10da1daac66736b73e7e973c4423b5e6f",
+  "config_hash": "a685f357af94f7094ab56628266aab71e7371a36bbc6e0eab96c6068fdcfd242",
+  "factor_result_hash": "c94e152f39f47e1340c1b83b8e81ac6e7ea0b583ef4d9e9e209a327a258b6147",
+  "git_commit": "415417f",
+  "holdout_access": null,
+  "release_id": "R9c1b6c13965dc457",
+  "representative_selection": null,
+  "supplemental_commit": "r4t6rm3fdtb06rqpk0bmbtp2hn638a5r"
+}
