@@ -56,3 +56,20 @@ def test_holdout_route_requires_frozen_representatives(monkeypatch):
     with pytest.raises(HTTPException, match="freeze representative") as rejected:
         api.factorlab_holdout("batch")
     assert rejected.value.status_code == 400
+
+
+@pytest.mark.parametrize(
+    ("config", "expected"),
+    [
+        ({"status": "RUNNING", "alpha_ids": []}, "NOT_READY"),
+        ({"status": "SUCCESS", "alpha_ids": []}, "AWAITING_RESEARCHER_SELECTION"),
+        ({"status": "SUCCESS", "alpha_ids": [], "representative_selection": {"alpha_ids": [1]}}, "FROZEN_AWAITING_HOLDOUT_EVALUATION"),
+        ({"status": "SUCCESS", "alpha_ids": [], "representative_selection": {"alpha_ids": [1]}, "holdout_access": {"alpha_ids": [1]}}, "HOLDOUT_ACCESSED"),
+    ],
+)
+def test_factorlab_summary_reports_researcher_state(monkeypatch, config, expected):
+    from quantradar.api import app as api
+    import quantradar.storage as storage
+
+    monkeypatch.setattr(storage, "get_experiment", lambda _id: {"kind": "factor", "config": config, "result_fingerprint": None})
+    assert api.factorlab_batch_summary("batch")["researcher_state"] == expected

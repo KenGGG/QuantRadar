@@ -831,6 +831,16 @@ def factorlab_batch_summary(experiment_id: str) -> Dict[str, Any]:
     except RuntimeError as exc: raise HTTPException(status_code=503, detail=str(exc))
     if not row or row.get("kind") != "factor": raise HTTPException(status_code=404, detail="FactorLab 批次不存在")
     config = row.get("config") or {}
+    selection = config.get("representative_selection")
+    holdout = config.get("holdout_access")
+    if config.get("status") != "SUCCESS":
+        researcher_state = "NOT_READY"
+    elif not selection:
+        researcher_state = "AWAITING_RESEARCHER_SELECTION"
+    elif not holdout:
+        researcher_state = "FROZEN_AWAITING_HOLDOUT_EVALUATION"
+    else:
+        researcher_state = "HOLDOUT_ACCESSED"
     items=[]
     for item in config.get("items", []):
         evaluations={h:{"status":v.get("status"), "summary":v.get("summary")} for h,v in item.get("evaluations", {}).items()}
@@ -839,8 +849,9 @@ def factorlab_batch_summary(experiment_id: str) -> Dict[str, Any]:
             "result_fingerprint":row.get("result_fingerprint"),
             "requested":len(config.get("alpha_ids", [])),"completed":len(items),"items":items,
             "pool":{"type":config.get("pool_type"),"members_hash":config.get("members_hash"),"snapshot_date":config.get("snapshot_date")},
-            "representative_selection":config.get("representative_selection"),
-            "holdout_access":({k:v for k,v in config.get("holdout_access", {}).items() if k != "artifact"} if config.get("holdout_access") else None)}
+            "researcher_state": researcher_state,
+            "representative_selection":selection,
+            "holdout_access":({k:v for k,v in holdout.items() if k != "artifact"} if holdout else None)}
 
 
 @app.get("/api/factorlab/batches/{experiment_id}/evaluation/{alpha_id}/{horizon}")
