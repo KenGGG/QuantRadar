@@ -812,19 +812,19 @@ def factorlab_batch_summary(experiment_id: str) -> Dict[str, Any]:
 @app.get("/api/factorlab/batches/{experiment_id}/correlation")
 def factorlab_batch_correlation(experiment_id: str) -> Dict[str, Any]:
     from quantradar.storage import get_experiment
-    from quantradar.factorlab.correlation import complete_link_clusters, pairwise_summary
+    from quantradar.factorlab.correlation import complete_link_clusters, pairwise_summary_paths
     try: row = get_experiment(experiment_id)
     except RuntimeError as exc: raise HTTPException(status_code=503, detail=str(exc))
     if not row or row.get("kind") != "factor": raise HTTPException(status_code=404, detail="FactorLab 批次不存在")
     config = row.get("config") or {}
     root = (Path.cwd() / "runs" / "factorlab" / experiment_id).resolve()
-    factors = {}
+    paths = {}
     for item in config.get("items", []):
         path = Path(str(item.get("value_artifact") or "")).resolve()
         if not path.is_file() or root not in path.parents: continue
-        factors[int(item["alpha_id"])] = pd.read_parquet(path)
-    pairs = pairwise_summary(factors)
-    return {"pairs": pairs, "clusters": complete_link_clusters(sorted(factors), pairs),
+        paths[int(item["alpha_id"])] = str(path)
+    pairs = pairwise_summary_paths(paths)
+    return {"pairs": pairs, "clusters": complete_link_clusters(sorted(paths), pairs),
             "threshold": .8, "min_members": 20, "min_dates": 60}
 
 

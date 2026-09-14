@@ -3,19 +3,31 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+
+def _pair_summary(left_id: int, right_id: int, left: pd.DataFrame, right: pd.DataFrame, *, min_members: int, min_dates: int) -> dict:
+    if not left.index.equals(right.index): raise ValueError("factor axes differ")
+    vals=[]
+    for day in left.index:
+        pair=pd.concat([left.loc[day],right.loc[day]],axis=1).dropna()
+        if len(pair)>=min_members and pair.iloc[:,0].nunique()>1 and pair.iloc[:,1].nunique()>1:
+            vals.append(pair.iloc[:,0].corr(pair.iloc[:,1],method="spearman"))
+    return {"left":left_id,"right":right_id,"rho":float(np.mean(vals)) if len(vals)>=min_dates else None,"effective_dates":len(vals),"cluster_eligible":len(vals)>=min_dates}
+
 def pairwise_summary(factors: dict[int, pd.DataFrame], *, min_members: int = 20, min_dates: int = 60) -> list[dict]:
     ids = sorted(factors)
     out=[]
     for pos, left_id in enumerate(ids):
         for right_id in ids[pos+1:]:
-            left,right=factors[left_id],factors[right_id]
-            if not left.index.equals(right.index): raise ValueError("factor axes differ")
-            vals=[]
-            for day in left.index:
-                pair=pd.concat([left.loc[day],right.loc[day]],axis=1).dropna()
-                if len(pair)>=min_members and pair.iloc[:,0].nunique()>1 and pair.iloc[:,1].nunique()>1:
-                    vals.append(pair.iloc[:,0].corr(pair.iloc[:,1],method="spearman"))
-            out.append({"left":left_id,"right":right_id,"rho":float(np.mean(vals)) if len(vals)>=min_dates else None,"effective_dates":len(vals),"cluster_eligible":len(vals)>=min_dates})
+            out.append(_pair_summary(left_id, right_id, factors[left_id], factors[right_id], min_members=min_members, min_dates=min_dates))
+    return out
+
+
+def pairwise_summary_paths(paths: dict[int, str], *, min_members: int = 20, min_dates: int = 60) -> list[dict]:
+    """Read a pair of persisted factors at a time; never retain the 82-panel matrix."""
+    ids = sorted(paths); out=[]
+    for pos, left_id in enumerate(ids):
+        for right_id in ids[pos+1:]:
+            out.append(_pair_summary(left_id, right_id, pd.read_parquet(paths[left_id]), pd.read_parquet(paths[right_id]), min_members=min_members, min_dates=min_dates))
     return out
 
 def complete_link_clusters(ids: list[int], pairs: list[dict], threshold: float=.8) -> list[list[int]]:
