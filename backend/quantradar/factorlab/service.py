@@ -28,9 +28,12 @@ def create_batch(config: dict[str, Any]) -> dict[str, Any]:
     catalog = {r["alpha_id"]: r for r in dependency_matrix()}
     if not ids or any(i not in catalog or catalog[i]["group"] != "price_volume" for i in ids):
         raise ValueError("alpha_ids must contain only price_volume catalog entries")
+    max_lookback = max(catalog[i]["lookback_days"] for i in ids)
+    start = str(config.get("start_date") or "")
+    calculation_start = (pd.Timestamp(start) - pd.Timedelta(days=max_lookback * 2 + 20)).date().isoformat() if start else ""
     frozen = {"release_id": release_id, "members": members, "members_hash": _hash_members(members),
               "pool_type": config.get("pool_type", "CUSTOM_STATIC_POOL"), "snapshot_date": config.get("snapshot_date"),
-              "start_date": str(config.get("start_date") or ""), "end_date": str(config.get("end_date") or ""),
+              "start_date": start, "calculation_start": calculation_start, "end_date": str(config.get("end_date") or ""),
               "alpha_ids": ids, "horizons": config.get("horizons", [1, 5, 20]), "price_mode": "RAW",
               "adv_basis": "amount", "min_cross_section": int(config.get("min_cross_section", 20)),
               "operator_bundle_hash": operator_bundle_hash(), "status": "PENDING", "items": []}
@@ -47,7 +50,19 @@ def _panel(config: dict[str, Any]) -> tuple[dict[str, pd.DataFrame], pd.DataFram
     from quantradar.datahub.reader import ReleaseReader
     from quantradar.datahub.research_inputs import standard_panel
     scope = ReleaseReader(load_datahub_config()).resolve(config["release_id"])
-    rows = ReleaseReader(load_datahub_config()).supplemental_reader(scope).prices(config["members"], config["start_date"], config["end_date"])
+    reader = ReleaseReader(load_datahub_config())
+    # A-share OHLCV is a reusable fact in the immutable base Dolt.  The
+    # supplement is not a replacement warehouse for it.
+    conn = reader.base_connection(scope)
+    base_rows = {}
+    for symbol in config["members"]:
+        code, exchange = symbol.split(".")
+        internal = exchange + code
+        values = conn.query("SELECT tradedate, open, high, low, close, volume, amount "
+                            "FROM final_a_stock_eod_price WHERE symbol=%s AND tradedate >= %s AND tradedate <= %s ORDER BY tradedate",
+                            (internal, config.get("calculation_start", config["start_date"]), config["end_date"]))
+        base_rows[symbol] = [dict(row, trade_date=row.pop("tradedate"), unit_contract_version="base-hands-thousand-yuan") for row in values]
+    rows = base_rows
     all_rows = []
     for symbol, values in rows.items():
         if not values: continue
@@ -84,7 +99,11 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
                 ekey = cache_key({"calculation_key": key, "horizon": horizon, "min_cross_section": config["min_cross_section"], "direction_policy": "no_flip", "evaluation": "factorlab-eval-v1"})
                 epath = root / "evaluation" / f"alpha{alpha_id:03}_h{horizon}_{ekey}.json"; epath.parent.mkdir(exist_ok=True)
                 if epath.exists(): result = json.loads(epath.read_text()); status = "CACHE_HIT"
-                else: result = evaluate(factor, forward_open_label(opens, horizon), min_cross_section=config["min_cross_section"]); epath.write_text(json.dumps(result)); status = "EVALUATED"
+                else:
+                    label = forward_open_label(opens, horizon)
+                    factor_eval = factor.loc[config["start_date"]:config["end_date"]]
+                    result = evaluate(factor_eval, label.loc[factor_eval.index], min_cross_section=config["min_cross_section"])
+                    epath.write_text(json.dumps(result)); status = "EVALUATED"
                 evaluations[str(horizon)] = {"status": status, "artifact": str(epath), "summary": {k: result[k] for k in ("valid_dates", "ic_mean", "rank_ic_mean")}}
             config["items"].append({"alpha_id": alpha_id, "calculation": calc_status, "value_artifact": str(value_path), "evaluations": evaluations})
             update_experiment(batch_id, config=config)
