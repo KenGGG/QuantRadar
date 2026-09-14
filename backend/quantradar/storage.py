@@ -468,6 +468,25 @@ def get_experiment(experiment_id: str, session=None) -> Optional[Dict[str, Any]]
             s.close()
 
 
+def update_experiment(experiment_id: str, *, config: Dict[str, Any] | None = None,
+                      source_refs: Dict[str, Any] | None = None, artifact_refs: Dict[str, Any] | None = None,
+                      result_fingerprint: str | None = None, session=None) -> Optional[Experiment]:
+    own = session is None
+    s = session or get_session()
+    try:
+        obj = s.query(Experiment).filter(Experiment.experiment_id == experiment_id).first()
+        if obj is None:
+            return None
+        if config is not None: obj.config = config
+        if source_refs is not None: obj.source_refs = source_refs
+        if artifact_refs is not None: obj.artifact_refs = artifact_refs
+        if result_fingerprint is not None: obj.result_fingerprint = result_fingerprint
+        s.commit(); s.refresh(obj)
+        return obj
+    finally:
+        if own: s.close()
+
+
 def list_experiments(session=None) -> List[Dict[str, Any]]:
     own = session is None
     s = session or get_session()
@@ -483,5 +502,5 @@ __all__ = [
     "get_engine", "get_session", "init_db", "drop_all",
     "save_strategy", "create_run", "update_run", "get_run", "get_strategy",
     "list_runs", "list_runs_by_status",
-    "save_snapshot_record", "save_metrics", "save_experiment", "get_experiment", "list_experiments",
+    "save_snapshot_record", "save_metrics", "save_experiment", "get_experiment", "update_experiment", "list_experiments",
 ]

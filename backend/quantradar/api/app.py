@@ -704,6 +704,33 @@ def etf_preflight(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+@app.post("/api/etf/experiments")
+def etf_experiment_create(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    from quantradar.etf_research import create_experiment_group
+    try:
+        return create_experiment_group(release_id=str(payload.get("release_id") or ""),
+                                       start=str(payload.get("start_date") or ""), end=str(payload.get("end_date") or ""),
+                                       templates=list(payload.get("templates") or []),
+                                       initial_cash=float(payload.get("initial_cash", 500000)),
+                                       slippage_bps=float(payload.get("slippage_bps", 0)))
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
+@app.get("/api/etf/experiments/{experiment_id}")
+def etf_experiment_get(experiment_id: str) -> Dict[str, Any]:
+    from quantradar.storage import get_experiment
+    try:
+        row = get_experiment(experiment_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    if not row or row.get("kind") != "etf_group":
+        raise HTTPException(status_code=404, detail="ETF 实验组不存在")
+    return row
+
+
 @app.get("/api/factorlab/catalog")
 def factorlab_catalog() -> Dict[str, Any]:
     from quantradar.datahub.alpha101.catalog import dependency_matrix

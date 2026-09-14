@@ -2,6 +2,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import concurrent.futures
+import json
+from pathlib import Path
+import threading
+import uuid
 from typing import Any
 
 import numpy as np
@@ -15,6 +20,8 @@ TEMPLATES = {
     "inverse_vol": {"label": "逆波动率", "lookback": 61},
     "erc": {"label": "ERC 风险平价", "lookback": 61},
 }
+_GROUP_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="etf-group")
+_GROUP_LOCK = threading.Lock()
 
 
 def template_catalog() -> list[dict[str, Any]]:
@@ -113,3 +120,60 @@ def build_weights(panel: pd.DataFrame, template: str, start: str, end: str, *, m
             rows.append({"signal_date": str(pd.Timestamp(signal_date).date()), "effective_date": str(pd.Timestamp(effective).date()),
                          "security": security, "target_weight": float(weight), "signal_value": reason, "reason": reason})
     return pd.DataFrame(rows)
+
+
+def create_experiment_group(*, release_id: str, start: str, end: str, templates: list[str],
+                            initial_cash: float = 500000, slippage_bps: float = 0) -> dict[str, Any]:
+    """Persist a group and serially enqueue real Worker runs.
+
+    The group executor has one worker intentionally: BulletTrade's provider/FQ
+    state is process-global, so exposing Worker pool slots as parallel ETF runs
+    would be misleading.
+    """
+    if slippage_bps < 0 or not np.isfinite(slippage_bps):
+        raise ValueError("slippage_bps must be a finite non-negative number")
+    panel = load_close_panel(release_id, list(ETF_POOL), start, end)
+    checks = {template: preflight(panel, template, start, end) for template in templates}
+    from quantradar.config import load_datahub_config
+    from quantradar.datahub.reader import ReleaseReader
+    scope = ReleaseReader(load_datahub_config()).resolve(release_id)
+    from quantradar.storage import save_experiment
+    config = {"release_id": scope.release_id, "base_commit": scope.manifest["base_commit"],
+              "supplemental_commit": scope.manifest["supplemental_commit"], "start_date": start, "end_date": end,
+              "templates": templates, "initial_cash": initial_cash, "slippage_bps": slippage_bps,
+              "engine_slippage_ratio": 2 * slippage_bps / 10000,
+              "items": [{"template": t, "status": "PRECHECK_BLOCKED" if checks[t]["blocked"] else "WAITING", "preflight": checks[t]} for t in templates]}
+    group = save_experiment("ETF 研究组", "etf_group", config, "", {}, None,
+                            source_refs={"release": {k: config[k] for k in ("release_id", "base_commit", "supplemental_commit")}})
+    _GROUP_EXECUTOR.submit(_run_group, group.experiment_id, panel, config)
+    return group.to_dict()
+
+
+def _run_group(experiment_id: str, panel: pd.DataFrame, config: dict[str, Any]) -> None:
+    from quantradar.portfolio.target_weight_bridge import build_effective_weight_strategy
+    from quantradar.storage import update_experiment
+    from quantradar.worker import get_worker
+    root = Path.cwd() / "runs" / "etf_groups" / experiment_id
+    root.mkdir(parents=True, exist_ok=True)
+    items = config["items"]
+    for item in items:
+        if item["status"] != "WAITING":
+            continue
+        item["status"] = "SUBMITTED"; update_experiment(experiment_id, config=config)
+        try:
+            weights = build_weights(panel, item["template"], config["start_date"], config["end_date"])
+            path = root / f"{item['template']}_weights.csv"; weights.to_csv(path, index=False)
+            code = build_effective_weight_strategy(path, etf_raw=True)
+            cost = {"open_tax": 0, "close_tax": 0, "open_commission": 0.0003, "close_commission": 0.0003,
+                    "min_commission": 5, "slippage_ratio": config["engine_slippage_ratio"]}
+            result = get_worker().submit({"code": code, "start_date": config["start_date"], "end_date": config["end_date"],
+                                          "initial_cash": config["initial_cash"], "frequency": "day", "benchmark": None,
+                                          "fq": "none", "release_id": config["release_id"], "strategy_name": f"ETF {item['template']}",
+                                          "extras": {"etf_research": {"template": item["template"], "weight_artifact": str(path), "cost": cost}}})
+            item["run_id"] = result["run_id"]; item["status"] = "PENDING"; update_experiment(experiment_id, config=config)
+            get_worker().wait(result["run_id"], timeout=None)
+            status = get_worker().get_status(result["run_id"])
+            item["status"] = status["status"]; item["error"] = status.get("error")
+        except Exception as exc:
+            item["status"] = "FAILED"; item["error"] = str(exc)
+        update_experiment(experiment_id, config=config)
