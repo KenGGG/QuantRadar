@@ -34,7 +34,7 @@ G4 已通过：固定版本重复回放同 hash、旧版回放与隔离、缺失
 
 P0 已完成：新实验使用 PostgreSQL 不可变 UUID，旧 JSON 存证只读兼容；release 从页面、API、Worker、Snapshot 到实验存证贯通，未知或缺失历史版本不会回退为 latest。P1 已完成：ETF_RAW 五模板经实际依赖预检后由实验组串行提交，费用由 BulletTrade 原生处理，权重信号、生效、目标及实际执行产物可追踪。P2 已完成：82 个量价因子支持固定静态池、逐因子 Parquet 产物、计算／评价双缓存、研究／验证分段评价；保留段默认关闭。
 
-当前 P3：相关性和完全链接聚类已实现并只读取研究／验证段；行业 ETF 身份规则已冻结且当前本地主数据下五类均如实 BLOCKED。固定五因子重复批次已验证跨批次计算／评价缓存和内容指纹一致。待研究者在网页选择代表因子并填写理由后冻结，方可访问保留段；这项研究判断不由系统自动作出。验收见 [FactorLab 缓存与指纹](acceptance/webui-etf-factorlab/factorlab-cache-and-fingerprint.md)、[ETF 模板依赖预检](acceptance/webui-etf-factorlab/etf-template-dependency-preflight.md) 和 [行业 ETF 身份资格](acceptance/webui-etf-factorlab/industry-etf-eligibility.md)。
+当前 P3：相关性和完全链接聚类已实现并只读取研究／验证段；代表选择理由必填、冻结不可改写和保留段访问门禁均有自动化回归。行业 ETF 身份规则已冻结且当前本地主数据下五类均如实 BLOCKED。固定五因子重复批次已验证跨批次计算／评价缓存和内容指纹一致。待研究者在网页选择代表因子并填写理由后冻结，方可访问保留段；这项研究判断不由系统自动作出。验收见 [FactorLab 缓存与指纹](acceptance/webui-etf-factorlab/factorlab-cache-and-fingerprint.md)、[ETF 模板依赖预检](acceptance/webui-etf-factorlab/etf-template-dependency-preflight.md) 和 [行业 ETF 身份资格](acceptance/webui-etf-factorlab/industry-etf-eligibility.md)。
 
 
 ## Previous milestone
