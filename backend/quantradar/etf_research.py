@@ -194,6 +194,20 @@ def valuation_preflight(panel: pd.DataFrame, weights: pd.DataFrame, end: str, te
     return missing
 
 
+def preflight_templates(panel: pd.DataFrame, templates: list[str], start: str, end: str) -> dict[str, dict[str, Any]]:
+    """One preflight contract for UI preview and persisted experiment groups."""
+    checks = {template: preflight(panel, template, start, end) for template in templates}
+    for template, check in checks.items():
+        if check["blocked"]:
+            continue
+        weights = build_weights(panel, template, start, end)
+        valuation_missing = valuation_preflight(panel, weights, end, template)
+        check["valuation_missing"] = valuation_missing
+        check["missing"].extend(valuation_missing)
+        check["blocked"] = bool(check["missing"])
+    return checks
+
+
 def create_experiment_group(*, release_id: str, start: str, end: str, templates: list[str],
                             initial_cash: float = 500000, slippage_bps: float = 0,
                             symbols: list[str] | None = None) -> dict[str, Any]:
@@ -209,14 +223,7 @@ def create_experiment_group(*, release_id: str, start: str, end: str, templates:
     if not pool:
         raise ValueError("at least one ETF symbol is required")
     panel = load_close_panel(release_id, pool, start, end)
-    checks = {template: preflight(panel, template, start, end) for template in templates}
-    for template, check in checks.items():
-        if not check["blocked"]:
-            weights = build_weights(panel, template, start, end)
-            valuation_missing = valuation_preflight(panel, weights, end, template)
-            check["valuation_missing"] = valuation_missing
-            check["missing"].extend(valuation_missing)
-            check["blocked"] = bool(check["missing"])
+    checks = preflight_templates(panel, templates, start, end)
     from quantradar.config import load_datahub_config
     from quantradar.datahub.reader import ReleaseReader
     scope = ReleaseReader(load_datahub_config()).resolve(release_id)

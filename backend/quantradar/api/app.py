@@ -706,7 +706,7 @@ def etf_industry_pool(release_id: str = Query(...)) -> Dict[str, Any]:
 
 @app.post("/api/etf/preflight")
 def etf_preflight(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
-    from quantradar.etf_research import ETF_POOL, load_close_panel, preflight
+    from quantradar.etf_research import ETF_POOL, load_close_panel, preflight_templates
     release_id = str(payload.get("release_id") or "").strip()
     start, end = str(payload.get("start_date") or ""), str(payload.get("end_date") or "")
     templates = payload.get("templates") or ["equal_weight"]
@@ -716,7 +716,7 @@ def etf_preflight(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
     try:
         panel = load_close_panel(release_id, list(symbols), start, end)
         return {"release_id": release_id, "symbols": list(symbols),
-                "checks": [preflight(panel, str(template), start, end) for template in templates]}
+                "checks": list(preflight_templates(panel, [str(template) for template in templates], start, end).values())}
     except (ValueError, FileNotFoundError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

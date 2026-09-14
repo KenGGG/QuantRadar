@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from quantradar.etf_research import build_execution_artifacts, build_weights, preflight, valuation_preflight
+from quantradar.etf_research import build_execution_artifacts, build_weights, preflight, preflight_templates, valuation_preflight
 from quantradar.portfolio.target_weight_bridge import build_effective_weight_strategy
 
 
@@ -71,3 +71,11 @@ def test_daily_valuation_only_checks_positions_the_template_holds():
     assert not valuation_preflight(panel, weights, "2021-03-03", "equal_weight")
     panel.loc[pd.Timestamp("2021-03-02"), "510050.SH"] = np.nan
     assert valuation_preflight(panel, weights, "2021-03-03", "equal_weight")[0]["field"] == "close_valuation"
+
+
+def test_shared_preflight_includes_daily_valuation_dependencies():
+    panel = _panel()
+    panel.loc[pd.Timestamp("2021-03-02"), "510050.SH"] = np.nan
+    check = preflight_templates(panel, ["equal_weight"], "2021-03-01", "2021-03-03")["equal_weight"]
+    assert check["blocked"]
+    assert any(item["field"] == "close_valuation" for item in check["missing"])
