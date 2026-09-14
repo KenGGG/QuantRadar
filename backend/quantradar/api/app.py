@@ -687,6 +687,21 @@ def etf_templates() -> Dict[str, Any]:
             "limitations": ["不含完整权益收益还原", "历史交易规则部分未知"]}
 
 
+@app.get("/api/etf/industry-pool")
+def etf_industry_pool(release_id: str = Query(...)) -> Dict[str, Any]:
+    from quantradar.config import load_datahub_config
+    from quantradar.datahub.reader import ReleaseReader
+    from quantradar.industry_etf import qualify
+    try:
+        scope=ReleaseReader(load_datahub_config()).resolve(release_id)
+        reader=ReleaseReader(load_datahub_config()).supplemental_reader(scope)
+        # Read all verified ETF identities; criteria are identity fields only.
+        rows=reader._query("SELECT symbol, fund_name, tracking_index, listing_date, qualification FROM qr_etf_master ORDER BY symbol", ())
+        return {"release_id":scope.release_id,"categories":qualify({r["symbol"]:r for r in rows}),"status":"BLOCKED"}
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @app.post("/api/etf/preflight")
 def etf_preflight(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
     from quantradar.etf_research import ETF_POOL, load_close_panel, preflight
