@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from quantradar.etf_research import build_weights, preflight
+from quantradar.portfolio.target_weight_bridge import build_effective_weight_strategy
 
 
 def _panel(days: int = 140) -> pd.DataFrame:
@@ -28,3 +29,11 @@ def test_weight_artifact_has_signal_and_effective_dates():
     assert {"signal_date", "effective_date", "security", "target_weight", "reason"} <= set(result.columns)
     assert (result.groupby("effective_date").target_weight.sum() <= 1).all()
     assert (pd.to_datetime(result.effective_date) > pd.to_datetime(result.signal_date)).all()
+
+
+def test_etf_strategy_uses_native_fund_cost_and_bps_slippage(tmp_path):
+    code = build_effective_weight_strategy(tmp_path / "weights.csv", etf_raw=True,
+        order_cost={"open_tax": 0, "close_tax": 0, "open_commission": .0003, "close_commission": .0003, "min_commission": 5},
+        slippage_ratio=.0004)
+    assert "set_order_cost(OrderCost" in code and "type='fund'" in code
+    assert "PriceRelatedSlippage(0.0004)" in code and 'current_bar_fq", "none' in code

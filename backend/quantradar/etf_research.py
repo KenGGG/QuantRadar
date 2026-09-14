@@ -163,9 +163,10 @@ def _run_group(experiment_id: str, panel: pd.DataFrame, config: dict[str, Any]) 
         try:
             weights = build_weights(panel, item["template"], config["start_date"], config["end_date"])
             path = root / f"{item['template']}_weights.csv"; weights.to_csv(path, index=False)
-            code = build_effective_weight_strategy(path, etf_raw=True)
             cost = {"open_tax": 0, "close_tax": 0, "open_commission": 0.0003, "close_commission": 0.0003,
                     "min_commission": 5, "slippage_ratio": config["engine_slippage_ratio"]}
+            code = build_effective_weight_strategy(path, etf_raw=True, order_cost=cost,
+                                                   slippage_ratio=config["engine_slippage_ratio"])
             result = get_worker().submit({"code": code, "start_date": config["start_date"], "end_date": config["end_date"],
                                           "initial_cash": config["initial_cash"], "frequency": "day", "benchmark": None,
                                           "fq": "none", "release_id": config["release_id"], "strategy_name": f"ETF {item['template']}",

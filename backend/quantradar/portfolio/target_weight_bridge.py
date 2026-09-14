@@ -16,7 +16,13 @@ def select_effective_weight_date(weights_index: Any, day: Any) -> pd.Timestamp |
     return None if eligible.empty else eligible[-1]
 
 
-def build_effective_weight_strategy(weights_csv: str | Path, *, etf_raw: bool = False) -> str:
+def build_effective_weight_strategy(weights_csv: str | Path, *, etf_raw: bool = False,
+                                    order_cost: Mapping[str, Any] | None = None,
+                                    slippage_ratio: float = 0.0) -> str:
+    cost = dict(order_cost or {})
+    cost_literal = repr({"open_tax": float(cost.get("open_tax", 0)), "close_tax": float(cost.get("close_tax", 0)),
+                         "open_commission": float(cost.get("open_commission", .0003)), "close_commission": float(cost.get("close_commission", .0003)),
+                         "min_commission": float(cost.get("min_commission", 5))})
     return f'''# QuantRadar: effective-dated Target Weight -> BulletTrade
 import pandas as pd
 
@@ -51,6 +57,8 @@ def _rebalance(context):
 
 def initialize(context):
     {'set_option("current_bar_fq", "none")' if etf_raw else 'pass'}
+    set_order_cost(OrderCost(**{cost_literal}), type='fund')
+    set_slippage(PriceRelatedSlippage({float(slippage_ratio)!r}), type='fund')
 
 run_daily(_rebalance, '09:30')
 '''
