@@ -112,9 +112,6 @@ def _migrate_experiment_identity(engine) -> None:
     if "experiments" not in inspector.get_table_names():
         return
     columns = {item["name"] for item in inspector.get_columns("experiments")}
-    # Fresh tables already have the final shape.
-    if {"display_name", "experiment_id", "run_id", "source_refs", "artifact_refs", "idempotency_key"} <= columns:
-        return
     dialect = engine.dialect.name
     if dialect != "postgresql":
         # SQLite is used only by isolated tests.  Fresh test schemas get the
@@ -122,6 +119,7 @@ def _migrate_experiment_identity(engine) -> None:
         # files, which keeps the migration safe on unknown engines.
         return
     with engine.begin() as conn:
+        before_count = conn.execute(text("SELECT COUNT(*) FROM experiments")).scalar_one()
         if "display_name" not in columns and "name" in columns:
             conn.execute(text("ALTER TABLE experiments RENAME COLUMN name TO display_name"))
         if "experiment_id" not in columns:
@@ -132,9 +130,12 @@ def _migrate_experiment_identity(engine) -> None:
                              {"eid": str(uuid.uuid4()), "id": row.id})
             conn.execute(text("ALTER TABLE experiments ALTER COLUMN experiment_id SET NOT NULL"))
             conn.execute(text("ALTER TABLE experiments ADD CONSTRAINT uq_experiment_experiment_id UNIQUE (experiment_id)"))
+        # A PostgreSQL column rename preserves a unique constraint but changes
+        # its column reference to display_name.  Drop by semantics, not only
+        # the historical constraint name.
         for constraint in inspector.get_unique_constraints("experiments"):
-            if constraint.get("name") == "uq_experiment_name":
-                conn.execute(text("ALTER TABLE experiments DROP CONSTRAINT uq_experiment_name"))
+            if constraint.get("name") and set(constraint.get("column_names") or []) in ({"name"}, {"display_name"}):
+                conn.execute(text(f'ALTER TABLE experiments DROP CONSTRAINT "{constraint["name"]}"'))
         for ddl in (
             "ALTER TABLE experiments ADD COLUMN IF NOT EXISTS run_id VARCHAR(64)",
             "ALTER TABLE experiments ADD COLUMN IF NOT EXISTS source_refs JSON",
@@ -144,6 +145,9 @@ def _migrate_experiment_identity(engine) -> None:
             conn.execute(text(ddl))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_experiment_idempotency_key "
                           "ON experiments (idempotency_key) WHERE idempotency_key IS NOT NULL"))
+        after_count = conn.execute(text("SELECT COUNT(*) FROM experiments")).scalar_one()
+        if before_count != after_count:
+            raise RuntimeError("experiment identity migration changed record count")
 
 
 def drop_all() -> None:
