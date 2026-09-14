@@ -299,3 +299,18 @@ def test_datahub_overview_qualification_keeps_etf_strict_account_closed():
     assert qualification['etf']['ETF_RAW'] == 'READY'
     assert qualification['etf']['ACCOUNT_STRICT'] == 'BLOCKED'
     assert qualification['alpha101']['industry_hierarchy'] == 'PIT_PARTIAL'
+
+
+def test_etf_raw_provider_refuses_unpublished_adjusted_modes(monkeypatch):
+    from types import SimpleNamespace
+    from quantradar.providers.investment_data.provider import InvestmentDataProvider
+
+    class Reader:
+        def etf_master(self, symbols):
+            return {symbol: {'symbol': symbol} for symbol in symbols}
+
+    provider = InvestmentDataProvider()
+    provider._release_scope = SimpleNamespace(manifest={'datasets': {'etf_eod_price': {}}})
+    provider._supplemental_reader = Reader()
+    with pytest.raises(NotImplementedError, match='ETF_RAW'):
+        provider.get_price('510300.XSHG', '2024-01-02', '2024-01-02', fq='hfq')

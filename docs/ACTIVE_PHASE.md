@@ -2,7 +2,7 @@
 
 **Milestone:** `DATAHUB_ALPHA101_ETF_REQUIRED_DATA_V2`
 **Active Goal:** `ALPHA_ETF_G4_RELEASE_AND_REPLAY`
-**Status:** IN_PROGRESS
+**Status:** COMPLETE
 
 ## Scope
 
@@ -28,7 +28,7 @@ BulletTrade 引擎已在固定版本上完成实际成交的月度轮动回放�
 G3 已通过：Alpha101 三种模式与 ETF_RAW/严格账户资格已在固定 release 上明确记录，三级行业
 输入已重解析发布，DataHub overview 已展示资格。复权、PIT 严格和账户级缺口均保持 BLOCKED。
 
-当前 G4：验证固定版本离线重放、旧版回放与故障门禁，并完成验收汇总。
+G4 已通过：固定版本重复回放同 hash、旧版回放与隔离、缺失 release 失败、ETF 复权门禁和既有页面资格展示均已验证。完整矩阵见 [G4 最终验收](acceptance/alpha101-etf/g4_final_acceptance.md)。
 
 ## Queued Goals
 
