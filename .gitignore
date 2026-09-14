@@ -212,6 +212,7 @@ artifacts/
 helpers/bt_big_qmt_order_tags.json
 
 # ===== QuantRadar =====
+.playwright-cli/
 .venv/
 .venv-kronos/
 venv/
