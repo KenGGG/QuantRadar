@@ -16,8 +16,7 @@
 
 - **G0 Source Audit — PASSED.** 已归档 CSI300/500/1000 成分和权重、申万一级样本及五只股票三表的真实 AKShare 原始响应；普通企业、银行与保险 schema 已实测不同。中证权重单位为 PERCENT；申万权重仍是 UNIT_UNVERIFIED raw。所有当前历史财务响应均为 PIT_PARTIAL。详见 [G0 审计](acceptance/datahub-v3/g0_source_audit.md)。
 - **G1 Index Snapshot — PASSED.** `qr_index_snapshot_version` 与成员表已在固定 release 发布 CSI300/500/1000 和申万样本；业务 `content_hash` 不含抓取元数据或行顺序，同内容实测 `NO_CHANGE`，变化会追加 revision。正式 CLI 仅在固定 SSE 交易日 20:30 Asia/Shanghai 后执行；申万仅在周五取得实际快照且不补造日期。首个 release 与复读结果见 [G1 记录](acceptance/datahub-v3/g1_first_snapshot_release.md)。
-- **G2 Financial Canonical — IN_PROGRESS.**
-- **G2 Financial Canonical — QUEUED.** 仅覆盖 600519.SH、000333.SZ、300750.SZ、600036.SH、601318.SH，自 2018 至最新报告期。原公告事实与 `conservative_available_at`/规则版本分开；银行、保险只验证 schema 与 NULL 语义。
+- **G2 Financial Canonical — IN_PROGRESS.** 仅覆盖 600519.SH、000333.SZ、300750.SZ、600036.SH、601318.SH，自 2018 至最新报告期。原公告事实与 `conservative_available_at`/规则版本分开；银行、保险只验证 schema 与 NULL 语义。
 - **G3 Release & Replay — QUEUED.** 验证版本固定查询、调度、旧 release 隔离和 FactorLab 冻结基线未变；之后结束 V3 P0，不进入 ETF NAV 或基金域。
 
 ### Frozen preceding milestone
