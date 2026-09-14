@@ -16,7 +16,7 @@ import os
 import csv
 import json
 import tempfile
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -807,6 +807,44 @@ def factorlab_batch_summary(experiment_id: str) -> Dict[str, Any]:
     return {"experiment_id":experiment_id,"status":config.get("status"),"error":config.get("error"),
             "requested":len(config.get("alpha_ids", [])),"completed":len(items),"items":items,
             "pool":{"type":config.get("pool_type"),"members_hash":config.get("members_hash"),"snapshot_date":config.get("snapshot_date")}}
+
+
+@app.get("/api/factorlab/batches/{experiment_id}/correlation")
+def factorlab_batch_correlation(experiment_id: str) -> Dict[str, Any]:
+    from quantradar.storage import get_experiment
+    from quantradar.factorlab.correlation import complete_link_clusters, pairwise_summary
+    try: row = get_experiment(experiment_id)
+    except RuntimeError as exc: raise HTTPException(status_code=503, detail=str(exc))
+    if not row or row.get("kind") != "factor": raise HTTPException(status_code=404, detail="FactorLab 批次不存在")
+    config = row.get("config") or {}
+    root = (Path.cwd() / "runs" / "factorlab" / experiment_id).resolve()
+    factors = {}
+    for item in config.get("items", []):
+        path = Path(str(item.get("value_artifact") or "")).resolve()
+        if not path.is_file() or root not in path.parents: continue
+        factors[int(item["alpha_id"])] = pd.read_parquet(path)
+    pairs = pairwise_summary(factors)
+    return {"pairs": pairs, "clusters": complete_link_clusters(sorted(factors), pairs),
+            "threshold": .8, "min_members": 20, "min_dates": 60}
+
+
+@app.post("/api/factorlab/batches/{experiment_id}/representatives")
+def factorlab_freeze_representatives(experiment_id: str, payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    from quantradar.storage import get_experiment, update_experiment
+    try: row = get_experiment(experiment_id)
+    except RuntimeError as exc: raise HTTPException(status_code=503, detail=str(exc))
+    if not row or row.get("kind") != "factor": raise HTTPException(status_code=404, detail="FactorLab 批次不存在")
+    config = row.get("config") or {}
+    if config.get("representative_selection"): raise HTTPException(status_code=409, detail="代表因子已冻结")
+    selected=sorted({int(x) for x in payload.get("alpha_ids") or []})
+    reasons=payload.get("reasons") or {}
+    if not selected or any(str(x) not in reasons or not str(reasons[str(x)]).strip() for x in selected):
+        raise HTTPException(status_code=400, detail="每个代表因子均需填写保留理由")
+    allowed={int(item["alpha_id"]) for item in config.get("items", [])}
+    if not set(selected) <= allowed: raise HTTPException(status_code=400, detail="代表因子必须来自已完成批次")
+    config["representative_selection"]={"alpha_ids":selected,"reasons":{str(x):str(reasons[str(x)]) for x in selected},"frozen_at":datetime.now(timezone.utc).isoformat()}
+    update_experiment(experiment_id,config=config)
+    return {"experiment_id":experiment_id,"representative_selection":config["representative_selection"]}
 
 
 @app.get("/api/backtest/runs/{run_id}")
