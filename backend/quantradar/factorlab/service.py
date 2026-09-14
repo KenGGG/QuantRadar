@@ -136,7 +136,7 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
                     eval_cache.write_text(json.dumps(result)); status = "EVALUATED"
                 epath.write_text(json.dumps(result))
                 validation = result.get("validation", {})
-                evaluations[str(horizon)] = {"status": status, "artifact": str(epath), "summary": {k: validation.get(k) for k in ("valid_dates", "ic_mean", "rank_ic_mean", "rank_ic_std", "rank_ic_positive_ratio", "mean_cross_section", "top_quantile_turnover")}, "scopes": result}
+                evaluations[str(horizon)] = {"status": status, "artifact": str(epath), "summary": {k: validation.get(k) for k in ("valid_dates", "ic_mean", "rank_ic_mean", "rank_ic_std", "rank_ic_positive_ratio", "rank_ic_positive_month_ratio", "mean_cross_section", "top_quantile_turnover")}, "scopes": result}
             config["items"].append({"alpha_id": alpha_id, "calculation": calc_status, "value_artifact": str(value_path), "evaluations": evaluations})
             update_experiment(batch_id, config=config)
         config["status"] = "SUCCESS"

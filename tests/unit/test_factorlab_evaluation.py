@@ -23,6 +23,8 @@ def test_evaluation_requires_full_cross_section_and_full_rolling_window():
     assert result["rolling_60d_ic"][58] is None
     assert result["rolling_60d_ic"][59] == 1.0
     assert result["rank_ic_positive_ratio"] == 1.0
+    assert result["rank_ic_positive_month_ratio"] == 1.0
+    assert len(result["monthly_rank_ic"]) == 3
     assert result["mean_cross_section"] == 20.0
     assert result["top_quantile_turnover"] == 0.0
 

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from qlib.contrib.eva.alpha import calc_ic
 
-EVALUATION_VERSION = "factorlab-eval-v2"
+EVALUATION_VERSION = "factorlab-eval-v3"
 
 
 def split_dates(index: pd.Index, ratios: tuple[float, float, float] = (.6, .2, .2)) -> dict[str, list[pd.Timestamp]]:
@@ -57,6 +57,11 @@ def evaluate(factor: pd.DataFrame, label: pd.DataFrame, *, min_cross_section: in
         top_members_by_day.append(set(joined.index[bins == bins.max()].astype(str)) if quantiles is not None else set())
     frame = pd.DataFrame(daily)
     valid = frame.dropna(subset=["ic"])
+    monthly_rank_ic: list[dict[str, float | str]] = []
+    if len(valid):
+        grouped = valid.assign(month=pd.to_datetime(valid["date"]).dt.to_period("M"))
+        monthly_rank_ic = [{"month": str(month), "rank_ic": float(values.rank_ic.mean())}
+                           for month, values in grouped.groupby("month", sort=True)]
     rolling = frame.ic.rolling(60, min_periods=60).mean().where(frame.ic.rolling(60, min_periods=60).count() == 60)
     turnovers = []
     previous: set[str] | None = None
@@ -72,6 +77,8 @@ def evaluate(factor: pd.DataFrame, label: pd.DataFrame, *, min_cross_section: in
             "ic_std": float(valid.ic.std(ddof=1)) if len(valid) > 1 else None,
             "rank_ic_std": float(valid.rank_ic.std(ddof=1)) if len(valid) > 1 else None,
             "rank_ic_positive_ratio": float((valid.rank_ic > 0).mean()) if len(valid) else None,
+            "monthly_rank_ic": monthly_rank_ic,
+            "rank_ic_positive_month_ratio": float(np.mean([row["rank_ic"] > 0 for row in monthly_rank_ic])) if monthly_rank_ic else None,
             "mean_cross_section": float(valid["count"].mean()) if len(valid) else None,
             "top_quantile_turnover": float(np.mean(turnovers)) if turnovers else None,
             "rolling_60d_ic": [None if pd.isna(x) else float(x) for x in rolling], "daily": daily}
