@@ -831,6 +831,22 @@ def factorlab_batch_summary(experiment_id: str) -> Dict[str, Any]:
             "holdout_access":({k:v for k,v in config.get("holdout_access", {}).items() if k != "artifact"} if config.get("holdout_access") else None)}
 
 
+@app.get("/api/factorlab/batches/{experiment_id}/evaluation/{alpha_id}/{horizon}")
+def factorlab_batch_evaluation_artifact(experiment_id: str, alpha_id: int, horizon: int):
+    """Return a registered evaluation artifact; callers never provide a filesystem path."""
+    from quantradar.storage import get_experiment
+    row = get_experiment(experiment_id)
+    if not row or row.get("kind") != "factor":
+        raise HTTPException(status_code=404, detail="FactorLab 批次不存在")
+    item = next((x for x in (row.get("config") or {}).get("items", []) if int(x.get("alpha_id", -1)) == alpha_id), None)
+    artifact = ((item or {}).get("evaluations") or {}).get(str(horizon), {}).get("artifact")
+    path = Path(str(artifact or "")).resolve()
+    root = (Path.cwd() / "runs" / "factorlab" / experiment_id).resolve()
+    if not path.is_file() or root not in path.parents:
+        raise HTTPException(status_code=404, detail="FactorLab 评价产物不存在")
+    return FileResponse(path, media_type="application/json", filename=path.name)
+
+
 @app.get("/api/factorlab/batches/{experiment_id}/correlation")
 def factorlab_batch_correlation(experiment_id: str) -> Dict[str, Any]:
     from quantradar.storage import get_experiment
