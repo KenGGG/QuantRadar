@@ -174,6 +174,21 @@ def build_execution_artifacts(weights_path: Path, run_dir: Path, artifact_root: 
     return {"target_weights": str(weights_path), "target_vs_actual": str(compare_path), "orders": str(order_path), "diagnostics": str(diagnostics_path)}
 
 
+def valuation_preflight(panel: pd.DataFrame, weights: pd.DataFrame, end: str, template: str) -> list[dict[str, Any]]:
+    """Check daily close valuation only for positions that this template can hold."""
+    missing: list[dict[str, Any]] = []
+    dates = pd.DatetimeIndex(panel.index)
+    effective_dates = sorted(pd.to_datetime(weights["effective_date"]).unique())
+    for pos, effective in enumerate(effective_dates):
+        next_effective = effective_dates[pos + 1] if pos + 1 < len(effective_dates) else pd.Timestamp(end) + pd.Timedelta("1D")
+        held = weights[pd.to_datetime(weights["effective_date"]) == effective]["security"].tolist()
+        for day in dates[(dates >= effective) & (dates < next_effective) & (dates <= pd.Timestamp(end))]:
+            for security in held:
+                if pd.isna(panel.loc[day, security]):
+                    missing.append({"template":template, "effective_date":str(pd.Timestamp(effective).date()), "date":str(pd.Timestamp(day).date()), "security":security, "field":"close_valuation"})
+    return missing
+
+
 def create_experiment_group(*, release_id: str, start: str, end: str, templates: list[str],
                             initial_cash: float = 500000, slippage_bps: float = 0,
                             symbols: list[str] | None = None) -> dict[str, Any]:
@@ -190,6 +205,13 @@ def create_experiment_group(*, release_id: str, start: str, end: str, templates:
         raise ValueError("at least one ETF symbol is required")
     panel = load_close_panel(release_id, pool, start, end)
     checks = {template: preflight(panel, template, start, end) for template in templates}
+    for template, check in checks.items():
+        if not check["blocked"]:
+            weights = build_weights(panel, template, start, end)
+            valuation_missing = valuation_preflight(panel, weights, end, template)
+            check["valuation_missing"] = valuation_missing
+            check["missing"].extend(valuation_missing)
+            check["blocked"] = bool(check["missing"])
     from quantradar.config import load_datahub_config
     from quantradar.datahub.reader import ReleaseReader
     scope = ReleaseReader(load_datahub_config()).resolve(release_id)

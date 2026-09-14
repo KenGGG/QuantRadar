@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from quantradar.etf_research import build_execution_artifacts, build_weights, preflight
+from quantradar.etf_research import build_execution_artifacts, build_weights, preflight, valuation_preflight
 from quantradar.portfolio.target_weight_bridge import build_effective_weight_strategy
 
 
@@ -62,3 +62,12 @@ def test_execution_artifacts_keep_target_actual_and_native_orders(tmp_path):
     compare = pd.read_csv(artifacts["target_vs_actual"])
     assert np.isclose(compare.loc[0,"actual_weight"], .9) and np.isclose(compare.loc[0,"weight_difference"], -.1)
     assert (tmp_path / "artifacts" / "orders.csv").is_file()
+
+
+def test_daily_valuation_only_checks_positions_the_template_holds():
+    panel = _panel()
+    weights = pd.DataFrame([{"effective_date":"2021-03-01","security":"510050.SH","target_weight":1.0}])
+    panel.loc[pd.Timestamp("2021-03-02"), "510300.SH"] = np.nan
+    assert not valuation_preflight(panel, weights, "2021-03-03", "equal_weight")
+    panel.loc[pd.Timestamp("2021-03-02"), "510050.SH"] = np.nan
+    assert valuation_preflight(panel, weights, "2021-03-03", "equal_weight")[0]["field"] == "close_valuation"
