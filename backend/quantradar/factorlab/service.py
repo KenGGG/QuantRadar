@@ -10,7 +10,7 @@ from typing import Any
 import pandas as pd
 
 from .cache import cache_key, operator_bundle_hash
-from .evaluation import evaluate, forward_open_label
+from .evaluation import evaluate, forward_open_label, split_dates, dates_within_label_window
 
 _EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="factorlab")
 
@@ -87,6 +87,9 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
     root = Path.cwd() / "runs" / "factorlab" / batch_id; root.mkdir(parents=True, exist_ok=True)
     try:
         panel, opens = _panel(config)
+        requested_dates = opens.loc[config["start_date"]:config["end_date"]].index
+        splits = split_dates(requested_dates)
+        config["split_dates"] = {name: [str(pd.Timestamp(x).date()) for x in dates] for name, dates in splits.items()}
         catalog = {r["alpha_id"]: r for r in dependency_matrix()}
         for alpha_id in config["alpha_ids"]:
             row = catalog[alpha_id]
@@ -97,18 +100,57 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
             else: factor = compute(alpha_id, panel, adv_basis="amount", price_mode="RAW"); factor.to_parquet(value_path); calc_status = "COMPUTED"
             evaluations = {}
             for horizon in config["horizons"]:
-                ekey = cache_key({"calculation_key": key, "horizon": horizon, "min_cross_section": config["min_cross_section"], "direction_policy": "no_flip", "evaluation": "factorlab-eval-v1"})
+                eligible = {scope: dates_within_label_window(dates, requested_dates, horizon) for scope, dates in splits.items()}
+                ekey = cache_key({"calculation_key": key, "horizon": horizon, "splits": config["split_dates"], "min_cross_section": config["min_cross_section"], "direction_policy": "no_flip", "evaluation": "factorlab-eval-v1"})
                 epath = root / "evaluation" / f"alpha{alpha_id:03}_h{horizon}_{ekey}.json"; epath.parent.mkdir(exist_ok=True)
                 if epath.exists(): result = json.loads(epath.read_text()); status = "CACHE_HIT"
                 else:
                     label = forward_open_label(opens, horizon)
-                    factor_eval = factor.loc[config["start_date"]:config["end_date"]]
-                    result = evaluate(factor_eval, label.loc[factor_eval.index], min_cross_section=config["min_cross_section"])
+                    # Holdout remains uncomputed until an explicit, immutable user selection.
+                    result = {scope: evaluate(factor.loc[dates], label.loc[dates], min_cross_section=config["min_cross_section"])
+                              for scope, dates in eligible.items() if scope != "holdout"}
                     epath.write_text(json.dumps(result)); status = "EVALUATED"
-                evaluations[str(horizon)] = {"status": status, "artifact": str(epath), "summary": {k: result[k] for k in ("valid_dates", "ic_mean", "rank_ic_mean")}}
+                validation = result.get("validation", {})
+                evaluations[str(horizon)] = {"status": status, "artifact": str(epath), "summary": {k: validation.get(k) for k in ("valid_dates", "ic_mean", "rank_ic_mean")}, "scopes": result}
             config["items"].append({"alpha_id": alpha_id, "calculation": calc_status, "value_artifact": str(value_path), "evaluations": evaluations})
             update_experiment(batch_id, config=config)
         config["status"] = "SUCCESS"
     except Exception as exc:
         config["status"] = "FAILED"; config["error"] = str(exc)
     update_experiment(batch_id, config=config)
+
+
+def evaluate_holdout(batch_id: str) -> dict[str, Any]:
+    """Evaluate only frozen representatives on the previously unseen holdout split."""
+    from quantradar.storage import get_experiment, update_experiment
+    row = get_experiment(batch_id)
+    if not row or row.get("kind") != "factor":
+        raise ValueError("FactorLab batch does not exist")
+    config = row.get("config") or {}
+    selection = config.get("representative_selection")
+    if not selection:
+        raise ValueError("freeze representative factors before accessing holdout")
+    if config.get("holdout_access"):
+        return config["holdout_access"]
+    panel, opens = _panel(config)
+    requested_dates = opens.loc[config["start_date"]:config["end_date"]].index
+    split = split_dates(requested_dates)["holdout"]
+    output: dict[str, Any] = {"accessed_at": pd.Timestamp.now(tz="UTC").isoformat(), "alpha_ids": selection["alpha_ids"], "evaluations": {}}
+    root = (Path.cwd() / "runs" / "factorlab" / batch_id).resolve()
+    by_id = {int(x["alpha_id"]): x for x in config.get("items", [])}
+    for alpha_id in selection["alpha_ids"]:
+        item = by_id[int(alpha_id)]
+        value_path = Path(item["value_artifact"]).resolve()
+        if not value_path.is_file() or root not in value_path.parents:
+            raise ValueError("registered factor artifact is unavailable")
+        factor = pd.read_parquet(value_path); factor.index = pd.to_datetime(factor.index)
+        for horizon in config["horizons"]:
+            dates = dates_within_label_window(split, requested_dates, int(horizon))
+            label = forward_open_label(opens, int(horizon))
+            result = evaluate(factor.loc[dates], label.loc[dates], min_cross_section=config["min_cross_section"])
+            output["evaluations"].setdefault(str(alpha_id), {})[str(horizon)] = result
+    path = root / "evaluation" / "holdout_representatives.json"; path.write_text(json.dumps(output))
+    output["artifact"] = str(path)
+    config["holdout_access"] = output
+    update_experiment(batch_id, config=config)
+    return output

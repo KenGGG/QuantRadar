@@ -8,6 +8,24 @@ from qlib.contrib.eva.alpha import calc_ic
 EVALUATION_VERSION = "factorlab-eval-v1"
 
 
+def split_dates(index: pd.Index) -> dict[str, list[pd.Timestamp]]:
+    """Deterministically split the requested trading dates 60/20/20."""
+    dates = list(pd.DatetimeIndex(index).sort_values().unique())
+    n = len(dates)
+    research_end, validation_end = int(n * .6), int(n * .8)
+    return {"research": dates[:research_end], "validation": dates[research_end:validation_end], "holdout": dates[validation_end:]}
+
+
+def dates_within_label_window(dates: list[pd.Timestamp], all_dates: pd.Index, horizon: int) -> list[pd.Timestamp]:
+    """Keep t only when open(t+1) and open(t+h+1) remain in this split."""
+    positions = {pd.Timestamp(d): pos for pos, d in enumerate(pd.DatetimeIndex(all_dates))}
+    allowed = set(pd.Timestamp(d) for d in dates)
+    return [pd.Timestamp(day) for day in dates
+            if positions[pd.Timestamp(day)] + horizon + 1 < len(all_dates)
+            and pd.Timestamp(all_dates[positions[pd.Timestamp(day)] + 1]) in allowed
+            and pd.Timestamp(all_dates[positions[pd.Timestamp(day)] + horizon + 1]) in allowed]
+
+
 def forward_open_label(open_panel: pd.DataFrame, horizon: int) -> pd.DataFrame:
     if horizon not in (1, 5, 20):
         raise ValueError("horizon must be one of 1, 5, 20")

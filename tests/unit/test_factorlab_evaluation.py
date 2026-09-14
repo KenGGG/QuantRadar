@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from quantradar.factorlab.evaluation import evaluate, forward_open_label
+from quantradar.factorlab.evaluation import dates_within_label_window, evaluate, forward_open_label, split_dates
 
 
 def test_labels_never_use_same_day_open():
@@ -21,3 +21,11 @@ def test_evaluation_requires_full_cross_section_and_full_rolling_window():
     assert result["valid_dates"] == 61
     assert result["rolling_60d_ic"][58] is None
     assert result["rolling_60d_ic"][59] == 1.0
+
+
+def test_split_excludes_labels_that_cross_a_boundary():
+    dates = pd.date_range("2024-01-01", periods=20, freq="B")
+    splits = split_dates(dates)
+    assert [len(splits[x]) for x in ("research", "validation", "holdout")] == [12, 4, 4]
+    assert dates[11] not in dates_within_label_window(splits["research"], dates, 1)
+    assert dates[16] in dates_within_label_window(splits["holdout"], dates, 1)

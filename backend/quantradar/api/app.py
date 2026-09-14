@@ -847,6 +847,17 @@ def factorlab_freeze_representatives(experiment_id: str, payload: Dict[str, Any]
     return {"experiment_id":experiment_id,"representative_selection":config["representative_selection"]}
 
 
+@app.post("/api/factorlab/batches/{experiment_id}/holdout")
+def factorlab_holdout(experiment_id: str) -> Dict[str, Any]:
+    """The only holdout access path; requires an immutable representative selection."""
+    from quantradar.factorlab.service import evaluate_holdout
+    try:
+        result = evaluate_holdout(experiment_id)
+        return {"experiment_id": experiment_id, "holdout_access": {k: v for k, v in result.items() if k != "artifact"}}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @app.get("/api/backtest/runs/{run_id}")
 def backtest_run_status(run_id: str) -> Dict[str, Any]:
     """查询运行结果：PENDING/RUNNING/SUCCESS/FAILED + 落库快照/指标。"""
