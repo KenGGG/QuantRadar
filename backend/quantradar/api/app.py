@@ -845,7 +845,10 @@ def factorlab_batch_correlation(experiment_id: str) -> Dict[str, Any]:
         path = Path(str(item.get("value_artifact") or "")).resolve()
         if not path.is_file() or root not in path.parents: continue
         paths[int(item["alpha_id"])] = str(path)
-    pairs = pairwise_summary_paths(paths)
+    correlation_dates = list((config.get("split_dates") or {}).get("research", [])) + list((config.get("split_dates") or {}).get("validation", []))
+    if not correlation_dates:
+        raise HTTPException(status_code=409, detail="批次尚未冻结研究／验证分段")
+    pairs = pairwise_summary_paths(paths, dates=correlation_dates)
     return {"pairs": pairs, "clusters": complete_link_clusters(sorted(paths), pairs),
             "threshold": .8, "min_members": 20, "min_dates": 60}
 

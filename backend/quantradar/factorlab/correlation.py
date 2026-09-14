@@ -22,12 +22,17 @@ def pairwise_summary(factors: dict[int, pd.DataFrame], *, min_members: int = 20,
     return out
 
 
-def pairwise_summary_paths(paths: dict[int, str], *, min_members: int = 20, min_dates: int = 60) -> list[dict]:
+def pairwise_summary_paths(paths: dict[int, str], *, dates: list[str] | None = None, min_members: int = 20, min_dates: int = 60) -> list[dict]:
     """Read a pair of persisted factors at a time; never retain the 82-panel matrix."""
     ids = sorted(paths); out=[]
     for pos, left_id in enumerate(ids):
         for right_id in ids[pos+1:]:
-            out.append(_pair_summary(left_id, right_id, pd.read_parquet(paths[left_id]), pd.read_parquet(paths[right_id]), min_members=min_members, min_dates=min_dates))
+            left, right = pd.read_parquet(paths[left_id]), pd.read_parquet(paths[right_id])
+            if dates is not None:
+                allowed = pd.DatetimeIndex(pd.to_datetime(dates))
+                left.index, right.index = pd.to_datetime(left.index), pd.to_datetime(right.index)
+                left, right = left.loc[left.index.intersection(allowed)], right.loc[right.index.intersection(allowed)]
+            out.append(_pair_summary(left_id, right_id, left, right, min_members=min_members, min_dates=min_dates))
     return out
 
 def complete_link_clusters(ids: list[int], pairs: list[dict], threshold: float=.8) -> list[list[int]]:
