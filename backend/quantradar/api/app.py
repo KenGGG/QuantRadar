@@ -301,7 +301,36 @@ def _overview_data_sources(manifest: Dict[str, Any] | None, base_coverage: Dict[
             rows.append(row(domain, name, "/data/quantradar_data", upstream, datasets[domain], read_rule))
     if datasets.get("security_lifecycle"):
         rows.append(row("security_lifecycle", "基础资料", "/data/investment_data", "Tushare 名录", datasets["security_lifecycle"], "上市、退市判断"))
+    for domain, name, upstream, read_rule in (
+        ("etf_eod_price", "ETF 原始日线", "东方财富", "仅 ETF_RAW 研究"),
+        ("etf_master", "ETF 主数据", "官方身份文件", "上市边界读取"),
+        ("etf_corporate_action", "ETF 公司行为", "官方公告", "样本覆盖，不开放总回报"),
+        ("etf_trading_rule", "ETF 交易规则", "交易所规则", "部分规则，不开放严格账户"),
+    ):
+        if datasets.get(domain):
+            rows.append(row(domain, name, "/data/quantradar_data", upstream, datasets[domain], read_rule))
     return rows
+
+
+def _research_qualification(manifest: Dict[str, Any] | None) -> Dict[str, Any]:
+    """Expose qualification facts; never infer strict eligibility from row counts."""
+    datasets = (manifest or {}).get("datasets", {})
+    etf_raw = bool(datasets.get("etf_eod_price") and datasets.get("etf_master"))
+    hierarchy = (datasets.get("sw_industry_history") or {}).get("industry_code_levels") == ["L1", "L2", "L3"]
+    return {
+        "etf": {
+            "ETF_RAW": "READY" if etf_raw else "BLOCKED",
+            "ETF_HFQ_RESEARCH": "BLOCKED",
+            "ACCOUNT_STRICT": "BLOCKED",
+            "blockers": ["ETF_ADJUSTMENT_FACTOR_UNPUBLISHED", "ETF_EVENT_COVERAGE_INCOMPLETE", "ETF_TRADING_RULES_INCOMPLETE"],
+        },
+        "alpha101": {
+            "ALPHA101_RAW_ENGINEERING": {"ready": 82, "partial": 19, "blocked": 0},
+            "ALPHA101_ADJ_RESEARCH": {"ready": 0, "partial": 0, "blocked": 101},
+            "ALPHA101_PIT_STRICT": {"ready": 0, "partial": 0, "blocked": 101},
+            "industry_hierarchy": "PIT_PARTIAL" if hierarchy else "BLOCKED",
+        },
+    }
 
 
 def _candidate_issues(candidate: Dict[str, Any] | None, *, include_symbols: bool) -> List[Dict[str, Any]]:
@@ -342,7 +371,7 @@ def datahub_overview() -> Dict[str, Any]:
         manifest = None
     candidate = saved('candidate-check.json')
     base_coverage = saved('base-coverage.json')
-    return {'release': _overview_release(manifest), 'base_coverage': base_coverage, 'data_sources': _overview_data_sources(manifest, base_coverage), 'base_inventory': saved('base_inventory.json'), 'gap_plan': saved('gap_plan.json'),
+    return {'release': _overview_release(manifest), 'qualification': _research_qualification(manifest), 'base_coverage': base_coverage, 'data_sources': _overview_data_sources(manifest, base_coverage), 'base_inventory': saved('base_inventory.json'), 'gap_plan': saved('gap_plan.json'),
             'work_queue': DataHubWorkQueue(root / 'work-queue.json').status(),
             'update': DailyUpdate(service).status(), 'job': service.job_status(),
             'candidate': {k: candidate[k] for k in ('candidate_id', 'quality', 'coverage', 'row_count')} if candidate else None,

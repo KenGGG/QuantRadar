@@ -287,3 +287,15 @@ def test_release_pinned_etf_master_is_available_to_the_backtest_engine():
     assert info['type'] == 'fund'
     assert info['name'] == '沪深300ETF'
     assert str(info['start_date'].date()) == '2012-05-28'
+
+
+def test_datahub_overview_qualification_keeps_etf_strict_account_closed():
+    from quantradar.api.app import _research_qualification
+
+    qualification = _research_qualification({'datasets': {
+        'etf_eod_price': {'rows': 1}, 'etf_master': {'rows': 1},
+        'sw_industry_history': {'industry_code_levels': ['L1', 'L2', 'L3']},
+    }})
+    assert qualification['etf']['ETF_RAW'] == 'READY'
+    assert qualification['etf']['ACCOUNT_STRICT'] == 'BLOCKED'
+    assert qualification['alpha101']['industry_hierarchy'] == 'PIT_PARTIAL'
