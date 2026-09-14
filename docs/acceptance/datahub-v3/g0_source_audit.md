@@ -30,18 +30,22 @@ AKShare 1.18.94 exposes the following G0 adapters:
 
 ## Current live evidence
 
-On 2026-09-14, CSI300 constituent and weight responses were successfully
-captured. A subsequent CSI500 request remained non-responsive in the local
-network environment and was stopped without creating a partial fabricated
-receipt. The remaining G0 probes must be retried by the explicit audit command
-before G0 can pass.
+On 2026-09-14, real raw responses were captured for CSI300, CSI500 and CSI1000
+constituents and weights; a SW L1 (`801010`) component sample; and the three
+statements of 600519.SH, 000333.SZ, 300750.SZ, 600036.SH and 601318.SH. The
+machine receipt contains 24 captures because two interrupted attempts were
+preserved independently rather than overwritten.
 
-This is a source-health observation, not a reason to mark the entire product or
-the preceding FactorLab milestone blocked.
+The observed balance-sheet schemas confirm the need for a small canonical
+mapping: 319 fields for the ordinary-company samples, 221 for the bank and 253
+for the insurer. CSI weights have a verified percent unit. SW's reported
+“latest weight” remains raw because the source contract does not prove its unit.
+All historical financial responses remain `PIT_PARTIAL`: a current API response
+does not establish what prior revision was visible on the stated notice date.
 
 ## G0 exit criteria
 
-G0 passes only after raw evidence exists for CSI300/500/1000, a SW L1 sample,
+G0 passed after raw evidence was retained for CSI300/500/1000, a SW L1 sample,
 and all three statements for 600519.SH, 000333.SZ, 300750.SZ, 600036.SH and
-601318.SH; the evidence must record real returned columns, units and date
-semantics. A successful function import is insufficient.
+601318.SH. The evidence records real returned columns, units and date semantics;
+a successful function import was not treated as proof.
