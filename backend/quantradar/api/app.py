@@ -792,6 +792,23 @@ def factorlab_batch_get(experiment_id: str) -> Dict[str, Any]:
     return row
 
 
+@app.get("/api/factorlab/batches/{experiment_id}/summary")
+def factorlab_batch_summary(experiment_id: str) -> Dict[str, Any]:
+    """Presentation-safe task summary; artifact filesystem paths stay private."""
+    from quantradar.storage import get_experiment
+    try: row = get_experiment(experiment_id)
+    except RuntimeError as exc: raise HTTPException(status_code=503, detail=str(exc))
+    if not row or row.get("kind") != "factor": raise HTTPException(status_code=404, detail="FactorLab 批次不存在")
+    config = row.get("config") or {}
+    items=[]
+    for item in config.get("items", []):
+        evaluations={h:{"status":v.get("status"), "summary":v.get("summary")} for h,v in item.get("evaluations", {}).items()}
+        items.append({"alpha_id":item.get("alpha_id"),"calculation":item.get("calculation"),"evaluations":evaluations})
+    return {"experiment_id":experiment_id,"status":config.get("status"),"error":config.get("error"),
+            "requested":len(config.get("alpha_ids", [])),"completed":len(items),"items":items,
+            "pool":{"type":config.get("pool_type"),"members_hash":config.get("members_hash"),"snapshot_date":config.get("snapshot_date")}}
+
+
 @app.get("/api/backtest/runs/{run_id}")
 def backtest_run_status(run_id: str) -> Dict[str, Any]:
     """查询运行结果：PENDING/RUNNING/SUCCESS/FAILED + 落库快照/指标。"""
