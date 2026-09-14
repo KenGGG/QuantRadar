@@ -1,6 +1,8 @@
 """Conservative mappings from immutable financial source versions."""
 from __future__ import annotations
 
+import hashlib
+
 
 def conservative_available_at(announcement_date: str | None, precision: str, trade_days: list[str]) -> tuple[str | None, str | None]:
     """Derive a research rule without changing the source announcement fact."""
@@ -29,3 +31,9 @@ def map_statement_row(statement_type: str, raw: dict) -> dict[str, float | None]
     def number(value):
         return None if value is None else float(value)
     return {target: number(raw.get(source)) for target, source in _FIELDS[statement_type].items()}
+
+
+def statement_version_id(symbol: str, statement_type: str, report_period: str, raw_sha256: str) -> str:
+    """A supplier record identity changes only when its immutable receipt changes."""
+    value = "|".join((symbol, statement_type, report_period, raw_sha256))
+    return "sv_" + hashlib.sha256(value.encode()).hexdigest()[:40]

@@ -21,3 +21,11 @@ def test_map_income_row_preserves_nullable_fields_and_canonical_values():
     result = map_statement_row("income", {"TOTAL_OPERATE_INCOME": 10, "OPERATE_PROFIT": 3, "TOTAL_PROFIT": 4, "NETPROFIT": 2, "PARENT_NETPROFIT": 1})
     assert result["operating_revenue"] == 10.0
     assert result["net_profit_parent"] == 1.0
+
+
+def test_statement_version_identity_is_content_specific():
+    from quantradar.datahub.financial_canonical import statement_version_id
+    a = statement_version_id("600519.SH", "income", "2025-12-31", "a" * 64)
+    b = statement_version_id("600519.SH", "income", "2025-12-31", "b" * 64)
+    assert a != b
+    assert a == statement_version_id("600519.SH", "income", "2025-12-31", "a" * 64)
