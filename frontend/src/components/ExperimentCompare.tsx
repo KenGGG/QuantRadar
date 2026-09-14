@@ -56,7 +56,10 @@ export function ExperimentCompare() {
         name: exps[n]?.display_name || n,
         type: "line",
         showSymbol: false,
-        data: daily.map((d) => [String(d.date).slice(0, 10), d.total_value ?? null]),
+        data: daily.map((d) => {
+          const initialCash = Number((exps[n]?.snapshot?.config || exps[n]?.config || {}).initial_cash || 0);
+          return [String(d.date).slice(0, 10), initialCash > 0 && d.total_value != null ? d.total_value / initialCash : null];
+        }),
       });
     }
     const dates = Array.from(allDates).sort();
@@ -65,7 +68,7 @@ export function ExperimentCompare() {
       legend: { data: checked.map(id => exps[id]?.display_name || id) },
       grid: { left: 64, right: 16, top: 32, bottom: 28 },
       xAxis: { type: "category", data: dates },
-      yAxis: { type: "value", scale: true },
+      yAxis: { type: "value", scale: true, axisLabel: { formatter: (v: number) => v.toFixed(2) } },
       series,
     };
   })();
@@ -84,7 +87,7 @@ export function ExperimentCompare() {
             style={{ marginBottom: 12 }}
           />
           <div className="muted" style={{ marginBottom: 8 }}>
-            选中 {checked.length} 个实验，下方叠加净值曲线对比（数据区间以各自 Snapshot 为准）。
+            选中 {checked.length} 个实验，下方以 portfolio_value / initial_cash 叠加净值；每条曲线保留自己的日期轴与缺口。
           </div>
           {checked.length === 0 ? (
             <Empty description="请至少选择一个实验" />
@@ -93,7 +96,7 @@ export function ExperimentCompare() {
           )}
           <Table size="small" pagination={false} style={{ marginTop: 16 }} rowKey="experiment_id"
             dataSource={checked.map(id => exps[id]).filter(Boolean)}
-            columns={[{ title: "实验", dataIndex: "display_name" }, { title: "状态", render: (_, row) => row.error ? <span className="error">{String(row.error)}</span> : row.legacy ? "旧存证：版本未知" : "可复现" }, { title: "版本", render: (_, row) => String((row.config || {}).release_id || "未记录") }]} />
+            columns={[{ title: "实验", dataIndex: "display_name" }, { title: "状态", render: (_, row) => row.error ? <span className="error">{String(row.error)}</span> : row.legacy ? "旧存证：版本未知" : "可复现" }, { title: "版本", render: (_, row) => String((row.config || {}).release_id || "未记录") }, { title: "对象池", render: (_, row) => String((row.config || {}).pool_type || (row.config || {}).security || "未记录") }, { title: "模式", render: (_, row) => String((row.config || {}).fq || (row.config || {}).price_mode || "未记录") }, { title: "基准", render: (_, row) => String((row.config || {}).benchmark || "无") }]} />
         </>
       )}
     </Card>
