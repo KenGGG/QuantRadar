@@ -680,6 +680,39 @@ def datahub_releases() -> Dict[str, Any]:
         raise HTTPException(status_code=503, detail=f"本地 release 清单不可用：{exc}")
 
 
+@app.get("/api/etf/templates")
+def etf_templates() -> Dict[str, Any]:
+    from quantradar.etf_research import ETF_POOL, template_catalog
+    return {"pool": list(ETF_POOL), "price_mode": "ETF_RAW", "templates": template_catalog(),
+            "limitations": ["不含完整权益收益还原", "历史交易规则部分未知"]}
+
+
+@app.post("/api/etf/preflight")
+def etf_preflight(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    from quantradar.etf_research import ETF_POOL, load_close_panel, preflight
+    release_id = str(payload.get("release_id") or "").strip()
+    start, end = str(payload.get("start_date") or ""), str(payload.get("end_date") or "")
+    templates = payload.get("templates") or ["equal_weight"]
+    symbols = payload.get("symbols") or list(ETF_POOL)
+    if not release_id or not start or not end or start > end:
+        raise HTTPException(status_code=400, detail="release_id 与有效日期区间必填")
+    try:
+        panel = load_close_panel(release_id, list(symbols), start, end)
+        return {"release_id": release_id, "symbols": list(symbols),
+                "checks": [preflight(panel, str(template), start, end) for template in templates]}
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/api/factorlab/catalog")
+def factorlab_catalog() -> Dict[str, Any]:
+    from quantradar.datahub.alpha101.catalog import dependency_matrix
+    rows = dependency_matrix()
+    return {"factors": rows, "defaults": {"price_mode": "RAW", "adv_basis": "amount",
+            "pool_types": ["CUSTOM_STATIC_POOL", "INDEX_SNAPSHOT_STATIC_POOL"], "horizons": [1, 5, 20],
+            "min_cross_section": 20}}
+
+
 @app.get("/api/backtest/runs/{run_id}")
 def backtest_run_status(run_id: str) -> Dict[str, Any]:
     """查询运行结果：PENDING/RUNNING/SUCCESS/FAILED + 落库快照/指标。"""

@@ -8,9 +8,11 @@ import { RunExplorer } from "./components/RunExplorer";
 import { ExperimentCompare } from "./components/ExperimentCompare";
 import { ReportPage } from "./components/ReportPage";
 import { ResearchMVP } from "./components/ResearchMVP";
+import { ETFResearch } from "./components/ETFResearch";
+import { FactorLab } from "./components/FactorLab";
 
-type TabKey = "data" | "research" | "strategy" | "runs" | "experiments";
-const labels = { strategy: "策略回测", runs: "运行记录", data: "数据状态", research: "研报", experiments: "实验对比" };
+type TabKey = "data" | "research" | "strategy" | "runs" | "experiments" | "etf" | "factorlab";
+const labels = { strategy: "策略回测", runs: "运行记录", data: "数据状态", research: "研报", experiments: "实验对比", etf: "ETF 研究", factorlab: "FactorLab" };
 
 export function App() {
   const [health, setHealth] = useState<HealthResp | null>(null);
@@ -53,6 +55,8 @@ export function App() {
           {tab === "research" && <ResearchMVP />}
           {tab === "runs" && <RunExplorer onOpenReport={openReport} onEdit={editRun} />}
           {tab === "experiments" && <ExperimentCompare />}
+          {tab === "etf" && <ETFResearch />}
+          {tab === "factorlab" && <FactorLab />}
         </div>}
       </>}
     </main>

@@ -419,6 +419,11 @@ export interface ReleaseSummary { release_id: string; base_commit: string; suppl
 export function listDataHubReleases(): Promise<{ current_release_id: string; releases: ReleaseSummary[] }> {
   return httpJson("/api/datahub/releases");
 }
+export interface ETFTemplate { id: string; label: string; lookback: number; }
+export function getETFTemplates(): Promise<{ pool: string[]; price_mode: string; templates: ETFTemplate[]; limitations: string[] }> { return httpJson("/api/etf/templates"); }
+export function preflightETF(payload: { release_id: string; start_date: string; end_date: string; templates: string[]; symbols?: string[] }): Promise<{ checks: Array<{ template: string; blocked: boolean; missing: Array<Record<string, string>> }> }> { return httpJson("/api/etf/preflight", { method: "POST", body: JSON.stringify(payload) }); }
+export interface FactorCatalogRow { alpha_id: number; formula: string; fields: string[]; group: string; lookback_days: number; formula_hash: string; evaluation_status: string; }
+export function getFactorCatalog(): Promise<{ factors: FactorCatalogRow[]; defaults: Record<string, unknown> }> { return httpJson("/api/factorlab/catalog"); }
 
 export function getSnapshotLoad(path: string): Promise<Snapshot> {
   const qs = new URLSearchParams();

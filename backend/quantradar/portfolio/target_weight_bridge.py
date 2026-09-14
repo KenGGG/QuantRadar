@@ -16,36 +16,41 @@ def select_effective_weight_date(weights_index: Any, day: Any) -> pd.Timestamp |
     return None if eligible.empty else eligible[-1]
 
 
-def build_effective_weight_strategy(weights_csv: str | Path) -> str:
+def build_effective_weight_strategy(weights_csv: str | Path, *, etf_raw: bool = False) -> str:
     return f'''# QuantRadar: effective-dated Target Weight -> BulletTrade
 import pandas as pd
 
-_WEIGHTS = pd.read_csv(r"{Path(weights_csv).resolve()}", index_col=0, parse_dates=True)
+_WEIGHTS = pd.read_csv(r"{Path(weights_csv).resolve()}", parse_dates=['effective_date'])
 _LAST_APPLIED = None
 
 def _rebalance(context):
     global _LAST_APPLIED
     day = pd.Timestamp(context.current_dt).normalize()
-    eligible = _WEIGHTS.index[_WEIGHTS.index <= day]
+    eligible = _WEIGHTS[_WEIGHTS.effective_date <= day]
     if eligible.empty:
         return
-    effective_date = eligible[-1]
+    effective_date = eligible.effective_date.max()
     if _LAST_APPLIED is not None and effective_date <= _LAST_APPLIED:
         return
-    row = _WEIGHTS.loc[effective_date]
+    row = _WEIGHTS[_WEIGHTS.effective_date == effective_date]
     total = context.portfolio.total_value
     targets = set()
-    for security, weight in row.items():
+    for _, item in row.iterrows():
+        security, weight = item.security, item.target_weight
         if pd.notna(weight) and float(weight) > 0:
-            order_target_value(security, float(weight) * total)
             targets.add(security)
+    # Sell first so the following target buys see released cash.
     for security in list(context.portfolio.positions.keys()):
         if security not in targets:
             order_target_value(security, 0.0)
+    for _, item in row.iterrows():
+        security, weight = item.security, item.target_weight
+        if pd.notna(weight) and float(weight) > 0:
+            order_target_value(security, float(weight) * total)
     _LAST_APPLIED = effective_date
 
 def initialize(context):
-    pass
+    {'set_option("current_bar_fq", "none")' if etf_raw else 'pass'}
 
 run_daily(_rebalance, '09:30')
 '''
@@ -90,6 +95,7 @@ def run_unified_target_weight_backtest(
     initial_cash: float = 1_000_000.0,
     fq: str = "pre",
     benchmark: str = "000300.XSHG",
+    release_id: str | None = None,
     runs_dir: str | Path | None = None,
     extras: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -99,8 +105,23 @@ def run_unified_target_weight_backtest(
     run_dir = root / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     weights_csv = run_dir / "target_weights.csv"
-    weights.sort_index().to_csv(weights_csv)
-    code = build_effective_weight_strategy(weights_csv)
+    required = {"signal_date", "effective_date", "security", "target_weight"}
+    if not required <= set(weights.columns):
+        # Backward-compatible legacy wide weights: index is the signal date and
+        # columns are securities.  The new long artifact remains the only form
+        # written by this bridge.
+        wide = weights.copy()
+        wide.index.name = "signal_date"
+        weights = wide.reset_index().melt(id_vars=["signal_date"], var_name="security", value_name="target_weight")
+        weights["effective_date"] = pd.to_datetime(weights["signal_date"]) + pd.Timedelta(days=1)
+    if not required <= set(weights.columns):
+        raise ValueError(f"Target Weight requires columns: {sorted(required)}")
+    if (weights.target_weight.isna() | ~weights.target_weight.map(lambda x: pd.notna(x) and float(x) >= 0)).any():
+        raise ValueError("Target Weight contains invalid target_weight")
+    if (weights.groupby("effective_date").target_weight.sum() > 1.0000001).any():
+        raise ValueError("Target Weight exceeds 100% on an effective date")
+    weights.sort_values(["effective_date", "security"]).to_csv(weights_csv, index=False)
+    code = build_effective_weight_strategy(weights_csv, etf_raw=fq == "none")
     return run_unified_backtest(
         run_id,
         {
@@ -111,6 +132,7 @@ def run_unified_target_weight_backtest(
             "frequency": "day",
             "benchmark": benchmark,
             "fq": fq,
+            "release_id": release_id,
             "extras": dict(extras or {}),
             "strategy_name": "Kronos TopK Equal Weight v1",
         },
