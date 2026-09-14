@@ -809,7 +809,9 @@ def factorlab_batch_summary(experiment_id: str) -> Dict[str, Any]:
         items.append({"alpha_id":item.get("alpha_id"),"calculation":item.get("calculation"),"evaluations":evaluations})
     return {"experiment_id":experiment_id,"status":config.get("status"),"error":config.get("error"),
             "requested":len(config.get("alpha_ids", [])),"completed":len(items),"items":items,
-            "pool":{"type":config.get("pool_type"),"members_hash":config.get("members_hash"),"snapshot_date":config.get("snapshot_date")}}
+            "pool":{"type":config.get("pool_type"),"members_hash":config.get("members_hash"),"snapshot_date":config.get("snapshot_date")},
+            "representative_selection":config.get("representative_selection"),
+            "holdout_access":({k:v for k,v in config.get("holdout_access", {}).items() if k != "artifact"} if config.get("holdout_access") else None)}
 
 
 @app.get("/api/factorlab/batches/{experiment_id}/correlation")
