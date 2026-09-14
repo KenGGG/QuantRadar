@@ -680,6 +680,18 @@ def datahub_releases() -> Dict[str, Any]:
         raise HTTPException(status_code=503, detail=f"本地 release 清单不可用：{exc}")
 
 
+@app.get("/api/datahub/releases/{release_id}")
+def datahub_release_detail(release_id: str) -> Dict[str, Any]:
+    """Read one locally published immutable manifest; no current-release fallback."""
+    from quantradar.config import load_datahub_config
+    from quantradar.datahub.release import ReleaseStore
+    try:
+        manifest = ReleaseStore(load_datahub_config().release_root).resolve(release_id)
+    except (OSError, ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=f"release 不存在或不可读取：{exc}")
+    return {key: manifest.get(key) for key in ("release_id", "base_commit", "supplemental_commit", "published_at", "datasets", "source_adapters")}
+
+
 @app.get("/api/etf/templates")
 def etf_templates() -> Dict[str, Any]:
     from quantradar.etf_research import ETF_POOL, template_catalog
