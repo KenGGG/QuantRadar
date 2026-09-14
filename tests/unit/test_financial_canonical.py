@@ -29,3 +29,18 @@ def test_statement_version_identity_is_content_specific():
     b = statement_version_id("600519.SH", "income", "2025-12-31", "b" * 64)
     assert a != b
     assert a == statement_version_id("600519.SH", "income", "2025-12-31", "a" * 64)
+
+
+def test_financial_writer_does_not_repeat_fixed_mapping_columns():
+    from quantradar.datahub.dolt import SupplementalStore
+    sql=[]
+    class C:
+        def execute(self, query, args=()): sql.append(query)
+        def __enter__(self): return self
+        def __exit__(self,*_): return False
+    class Conn:
+        def cursor(self): return C()
+        def commit(self): pass
+    v={"statement_version_id":"s","symbol":"600519.SH","statement_type":"income","report_period":"2025-12-31","statement_scope":"UNKNOWN","period_type":"YTD","announcement_precision":"DATE_ONLY","source_fetch_at":"x","source":"x","raw_sha256":"a"*64,"adapter_version":"x","pit_status":"PARTIAL","qualification":"x","raw_payload_json":"{}"}
+    SupplementalStore(Conn()).write_financial_statement(v,{"mapping_version":"v1","conservative_available_at":None,"availability_rule_version":None,"net_profit":1})
+    assert sql[-1].count("availability_rule_version") == 1

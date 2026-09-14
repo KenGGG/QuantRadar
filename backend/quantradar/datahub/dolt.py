@@ -344,7 +344,8 @@ class SupplementalStore:
         if table is None:
             raise ValueError("unsupported statement_type")
         version_fields = ("statement_version_id", "symbol", "statement_type", "report_period", "report_type", "statement_scope", "period_type", "source_announcement_date", "announcement_precision", "source_fetch_at", "currency", "source", "raw_sha256", "adapter_version", "pit_status", "qualification", "raw_payload_json")
-        mapping_fields = tuple(["statement_version_id", "mapping_version", "conservative_available_at", "availability_rule_version", *mapping.keys()])
+        fixed_mapping_fields = ("statement_version_id", "mapping_version", "conservative_available_at", "availability_rule_version")
+        mapping_fields = (*fixed_mapping_fields, *(field for field in mapping if field not in fixed_mapping_fields))
         with self.connection.cursor() as cursor:
             cursor.execute(f"INSERT IGNORE INTO qr_stock_statement_version ({', '.join(version_fields)}) VALUES ({', '.join(['%s'] * len(version_fields))})", tuple(version.get(field) for field in version_fields))
             cursor.execute(f"INSERT IGNORE INTO {table} ({', '.join(mapping_fields)}) VALUES ({', '.join(['%s'] * len(mapping_fields))})", tuple(version.get("statement_version_id") if field == "statement_version_id" else mapping.get(field) for field in mapping_fields))
