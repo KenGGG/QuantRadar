@@ -1,0 +1,10 @@
+[Unit]
+Description=Collect QuantRadar V3 index snapshots at 20:30 China time
+
+[Timer]
+OnCalendar=*-*-* 20:30:00 Asia/Shanghai
+Persistent=true
+Unit=quantradar-index-snapshot.service
+
+[Install]
+WantedBy=timers.target

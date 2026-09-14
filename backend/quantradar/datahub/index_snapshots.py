@@ -1,6 +1,7 @@
 """Normalization for the explicitly versioned DataHub V3 index snapshots."""
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 
@@ -52,3 +53,10 @@ def validate_index_snapshot_candidate(version: dict[str, Any], members: list[dic
     if len(codes) != len(set(codes)) or any(not code or len(str(code)) != 9 for code in codes):
         errors.append("invalid or duplicate security_code")
     return {"status": "PASS" if not errors else "FAIL", "members": len(members), "errors": errors}
+
+
+def index_snapshot_due(now: datetime, sse_open_dates: set[str]) -> bool:
+    """The timer is only eligible after 20:30 Asia/Shanghai on a fixed SSE day."""
+    if now.tzinfo is None:
+        raise ValueError("now must be timezone-aware")
+    return now.strftime("%Y-%m-%d") in sse_open_dates and (now.hour, now.minute) >= (20, 30)

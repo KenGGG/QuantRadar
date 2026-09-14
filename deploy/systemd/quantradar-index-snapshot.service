@@ -1,0 +1,13 @@
+[Unit]
+Description=QuantRadar V3 index snapshot collection
+After=network-online.target quantradar-datahub-dolt.service
+Wants=network-online.target
+Requires=quantradar-datahub-dolt.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/data/Projects/a-stock-research/QuantRadar
+EnvironmentFile=-/data/quantradar_data/datahub.env
+Environment=PYTHONPATH=/data/Projects/a-stock-research/QuantRadar/backend
+ExecStart=/data/Projects/a-stock-research/QuantRadar/.venv/bin/python -m quantradar.datahub.cli collect-index-snapshots
+TimeoutStartSec=infinity

@@ -9,6 +9,8 @@ import fcntl
 import os
 import subprocess
 import sys
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from contextlib import contextmanager
 from bisect import bisect_left
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -136,6 +138,59 @@ class DataHubService:
         self.config = config or load_datahub_config()
         self.releases = ReleaseStore(self.config.release_root)
         self.raw = RawStore(self.config.raw_root)
+
+    def collect_index_snapshots(self, *, now: datetime | None = None) -> dict[str, Any]:
+        """Collect current V3 index evidence only when the fixed SSE calendar allows it."""
+        from .index_snapshots import (index_snapshot_due, normalize_csi_constituents,
+                                      normalize_csi_weights, normalize_sw_components)
+        from .publication import publish_index_snapshot
+        from .v3_contracts import snapshot_content_hash
+        import akshare as ak
+        now = now or datetime.now(ZoneInfo("Asia/Shanghai"))
+        manifest = self.releases.current()
+        connection = pymysql.connect(host=self.config.base_host, port=self.config.base_port, user=self.config.user,
+                                     password=self.config.password, database=self.config.base_database + "/" + manifest["base_commit"],
+                                     connect_timeout=self.config.connect_timeout, read_timeout=self.config.read_timeout,
+                                     charset="utf8mb4", cursorclass=DictCursor)
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT date FROM ts_trade_day_calendar WHERE exchange=%s AND is_open=1", ("SSE",))
+                calendar = {str(row["date"])[:10] for row in cursor.fetchall()}
+        finally:
+            connection.close()
+        if not index_snapshot_due(now, calendar):
+            return {"status": "NOT_DUE", "timezone": "Asia/Shanghai", "now": now.isoformat(), "calendar_source": manifest["base_commit"]}
+        published = []
+        def publish_csi(code: str, kind: str):
+            fetch = ak.index_stock_cons_csindex if kind == "CSI_CONSTITUENTS" else ak.index_stock_cons_weight_csindex
+            source = "akshare:index_stock_cons_csindex" if kind == "CSI_CONSTITUENTS" else "akshare:index_stock_cons_weight_csindex"
+            raw = json.loads(fetch(symbol=code).to_json(orient="records", date_format="iso", force_ascii=False))
+            members = normalize_csi_constituents(raw) if kind == "CSI_CONSTITUENTS" else normalize_csi_weights(raw)
+            dates = {str(row.get("日期"))[:10] for row in raw}
+            if len(dates) != 1:
+                raise ValueError(f"{kind}/{code} has ambiguous source date")
+            receipt = self.raw.put("v3-index-snapshot/" + kind + "-" + code,
+                                   json.dumps(raw, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode())
+            version = {"dataset_type": kind, "index_code": code + ".SH", "source_date": dates.pop(),
+                       "observed_at": now.isoformat(), "content_hash": snapshot_content_hash(members), "raw_sha256": receipt["sha256"],
+                       "source": source, "adapter_version": "akshare-" + ak.__version__,
+                       "effective_semantics": "SOURCE_DATE_NOT_EFFECTIVE", "effective_evidence_ref": source + ":日期",
+                       "qualification": "RAW_EVIDENCE_ONLY", "pit_status": "PARTIAL"}
+            return publish_index_snapshot(self, version, constituents=members if kind == "CSI_CONSTITUENTS" else [], weights=members if kind == "CSI_WEIGHTS" else [], sw_components=[])
+        for code in ("000300", "000905", "000852"):
+            for kind in ("CSI_CONSTITUENTS", "CSI_WEIGHTS"):
+                published.append(publish_csi(code, kind))
+        # Friday cadence limits SW collection, but a holiday produces no invented date.
+        if now.weekday() == 4:
+            raw = json.loads(ak.index_component_sw(symbol="801010").to_json(orient="records", date_format="iso", force_ascii=False))
+            members = normalize_sw_components(raw)
+            receipt = self.raw.put("v3-index-snapshot/SW_COMPONENTS-801010", json.dumps(raw, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode())
+            version = {"dataset_type": "SW_COMPONENTS", "index_code": "801010.SW", "source_date": None, "observed_at": now.isoformat(),
+                       "content_hash": snapshot_content_hash(members), "raw_sha256": receipt["sha256"], "source": "akshare:index_component_sw",
+                       "adapter_version": "akshare-" + ak.__version__, "effective_semantics": "SNAPSHOT_EFFECTIVE_UNKNOWN",
+                       "effective_evidence_ref": None, "qualification": "RAW_EVIDENCE_ONLY", "pit_status": "PARTIAL"}
+            published.append(publish_index_snapshot(self, version, constituents=[], weights=[], sw_components=members))
+        return {"status": "PUBLISHED", "timezone": "Asia/Shanghai", "now": now.isoformat(), "published": published}
 
     def base_inventory(self, release_id: str | None = None) -> dict[str, Any]:
         """Scan the base material actually visible to one immutable release."""
