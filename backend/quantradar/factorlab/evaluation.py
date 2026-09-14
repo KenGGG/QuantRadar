@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from qlib.contrib.eva.alpha import calc_ic
 
-EVALUATION_VERSION = "factorlab-eval-v1"
+EVALUATION_VERSION = "factorlab-eval-v2"
 
 
 def split_dates(index: pd.Index, ratios: tuple[float, float, float] = (.6, .2, .2)) -> dict[str, list[pd.Timestamp]]:
@@ -38,10 +38,12 @@ def evaluate(factor: pd.DataFrame, label: pd.DataFrame, *, min_cross_section: in
     if not factor.index.equals(label.index) or not factor.columns.equals(label.columns):
         raise ValueError("factor and label must share aligned date×security axes")
     daily = []
+    top_members_by_day: list[set[str]] = []
     for day in factor.index:
         joined = pd.DataFrame({"factor": factor.loc[day], "label": label.loc[day]}).dropna()
         if len(joined) < min_cross_section or joined.factor.nunique() < 2 or joined.label.nunique() < 2:
             daily.append({"date": str(pd.Timestamp(day).date()), "ic": None, "rank_ic": None, "count": len(joined), "quantiles": None})
+            top_members_by_day.append(set())
             continue
         indexed = joined.copy(); indexed.index = pd.MultiIndex.from_product([[pd.Timestamp(day)], indexed.index], names=["datetime", "instrument"])
         ic, ric = calc_ic(indexed.factor, indexed.label, dropna=False)
@@ -50,10 +52,26 @@ def evaluate(factor: pd.DataFrame, label: pd.DataFrame, *, min_cross_section: in
         means = joined.label.groupby(bins, observed=True).mean()
         quantiles = means.tolist() if len(means) == 5 else None
         daily.append({"date": str(pd.Timestamp(day).date()), "ic": float(ic.iloc[0]), "rank_ic": float(ric.iloc[0]), "count": len(joined), "quantiles": quantiles})
+        # A deterministic research turnover proxy: entries into the highest
+        # average-rank quintile between consecutive evaluable cross-sections.
+        top_members_by_day.append(set(joined.index[bins == bins.max()].astype(str)) if quantiles is not None else set())
     frame = pd.DataFrame(daily)
     valid = frame.dropna(subset=["ic"])
     rolling = frame.ic.rolling(60, min_periods=60).mean().where(frame.ic.rolling(60, min_periods=60).count() == 60)
+    turnovers = []
+    previous: set[str] | None = None
+    for members in top_members_by_day:
+        if not members:
+            previous = None
+            continue
+        if previous:
+            turnovers.append(len(members - previous) / len(members))
+        previous = members
     return {"evaluation_version": EVALUATION_VERSION, "computed_dates": len(frame), "valid_dates": len(valid),
             "ic_mean": float(valid.ic.mean()) if len(valid) else None, "rank_ic_mean": float(valid.rank_ic.mean()) if len(valid) else None,
             "ic_std": float(valid.ic.std(ddof=1)) if len(valid) > 1 else None,
+            "rank_ic_std": float(valid.rank_ic.std(ddof=1)) if len(valid) > 1 else None,
+            "rank_ic_positive_ratio": float((valid.rank_ic > 0).mean()) if len(valid) else None,
+            "mean_cross_section": float(valid["count"].mean()) if len(valid) else None,
+            "top_quantile_turnover": float(np.mean(turnovers)) if turnovers else None,
             "rolling_60d_ic": [None if pd.isna(x) else float(x) for x in rolling], "daily": daily}

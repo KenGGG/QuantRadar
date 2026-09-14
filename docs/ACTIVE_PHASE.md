@@ -36,7 +36,7 @@ P0 已完成：新实验使用 PostgreSQL 不可变 UUID，旧 JSON 存证只读
 
 当前 P3 分为独立子项，不相互阻塞：
 
-- **P3-A 因子精简：`AWAITING_RESEARCHER_SELECTION`。**相关性和完全链接聚类只读取研究／验证段；代表选择理由必填、冻结不可改写和保留段访问门禁均有自动化回归。固定五因子重复批次已验证跨批次计算／评价缓存和内容指纹一致。待研究者在网页选择代表因子并填写理由后冻结，方可首次访问保留段；这项研究判断不由系统自动作出。
+- **P3-A 因子精简：`AWAITING_RESEARCHER_SELECTION`。**相关性和完全链接聚类只读取研究／验证段；代表选择表并列验证 Rank IC、正向比例、有效日期、平均横截面覆盖、最高分位换手与公式窗口／字段数。代表选择理由必填、冻结不可改写和保留段访问门禁均有自动化回归。固定五因子重复批次已验证跨批次计算／评价缓存和内容指纹一致。待研究者在网页选择代表因子并填写理由后冻结，方可首次访问保留段；这项研究判断不由系统自动作出。
 - **P3-B 五行业 ETF 池：`BLOCKED_DATA_IDENTITY`。**行业定义及选择规则已经冻结，但当前本地主数据不能验证金融、消费、医药、科技、周期五类候选的跟踪指数身份，因此五类均如实 BLOCKED。现有 ETF_RAW 工作台继续可用；不为解除该子项重新建设基金数据库，只在正式开展行业轮动时按已冻结规则补充被选候选的身份、上市日期和日线。
 
 验收见 [FactorLab 缓存与指纹](acceptance/webui-etf-factorlab/factorlab-cache-and-fingerprint.md)、[ETF 模板依赖预检](acceptance/webui-etf-factorlab/etf-template-dependency-preflight.md) 和 [行业 ETF 身份资格](acceptance/webui-etf-factorlab/industry-etf-eligibility.md)。

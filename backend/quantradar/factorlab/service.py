@@ -10,7 +10,7 @@ from typing import Any
 import pandas as pd
 
 from .cache import cache_key, operator_bundle_hash
-from .evaluation import evaluate, forward_open_label, split_dates, dates_within_label_window
+from .evaluation import EVALUATION_VERSION, evaluate, forward_open_label, split_dates, dates_within_label_window
 
 _EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="factorlab")
 
@@ -124,7 +124,7 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
             evaluations = {}
             for horizon in config["horizons"]:
                 eligible = {scope: dates_within_label_window(dates, requested_dates, horizon) for scope, dates in splits.items()}
-                ekey = cache_key({"calculation_key": key, "label": "open(t+h+1)/open(t+1)-1", "horizon": horizon, "splits": config["split_dates"], "min_cross_section": config["min_cross_section"], "quantiles": "average_rank_5", "ic_method": "qlib_calc_ic", "direction_policy": "no_flip", "evaluation": "factorlab-eval-v1"})
+                ekey = cache_key({"calculation_key": key, "label": "open(t+h+1)/open(t+1)-1", "horizon": horizon, "splits": config["split_dates"], "min_cross_section": config["min_cross_section"], "quantiles": "average_rank_5", "ic_method": "qlib_calc_ic", "direction_policy": "no_flip", "evaluation": EVALUATION_VERSION})
                 epath = root / "evaluation" / f"alpha{alpha_id:03}_h{horizon}_{ekey}.json"; epath.parent.mkdir(exist_ok=True)
                 eval_cache = Path.cwd() / "runs" / "factorlab" / "cache" / "evaluation" / f"{ekey}.json"; eval_cache.parent.mkdir(parents=True, exist_ok=True)
                 if eval_cache.exists(): result = json.loads(eval_cache.read_text()); status = "CACHE_HIT"
@@ -136,7 +136,7 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
                     eval_cache.write_text(json.dumps(result)); status = "EVALUATED"
                 epath.write_text(json.dumps(result))
                 validation = result.get("validation", {})
-                evaluations[str(horizon)] = {"status": status, "artifact": str(epath), "summary": {k: validation.get(k) for k in ("valid_dates", "ic_mean", "rank_ic_mean")}, "scopes": result}
+                evaluations[str(horizon)] = {"status": status, "artifact": str(epath), "summary": {k: validation.get(k) for k in ("valid_dates", "ic_mean", "rank_ic_mean", "rank_ic_std", "rank_ic_positive_ratio", "mean_cross_section", "top_quantile_turnover")}, "scopes": result}
             config["items"].append({"alpha_id": alpha_id, "calculation": calc_status, "value_artifact": str(value_path), "evaluations": evaluations})
             update_experiment(batch_id, config=config)
         config["status"] = "SUCCESS"

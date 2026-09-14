@@ -14,5 +14,7 @@
 - FactorLab 批次摘要将研究流程状态单独返回为 `NOT_READY`、
   `AWAITING_RESEARCHER_SELECTION`、`FROZEN_AWAITING_HOLDOUT_EVALUATION` 或
   `HOLDOUT_ACCESSED`；生产构建根据该字段将等待研究判断显示为警示而非技术 BLOCKED。
+- 新的评价缓存语义版本保存验证段 Rank IC 的正向比例、平均横截面覆盖和最高分位换手；
+  代表选择表同时显示这些指标及目录中的窗口／字段复杂度，不读取保留段。
 - 对 2021-01-04 至 2021-03-31 的全模板网页预检显示：等权 2 个缺失依赖，动量、趋势、逆波动率与 ERC 各 1 个；五个行业 ETF 均 BLOCKED，且均明确说明没有可验证跟踪指数身份。
 - 浏览器控制台除浏览器请求 `/favicon.ico` 的历史 404 外无应用错误；加载当前构建产物后的 ETF／FactorLab 验收期间控制台为 0 errors。

@@ -841,10 +841,16 @@ def factorlab_batch_summary(experiment_id: str) -> Dict[str, Any]:
         researcher_state = "FROZEN_AWAITING_HOLDOUT_EVALUATION"
     else:
         researcher_state = "HOLDOUT_ACCESSED"
+    from quantradar.datahub.alpha101.catalog import dependency_matrix
+    catalog = {int(entry["alpha_id"]): entry for entry in dependency_matrix()}
     items=[]
     for item in config.get("items", []):
         evaluations={h:{"status":v.get("status"), "summary":v.get("summary")} for h,v in item.get("evaluations", {}).items()}
-        items.append({"alpha_id":item.get("alpha_id"),"calculation":item.get("calculation"),"evaluations":evaluations})
+        alpha_id = int(item.get("alpha_id"))
+        formula = catalog.get(alpha_id, {})
+        items.append({"alpha_id":alpha_id,"calculation":item.get("calculation"),"evaluations":evaluations,
+                      "complexity":{"lookback_days":formula.get("lookback_days"), "field_count":len(formula.get("fields") or []),
+                                    "formula_length":len(str(formula.get("formula") or ""))}})
     return {"experiment_id":experiment_id,"status":config.get("status"),"error":config.get("error"),
             "result_fingerprint":row.get("result_fingerprint"),
             "requested":len(config.get("alpha_ids", [])),"completed":len(items),"items":items,

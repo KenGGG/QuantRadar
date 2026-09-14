@@ -22,6 +22,9 @@ def test_evaluation_requires_full_cross_section_and_full_rolling_window():
     assert result["valid_dates"] == 61
     assert result["rolling_60d_ic"][58] is None
     assert result["rolling_60d_ic"][59] == 1.0
+    assert result["rank_ic_positive_ratio"] == 1.0
+    assert result["mean_cross_section"] == 20.0
+    assert result["top_quantile_turnover"] == 0.0
 
 
 def test_split_excludes_labels_that_cross_a_boundary():
