@@ -146,7 +146,8 @@ def build_weights(panel: pd.DataFrame, template: str, start: str, end: str, *, m
 
 
 def create_experiment_group(*, release_id: str, start: str, end: str, templates: list[str],
-                            initial_cash: float = 500000, slippage_bps: float = 0) -> dict[str, Any]:
+                            initial_cash: float = 500000, slippage_bps: float = 0,
+                            symbols: list[str] | None = None) -> dict[str, Any]:
     """Persist a group and serially enqueue real Worker runs.
 
     The group executor has one worker intentionally: BulletTrade's provider/FQ
@@ -155,7 +156,10 @@ def create_experiment_group(*, release_id: str, start: str, end: str, templates:
     """
     if slippage_bps < 0 or not np.isfinite(slippage_bps):
         raise ValueError("slippage_bps must be a finite non-negative number")
-    panel = load_close_panel(release_id, list(ETF_POOL), start, end)
+    pool = sorted(set(symbols or ETF_POOL))
+    if not pool:
+        raise ValueError("at least one ETF symbol is required")
+    panel = load_close_panel(release_id, pool, start, end)
     checks = {template: preflight(panel, template, start, end) for template in templates}
     from quantradar.config import load_datahub_config
     from quantradar.datahub.reader import ReleaseReader
@@ -164,7 +168,7 @@ def create_experiment_group(*, release_id: str, start: str, end: str, templates:
     init_db()
     config = {"release_id": scope.release_id, "base_commit": scope.manifest["base_commit"],
               "supplemental_commit": scope.manifest["supplemental_commit"], "start_date": start, "end_date": end,
-              "templates": templates, "initial_cash": initial_cash, "slippage_bps": slippage_bps,
+              "templates": templates, "symbols": pool, "initial_cash": initial_cash, "slippage_bps": slippage_bps,
               "engine_slippage_ratio": 2 * slippage_bps / 10000,
               "items": [{"template": t, "status": "PRECHECK_BLOCKED" if checks[t]["blocked"] else "WAITING", "preflight": checks[t]} for t in templates]}
     group = save_experiment("ETF 研究组", "etf_group", config, "", {}, None,

@@ -697,7 +697,9 @@ def etf_industry_pool(release_id: str = Query(...)) -> Dict[str, Any]:
         reader=ReleaseReader(load_datahub_config()).supplemental_reader(scope)
         # Read all verified ETF identities; criteria are identity fields only.
         rows=reader._query("SELECT symbol, fund_name, tracking_index, listing_date, qualification FROM qr_etf_master ORDER BY symbol", ())
-        return {"release_id":scope.release_id,"categories":qualify({r["symbol"]:r for r in rows}),"status":"BLOCKED"}
+        categories = qualify({r["symbol"]:r for r in rows})
+        return {"release_id":scope.release_id,"categories":categories,
+                "status":"READY" if any(row["status"] == "READY" for row in categories.values()) else "BLOCKED"}
     except (ValueError, FileNotFoundError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -727,7 +729,8 @@ def etf_experiment_create(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]
                                        start=str(payload.get("start_date") or ""), end=str(payload.get("end_date") or ""),
                                        templates=list(payload.get("templates") or []),
                                        initial_cash=float(payload.get("initial_cash", 500000)),
-                                       slippage_bps=float(payload.get("slippage_bps", 0)))
+                                       slippage_bps=float(payload.get("slippage_bps", 0)),
+                                       symbols=list(payload.get("symbols") or []) or None)
     except (ValueError, FileNotFoundError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except RuntimeError as exc:
