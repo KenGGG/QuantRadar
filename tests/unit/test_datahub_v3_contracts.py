@@ -56,3 +56,22 @@ def test_g0_audit_records_raw_evidence_without_claiming_strict_pit(tmp_path):
     assert result["qualification"] == "RAW_EVIDENCE_ONLY"
     assert result["pit_status"] == "PARTIAL"
     assert result["schema"]["columns"] == ["NOTICE_DATE", "REPORT_DATE", "TOTAL_ASSETS"]
+
+
+def test_source_audit_runner_records_success_and_failure_per_probe(tmp_path):
+    from quantradar.datahub.store import RawStore
+    from quantradar.datahub.v3_audit import run_probes
+
+    result = run_probes(
+        RawStore(tmp_path),
+        [
+            ("one", "adapter", {"code": "A"}, lambda: [{"x": 1}]),
+            ("two", "adapter", {"code": "B"}, lambda: (_ for _ in ()).throw(TimeoutError("slow"))),
+        ],
+        observed_at="2026-09-14T20:30:00+08:00",
+        adapter_version="test",
+    )
+
+    assert result["status"] == "PARTIAL"
+    assert result["receipts"][0]["request"] == {"code": "A"}
+    assert result["failures"] == [{"dataset": "two", "request": {"code": "B"}, "error_type": "TimeoutError", "error": "slow"}]
