@@ -19,6 +19,12 @@ def _hash_members(members: list[str]) -> str:
     return hashlib.sha256("\n".join(sorted(members)).encode()).hexdigest()
 
 
+def _research_input_version() -> str:
+    root = Path(__file__).resolve().parents[1]
+    source = root / "datahub" / "research_inputs.py"
+    return hashlib.sha256(source.read_bytes()).hexdigest()
+
+
 def create_batch(config: dict[str, Any]) -> dict[str, Any]:
     release_id, members = str(config.get("release_id") or ""), sorted(set(config.get("members") or []))
     if not release_id or len(members) < 20:
@@ -31,11 +37,15 @@ def create_batch(config: dict[str, Any]) -> dict[str, Any]:
     max_lookback = max(catalog[i]["lookback_days"] for i in ids)
     start = str(config.get("start_date") or "")
     calculation_start = (pd.Timestamp(start) - pd.Timedelta(days=max_lookback * 2 + 20)).date().isoformat() if start else ""
-    frozen = {"release_id": release_id, "members": members, "members_hash": _hash_members(members),
+    from quantradar.config import load_datahub_config
+    from quantradar.datahub.reader import ReleaseReader
+    scope = ReleaseReader(load_datahub_config()).resolve(release_id)
+    frozen = {"release_id": scope.release_id, "base_commit": scope.manifest["base_commit"], "supplemental_commit": scope.manifest["supplemental_commit"], "members": members, "members_hash": _hash_members(members),
               "pool_type": config.get("pool_type", "CUSTOM_STATIC_POOL"), "snapshot_date": config.get("snapshot_date"),
               "start_date": start, "calculation_start": calculation_start, "end_date": str(config.get("end_date") or ""),
               "alpha_ids": ids, "horizons": config.get("horizons", [1, 5, 20]), "price_mode": "RAW",
               "adv_basis": "amount", "min_cross_section": int(config.get("min_cross_section", 20)),
+              "unit_contract": "base-hands-thousand-yuan", "research_input_version": _research_input_version(),
               "operator_bundle_hash": operator_bundle_hash(), "status": "PENDING", "items": []}
     if not frozen["start_date"] or not frozen["end_date"] or frozen["start_date"] > frozen["end_date"]:
         raise ValueError("valid start_date/end_date are required")
@@ -93,23 +103,29 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
         catalog = {r["alpha_id"]: r for r in dependency_matrix()}
         for alpha_id in config["alpha_ids"]:
             row = catalog[alpha_id]
-            calc_identity = {k: config[k] for k in ("release_id", "members_hash", "start_date", "end_date", "price_mode", "adv_basis", "operator_bundle_hash")}
+            calc_identity = {k: config[k] for k in ("release_id", "base_commit", "supplemental_commit", "members_hash", "pool_type", "snapshot_date", "calculation_start", "start_date", "end_date", "price_mode", "unit_contract", "adv_basis", "operator_bundle_hash", "research_input_version")}
             calc_identity.update({"alpha_id": alpha_id, "formula_hash": row["formula_hash"], "semantics_version": row["semantics_version"]})
             key = cache_key(calc_identity); value_path = root / "factor_values" / f"alpha{alpha_id:03}_{key}.parquet"; value_path.parent.mkdir(exist_ok=True)
-            if value_path.exists(): factor = pd.read_parquet(value_path); factor.index = pd.to_datetime(factor.index); calc_status = "CACHE_HIT"
-            else: factor = compute(alpha_id, panel, adv_basis="amount", price_mode="RAW"); factor.to_parquet(value_path); calc_status = "COMPUTED"
+            calc_cache = Path.cwd() / "runs" / "factorlab" / "cache" / "calculation" / f"{key}.parquet"; calc_cache.parent.mkdir(parents=True, exist_ok=True)
+            if calc_cache.exists(): factor = pd.read_parquet(calc_cache); factor.index = pd.to_datetime(factor.index); calc_status = "CACHE_HIT"
+            else:
+                factor = compute(alpha_id, panel, adv_basis="amount", price_mode="RAW")
+                factor.to_parquet(calc_cache); calc_status = "COMPUTED"
+            factor.to_parquet(value_path)
             evaluations = {}
             for horizon in config["horizons"]:
                 eligible = {scope: dates_within_label_window(dates, requested_dates, horizon) for scope, dates in splits.items()}
-                ekey = cache_key({"calculation_key": key, "horizon": horizon, "splits": config["split_dates"], "min_cross_section": config["min_cross_section"], "direction_policy": "no_flip", "evaluation": "factorlab-eval-v1"})
+                ekey = cache_key({"calculation_key": key, "label": "open(t+h+1)/open(t+1)-1", "horizon": horizon, "splits": config["split_dates"], "min_cross_section": config["min_cross_section"], "quantiles": "average_rank_5", "ic_method": "qlib_calc_ic", "direction_policy": "no_flip", "evaluation": "factorlab-eval-v1"})
                 epath = root / "evaluation" / f"alpha{alpha_id:03}_h{horizon}_{ekey}.json"; epath.parent.mkdir(exist_ok=True)
-                if epath.exists(): result = json.loads(epath.read_text()); status = "CACHE_HIT"
+                eval_cache = Path.cwd() / "runs" / "factorlab" / "cache" / "evaluation" / f"{ekey}.json"; eval_cache.parent.mkdir(parents=True, exist_ok=True)
+                if eval_cache.exists(): result = json.loads(eval_cache.read_text()); status = "CACHE_HIT"
                 else:
                     label = forward_open_label(opens, horizon)
                     # Holdout remains uncomputed until an explicit, immutable user selection.
                     result = {scope: evaluate(factor.loc[dates], label.loc[dates], min_cross_section=config["min_cross_section"])
                               for scope, dates in eligible.items() if scope != "holdout"}
-                    epath.write_text(json.dumps(result)); status = "EVALUATED"
+                    eval_cache.write_text(json.dumps(result)); status = "EVALUATED"
+                epath.write_text(json.dumps(result))
                 validation = result.get("validation", {})
                 evaluations[str(horizon)] = {"status": status, "artifact": str(epath), "summary": {k: validation.get(k) for k in ("valid_dates", "ic_mean", "rank_ic_mean")}, "scopes": result}
             config["items"].append({"alpha_id": alpha_id, "calculation": calc_status, "value_artifact": str(value_path), "evaluations": evaluations})
