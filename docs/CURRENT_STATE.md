@@ -6,6 +6,7 @@
 
 - Development branch: `main`. DataHub feature work and the launcher change are merged into main.
 - 当前活动目标为 `WEBUI_P3_FACTOR_SELECTION_AND_INDUSTRY_ETF`；P0 不可变实验／release 门禁、P1 ETF 研究组和 P2 FactorLab 已独立可用。P3 的代表因子选择仍须由研究者在页面填写理由并冻结，系统不会按收益自动选择。
+- ETF 研究和 FactorLab 当前静态 WebUI 已在本机浏览器验收：固定版本选择、ETF 模板预检与行业 BLOCKED 原因、FactorLab 输入与静态池选择均由真实本地接口返回。验收记录位于 `docs/acceptance/webui-etf-factorlab/browser-workbench-acceptance.md`。
 - ETF 研究组使用固定 release、ETF_RAW 和 BulletTrade 原生费用，逐个提交五个模板；网页显示子项状态、运行标识及原生报告入口。当前已冻结的行业定义只有本地身份资料可证明时才可用；现有 ETF 主数据不能证明五个宽行业身份，因此均保持 BLOCKED。
 - FactorLab 的量价因子按固定静态对象池计算，研究／验证／保留段按交易日 60%／20%／20% 切分，跨边界标签剔除。相关性保留正负号，完全链接按 `1 - |rho| <= 0.2`，且相关计算每次只加载一对已注册的因子产物。
 - The Web process at `127.0.0.1:7231` serves the main checkout.
