@@ -30,6 +30,9 @@ def create_batch(config: dict[str, Any]) -> dict[str, Any]:
     if not release_id or len(members) < 20:
         raise ValueError("release_id and at least 20 explicit pool members are required")
     ids = [int(x) for x in config.get("alpha_ids") or []]
+    horizons = [int(x) for x in config.get("horizons", [1, 5, 20])]
+    if not horizons or any(x not in (1, 5, 20) for x in horizons):
+        raise ValueError("horizons must be a non-empty subset of 1, 5, 20")
     from quantradar.datahub.alpha101.catalog import dependency_matrix
     catalog = {r["alpha_id"]: r for r in dependency_matrix()}
     if not ids or any(i not in catalog or catalog[i]["group"] != "price_volume" for i in ids):
@@ -40,10 +43,13 @@ def create_batch(config: dict[str, Any]) -> dict[str, Any]:
     from quantradar.config import load_datahub_config
     from quantradar.datahub.reader import ReleaseReader
     scope = ReleaseReader(load_datahub_config()).resolve(release_id)
+    ratios = tuple(float(x) for x in config.get("split_ratios", [.6, .2, .2]))
+    # Validate at submission time, before a task has been persisted or queued.
+    split_dates(pd.date_range("2000-01-01", periods=10), ratios)
     frozen = {"release_id": scope.release_id, "base_commit": scope.manifest["base_commit"], "supplemental_commit": scope.manifest["supplemental_commit"], "members": members, "members_hash": _hash_members(members),
               "pool_type": config.get("pool_type", "CUSTOM_STATIC_POOL"), "snapshot_date": config.get("snapshot_date"),
               "start_date": start, "calculation_start": calculation_start, "end_date": str(config.get("end_date") or ""),
-              "alpha_ids": ids, "horizons": config.get("horizons", [1, 5, 20]), "price_mode": "RAW",
+              "alpha_ids": ids, "horizons": horizons, "split_ratios": list(ratios), "price_mode": "RAW",
               "adv_basis": "amount", "min_cross_section": int(config.get("min_cross_section", 20)),
               "unit_contract": "base-hands-thousand-yuan", "research_input_version": _research_input_version(),
               "operator_bundle_hash": operator_bundle_hash(), "status": "PENDING", "items": []}
@@ -98,7 +104,7 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
     try:
         panel, opens = _panel(config)
         requested_dates = opens.loc[config["start_date"]:config["end_date"]].index
-        splits = split_dates(requested_dates)
+        splits = split_dates(requested_dates, tuple(config["split_ratios"]))
         config["split_dates"] = {name: [str(pd.Timestamp(x).date()) for x in dates] for name, dates in splits.items()}
         catalog = {r["alpha_id"]: r for r in dependency_matrix()}
         for alpha_id in config["alpha_ids"]:
@@ -150,7 +156,7 @@ def evaluate_holdout(batch_id: str) -> dict[str, Any]:
         return config["holdout_access"]
     panel, opens = _panel(config)
     requested_dates = opens.loc[config["start_date"]:config["end_date"]].index
-    split = split_dates(requested_dates)["holdout"]
+    split = split_dates(requested_dates, tuple(config["split_ratios"]))["holdout"]
     output: dict[str, Any] = {"accessed_at": pd.Timestamp.now(tz="UTC").isoformat(), "alpha_ids": selection["alpha_ids"], "evaluations": {}}
     root = (Path.cwd() / "runs" / "factorlab" / batch_id).resolve()
     by_id = {int(x["alpha_id"]): x for x in config.get("items", [])}

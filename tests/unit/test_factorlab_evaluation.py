@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from quantradar.factorlab.evaluation import dates_within_label_window, evaluate, forward_open_label, split_dates
 
@@ -29,3 +30,8 @@ def test_split_excludes_labels_that_cross_a_boundary():
     assert [len(splits[x]) for x in ("research", "validation", "holdout")] == [12, 4, 4]
     assert dates[11] not in dates_within_label_window(splits["research"], dates, 1)
     assert dates[16] in dates_within_label_window(splits["holdout"], dates, 1)
+
+
+def test_split_requires_a_complete_positive_partition():
+    with pytest.raises(ValueError):
+        split_dates(pd.date_range("2024-01-01", periods=10), (.5, .5, .5))

@@ -8,11 +8,13 @@ from qlib.contrib.eva.alpha import calc_ic
 EVALUATION_VERSION = "factorlab-eval-v1"
 
 
-def split_dates(index: pd.Index) -> dict[str, list[pd.Timestamp]]:
-    """Deterministically split the requested trading dates 60/20/20."""
+def split_dates(index: pd.Index, ratios: tuple[float, float, float] = (.6, .2, .2)) -> dict[str, list[pd.Timestamp]]:
+    """Deterministically split trading dates; defaults to research/validation/holdout 60/20/20."""
+    if len(ratios) != 3 or any(not isinstance(x, (int, float)) or x <= 0 for x in ratios) or not np.isclose(sum(ratios), 1.0):
+        raise ValueError("split ratios must be three positive values summing to 1")
     dates = list(pd.DatetimeIndex(index).sort_values().unique())
     n = len(dates)
-    research_end, validation_end = int(n * .6), int(n * .8)
+    research_end, validation_end = int(n * ratios[0]), int(n * (ratios[0] + ratios[1]))
     return {"research": dates[:research_end], "validation": dates[research_end:validation_end], "holdout": dates[validation_end:]}
 
 
