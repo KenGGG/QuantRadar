@@ -69,3 +69,15 @@ def test_factor_batch_status_distinguishes_data_blocks_from_engine_failures():
     assert batch_status(["COMPUTED", "BLOCKED_INPUT"]) == "PARTIAL_SUCCESS"
     assert batch_status(["BLOCKED_INPUT", "BLOCKED_WARMUP"]) == "BLOCKED"
     assert batch_status(["COMPUTED", "FAILED_ENGINE"]) == "FAILED"
+
+
+def test_factor_result_summary_keeps_blocked_item_without_evaluations():
+    from quantradar.factorlab.service import result_summary_items
+
+    assert result_summary_items([
+        {"alpha_id": 1, "status": "COMPUTED", "evaluations": {"1": {"summary": {"valid_dates": 2}}}},
+        {"alpha_id": 58, "status": "BLOCKED_INPUT", "missing_fields": ["indclass.sector"]},
+    ]) == [
+        {"alpha_id": 1, "status": "COMPUTED", "evaluations": {"1": {"valid_dates": 2}}},
+        {"alpha_id": 58, "status": "BLOCKED_INPUT", "missing_fields": ["indclass.sector"]},
+    ]

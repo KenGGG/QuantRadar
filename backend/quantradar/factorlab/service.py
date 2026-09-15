@@ -15,6 +15,20 @@ from .evaluation import EVALUATION_VERSION, evaluate, forward_open_label, split_
 _EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="factorlab")
 
 
+def result_summary_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Fingerprint completed and data-blocked items without inventing artifacts."""
+    result = []
+    for item in items:
+        summary = {horizon: value.get("summary", {}) for horizon, value in item.get("evaluations", {}).items()}
+        row = {"alpha_id": item["alpha_id"], "status": item["status"]}
+        if summary:
+            row["evaluations"] = summary
+        if item.get("missing_fields"):
+            row["missing_fields"] = item["missing_fields"]
+        result.append(row)
+    return result
+
+
 def _hash_members(members: list[str]) -> str:
     return hashlib.sha256("\n".join(sorted(members)).encode()).hexdigest()
 
@@ -188,8 +202,7 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
             "release_id": config["release_id"], "base_commit": config["base_commit"],
             "supplemental_commit": config["supplemental_commit"], "members_hash": config["members_hash"],
             "split_dates": config["split_dates"], "alpha_ids": config["alpha_ids"], "horizons": config["horizons"],
-            "results": [{"alpha_id": item["alpha_id"], "evaluations": {h: v["summary"] for h, v in item["evaluations"].items()}}
-                        for item in config["items"]],
+            "results": result_summary_items(config["items"]),
         })
     except Exception as exc:
         config["status"] = "FAILED"; config["error"] = str(exc)
