@@ -49,3 +49,17 @@ commits, is [g2-full-coverage-R05b433fd8803f501.json](g2-full-coverage-R05b433fd
 The report process had emitted a parseable final JSON response but failed to
 exit its interpreter; the user-scoped transient unit was stopped after the
 evidence was validated. This does not change any source, queue, or release.
+
+## 2026-09-15 bounded follow-up maintenance
+
+The deployed user-level coordinator completed job
+`update_059b5dc6f5b64f6fb1d00dda567a7042` in `mode=status` at
+2026-09-15T12:07:03+08:00. All five claimed current-window tasks were
+re-audited as `SATISFIED` without a repeat BaoStock request. The historical
+worker claimed 50 checks, staged 31 source responses, completed 21 tasks,
+left 18 retryable checks pending, and quarantined 11 no-row source responses.
+It published 15,935 validated fill-only rows at `R77e0dde27449d342` with
+supplemental commit `id9v6i459efka9l102lrt018uj9rbg39`; validation found zero
+overlaps with base rows. The durable historical queue afterwards recorded 180
+complete, 34 satisfied, 45 quarantined, and 5,290 pending tasks, with none
+running.
