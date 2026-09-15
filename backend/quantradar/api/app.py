@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 import csv
 import json
+import io
 import tempfile
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -22,7 +23,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 from fastapi import Body, FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pymysql.err import OperationalError
 
@@ -362,6 +363,28 @@ def _datahub_gap_ledger(service: Any, *, release_id: str | None, start: str | No
     return {**response, "field_ledger": {"status": "AUDITED", "domain": "trade_status", **report}}
 
 
+def _datahub_gap_ledger_csv(ledger: Dict[str, Any]) -> str:
+    """Create a flat, portable audit extract without hiding unaudited scope."""
+    output = io.StringIO(newline="")
+    writer = csv.DictWriter(output, fieldnames=("record_type", "release_id", "domain", "status", "symbol", "field", "start", "end", "reason"))
+    writer.writeheader()
+    field_ledger = ledger.get("field_ledger") or {}
+    if field_ledger.get("status") != "AUDITED":
+        writer.writerow({"record_type": "field_ledger", "status": field_ledger.get("status"), "reason": field_ledger.get("reason")})
+    else:
+        for missing in field_ledger.get("missing", []):
+            writer.writerow({"record_type": "missing_field", "release_id": field_ledger.get("release_id"),
+                             "domain": field_ledger.get("domain"), "status": field_ledger.get("status"),
+                             "symbol": missing.get("symbol"), "field": missing.get("field"),
+                             "start": missing.get("start"), "end": missing.get("end"),
+                             "reason": missing.get("expected_key_contract")})
+    for issue in ledger.get("candidate_issues", []):
+        for symbol in issue.get("symbols", []):
+            writer.writerow({"record_type": "candidate_issue", "symbol": symbol, "reason": issue.get("reason")})
+    return output.getvalue()
+
+
+
 def _work_queue_overview(status: Dict[str, Any]) -> Dict[str, Any]:
     """Keep the polling payload bounded; task evidence is requested separately."""
     counts = status.get("counts", {})
@@ -462,15 +485,20 @@ def datahub_job_resume(payload: Dict[str, Any] = Body(default={})) -> Dict[str, 
         raise HTTPException(status_code=503, detail=f"investment_data unavailable: {exc}") from exc
 
 
-@app.get("/api/datahub/gaps")
+@app.get("/api/datahub/gaps", response_model=None)
 def datahub_gaps(release_id: str | None = Query(None, alias="release"),
-                 start: str | None = Query(None), end: str | None = Query(None)) -> Dict[str, Any]:
+                 start: str | None = Query(None), end: str | None = Query(None),
+                 output_format: str = Query("json", alias="format", pattern="^(json|csv)$")) -> Dict[str, Any] | PlainTextResponse:
     from quantradar.datahub.service import DataHubService
     service = DataHubService()
     root = Path(service.config.supplemental_repo)
     candidate_path = root / 'candidate-check.json'
     candidate = json.loads(candidate_path.read_text()) if candidate_path.exists() else None
-    return _datahub_gap_ledger(service, release_id=release_id, start=start, end=end, candidate=candidate)
+    ledger = _datahub_gap_ledger(service, release_id=release_id, start=start, end=end, candidate=candidate)
+    if output_format == "csv":
+        return PlainTextResponse(_datahub_gap_ledger_csv(ledger), media_type="text/csv; charset=utf-8",
+                                 headers={"Content-Disposition": "attachment; filename=datahub-gap-ledger.csv"})
+    return ledger
 
 
 @app.post("/api/datahub/repair")

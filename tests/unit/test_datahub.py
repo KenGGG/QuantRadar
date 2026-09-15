@@ -1168,3 +1168,14 @@ def test_status_maintenance_stage_does_not_hide_deferred_work():
     assert maintenance_stage_status({"current": {"claimed": 0, "outcomes": [], "published": []}, "historical": {"claimed": 0, "outcomes": [], "published": []}}) == "NO_CHANGE"
     assert maintenance_stage_status({"current": {"claimed": 1, "outcomes": [{"status": "PENDING"}], "published": []}, "historical": {}}) == "PARTIAL"
     assert maintenance_stage_status({"current": {"claimed": 1, "outcomes": [], "published": [{"release_id": "R1"}]}, "historical": {}}) == "UPDATED"
+
+
+def test_datahub_gap_ledger_csv_keeps_audit_and_candidate_records():
+    from quantradar.api.app import _datahub_gap_ledger_csv
+
+    content = _datahub_gap_ledger_csv({"field_ledger": {"status": "AUDITED", "release_id": "R1", "domain": "trade_status", "missing": [
+        {"symbol": "000001.SZ", "field": "is_st", "start": "2024-01-02", "end": "2024-01-03", "expected_key_contract": "status-v1"},
+    ]}, "candidate_issues": [{"reason": "PARSE_ERROR", "symbols": ["600000.SH"]}]})
+
+    assert "missing_field,R1,trade_status,AUDITED,000001.SZ,is_st,2024-01-02,2024-01-03,status-v1" in content
+    assert "600000.SH" in content and "PARSE_ERROR" in content
