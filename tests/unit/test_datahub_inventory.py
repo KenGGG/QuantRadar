@@ -271,6 +271,22 @@ def test_market_status_plan_can_enqueue_current_correction_work(tmp_path, monkey
     assert result["queue_status"]["current"]["PENDING"] == 1
 
 
+def test_current_rolling_window_supersedes_only_overlapping_pending_task(tmp_path):
+    from quantradar.datahub.work_queue import DataHubWorkQueue
+
+    queue = DataHubWorkQueue(tmp_path / "work-queue.json")
+    first = {"source_contract_id": "baostock-daily-v2", "domain": "trade_status", "fields": ["is_st"],
+             "symbols": ["600000.SH"], "range": {"start": "2024-01-02", "end": "2024-01-31"},
+             "gap_reason": "current", "gap_fingerprint": "first", "expected_key_contract": "contract"}
+    second = {**first, "range": {"start": "2024-01-03", "end": "2024-02-01"}, "gap_fingerprint": "second"}
+    old = queue.enqueue("current", first)["task"]
+    queue.enqueue("current", second)
+
+    rows = {row["task_id"]: row for row in queue.status()["tasks"]}
+    assert rows[old["task_id"]]["status"] == "OBSOLETE"
+    assert queue.status()["counts"]["current"]["PENDING"] == 1
+
+
 def test_work_queue_enqueues_many_tasks_in_one_durable_operation(tmp_path):
     from quantradar.datahub.work_queue import DataHubWorkQueue
 

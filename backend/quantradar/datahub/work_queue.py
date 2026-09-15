@@ -35,6 +35,26 @@ class DataHubWorkQueue:
         )}
         return hashlib.sha256((queue + "\0" + json.dumps(semantic, ensure_ascii=False, sort_keys=True)).encode()).hexdigest()[:24]
 
+    @staticmethod
+    def _overlaps(left: dict[str, Any], right: dict[str, Any]) -> bool:
+        return str(left["start"]) <= str(right["end"]) and str(right["start"]) <= str(left["end"])
+
+    @classmethod
+    def _supersede_current_overlap(cls, data: dict[str, Any], record: dict[str, Any], now: str) -> None:
+        """A new rolling correction window replaces older overlapping checks."""
+        if record["queue"] != "current":
+            return
+        for old_id, old in data["tasks"].items():
+            if old_id == record["task_id"] or old.get("queue") != "current" or old.get("status") != "PENDING":
+                continue
+            if (old.get("domain"), old.get("symbols"), old.get("fields"), old.get("expected_key_contract")) != (
+                record.get("domain"), record.get("symbols"), record.get("fields"), record.get("expected_key_contract"),
+            ):
+                continue
+            if cls._overlaps(old["range"], record["range"]):
+                old.update(status="OBSOLETE", updated_at=now, superseded_by=record["task_id"],
+                           resolution="newer rolling correction window supersedes overlapping pending check")
+
     def enqueue(self, queue: str, task: dict[str, Any]) -> dict[str, Any]:
         if queue not in QUEUES:
             raise ValueError(f"unknown queue: {queue}")
@@ -61,6 +81,7 @@ class DataHubWorkQueue:
             if all(old.get(key) == record.get(key) for key in ("domain", "range", "gap_fingerprint")):
                 old.update(status="BLOCKED", updated_at=now, superseded_by=task_id,
                            resolution="source contract or task definition changed before dispatch")
+        self._supersede_current_overlap(data, record, now)
         data["tasks"][task_id] = record
         self._save(data)
         return {"status": "ENQUEUED", "task": record}
@@ -84,6 +105,7 @@ class DataHubWorkQueue:
             record = {**task, "task_id": task_id, "queue": queue, "status": "PENDING",
                       "created_at": previous.get("created_at", now) if previous else now, "updated_at": now,
                       "attempts": int(previous.get("attempts", 0)) if previous else 0}
+            self._supersede_current_overlap(data, record, now)
             data["tasks"][task_id] = record
             outcomes.append({"status": "ENQUEUED", "task": record})
         self._save(data)
