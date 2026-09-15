@@ -600,6 +600,9 @@ def test_work_queue_persists_terminal_evidence_and_never_reopens_it(tmp_path):
     finished = queue.finish(task["task_id"], "QUARANTINED", evidence={"reason": "source conflict"})
     assert finished["task"]["evidence"] == {"reason": "source conflict"}
     assert queue.finish(task["task_id"], "COMPLETE")["status"] == "NO_CHANGE"
+    assert queue.enqueue("historical", {"source_contract_id": "contract", "domain": "trade_status",
+                                         "range": {"start": "2023-09-01", "end": "2023-09-01"},
+                                         "gap_reason": "test", "gap_fingerprint": "one"})["status"] == "NO_CHANGE"
 
 
 def test_baostock_bundle_keeps_status_and_never_maps_ncf_to_ocf():

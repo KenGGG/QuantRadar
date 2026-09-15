@@ -65,7 +65,10 @@ class DataHubWorkQueue:
         task_id = self._identity(queue, task)
         data = self._load()
         previous = data["tasks"].get(task_id)
-        if previous and previous.get("status") not in TERMINAL:
+        # A task identity is an audit record, not a request to retry a result.
+        # A changed gap/contract produces a different identity; terminal work is
+        # never silently resurrected by the daily planner.
+        if previous:
             return {"status": "NO_CHANGE", "task": previous}
         now = datetime.now(timezone.utc).isoformat()
         record = {
@@ -99,7 +102,7 @@ class DataHubWorkQueue:
                 raise ValueError("work order missing: " + ", ".join(missing))
             task_id = self._identity(queue, task)
             previous = data["tasks"].get(task_id)
-            if previous and previous.get("status") not in TERMINAL:
+            if previous:
                 outcomes.append({"status": "NO_CHANGE", "task": previous})
                 continue
             record = {**task, "task_id": task_id, "queue": queue, "status": "PENDING",
