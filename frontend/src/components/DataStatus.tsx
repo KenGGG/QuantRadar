@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Collapse, DatePicker, Descriptions, Space, Table, Tag, Typography } from 'antd';
 import { dataHubJobAction, getDataHubOverview, updateAllData, type DataHubOverview } from '../api';
 
-const labels: Record<string, string> = { IDLE: '未开始', RUNNING: '进行中', UPDATED: '已更新', NO_CHANGE: '无变化', PARTIAL: '部分完成', FAILED: '失败', SOURCE_BLOCKED: '来源受阻', INTERRUPTED: '已中断', PASS: '通过', COMPLETED: '已结束' };
+const labels: Record<string, string> = { IDLE: '未开始', RUNNING: '进行中', UPDATED: '已更新', NO_CHANGE: '无变化', PARTIAL: '部分完成', FAILED: '失败', SOURCE_BLOCKED: '来源受阻', INTERRUPTED: '已中断', PASS: '通过', COMPLETED: '已结束', SKIPPED: '未执行' };
 const reasons: Record<string, string> = { SYMBOL_DATA_ERROR: '估值解析异常', UNKNOWN_EMPTY: '空响应待确认', UNVERIFIED_COVERAGE: '无覆盖证明待核实', QUALITY_FAILURE: '数据校验未通过', FAILED: '采集失败', PENDING: '待处理', RUNNING: '处理中' };
 const fmt = (v: number | undefined) => v == null ? '未统计' : v.toLocaleString();
 
