@@ -377,10 +377,13 @@ class InvestmentDataProvider(DataProvider):
         if "stock" not in types:
             return pd.DataFrame(columns=_SECURITIES_COLUMNS)
 
-        rows = self._connection.query(
-            "SELECT ts_code, symbol, exchange, list_date, delist_date "
-            "FROM ts_a_stock_list"
-        )
+        scope = getattr(self, "_release_scope", None)
+        reader = getattr(self, "_supplemental_reader", None)
+        datasets = getattr(scope, "manifest", {}).get("datasets", {}) if scope is not None else {}
+        if reader is not None and "security_lifecycle" in datasets:
+            rows = [{"ts_code": row["symbol"], "exchange": str(row["symbol"])[-2:], "list_date": row["list_date"], "delist_date": row.get("delist_date")} for row in reader.all_lifecycles()]
+        else:
+            rows = self._connection.query("SELECT ts_code, symbol, exchange, list_date, delist_date FROM ts_a_stock_list")
 
         records = []
         for r in rows:
@@ -441,6 +444,15 @@ class InvestmentDataProvider(DataProvider):
                     "end_date": end,
                     "exchange": etf.get("exchange"),
                 }
+        if reader is not None and "security_lifecycle" in datasets:
+            lifecycle = (reader.lifecycle_as_of(ts_code, _fmt_date(date)) if date is not None
+                         else reader.lifecycles([ts_code]).get(ts_code))
+            if lifecycle is None:
+                return {}
+            return {"type": "stock", "display_name": None, "name": None,
+                    "start_date": pd.to_datetime(lifecycle.get("list_date"), errors="coerce"),
+                    "end_date": pd.to_datetime(lifecycle.get("delist_date"), errors="coerce"),
+                    "exchange": ts_code[-2:]}
         row = self._connection.query_one(
             "SELECT ts_code, exchange, list_date, delist_date "
             "FROM ts_a_stock_list WHERE ts_code = %s",

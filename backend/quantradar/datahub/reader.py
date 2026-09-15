@@ -128,6 +128,10 @@ class SupplementalReader:
         )
         return {row["symbol"]: row for row in rows}
 
+    def all_lifecycles(self) -> list[dict[str, Any]]:
+        """Return the complete fixed-release lifecycle universe."""
+        return self._query("SELECT symbol, list_date, delist_date, status, pit_status FROM qr_security_lifecycle ORDER BY symbol", ())
+
     def trade_status(self, symbols: list[str], start_date: str | None, end_date: str | None, count: int | None) -> dict[str, list[dict[str, Any]]]:
         if not symbols:
             return {}
