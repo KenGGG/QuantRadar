@@ -289,6 +289,7 @@ export interface DataHubDataset {
   rows?: number;
   first_date?: string;
   latest_date?: string;
+  checked_at?: string;
   stocks?: number;
   partial_rows?: number;
   source?: string[];

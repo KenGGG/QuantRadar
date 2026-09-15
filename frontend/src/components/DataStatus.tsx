@@ -61,13 +61,14 @@ export function DataStatus() {
     {error && <Alert showIcon type="error" message="操作或状态读取失败" description={error} />}
     {notice && <Alert showIcon closable onClose={() => setNotice(null)} type="info" message={notice} />}
     <Card title="Coverage 与 Qualification">
-      <Table rowKey="key" pagination={false} size="middle" scroll={{ x: 900 }} dataSource={rows} columns={[
+      <Table rowKey="key" pagination={false} size="middle" scroll={{ x: 1050 }} dataSource={rows} columns={[
         { title: '数据', dataIndex: 'name' },
         { title: '存放位置', dataIndex: 'location' },
         { title: '数据源', dataIndex: 'source' },
         { title: 'Coverage（有效股票）', render: (_, r) => fmt(r.published?.stocks) },
         { title: 'Coverage（有效行）', render: (_, r) => fmt(r.published?.row_count ?? r.published?.rows) },
         { title: '日期范围', render: (_, r) => r.published?.first_date ? `${r.published.first_date} 至 ${r.published.latest_date ?? '未统计'}${r.dateLabel ? '（上市日期）' : ''}` : '未统计' },
+        { title: '最近核查', render: (_, r) => r.published?.checked_at ? new Date(r.published.checked_at).toLocaleString('zh-CN') : '未单独核查' },
         { title: '回测怎么用', dataIndex: 'usage' },
         { title: 'Qualification', dataIndex: 'qualification' },
       ]} />
