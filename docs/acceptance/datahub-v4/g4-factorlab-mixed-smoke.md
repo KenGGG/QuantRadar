@@ -31,3 +31,8 @@ supplemental `6gbkv4cik3ena0eh87p8ktmb6n0m4d86`）。它使用 25 只具有
 release Provider 读取 RAW 价格及已发布补丁，得到相同的 `PARTIAL_SUCCESS`
 逐项结果。FactorLab 不再直接读取 `final_a_stock_eod_price`；基础行情、补丁和单位换算
 使用与 Provider 相同的固定版本契约。
+
+批次 `780c4ea0-d8b1-4b65-bbc6-84b94dd11659` 再次固定在同一 release，使用
+“显式成员 ∩ 发布版生命周期有效区间”构造日度 `universe`，没有以价格非空性
+缩小截面。结果仍为 #1/#56 `COMPUTED`、#58 `BLOCKED_INPUT(indclass.sector)`、
+批次 `PARTIAL_SUCCESS`。

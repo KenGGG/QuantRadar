@@ -162,3 +162,15 @@ def test_factorlab_price_rows_use_release_provider_and_native_units():
 
     rows = provider_price_rows(Provider(), ["000001.SZ"], "2024-01-02", "2024-01-03")
     assert rows["000001.SZ"][0] == {"open": 1, "high": 2, "low": .5, "close": 1.5, "volume": 100, "amount": 150, "trade_date": dates[0], "unit_contract_version": "joinquant-shares-yuan-v2"}
+
+
+def test_universe_mask_uses_explicit_lifecycle_not_price_presence():
+    from quantradar.factorlab.service import lifecycle_universe
+
+    dates = pd.date_range("2024-01-02", periods=4, freq="B")
+    mask = lifecycle_universe(dates, ["000001.SZ", "000002.SZ"], [
+        {"symbol": "000001.SZ", "list_date": "2024-01-03", "delist_date": None},
+        {"symbol": "000002.SZ", "list_date": "2020-01-01", "delist_date": "2024-01-05"},
+    ])
+    assert mask["000001.SZ"].tolist() == [False, True, True, True]
+    assert mask["000002.SZ"].tolist() == [True, True, True, False]

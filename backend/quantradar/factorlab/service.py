@@ -71,6 +71,21 @@ def provider_price_rows(provider: Any, members: list[str], start_date: str, end_
     return result
 
 
+def lifecycle_universe(dates: pd.DatetimeIndex, members: list[str], lifecycle_rows: list[dict[str, Any]]) -> pd.DataFrame:
+    """Build the eligibility mask from declared membership and release lifecycle facts."""
+    mask = pd.DataFrame(False, index=dates, columns=members, dtype=bool)
+    by_symbol = {str(row["symbol"]): row for row in lifecycle_rows}
+    for symbol in members:
+        row = by_symbol.get(symbol)
+        if not row or not row.get("list_date"):
+            continue
+        active = dates >= pd.Timestamp(row["list_date"])
+        if row.get("delist_date"):
+            active &= dates < pd.Timestamp(row["delist_date"])
+        mask.loc[active, symbol] = True
+    return mask
+
+
 def _hash_members(members: list[str]) -> str:
     return hashlib.sha256("\n".join(sorted(members)).encode()).hexdigest()
 
@@ -179,7 +194,10 @@ def _panel(config: dict[str, Any]) -> tuple[dict[str, pd.DataFrame], pd.DataFram
                 fields["indclass." + level] = industry
     # Membership is explicit and intentionally independent of per-day price
     # availability: missing facts must remain visible to qualification.
-    fields["universe"] = pd.DataFrame(True, index=fields["close"].index, columns=fields["close"].columns)
+    lifecycle_rows = []
+    if scope.supplemental_database:
+        lifecycle_rows = list(reader.supplemental_reader(scope).lifecycles(config["members"]).values())
+    fields["universe"] = lifecycle_universe(fields["close"].index, config["members"], lifecycle_rows)
     return fields, fields["open"]
 
 

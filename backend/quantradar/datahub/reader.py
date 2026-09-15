@@ -117,6 +117,17 @@ class SupplementalReader:
         )
         return rows[0] if rows else None
 
+    def lifecycles(self, symbols: list[str]) -> dict[str, dict[str, Any]]:
+        """Return fixed-release lifecycle facts for an explicit research pool."""
+        if not symbols:
+            return {}
+        marks = ",".join(["%s"] * len(symbols))
+        rows = self._query(
+            "SELECT symbol, list_date, delist_date, status, pit_status FROM qr_security_lifecycle "
+            f"WHERE symbol IN ({marks})", tuple(symbols),
+        )
+        return {row["symbol"]: row for row in rows}
+
     def trade_status(self, symbols: list[str], start_date: str | None, end_date: str | None, count: int | None) -> dict[str, list[dict[str, Any]]]:
         if not symbols:
             return {}
