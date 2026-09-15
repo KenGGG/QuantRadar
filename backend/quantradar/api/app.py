@@ -868,7 +868,9 @@ def factorlab_batch_summary(experiment_id: str) -> Dict[str, Any]:
     config = row.get("config") or {}
     selection = config.get("representative_selection")
     holdout = config.get("holdout_access")
-    if config.get("status") != "SUCCESS":
+    completed_statuses = {"COMPUTED", "FORMULA_EMPTY_VALID", "CACHE_HIT"}
+    completed = sum(item.get("status") in completed_statuses for item in config.get("items", []))
+    if config.get("status") not in {"SUCCESS", "PARTIAL_SUCCESS"} or not completed:
         researcher_state = "NOT_READY"
     elif not selection:
         researcher_state = "AWAITING_RESEARCHER_SELECTION"
@@ -883,12 +885,13 @@ def factorlab_batch_summary(experiment_id: str) -> Dict[str, Any]:
         evaluations={h:{"status":v.get("status"), "summary":v.get("summary")} for h,v in item.get("evaluations", {}).items()}
         alpha_id = int(item.get("alpha_id"))
         formula = catalog.get(alpha_id, {})
-        items.append({"alpha_id":alpha_id,"calculation":item.get("calculation"),"evaluations":evaluations,
+        items.append({"alpha_id":alpha_id, "status":item.get("status"), "calculation":item.get("calculation"),
+                      "missing_fields":item.get("missing_fields", []), "error":item.get("error"), "evaluations":evaluations,
                       "complexity":{"lookback_days":formula.get("lookback_days"), "field_count":len(formula.get("fields") or []),
                                     "formula_length":len(str(formula.get("formula") or ""))}})
     return {"experiment_id":experiment_id,"status":config.get("status"),"error":config.get("error"),
             "result_fingerprint":row.get("result_fingerprint"),
-            "requested":len(config.get("alpha_ids", [])),"completed":len(items),"items":items,
+            "requested":len(config.get("alpha_ids", [])),"completed":completed,"items":items,
             "pool":{"type":config.get("pool_type"),"members_hash":config.get("members_hash"),"snapshot_date":config.get("snapshot_date")},
             "researcher_state": researcher_state,
             "representative_selection":selection,

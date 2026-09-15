@@ -355,3 +355,17 @@ def test_provider_industry_refuses_unverified_code_prefixes():
     )
     with pytest.raises(DataUnavailable, match="禁止由代码前缀推断"):
         industry(provider, "600000.XSHG", "2024-01-02")
+
+
+def test_factorlab_summary_counts_only_computed_items(monkeypatch):
+    from quantradar.api import app
+
+    monkeypatch.setattr("quantradar.storage.get_experiment", lambda _: {
+        "kind": "factor", "config": {"status": "PARTIAL_SUCCESS", "alpha_ids": [1, 58],
+        "items": [{"alpha_id": 1, "status": "COMPUTED", "calculation": "COMPUTED", "evaluations": {}},
+                  {"alpha_id": 58, "status": "BLOCKED_INPUT", "missing_fields": ["indclass.sector"]}]},
+    })
+    summary = app.factorlab_batch_summary("batch")
+    assert summary["completed"] == 1
+    assert summary["researcher_state"] == "AWAITING_RESEARCHER_SELECTION"
+    assert summary["items"][1]["missing_fields"] == ["indclass.sector"]
