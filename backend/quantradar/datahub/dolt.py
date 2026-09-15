@@ -126,7 +126,7 @@ _SCHEMA = (
       revision_no INT NOT NULL, supersedes_snapshot_id VARCHAR(64) NULL,
       effective_date DATE NULL, effective_semantics VARCHAR(96) NOT NULL,
       effective_evidence_ref VARCHAR(256) NULL, qualification VARCHAR(64) NOT NULL, pit_status VARCHAR(16) NOT NULL,
-      PRIMARY KEY (snapshot_id), UNIQUE KEY qr_index_snapshot_revision (dataset_type, index_code, source_date, revision_no)
+      PRIMARY KEY (snapshot_id), UNIQUE KEY qr_index_snapshot_revision (dataset_type, index_code, source_date, source, revision_no)
     )
     """,
     """
@@ -219,6 +219,13 @@ class SupplementalStore:
             if "source_contract_id" not in columns:
                 cursor.execute("ALTER TABLE qr_trade_status_daily ADD COLUMN source_contract_id VARCHAR(64) NULL AFTER adapter_version")
                 cursor.execute("UPDATE qr_trade_status_daily SET source_contract_id='baostock-daily-v2' WHERE source='baostock' AND source_contract_id IS NULL")
+            cursor.execute("SHOW INDEX FROM qr_index_snapshot_version WHERE Key_name='qr_index_snapshot_revision'")
+            index_rows = cursor.fetchall() if fetchall is not None else []
+            revision_columns = [row["Column_name"] for row in sorted(index_rows, key=lambda row: row["Seq_in_index"])]
+            expected_revision_columns = ["dataset_type", "index_code", "source_date", "source", "revision_no"]
+            if revision_columns and revision_columns != expected_revision_columns:
+                cursor.execute("ALTER TABLE qr_index_snapshot_version DROP INDEX qr_index_snapshot_revision")
+                cursor.execute("ALTER TABLE qr_index_snapshot_version ADD UNIQUE KEY qr_index_snapshot_revision (dataset_type, index_code, source_date, source, revision_no)")
         self.connection.commit()
 
     def prepare_canonical_valuation(self) -> None:
@@ -321,8 +328,8 @@ class SupplementalStore:
             raise ValueError(f"snapshot version missing fields: {missing}")
         with self.connection.cursor() as cursor:
             cursor.execute("SELECT snapshot_id, content_hash, revision_no FROM qr_index_snapshot_version "
-                           "WHERE dataset_type=%s AND index_code=%s AND source_date <=> %s ORDER BY revision_no DESC LIMIT 1",
-                           (version["dataset_type"], version["index_code"], version.get("source_date")))
+                           "WHERE dataset_type=%s AND index_code=%s AND source_date <=> %s AND source=%s ORDER BY revision_no DESC LIMIT 1",
+                           (version["dataset_type"], version["index_code"], version.get("source_date"), version["source"]))
             plan = snapshot_revision_plan(cursor.fetchone(), str(version["content_hash"]))
             if plan["action"] == "NO_CHANGE":
                 return {**plan, "snapshot_id": None}
@@ -347,9 +354,30 @@ class SupplementalStore:
         fixed_mapping_fields = ("statement_version_id", "mapping_version", "conservative_available_at", "availability_rule_version")
         mapping_fields = (*fixed_mapping_fields, *(field for field in mapping if field not in fixed_mapping_fields))
         with self.connection.cursor() as cursor:
-            cursor.execute(f"INSERT IGNORE INTO qr_stock_statement_version ({', '.join(version_fields)}) VALUES ({', '.join(['%s'] * len(version_fields))})", tuple(version.get(field) for field in version_fields))
-            cursor.execute(f"INSERT IGNORE INTO {table} ({', '.join(mapping_fields)}) VALUES ({', '.join(['%s'] * len(mapping_fields))})", tuple(version.get("statement_version_id") if field == "statement_version_id" else mapping.get(field) for field in mapping_fields))
+            self._write_immutable(cursor, "qr_stock_statement_version", version_fields,
+                                  tuple(version.get(field) for field in version_fields),
+                                  ("statement_version_id",), "financial statement version")
+            self._write_immutable(cursor, table, mapping_fields,
+                                  tuple(version.get("statement_version_id") if field == "statement_version_id" else mapping.get(field) for field in mapping_fields),
+                                  ("statement_version_id", "mapping_version"), "financial mapping")
         self.connection.commit()
+
+    @staticmethod
+    def _write_immutable(cursor: Any, table: str, fields: tuple[str, ...], values: tuple[Any, ...],
+                         key_fields: tuple[str, ...], label: str) -> None:
+        """Insert one immutable receipt or reject a same-key content conflict."""
+        expected = dict(zip(fields, values))
+        where = " AND ".join(f"{field}=%s" for field in key_fields)
+        cursor.execute(f"SELECT {', '.join(fields)} FROM {table} WHERE {where}",
+                       tuple(expected[field] for field in key_fields))
+        fetchone = getattr(cursor, "fetchone", None)
+        existing = fetchone() if fetchone is not None else None
+        if existing is not None:
+            conflicts = [field for field in fields if existing.get(field) != expected[field]]
+            if conflicts:
+                raise ValueError(f"conflicting immutable {label} for {tuple(expected[field] for field in key_fields)}: {conflicts}")
+            return
+        cursor.execute(f"INSERT INTO {table} ({', '.join(fields)}) VALUES ({', '.join(['%s'] * len(fields))})", values)
 
     @staticmethod
     def _insert_snapshot_members(cursor: Any, table: str, fields: tuple[str, ...], snapshot_id: str, rows: list[dict[str, Any]]) -> None:

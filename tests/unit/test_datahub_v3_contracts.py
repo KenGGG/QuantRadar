@@ -92,6 +92,7 @@ def test_supplemental_schema_has_immutable_snapshot_version_and_member_tables():
     schema = "\n".join(_SCHEMA)
     assert "CREATE TABLE IF NOT EXISTS qr_index_snapshot_version" in schema
     assert "UNIQUE KEY qr_index_snapshot_revision" in schema
+    assert "dataset_type, index_code, source_date, source, revision_no" in schema
     assert "CREATE TABLE IF NOT EXISTS qr_index_constituent_snapshot" in schema
     assert "CREATE TABLE IF NOT EXISTS qr_index_weight_snapshot" in schema
     assert "CREATE TABLE IF NOT EXISTS qr_sw_index_component_snapshot" in schema
@@ -115,6 +116,53 @@ def test_snapshot_writer_does_not_rewrite_identical_business_content():
     )
     assert result["action"] == "NO_CHANGE"
     assert not any("INSERT INTO qr_index_snapshot_version" in sql for sql, _ in executed)
+
+
+def test_snapshot_revision_chain_is_scoped_to_its_source():
+    from quantradar.datahub.dolt import SupplementalStore
+    executed = []
+    class Cursor:
+        def execute(self, sql, args=()): executed.append((sql, args))
+        def fetchone(self): return None
+        def __enter__(self): return self
+        def __exit__(self, *_): return False
+    class Connection:
+        def cursor(self): return Cursor()
+        def commit(self): pass
+    SupplementalStore(Connection()).write_index_snapshot(
+        version={"dataset_type": "CSI_CONSTITUENTS", "index_code": "000300.SH", "source_date": "2026-09-14", "observed_at": "2026-09-14T20:30:00+08:00", "content_hash": "same", "raw_sha256": "a" * 64, "source": "official", "adapter_version": "x", "effective_semantics": "UNKNOWN", "qualification": "RAW_EVIDENCE_ONLY", "pit_status": "PARTIAL"},
+        constituents=[], weights=[], sw_components=[],
+    )
+    lookup = executed[0]
+    assert "source=%s" in lookup[0]
+    assert lookup[1][-1] == "official"
+
+
+def test_schema_upgrade_rekeys_existing_snapshot_revision_index_by_source():
+    from quantradar.datahub.dolt import SupplementalStore
+    executed = []
+    class Cursor:
+        last = ""
+        def execute(self, sql, args=()): self.last = sql; executed.append(sql)
+        def fetchall(self):
+            if "SHOW COLUMNS" in self.last:
+                return [{"Field": "source_contract_id"}]
+            if "SHOW INDEX" in self.last:
+                return [
+                    {"Column_name": "dataset_type", "Seq_in_index": 1},
+                    {"Column_name": "index_code", "Seq_in_index": 2},
+                    {"Column_name": "source_date", "Seq_in_index": 3},
+                    {"Column_name": "revision_no", "Seq_in_index": 4},
+                ]
+            return []
+        def __enter__(self): return self
+        def __exit__(self, *_): return False
+    class Connection:
+        def cursor(self): return Cursor()
+        def commit(self): pass
+    SupplementalStore(Connection()).ensure_schema()
+    assert any("DROP INDEX qr_index_snapshot_revision" in sql for sql in executed)
+    assert any("source_date, source, revision_no" in sql for sql in executed)
 
 
 def test_explicit_snapshot_reader_keeps_unknown_source_date_out_of_as_of_reads(monkeypatch):

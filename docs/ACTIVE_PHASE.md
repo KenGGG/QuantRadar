@@ -24,6 +24,8 @@
 
 本里程碑至此 **CLOSED**。G2 日常状态维护与已登记的来源缺口继续保留，但不构成新的本轮 Goal；未验证的历史行业字典、严格 PIT、复权和账户资格仍按各自限制列示。
 
+**Post-close contract alignment — PASSED.** 随后完成了 V3 P0 的有限契约收尾：财务读取明确映射版本和 PIT 观察边界，指数修订链按来源隔离，财务不可变写入拒绝同键冲突；没有增加数据域或研究目标。见 [收尾记录](acceptance/datahub-v3/p0-contract-closure.md)。
+
 ### Historical DataHub V3 P0 gates
 
 - **G0 Source Audit — PASSED.** 已归档 CSI300/500/1000 成分和权重、申万一级样本及五只股票三表的真实 AKShare 原始响应；普通企业、银行与保险 schema 已实测不同。中证权重单位为 PERCENT；申万权重仍是 UNIT_UNVERIFIED raw。所有当前历史财务响应均为 PIT_PARTIAL。详见 [G0 审计](acceptance/datahub-v3/g0_source_audit.md)。
@@ -46,15 +48,15 @@ BulletTrade 引擎已在固定版本上完成实际成交的月度轮动回放�
 [G2 Provider 回放记录](acceptance/alpha101-etf/g2_etf_provider_raw_replay.md)。公司行为仅样本覆盖、
 历史规则/状态不完整，故 `ETF_HFQ_RESEARCH` 与严格账户仍保持关闭；该限制不阻塞 ETF_RAW 研究。
 
-当前 G3：完成 Alpha101 与 ETF 的研究/会计/PIT 门禁，明确原始价研究、复权研究和严格账户的
+历史 Alpha101/ETF G3（已完成）：完成 Alpha101 与 ETF 的研究/会计/PIT 门禁，明确原始价研究、复权研究和严格账户的
 输入、评价与可执行范围；行业多层与市值从已存原始资料重解析，不新增外部采集。
 行业多层已在 `R9c1b6c13965dc457` 从归档申万原始文件重解析；其公开时间未知，严格 PIT
 门禁不因此解除。
 
-G3 已通过：Alpha101 三种模式与 ETF_RAW/严格账户资格已在固定 release 上明确记录，三级行业
+历史 Alpha101/ETF G3 已通过：Alpha101 三种模式与 ETF_RAW/严格账户资格已在固定 release 上明确记录，三级行业
 输入已重解析发布，DataHub overview 已展示资格。复权、PIT 严格和账户级缺口均保持 BLOCKED。
 
-G4 已通过：固定版本重复回放同 hash、旧版回放与隔离、缺失 release 失败、ETF 复权门禁和既有页面资格展示均已验证。完整矩阵见 [G4 最终验收](acceptance/alpha101-etf/g4_final_acceptance.md)。
+历史 Alpha101/ETF G4 已通过：固定版本重复回放同 hash、旧版回放与隔离、缺失 release 失败、ETF 复权门禁和既有页面资格展示均已验证。完整矩阵见 [G4 最终验收](acceptance/alpha101-etf/g4_final_acceptance.md)。
 
 ## Queued Goals
 

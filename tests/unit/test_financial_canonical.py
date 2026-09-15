@@ -44,3 +44,39 @@ def test_financial_writer_does_not_repeat_fixed_mapping_columns():
     v={"statement_version_id":"s","symbol":"600519.SH","statement_type":"income","report_period":"2025-12-31","statement_scope":"UNKNOWN","period_type":"YTD","announcement_precision":"DATE_ONLY","source_fetch_at":"x","source":"x","raw_sha256":"a"*64,"adapter_version":"x","pit_status":"PARTIAL","qualification":"x","raw_payload_json":"{}"}
     SupplementalStore(Conn()).write_financial_statement(v,{"mapping_version":"v1","conservative_available_at":None,"availability_rule_version":None,"net_profit":1})
     assert sql[-1].count("availability_rule_version") == 1
+
+
+def test_financial_writer_rejects_a_conflicting_existing_mapping():
+    from quantradar.datahub.dolt import SupplementalStore
+    class C:
+        calls = 0
+        def execute(self, query, args=()): self.calls += 1
+        def fetchone(self):
+            # First lookup is the raw version; second is its mapping.
+            return None if self.calls == 1 else {"statement_version_id": "s", "mapping_version": "v1", "net_profit": 2}
+        def __enter__(self): return self
+        def __exit__(self,*_): return False
+    class Conn:
+        def cursor(self): return C()
+        def commit(self): raise AssertionError("a conflicting immutable write must not commit")
+    v={"statement_version_id":"s","symbol":"600519.SH","statement_type":"income","report_period":"2025-12-31","statement_scope":"UNKNOWN","period_type":"YTD","announcement_precision":"DATE_ONLY","source_fetch_at":"x","source":"x","raw_sha256":"a"*64,"adapter_version":"x","pit_status":"PARTIAL","qualification":"x","raw_payload_json":"{}"}
+    import pytest
+    with pytest.raises(ValueError, match="conflicting immutable financial mapping"):
+        SupplementalStore(Conn()).write_financial_statement(v,{"mapping_version":"v1","conservative_available_at":None,"availability_rule_version":None,"net_profit":1})
+
+
+def test_financial_reader_requires_mapping_version_and_strict_pit_observation_cutoff(monkeypatch):
+    from quantradar.datahub.reader import SupplementalReader
+    import pytest
+    reader = SupplementalReader(lambda: None)
+    with pytest.raises(ValueError, match="mapping_version"):
+        reader.financial_statement("600519.SH", "income", as_of="2026-01-01")
+    with pytest.raises(ValueError, match="observed_before"):
+        reader.financial_statement("600519.SH", "income", as_of="2026-01-01", mapping_version="v1", strict_pit=True)
+    calls = []
+    monkeypatch.setattr(reader, "_query", lambda sql, args: calls.append((sql, args)) or [])
+    reader.financial_statement("600519.SH", "income", as_of="2026-01-01", mapping_version="v1", observed_before="2026-01-02", strict_pit=True)
+    assert "m.mapping_version=%s" in calls[0][0]
+    assert "v.source_fetch_at<=%s" in calls[0][0]
+    assert "v.pit_status='PASS'" in calls[0][0]
+    assert calls[0][1][-1] == "2026-01-02T23:59:59.999999+08:00"

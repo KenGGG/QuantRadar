@@ -304,16 +304,34 @@ class SupplementalReader:
         return self.get_index_snapshot(index_code, as_of=as_of, observed_before=observed_before,
                                        strict_pit=strict_pit, dataset_type="CSI_WEIGHTS")
 
-    def financial_statement(self, symbol: str, statement_type: str, *, as_of: str) -> list[dict[str, Any]]:
-        """Read only conservative-availability-qualified mappings from this release."""
+    def financial_statement(self, symbol: str, statement_type: str, *, as_of: str,
+                            mapping_version: str | None = None,
+                            observed_before: str | None = None,
+                            strict_pit: bool = False) -> list[dict[str, Any]]:
+        """Read one explicit mapping contract from this release.
+
+        ``as_of`` is the business-date availability boundary.  ``observed_before``
+        constrains what had been received locally; strict PIT requires it and only
+        admits records whose source qualification is PASS.
+        """
         table = {"balance": "qr_stock_balance_sheet", "income": "qr_stock_income_statement", "cashflow": "qr_stock_cashflow_statement"}.get(statement_type)
         if table is None:
             raise ValueError("unsupported statement_type")
+        if not mapping_version:
+            raise ValueError("financial_statement requires an explicit mapping_version")
+        if strict_pit and not observed_before:
+            raise ValueError("strict_pit financial_statement requires observed_before")
+        where = ["v.symbol=%s", "m.mapping_version=%s", "m.conservative_available_at IS NOT NULL", "m.conservative_available_at<=%s"]
+        args: list[Any] = [symbol, mapping_version, as_of]
+        if observed_before:
+            cutoff = observed_before + "T23:59:59.999999+08:00" if len(observed_before) == 10 else observed_before
+            where.append("v.source_fetch_at<=%s"); args.append(cutoff)
+        if strict_pit:
+            where.append("v.pit_status='PASS'")
         return self._query(
             "SELECT v.symbol,v.report_period,v.source_announcement_date,v.pit_status,m.* "
             f"FROM qr_stock_statement_version v JOIN {table} m ON v.statement_version_id=m.statement_version_id "
-            "WHERE v.symbol=%s AND m.conservative_available_at IS NOT NULL AND m.conservative_available_at<=%s "
-            "ORDER BY v.report_period, v.statement_version_id", (symbol, as_of),
+            "WHERE " + " AND ".join(where) + " ORDER BY v.report_period, v.statement_version_id", tuple(args),
         )
 
     def _snapshot_members(self, snapshot_id: str, dataset_type: str) -> list[dict[str, Any]]:

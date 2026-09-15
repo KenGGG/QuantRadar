@@ -6,6 +6,7 @@
 
 - Development branch: `main`. DataHub feature work and the launcher change are merged into main.
 - DataHub V4 全市场数据底账与 RAW Alpha101 里程碑已关闭。G4 已验证 FactorLab 与回测共用固定 release Provider、发布版生命周期 universe 和交易日预热；#1/#56 可算，#58/#48/#59 因未验证的历史申万字典明确阻塞。G5 的固定 release 101 条矩阵和既有低 Beta 策略回放均已存证；旧的 ETF／FactorLab P3 状态仅为冻结历史里程碑。
+- 财务 canonical Reader 要求调用方明确 `mapping_version`；严格 PIT 查询还必须声明 `observed_before`，并只接受 `pit_status=PASS`。指数快照修订以来源隔离；同键财务版本或映射内容冲突会被拒绝。
 - ETF 研究和 FactorLab 当前静态 WebUI 已在本机浏览器验收：固定版本选择、ETF 模板预检与行业 BLOCKED 原因、FactorLab 输入与静态池选择均由真实本地接口返回；FactorLab 还可按不可变批次 ID 恢复摘要并展示研究／验证段相关性，未由系统访问保留段。验收记录位于 `docs/acceptance/webui-etf-factorlab/browser-workbench-acceptance.md`。
 - ETF 研究组使用固定 release、ETF_RAW 和 BulletTrade 原生费用，逐个提交五个模板；网页显示子项状态、运行标识及原生报告入口。当前已冻结的行业定义只有本地身份资料可证明时才可用；现有 ETF 主数据不能证明五个宽行业身份，因此均保持 BLOCKED。
 - FactorLab 的量价因子按固定静态对象池计算，研究／验证／保留段按交易日 60%／20%／20% 切分，跨边界标签剔除。相关性保留正负号，完全链接按 `1 - |rho| <= 0.2`，且相关计算每次只加载一对已注册的因子产物。
@@ -180,4 +181,4 @@ NotebookLM runtime code exists, including pre-auth gates; its goal has not passe
 
 ## 7231 数据状态页面事实
 
-正式端口已加载 datahub-v1 页面，任务 / Governor / 正式覆盖 / 折叠诊断分层展示；浏览器与 45 项 DataHub 单测通过。详情见 [布局验收](acceptance/datahub-v1/webui-7231-layout.md)。002504 的 SDK `NoneType` 解析异常曾错误打开 circuit，现已作为 `SYMBOL_DATA_ERROR` 审计并解除 false-positive cooldown；worker 正在从 `PENDING` 串行恢复。控制与发布完整验收未完成，Goal 仍为 IN_PROGRESS。
+历史 DataHub V1 页面验收：正式端口曾加载 datahub-v1 页面，任务 / Governor / 正式覆盖 / 折叠诊断分层展示；浏览器与 45 项 DataHub 单测通过。详情见 [布局验收](acceptance/datahub-v1/webui-7231-layout.md)。002504 的 SDK `NoneType` 解析异常曾错误打开 circuit，后续已作为 `SYMBOL_DATA_ERROR` 审计；该历史记录不表示当前 Goal 仍在进行。
