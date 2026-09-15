@@ -128,6 +128,12 @@ def test_sync_watermark_checks_revisions_once_per_target_and_backfill_checks_hol
     assert plan_symbols(units, {}, '2026-09-10', mode='backfill', start='2026-09-01', summaries={'600000.SH': {'missing_internal_days': 1}}) == ['600000.SH']
 
 
+def test_daily_target_is_limited_by_observed_price_coverage():
+    from quantradar.datahub.daily import latest_complete_target
+
+    assert latest_complete_target(['2026-09-11', '2026-09-14', '2026-09-15'], '2026-09-15', '2026-09-14') == '2026-09-14'
+
+
 def test_non_object_candidate_row_is_isolated(tmp_path):
     import hashlib
     from quantradar.datahub.quality import validate_shard

@@ -53,6 +53,16 @@ def plan_symbols(units, lifecycle, target, *, mode='sync', start=None, summaries
     return selected
 
 
+def latest_complete_target(calendar, cutoff: str, price_latest: str | None) -> str:
+    """Choose a trading target from observed source coverage, never wall time alone."""
+    if not price_latest:
+        raise RuntimeError('base price coverage has no latest_date')
+    eligible = [day for day in calendar if day <= cutoff and day <= str(price_latest)[:10]]
+    if not eligible:
+        raise RuntimeError('no trading day is complete in the fixed base coverage')
+    return max(eligible)
+
+
 class DailyUpdate:
     def __init__(self, service):
         self.service = service
@@ -191,7 +201,7 @@ class DailyUpdate:
                     return state
                 now = datetime.now(ZoneInfo('Asia/Shanghai'))
                 cutoff = end or (now.date() if now.hour >= 18 else now.date() - timedelta(days=1)).isoformat()
-                target = max(d for d in calendar if d <= cutoff)
+                target = latest_complete_target(calendar, cutoff, coverage['行情'].get('latest_date'))
                 state['target_as_of'] = target
                 if mode == 'status':
                     if base['status'] == 'UPDATED' or self.service.releases.current()['base_commit'] != commit:
