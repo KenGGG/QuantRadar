@@ -11,7 +11,7 @@ import subprocess
 import sys
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from bisect import bisect_left
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import get_context
@@ -335,12 +335,13 @@ class DataHubService:
                 "unsupported": sorted(str(row["symbol"]) for row in records
                                       if (row.get("capabilities") or {}).get("trade_status") == "UNSUPPORTED")}
 
-    def enqueue_market_trade_status_plan(self, start: str, end: str, release_id: str | None = None) -> dict[str, Any]:
+    def enqueue_market_trade_status_plan(self, start: str, end: str, release_id: str | None = None,
+                                         *, queue_name: str = "historical") -> dict[str, Any]:
         """Persist market-ledger checks; claiming a task still requires re-audit."""
         from .work_queue import DataHubWorkQueue
         plan = self.market_trade_status_plan(start, end, release_id)
         queue = DataHubWorkQueue(Path(self.config.supplemental_repo) / "work-queue.json")
-        outcomes = queue.enqueue_many("historical", plan["tasks"])
+        outcomes = queue.enqueue_many(queue_name, plan["tasks"])
         return {**plan, "enqueued": sum(item["status"] == "ENQUEUED" for item in outcomes),
                 "queue_status": queue.status()["counts"]}
 
@@ -376,7 +377,8 @@ class DataHubService:
             actual = base_rows
         return CoverageService("baostock-trade-status-v1").reaudit_work_order(task, expected=expected, actual=actual)
 
-    def process_market_trade_status_queue(self, *, limit: int = 10) -> dict[str, Any]:
+    def process_market_trade_status_queue(self, *, limit: int = 10, queue_name: str = "historical",
+                                          acquire_lock: bool = True) -> dict[str, Any]:
         """Run a bounded, release-audited status repair batch.
 
         A task first proves its residual gap at the release it names.  Source
@@ -388,10 +390,11 @@ class DataHubService:
         from .work_queue import DataHubWorkQueue
 
         queue = DataHubWorkQueue(Path(self.config.supplemental_repo) / "work-queue.json")
-        tasks = queue.claim_matching("historical", domain="trade_status", limit=limit)
+        tasks = queue.claim_matching(queue_name, domain="trade_status", limit=limit)
         outcomes: list[dict[str, Any]] = []
         staged: list[tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]] = []
-        with self._updater_lock():
+        lock = self._updater_lock() if acquire_lock else nullcontext()
+        with lock:
             adapter = BaostockAdapter(host=self.config.baostock_host)
             for task in tasks:
                 try:

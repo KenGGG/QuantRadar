@@ -254,6 +254,23 @@ def test_market_status_plan_enqueue_preserves_each_symbol_task(tmp_path, monkeyp
     assert result["queue_status"]["historical"]["PENDING"] == 1
 
 
+def test_market_status_plan_can_enqueue_current_correction_work(tmp_path, monkeypatch):
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.service import DataHubService
+
+    service = DataHubService(DataHubConfig(supplemental_repo=str(tmp_path)))
+    monkeypatch.setattr(service, "market_trade_status_plan", lambda *_: {"tasks": [{
+        "source_contract_id": "baostock-daily-v2", "domain": "trade_status", "fields": ["is_st"],
+        "symbols": ["600000.SH"], "range": {"start": "2024-01-02", "end": "2024-01-02"},
+        "gap_reason": "test", "gap_fingerprint": "b" * 64, "expected_key_contract": "baostock-trade-status-v1",
+    }]})
+
+    result = service.enqueue_market_trade_status_plan("2024-01-02", "2024-01-02", queue_name="current")
+
+    assert result["enqueued"] == 1
+    assert result["queue_status"]["current"]["PENDING"] == 1
+
+
 def test_work_queue_enqueues_many_tasks_in_one_durable_operation(tmp_path):
     from quantradar.datahub.work_queue import DataHubWorkQueue
 

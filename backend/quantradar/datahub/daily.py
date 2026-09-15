@@ -214,6 +214,17 @@ class DailyUpdate:
                         return state
                 record('industry', {'status': 'SOURCE_BLOCKED', 'reason': '无已验收的行业增量更新入口；保留原发布日期'})
                 record('lifecycle', {'status': 'NO_CHANGE', 'base_commit': commit, 'reason': '使用本次固定基础版本；不推断上市或退市日期'})
+                # A current correction window is independent from the durable
+                # historical queue.  Its tasks still re-audit a fixed release
+                # immediately before any BaoStock request.
+                recent_start = calendar[max(0, calendar.index(target) - 19)]
+                record('trade_status', {'status': 'RUNNING', 'start': recent_start, 'end': target,
+                                        'queue': 'current', 'correction_window_trading_days': 20})
+                planned_status = self.service.enqueue_market_trade_status_plan(recent_start, target, queue_name='current')
+                status_result = self.service.process_market_trade_status_queue(limit=5, queue_name='current', acquire_lock=False)
+                record('trade_status', {'status': 'UPDATED' if status_result.get('published') else 'NO_CHANGE',
+                                        'start': recent_start, 'end': target, 'planned': planned_status['symbol_count'],
+                                        'enqueued': planned_status['enqueued'], 'worker': status_result})
                 record('check', {'status': 'RUNNING'})
                 candidate = validate_candidate(self.root / 'staging' / 'valuation_daily-mvp', journal.data['units'], base_commit=commit, raw_store=self.service.raw, calendar=calendar)
                 _atomic_json(self.root / 'candidate-check.json', candidate)
