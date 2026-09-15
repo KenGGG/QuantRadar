@@ -420,6 +420,7 @@ class DataHubService:
                 start = min(item["start"] for item in missing)
                 end = max(item["end"] for item in missing)
                 symbol = task["symbols"][0]
+                receipt = None
                 try:
                     _, fetched = next(adapter.daily_bundles([symbol], start, end))
                     receipt = self.raw.put(f"trade_status_daily/market-ledger/{symbol}", fetched.raw_bytes)
@@ -434,7 +435,11 @@ class DataHubService:
                     outcomes.append({"task_id": task["task_id"], "status": "STAGED", "rows": len(rows),
                                      "raw_sha256": receipt["sha256"], "stage_path": str(stage_path)})
                 except Exception as exc:
-                    evidence = {**audit["evidence"], "source_error": str(exc), "attempt": task["attempts"]}
+                    rejected = getattr(exc, "raw_bytes", None)
+                    if rejected is not None:
+                        receipt = self.raw.put(f"trade_status_daily/market-ledger/{symbol}/rejected", rejected)
+                    evidence = {**audit["evidence"], "source_error": str(exc), "attempt": task["attempts"],
+                                "raw_sha256": receipt["sha256"] if receipt else None}
                     if int(task["attempts"]) >= 3:
                         queue.finish(task["task_id"], "QUARANTINED", evidence=evidence)
                         status = "QUARANTINED"
