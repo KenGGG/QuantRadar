@@ -15,3 +15,9 @@ supplemental `6gbkv4cik3ena0eh87p8ktmb6n0m4d86`）。它使用 25 只具有
 批次最终状态为 `PARTIAL_SUCCESS`，没有 `FAILED_ENGINE`。这证明数据阻塞
 不会再被误报为工程失败，且独立公式可继续执行。行业阻塞的来源与范围见
 [G3-A 输入基线](g3a-alpha101-input-baseline.md)。
+
+第二个固定 release 批次 `078298a5-2627-4797-b0e9-ee45ec5d1925` 验证
+行业层级特有的两个公式：#48 为 `BLOCKED_INPUT`，缺
+`indclass.subindustry`；#59 为 `BLOCKED_INPUT`，缺
+`indclass.industry`。批次为 `BLOCKED` 且无错误字段。这些结果是预期的
+来源限制结果，不是计算引擎失败。
