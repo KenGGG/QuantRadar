@@ -29,6 +29,29 @@ def result_summary_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
+def failed_engine_item(alpha_id: int, exc: Exception) -> dict[str, Any]:
+    """Persist an isolated interpreter/evaluation failure without losing peers."""
+    return {"alpha_id": alpha_id, "status": "FAILED_ENGINE",
+            "error": f"{exc.__class__.__name__}: {exc}"}
+
+
+def calculation_start_from_calendar(calendar: list[str], start_date: str, lookback_days: int) -> str:
+    """Include the required warmup bars using immutable release sessions."""
+    if not calendar:
+        raise ValueError("fixed release has no trading calendar")
+    position = pd.DatetimeIndex(pd.to_datetime(calendar)).searchsorted(pd.Timestamp(start_date), side="right") - 1
+    if position < 0:
+        raise ValueError("start_date precedes the fixed release trading calendar")
+    return str(calendar[max(0, int(position) - max(0, lookback_days - 1))])[:10]
+
+
+def _calendar_until(reader: Any, scope: Any, end_date: str) -> list[str]:
+    conn = reader.base_connection(scope)
+    rows = conn.query("SELECT date FROM ts_trade_day_calendar WHERE exchange=%s AND is_open=1 AND date <= %s ORDER BY date",
+                      ("SSE", end_date))
+    return [str(row["date"])[:10] for row in rows]
+
+
 def _hash_members(members: list[str]) -> str:
     return hashlib.sha256("\n".join(sorted(members)).encode()).hexdigest()
 
@@ -56,10 +79,11 @@ def create_batch(config: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("alpha_ids must contain implemented Alpha101 catalog entries")
     max_lookback = max(catalog[i]["lookback_days"] for i in ids)
     start = str(config.get("start_date") or "")
-    calculation_start = (pd.Timestamp(start) - pd.Timedelta(days=max_lookback * 2 + 20)).date().isoformat() if start else ""
     from quantradar.config import load_datahub_config
     from quantradar.datahub.reader import ReleaseReader
     scope = ReleaseReader(load_datahub_config()).resolve(release_id)
+    calendar = _calendar_until(ReleaseReader(load_datahub_config()), scope, start) if start else []
+    calculation_start = calculation_start_from_calendar(calendar, start, max_lookback) if start else ""
     ratios = tuple(float(x) for x in config.get("split_ratios", [.6, .2, .2]))
     # Validate at submission time, before a task has been persisted or queued.
     split_dates(pd.date_range("2000-01-01", periods=10), ratios)
@@ -164,38 +188,47 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
         from .qualification import batch_status, preflight
         for alpha_id in config["alpha_ids"]:
             row = catalog[alpha_id]
-            qualification = preflight(set(panel), set(row["fields"]))
+            qualification = preflight(set(panel), set(row["fields"]),
+                                      panel_dates=panel["open"].index,
+                                      requested_dates=requested_dates,
+                                      lookback_days=int(row["lookback_days"]))
             if qualification["status"] != "READY":
                 config["items"].append({"alpha_id": alpha_id, **qualification})
                 update_experiment(batch_id, config=config)
                 continue
-            calc_identity = {k: config[k] for k in ("release_id", "base_commit", "supplemental_commit", "members_hash", "pool_type", "snapshot_date", "calculation_start", "start_date", "end_date", "price_mode", "unit_contract", "adv_basis", "operator_bundle_hash", "research_input_version")}
-            calc_identity.update({"alpha_id": alpha_id, "formula_hash": row["formula_hash"], "semantics_version": row["semantics_version"]})
-            key = cache_key(calc_identity); value_path = root / "factor_values" / f"alpha{alpha_id:03}_{key}.parquet"; value_path.parent.mkdir(exist_ok=True)
-            calc_cache = Path.cwd() / "runs" / "factorlab" / "cache" / "calculation" / f"{key}.parquet"; calc_cache.parent.mkdir(parents=True, exist_ok=True)
-            if calc_cache.exists(): factor = pd.read_parquet(calc_cache); factor.index = pd.to_datetime(factor.index); calc_status = "CACHE_HIT"
-            else:
-                factor = compute(alpha_id, panel, adv_basis="amount", price_mode="RAW")
-                factor.to_parquet(calc_cache); calc_status = "COMPUTED"
-            factor.to_parquet(value_path)
-            evaluations = {}
-            for horizon in config["horizons"]:
-                eligible = {scope: dates_within_label_window(dates, requested_dates, horizon) for scope, dates in splits.items()}
-                ekey = cache_key({"calculation_key": key, "label": "open(t+h+1)/open(t+1)-1", "horizon": horizon, "splits": config["split_dates"], "min_cross_section": config["min_cross_section"], "quantiles": "average_rank_5", "ic_method": "qlib_calc_ic", "direction_policy": "no_flip", "evaluation": EVALUATION_VERSION})
-                epath = root / "evaluation" / f"alpha{alpha_id:03}_h{horizon}_{ekey}.json"; epath.parent.mkdir(exist_ok=True)
-                eval_cache = Path.cwd() / "runs" / "factorlab" / "cache" / "evaluation" / f"{ekey}.json"; eval_cache.parent.mkdir(parents=True, exist_ok=True)
-                if eval_cache.exists(): result = json.loads(eval_cache.read_text()); status = "CACHE_HIT"
+            config["items"].append({"alpha_id": alpha_id, "status": "READY"})
+            item_position = len(config["items"]) - 1
+            update_experiment(batch_id, config=config)
+            try:
+                calc_identity = {k: config[k] for k in ("release_id", "base_commit", "supplemental_commit", "members_hash", "pool_type", "snapshot_date", "calculation_start", "start_date", "end_date", "price_mode", "unit_contract", "adv_basis", "operator_bundle_hash", "research_input_version")}
+                calc_identity.update({"alpha_id": alpha_id, "formula_hash": row["formula_hash"], "semantics_version": row["semantics_version"]})
+                key = cache_key(calc_identity); value_path = root / "factor_values" / f"alpha{alpha_id:03}_{key}.parquet"; value_path.parent.mkdir(exist_ok=True)
+                calc_cache = Path.cwd() / "runs" / "factorlab" / "cache" / "calculation" / f"{key}.parquet"; calc_cache.parent.mkdir(parents=True, exist_ok=True)
+                if calc_cache.exists(): factor = pd.read_parquet(calc_cache); factor.index = pd.to_datetime(factor.index); calc_status = "CACHE_HIT"
                 else:
-                    label = forward_open_label(opens, horizon)
+                    factor = compute(alpha_id, panel, adv_basis="amount", price_mode="RAW")
+                    factor.to_parquet(calc_cache); calc_status = "COMPUTED"
+                factor.to_parquet(value_path)
+                evaluations = {}
+                for horizon in config["horizons"]:
+                    eligible = {scope: dates_within_label_window(dates, requested_dates, horizon) for scope, dates in splits.items()}
+                    ekey = cache_key({"calculation_key": key, "label": "open(t+h+1)/open(t+1)-1", "horizon": horizon, "splits": config["split_dates"], "min_cross_section": config["min_cross_section"], "quantiles": "average_rank_5", "ic_method": "qlib_calc_ic", "direction_policy": "no_flip", "evaluation": EVALUATION_VERSION})
+                    epath = root / "evaluation" / f"alpha{alpha_id:03}_h{horizon}_{ekey}.json"; epath.parent.mkdir(exist_ok=True)
+                    eval_cache = Path.cwd() / "runs" / "factorlab" / "cache" / "evaluation" / f"{ekey}.json"; eval_cache.parent.mkdir(parents=True, exist_ok=True)
+                    if eval_cache.exists(): result = json.loads(eval_cache.read_text()); status = "CACHE_HIT"
+                    else:
+                        label = forward_open_label(opens, horizon)
                     # Holdout remains uncomputed until an explicit, immutable user selection.
-                    result = {scope: evaluate(factor.loc[dates], label.loc[dates], min_cross_section=config["min_cross_section"])
-                              for scope, dates in eligible.items() if scope != "holdout"}
-                    eval_cache.write_text(json.dumps(result)); status = "EVALUATED"
-                epath.write_text(json.dumps(result))
-                validation = result.get("validation", {})
-                evaluations[str(horizon)] = {"status": status, "artifact": str(epath), "summary": {k: validation.get(k) for k in ("valid_dates", "ic_mean", "rank_ic_mean", "rank_ic_std", "rank_ic_positive_ratio", "rank_ic_positive_month_ratio", "mean_cross_section", "top_quantile_turnover")}, "scopes": result}
-            item_status = "FORMULA_EMPTY_VALID" if factor.notna().sum().sum() == 0 else "COMPUTED"
-            config["items"].append({"alpha_id": alpha_id, "status": item_status, "calculation": calc_status, "value_artifact": str(value_path), "evaluations": evaluations})
+                        result = {scope: evaluate(factor.loc[dates], label.loc[dates], min_cross_section=config["min_cross_section"])
+                                  for scope, dates in eligible.items() if scope != "holdout"}
+                        eval_cache.write_text(json.dumps(result)); status = "EVALUATED"
+                    epath.write_text(json.dumps(result))
+                    validation = result.get("validation", {})
+                    evaluations[str(horizon)] = {"status": status, "artifact": str(epath), "summary": {k: validation.get(k) for k in ("valid_dates", "ic_mean", "rank_ic_mean", "rank_ic_std", "rank_ic_positive_ratio", "rank_ic_positive_month_ratio", "mean_cross_section", "top_quantile_turnover")}, "scopes": result}
+                item_status = "FORMULA_EMPTY_VALID" if factor.notna().sum().sum() == 0 else "COMPUTED"
+                config["items"][item_position] = {"alpha_id": alpha_id, "status": item_status, "calculation": calc_status, "value_artifact": str(value_path), "evaluations": evaluations}
+            except Exception as exc:
+                config["items"][item_position] = failed_engine_item(alpha_id, exc)
             update_experiment(batch_id, config=config)
         config["status"] = batch_status([str(item["status"]) for item in config["items"]])
         fingerprint = cache_key({

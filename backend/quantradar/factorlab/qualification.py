@@ -1,6 +1,8 @@
 """Data qualification for independent Alpha101 batch items."""
 from __future__ import annotations
 
+import pandas as pd
+
 
 def qualified_industry_fields(manifest: dict[str, object]) -> set[str]:
     """Expose hierarchy inputs only when their fixed release has a dictionary."""
@@ -13,10 +15,24 @@ def qualified_industry_fields(manifest: dict[str, object]) -> set[str]:
     return {"indclass.sector", "indclass.industry", "indclass.subindustry"}
 
 
-def preflight(available_fields: set[str], required_fields: set[str]) -> dict[str, object]:
+def preflight(available_fields: set[str], required_fields: set[str], *,
+              panel_dates: pd.DatetimeIndex | None = None,
+              requested_dates: pd.DatetimeIndex | None = None,
+              lookback_days: int | None = None) -> dict[str, object]:
     """Return a data outcome; missing research facts are never engine errors."""
     missing = sorted(required_fields - available_fields)
-    return {"status": "BLOCKED_INPUT" if missing else "READY", "missing_fields": missing}
+    if missing:
+        return {"status": "BLOCKED_INPUT", "missing_fields": missing}
+    if panel_dates is not None and requested_dates is not None and lookback_days:
+        if len(requested_dates) == 0:
+            return {"status": "BLOCKED_WARMUP", "missing_fields": [],
+                    "warmup_available": 0, "warmup_required": lookback_days}
+        first = pd.Timestamp(requested_dates[0])
+        available = int(panel_dates.searchsorted(first, side="right"))
+        if available < lookback_days:
+            return {"status": "BLOCKED_WARMUP", "missing_fields": [],
+                    "warmup_available": available, "warmup_required": lookback_days}
+    return {"status": "READY", "missing_fields": []}
 
 
 def batch_status(item_statuses: list[str]) -> str:

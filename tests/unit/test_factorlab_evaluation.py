@@ -81,3 +81,67 @@ def test_factor_result_summary_keeps_blocked_item_without_evaluations():
         {"alpha_id": 1, "status": "COMPUTED", "evaluations": {"1": {"valid_dates": 2}}},
         {"alpha_id": 58, "status": "BLOCKED_INPUT", "missing_fields": ["indclass.sector"]},
     ]
+
+
+def test_calculation_start_uses_fixed_trading_sessions_not_calendar_days():
+    from quantradar.factorlab.service import calculation_start_from_calendar
+
+    calendar = ["2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05", "2024-01-08"]
+    assert calculation_start_from_calendar(calendar, "2024-01-08", 3) == "2024-01-04"
+    assert calculation_start_from_calendar(calendar, "2024-01-03", 20) == "2024-01-02"
+
+
+def test_factor_preflight_reports_insufficient_trading_session_warmup():
+    from quantradar.factorlab.qualification import preflight
+
+    outcome = preflight(
+        {"open", "close"}, {"open", "close"},
+        panel_dates=pd.date_range("2024-01-02", periods=2, freq="B"),
+        requested_dates=pd.date_range("2024-01-03", periods=1, freq="B"),
+        lookback_days=3,
+    )
+    assert outcome == {"status": "BLOCKED_WARMUP", "missing_fields": [], "warmup_available": 2, "warmup_required": 3}
+
+
+def test_failed_engine_item_preserves_the_formula_and_error():
+    from quantradar.factorlab.service import failed_engine_item
+
+    item = failed_engine_item(56, RuntimeError("broken interpreter"))
+    assert item == {"alpha_id": 56, "status": "FAILED_ENGINE", "error": "RuntimeError: broken interpreter"}
+
+
+def test_engine_failure_does_not_stop_later_independent_formula(monkeypatch, tmp_path):
+    from quantradar.factorlab import service
+    from quantradar.datahub.alpha101 import catalog as alpha_catalog
+    from quantradar import storage
+
+    dates = pd.date_range("2024-01-02", periods=60, freq="B")
+    columns = [f"{i:06}.SZ" for i in range(20)]
+    panel = {name: pd.DataFrame(10.0, index=dates, columns=columns)
+             for name in ("open", "high", "low", "close", "volume", "amount", "vwap", "returns")}
+    panel["universe"] = pd.DataFrame(True, index=dates, columns=columns)
+    updates = []
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(service, "_panel", lambda config: (panel, panel["open"]))
+    monkeypatch.setattr(storage, "update_experiment", lambda *args, **kwargs: updates.append(kwargs["config"].copy()))
+    monkeypatch.setattr(alpha_catalog, "dependency_matrix", lambda: [
+        {"alpha_id": 1, "fields": ["open"], "lookback_days": 1, "formula_hash": "a", "semantics_version": "v"},
+        {"alpha_id": 2, "fields": ["open"], "lookback_days": 1, "formula_hash": "b", "semantics_version": "v"},
+    ])
+
+    def compute(alpha_id, *_args, **_kwargs):
+        if alpha_id == 1:
+            raise RuntimeError("interpreter fault")
+        return pd.DataFrame(np.tile(np.arange(20, dtype=float), (len(dates), 1)), index=dates, columns=columns)
+
+    monkeypatch.setattr(alpha_catalog, "compute", compute)
+    config = {"status": "PENDING", "items": [], "alpha_ids": [1, 2], "horizons": [1],
+              "split_ratios": [.6, .2, .2], "start_date": "2024-01-02", "end_date": "2024-03-25",
+              "calculation_start": "2024-01-02", "release_id": "R1", "base_commit": "b",
+              "supplemental_commit": "s", "members_hash": "m", "pool_type": "CUSTOM_STATIC_POOL",
+              "snapshot_date": None, "price_mode": "RAW", "unit_contract": "u", "adv_basis": "amount",
+              "operator_bundle_hash": "o", "research_input_version": "r", "min_cross_section": 20}
+    service._run("batch-1", config)
+
+    assert config["status"] == "FAILED"
+    assert [(item["alpha_id"], item["status"]) for item in config["items"]] == [(1, "FAILED_ENGINE"), (2, "COMPUTED")]
