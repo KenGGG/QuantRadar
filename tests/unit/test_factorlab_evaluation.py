@@ -52,6 +52,12 @@ def test_factor_preflight_reports_missing_input_without_rejecting_other_formulas
     assert blocked == {"status": "BLOCKED_INPUT", "missing_fields": ["cap"]}
 
 
+def test_factor_preflight_rejects_all_empty_required_input():
+    from quantradar.factorlab.qualification import preflight
+    panel = {"close": pd.DataFrame([[float("nan")]]), "universe": pd.DataFrame([[True]])}
+    assert preflight({"close", "universe"}, {"close"}, panel=panel)["status"] == "BLOCKED_INPUT"
+
+
 def test_industry_inputs_require_a_versioned_dictionary_not_only_code_prefixes():
     from quantradar.factorlab.qualification import qualified_industry_fields
 

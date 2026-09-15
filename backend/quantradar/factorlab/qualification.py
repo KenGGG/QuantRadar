@@ -18,11 +18,18 @@ def qualified_industry_fields(manifest: dict[str, object]) -> set[str]:
 def preflight(available_fields: set[str], required_fields: set[str], *,
               panel_dates: pd.DatetimeIndex | None = None,
               requested_dates: pd.DatetimeIndex | None = None,
-              lookback_days: int | None = None) -> dict[str, object]:
+              lookback_days: int | None = None, panel: dict[str, pd.DataFrame] | None = None) -> dict[str, object]:
     """Return a data outcome; missing research facts are never engine errors."""
     missing = sorted(required_fields - available_fields)
     if missing:
         return {"status": "BLOCKED_INPUT", "missing_fields": missing}
+    if panel is not None:
+        empty = sorted(field for field in required_fields if field in panel and not panel[field].notna().any().any())
+        universe = panel.get("universe")
+        if universe is not None and not universe.fillna(False).astype(bool).any().any():
+            empty.append("universe")
+        if empty:
+            return {"status": "BLOCKED_INPUT", "missing_fields": sorted(set(empty)), "reason": "no effective observations"}
     if panel_dates is not None and requested_dates is not None and lookback_days:
         if len(requested_dates) == 0:
             return {"status": "BLOCKED_WARMUP", "missing_fields": [],

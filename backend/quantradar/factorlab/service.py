@@ -218,7 +218,7 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
             qualification = preflight(set(panel), set(row["fields"]),
                                       panel_dates=panel["open"].index,
                                       requested_dates=requested_dates,
-                                      lookback_days=int(row["lookback_days"]))
+                                      lookback_days=int(row["lookback_days"]), panel=panel)
             if qualification["status"] != "READY":
                 config["items"].append({"alpha_id": alpha_id, **qualification})
                 update_experiment(batch_id, config=config)
