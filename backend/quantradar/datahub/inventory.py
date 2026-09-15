@@ -120,33 +120,41 @@ def validate_index_alias(left_code: str, right_code: str, samples: list[tuple[st
 
 def build_gap_plan(domains: dict[str, dict[str, Any]], *, start: str, end: str, requirements: dict[str, str],
                    supplemental_domains: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
-    """Plan against published release coverage, never against base coverage alone."""
-    strategy_gap = []
-    satisfied = []
-    satisfied_by_release = []
+    """Produce only coarse inventory hints; it never certifies field coverage.
+
+    Table MIN/MAX dates are useful to describe what exists, but cannot prove
+    per-security continuity.  The caller must use ``CoverageService`` with an
+    expected-key contract before declaring a domain satisfied or scheduling a
+    source request.
+    """
+    strategy_gap, unaudited = [], []
     supplemental_domains = supplemental_domains or {}
     for domain, contract in requirements.items():
         detail = domains.get(domain, {})
         coverage = detail.get("coverage", {})
         latest = coverage.get("latest_date")
-        if detail.get("state") == "VALID" and coverage.get("first_date", "9999-12-31") <= start and latest and latest >= end:
-            satisfied.append(domain)
-            continue
         supplement = supplemental_domains.get(domain, {})
         supplement_coverage = supplement.get("coverage", {})
         supplement_first, supplement_latest = supplement_coverage.get("first_date"), supplement_coverage.get("latest_date")
-        if (latest and supplement_first and supplement_latest and latest < end
-                and str(supplement_first)[:10] <= (date.fromisoformat(str(latest)[:10]) + timedelta(days=1)).isoformat()
-                and str(supplement_latest)[:10] >= end):
-            satisfied_by_release.append(domain)
+        appears_contiguous = (
+            detail.get("state") == "VALID" and coverage.get("first_date", "9999-12-31") <= start and latest and latest >= end
+        ) or (
+            latest and supplement_first and supplement_latest and latest < end
+            and str(supplement_first)[:10] <= (date.fromisoformat(str(latest)[:10]) + timedelta(days=1)).isoformat()
+            and str(supplement_latest)[:10] >= end
+        )
+        if appears_contiguous:
+            unaudited.append({"domain": domain, "range": {"start": start, "end": end},
+                              "state": "UNAUDITED", "reason": "aggregate MIN/MAX inventory cannot prove field coverage",
+                              "expected_key_contract": contract})
             continue
         if latest and latest < end:
-            next_day = (date.fromisoformat(str(latest)[:10]) + timedelta(days=1)).isoformat()
-            gap_start = max(start, next_day)
+            gap_start = max(start, (date.fromisoformat(str(latest)[:10]) + timedelta(days=1)).isoformat())
         else:
             gap_start = start
         strategy_gap.append({"domain": domain, "range": {"start": gap_start, "end": end}, "state": "UNKNOWN", "source_contract_id": contract})
-    return {"strategy_window": {"start": start, "end": end}, "satisfied_by_base": satisfied, "satisfied_by_release": satisfied_by_release, "strategy_gap": strategy_gap,
+    return {"strategy_window": {"start": start, "end": end}, "satisfied_by_base": [], "satisfied_by_release": [],
+            "unaudited_inventory": unaudited, "strategy_gap": strategy_gap,
             "current_update": [], "historical_repair": []}
 
 

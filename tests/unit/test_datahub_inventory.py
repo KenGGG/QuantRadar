@@ -109,7 +109,8 @@ def test_gap_plan_uses_base_coverage_before_scheduling_network_work():
     )
 
     assert plan["strategy_gap"] == [{"domain": "trade_status", "range": {"start": "2023-06-10", "end": "2026-08-31"}, "state": "UNKNOWN", "source_contract_id": "base-bao-daily-v1"}]
-    assert plan["satisfied_by_base"] == ["price"]
+    assert plan["satisfied_by_base"] == []
+    assert plan["unaudited_inventory"][0]["domain"] == "price"
 
 
 def test_gap_plan_uses_published_supplemental_coverage_before_queueing_work():
@@ -122,8 +123,9 @@ def test_gap_plan_uses_published_supplemental_coverage_before_queueing_work():
     )
 
     assert plan["satisfied_by_base"] == []
-    assert plan["satisfied_by_release"] == ["trade_status"]
+    assert plan["satisfied_by_release"] == []
     assert plan["strategy_gap"] == []
+    assert plan["unaudited_inventory"] == [{"domain": "trade_status", "range": {"start": "2020-01-01", "end": "2026-08-31"}, "state": "UNAUDITED", "reason": "aggregate MIN/MAX inventory cannot prove field coverage", "expected_key_contract": "base-bao-daily-v1"}]
 
 
 def test_coverage_contract_counts_only_expected_keys_and_compresses_missing_intervals():
