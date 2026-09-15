@@ -37,12 +37,12 @@ export function DataStatus() {
   const base = data?.base_coverage?.base_commit === release?.base_commit ? data?.base_coverage?.datasets : undefined;
   const statusPatch = release?.datasets.trade_status_daily;
   const fallbackRows = [
-    { key: 'price', name: '行情', location: '/data/investment_data', source: '存量行情表', published: base?.['行情'], usage: '日频回测直接读取', status: base?.['行情'] ? '可用' : '待检查', dateLabel: '' },
-    { key: 'status-base', name: 'ST / 停牌（历史）', location: '/data/investment_data', source: 'BaoStock 历史表', published: base?.['ST / 停牌'], usage: '先读取；覆盖至此日期', status: base?.['ST / 停牌'] ? '部分可用' : '待检查', dateLabel: '' },
-    { key: 'status-patch', name: 'ST / 停牌（补数）', location: '/data/quantradar_data', source: 'BaoStock 补数', published: statusPatch, usage: '自动补在历史表之后', status: statusPatch ? '已发布' : '未发布', dateLabel: '' },
-    { key: 'valuation_daily', name: '估值', location: '/data/quantradar_data', source: '东方财富', published: release?.datasets.valuation_daily, usage: '策略按字段自动读取', status: release?.datasets.valuation_daily ? '部分可用' : '未发布', dateLabel: '' },
-    { key: 'sw_industry_history', name: '行业', location: '/data/quantradar_data', source: '申万', published: release?.datasets.sw_industry_history, usage: '策略按字段自动读取', status: release?.datasets.sw_industry_history ? '部分可用 · 一级行业' : '未发布', dateLabel: '' },
-    { key: 'security_lifecycle', name: '基础资料', location: '/data/investment_data', source: 'Tushare 名录', published: release?.datasets.security_lifecycle, usage: '上市、退市判断', status: release?.datasets.security_lifecycle ? '部分可用' : '未发布', dateLabel: '上市日期范围' },
+    { key: 'price', name: '行情', location: '/data/investment_data', source: '存量行情表', published: base?.['行情'], usage: '日频回测直接读取', qualification: 'RAW_RESEARCH', dateLabel: '' },
+    { key: 'status-base', name: 'ST / 停牌（历史）', location: '/data/investment_data', source: 'BaoStock 历史表', published: base?.['ST / 停牌'], usage: '先读取；覆盖至此日期', qualification: 'READABLE', dateLabel: '' },
+    { key: 'status-patch', name: 'ST / 停牌（补数）', location: '/data/quantradar_data', source: 'BaoStock 补数', published: statusPatch, usage: '自动补在历史表之后', qualification: 'RAW_RESEARCH', dateLabel: '' },
+    { key: 'valuation_daily', name: '估值', location: '/data/quantradar_data', source: '东方财富', published: release?.datasets.valuation_daily, usage: '策略按字段自动读取', qualification: 'RAW_RESEARCH', dateLabel: '' },
+    { key: 'sw_industry_history', name: '行业', location: '/data/quantradar_data', source: '申万', published: release?.datasets.sw_industry_history, usage: '策略按字段自动读取', qualification: 'READABLE · 严格 PIT 否', dateLabel: '' },
+    { key: 'security_lifecycle', name: '基础资料', location: '/data/investment_data', source: 'Tushare 名录', published: release?.datasets.security_lifecycle, usage: '上市、退市判断', qualification: 'READABLE', dateLabel: '上市日期范围' },
   ];
   const rows = data?.data_sources?.length ? data.data_sources.map(source => ({
     key: `${source.domain}-${source.storage}`,
@@ -51,7 +51,7 @@ export function DataStatus() {
     source: source.upstream,
     published: source.coverage,
     usage: source.read_rule,
-    status: source.domain === 'price' ? '可用' : source.domain === 'trade_status' && source.storage === '/data/quantradar_data' ? '已发布' : '部分可用',
+    qualification: source.domain === 'price' ? 'RAW_RESEARCH' : source.domain === 'valuation_daily' ? 'RAW_RESEARCH' : source.domain === 'sw_industry_history' ? 'READABLE · 严格 PIT 否' : 'READABLE',
     dateLabel: source.domain === 'security_lifecycle' ? '上市日期范围' : '',
   })) : fallbackRows;
   const stages = [['base', '同步基础库'], ['valuation', '更新估值'], ['industry', '更新行业'], ['lifecycle', '更新基础资料'], ['check', '自动检查'], ['publish', '发布结果']].map(([key, name]) => ({ key, name, ...data?.update.stages[key] }));
@@ -60,18 +60,18 @@ export function DataStatus() {
     <Space style={{ width: '100%', justifyContent: 'space-between' }}><Typography.Title level={4} style={{ margin: 0 }}>数据状态</Typography.Title><Button type="primary" loading={busy} disabled={!data || !!running} onClick={() => action(() => updateAllData())}>更新全部数据</Button></Space>
     {error && <Alert showIcon type="error" message="操作或状态读取失败" description={error} />}
     {notice && <Alert showIcon closable onClose={() => setNotice(null)} type="info" message={notice} />}
-    <Card title="当前能用于回测的数据">
+    <Card title="Coverage 与 Qualification">
       <Table rowKey="key" pagination={false} size="middle" scroll={{ x: 900 }} dataSource={rows} columns={[
         { title: '数据', dataIndex: 'name' },
         { title: '存放位置', dataIndex: 'location' },
         { title: '数据源', dataIndex: 'source' },
-        { title: '已发布股票', render: (_, r) => fmt(r.published?.stocks) },
-        { title: '已发布行数', render: (_, r) => fmt(r.published?.row_count ?? r.published?.rows) },
+        { title: 'Coverage（有效股票）', render: (_, r) => fmt(r.published?.stocks) },
+        { title: 'Coverage（有效行）', render: (_, r) => fmt(r.published?.row_count ?? r.published?.rows) },
         { title: '日期范围', render: (_, r) => r.published?.first_date ? `${r.published.first_date} 至 ${r.published.latest_date ?? '未统计'}${r.dateLabel ? '（上市日期）' : ''}` : '未统计' },
         { title: '回测怎么用', dataIndex: 'usage' },
-        { title: '状态', dataIndex: 'status' },
+        { title: 'Qualification', dataIndex: 'qualification' },
       ]} />
-      <Typography.Text type="secondary">发布于 {release?.published_at ? new Date(release.published_at).toLocaleString('zh-CN') : '未发布'}</Typography.Text>
+      <Typography.Text type="secondary">Coverage 的应有分母、缺口和比例仅在固定 release 审计产物存在时显示；未审计域不会显示虚假百分比。发布于 {release?.published_at ? new Date(release.published_at).toLocaleString('zh-CN') : '未发布'}</Typography.Text>
       {data?.gap_plan && <Typography.Paragraph type="secondary" style={{ margin: '8px 0 0' }}>低 Beta 窗口 {data.gap_plan.strategy_window.start} 至 {data.gap_plan.strategy_window.end}：基础行情已满足；{data.gap_plan.strategy_gap.length ? `仍缺 ${data.gap_plan.strategy_gap.map(g => `${g.domain}（${g.range.start} 至 ${g.range.end}，${g.state}）`).join('；')}` : '没有已确认缺口'}。</Typography.Paragraph>}
       {data?.work_queue && <Typography.Paragraph type="secondary" style={{ margin: '0' }}>补数工作单：当前更新待处理 {data.work_queue.counts.current?.PENDING ?? 0}；策略缺口待处理 {data.work_queue.counts.strategy?.PENDING ?? 0}；历史修复待处理 {data.work_queue.counts.historical?.PENDING ?? 0}。</Typography.Paragraph>}
     </Card>
