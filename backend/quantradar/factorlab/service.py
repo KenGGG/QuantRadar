@@ -119,7 +119,8 @@ def _panel(config: dict[str, Any]) -> tuple[dict[str, pd.DataFrame], pd.DataFram
             fields["cap"] = cap_frame.pivot(index="trade_date", columns="symbol", values="cap").reindex(
                 index=fields["close"].index, columns=fields["close"].columns
             )
-        if industry_rows:
+        from .qualification import qualified_industry_fields
+        if industry_rows and qualified_industry_fields(scope.manifest):
             dates = fields["close"].index
             for level, width in (("sector", 2), ("industry", 4), ("subindustry", 6)):
                 industry = pd.DataFrame(index=dates, columns=fields["close"].columns, dtype=object)

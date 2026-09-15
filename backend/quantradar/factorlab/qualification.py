@@ -2,6 +2,17 @@
 from __future__ import annotations
 
 
+def qualified_industry_fields(manifest: dict[str, object]) -> set[str]:
+    """Expose hierarchy inputs only when their fixed release has a dictionary."""
+    metadata = manifest.get("metadata") if isinstance(manifest, dict) else None
+    hierarchy = metadata.get("sw_industry_hierarchy") if isinstance(metadata, dict) else None
+    if not isinstance(hierarchy, dict) or not hierarchy.get("dictionary_version"):
+        return set()
+    if hierarchy.get("levels") != ["L1", "L2", "L3"]:
+        return set()
+    return {"indclass.sector", "indclass.industry", "indclass.subindustry"}
+
+
 def preflight(available_fields: set[str], required_fields: set[str]) -> dict[str, object]:
     """Return a data outcome; missing research facts are never engine errors."""
     missing = sorted(required_fields - available_fields)

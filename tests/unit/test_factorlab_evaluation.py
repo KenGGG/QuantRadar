@@ -52,6 +52,17 @@ def test_factor_preflight_reports_missing_input_without_rejecting_other_formulas
     assert blocked == {"status": "BLOCKED_INPUT", "missing_fields": ["cap"]}
 
 
+def test_industry_inputs_require_a_versioned_dictionary_not_only_code_prefixes():
+    from quantradar.factorlab.qualification import qualified_industry_fields
+
+    assert qualified_industry_fields({"metadata": {"sw_industry_hierarchy": {
+        "levels": "derived from preserved six-digit code", "raw_sha256": "a" * 64,
+    }}}) == set()
+    assert qualified_industry_fields({"metadata": {"sw_industry_hierarchy": {
+        "dictionary_version": "sw-2021-v1", "levels": ["L1", "L2", "L3"],
+    }}}) == {"indclass.sector", "indclass.industry", "indclass.subindustry"}
+
+
 def test_factor_batch_status_distinguishes_data_blocks_from_engine_failures():
     from quantradar.factorlab.qualification import batch_status
 
