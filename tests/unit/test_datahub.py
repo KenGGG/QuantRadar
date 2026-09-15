@@ -1160,6 +1160,7 @@ def test_datahub_gap_ledger_requires_a_pinned_audit_window():
     assert audited["field_ledger"] == {"status": "AUDITED", "domain": "trade_status", "release_id": "R1",
                                         "expected_fields": 4, "valid_fields": 3,
                                         "missing": [{"symbol": "000001.SZ", "field": "is_st"}]}
+    assert audited["domain_ledgers"] == [audited["field_ledger"]]
 
 
 def test_status_maintenance_stage_does_not_hide_deferred_work():

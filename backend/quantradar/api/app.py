@@ -358,9 +358,30 @@ def _datahub_gap_ledger(service: Any, *, release_id: str | None, start: str | No
         "candidate_issues": _candidate_issues(candidate, include_symbols=True),
     }
     if not release_id or not start or not end:
-        return {**response, "field_ledger": {"status": "UNAUDITED", "reason": "release, start and end are required for a field-level coverage audit"}}
+        return {**response, "field_ledger": {"status": "UNAUDITED", "reason": "release, start and end are required for a field-level coverage audit"}, "domain_ledgers": []}
     report = service.market_trade_status_coverage_report(start, end, release_id=release_id)
-    return {**response, "field_ledger": {"status": "AUDITED", "domain": "trade_status", **report}}
+    status = {"status": "AUDITED", "domain": "trade_status", **report}
+    # Only trade-status currently has an explicit securities × sessions ×
+    # fields contract.  Surface the remaining published domains as unaudited
+    # inventories instead of silently presenting their MIN/MAX metadata as a
+    # coverage verdict.
+    inventories: list[dict[str, Any]] = []
+    try:
+        datasets = service.releases.resolve(release_id).get("datasets", {})
+    except (AttributeError, FileNotFoundError):
+        datasets = {}
+    field_sets = {
+        "security_lifecycle": ("list_date", "delist_date", "status"),
+        "valuation_daily": ("pe_ttm", "pb_mrq", "ps_ttm", "pcf_ocf_ttm"),
+        "market_cap_daily": ("total_market_cap_cny",),
+        "sw_industry_history": ("industry_code",),
+    }
+    for domain, fields in field_sets.items():
+        if domain in datasets:
+            inventories.append({"domain": domain, "status": "UNAUDITED", "fields": list(fields),
+                                "release_id": release_id, "inventory": datasets[domain],
+                                "reason": "no versioned expected-key contract has been audited for this domain"})
+    return {**response, "field_ledger": status, "domain_ledgers": [status, *inventories]}
 
 
 def _datahub_gap_ledger_csv(ledger: Dict[str, Any]) -> str:
@@ -368,10 +389,13 @@ def _datahub_gap_ledger_csv(ledger: Dict[str, Any]) -> str:
     output = io.StringIO(newline="")
     writer = csv.DictWriter(output, fieldnames=("record_type", "release_id", "domain", "status", "symbol", "field", "start", "end", "reason"))
     writer.writeheader()
-    field_ledger = ledger.get("field_ledger") or {}
-    if field_ledger.get("status") != "AUDITED":
-        writer.writerow({"record_type": "field_ledger", "status": field_ledger.get("status"), "reason": field_ledger.get("reason")})
-    else:
+    ledgers = ledger.get("domain_ledgers") or [ledger.get("field_ledger") or {}]
+    for field_ledger in ledgers:
+        if field_ledger.get("status") != "AUDITED":
+            writer.writerow({"record_type": "field_ledger", "release_id": field_ledger.get("release_id"),
+                             "domain": field_ledger.get("domain"), "status": field_ledger.get("status"),
+                             "reason": field_ledger.get("reason")})
+            continue
         for missing in field_ledger.get("missing", []):
             writer.writerow({"record_type": "missing_field", "release_id": field_ledger.get("release_id"),
                              "domain": field_ledger.get("domain"), "status": field_ledger.get("status"),
