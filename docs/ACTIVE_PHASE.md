@@ -1,8 +1,8 @@
 # QuantRadar Active Phase
 
 **Milestone:** `DATAHUB_V4_MARKET_LEDGER_ALPHA101`
-**Active Goal:** `DATA_V4_G5_OFFLINE_MATRIX_REPLAY`
-**Status:** IN_PROGRESS
+**Active Goal:** `NONE — milestone closed`
+**Status:** CLOSED
 
 ## Scope
 
@@ -18,9 +18,11 @@
 - **G1 Security Identity & Lifecycle — PASSED.** BaoStock 当前生命周期证据覆盖 5,556 只沪深证券；基础 4,916 只与候选事实字段级合并。AKShare 北交所当前名录 343 只单列身份与 PARTIAL 生命周期，价格／状态均明确 UNSUPPORTED；主表共 5,899 只且不发布或回写旧 release。见 [G1 收据](acceptance/datahub-v4/g1-security-master.md)。
 - **G2 Trade Status Ledger — PASSED.** 固定 release 的完整上市存续期审计已产生 36,959,510 个逐字段应有事实与 32,690 个压缩缺口区间；Worker 在执行前重审计，真实补数按字段合并发布，断点恢复与重复执行均有证据。持续队列保留为日常维护：来源限制不被推断为正常状态，未完成检查不阻塞本轮后续 Gate。见 [G2 收据](acceptance/datahub-v4/g2-market-status-progress.md)。
 - **G3-A Alpha101 Inputs — PASSED_WITH_SOURCE_LIMITATIONS.** 归档总市值提供 997 只证券、2018 年起的真实 #56 样本，且明确禁止流通市值替代；申万历史归属有 5,568 只证券的区间事实。归档工作簿与两次有限外部验证均未获得可复现的历史版本字典、名称和父子关系，故三级行业输入以 `BLOCKED_INPUT` 收口，不由代码前缀伪造。见 [G3-A 基线](acceptance/datahub-v4/g3a-alpha101-input-baseline.md)。
-- **G3-B Valuation Ledger — QUEUED_NON_BLOCKING.** PE/PB/PS/PCF 失败与字段缺口台账，不阻塞 G4/G5。
+- **G3-B Valuation Ledger — CLOSED_WITH_SOURCE_LIMITATIONS.** 可修复解析项已处理；196 个稳定来源／解析失败、123 个未覆盖项及 345 个名录差异均保留可复现缺口、响应证据与原因，不为追求 100% 覆盖更换来源。见 [G3-B 台账收口](acceptance/datahub-v4/g3b-valuation-ledger-closure.md)。
 - **G4 Unified Reader & FactorLab — PASSED_WITH_SOURCE_LIMITATIONS.** Provider/FactorLab 共用固定 release 的基础行情、补丁、单位与生命周期 mask；交易日预热、逐项阻塞/引擎失败隔离与批次聚合均已验收。#1、#56 可算；#58、#48、#59 因未取得可审计申万字典而明确 `BLOCKED_INPUT`，不以代码前缀伪造层级。见 [G4 烟测](acceptance/datahub-v4/g4-factorlab-mixed-smoke.md)。
-- **G5 Offline Matrix & Replay — IN_PROGRESS.** 101 条矩阵、低 Beta 回放、固定 #1/#56/#58 组合及旧 release 隔离。
+- **G5 Offline Matrix & Replay — PASSED_WITH_SOURCE_LIMITATIONS.** 固定 release 断网 101 条矩阵记录 71 项计算完成、12 项合法空值、18 项明确输入阻塞且无引擎错误；#1/#56 可算而 #58 因历史申万字典缺失阻塞，故固定组合按约定不替换因子也不产出伪造净值。低 Beta 按既有代码、参数、费用与资金完成 1,615 个交易日当前 release 回放，结果及与历史基线的差异已存证；页面将 Coverage 与 Qualification 分列，并提供估值缺口台账下载与既有修复入口。见 [101 条矩阵](acceptance/datahub-v4/g5-offline-alpha101-matrix.md) 与 [低 Beta 回放](acceptance/datahub-v4/g5-low-beta-current-release-replay.md)。
+
+本里程碑至此 **CLOSED**。G2 日常状态维护与已登记的来源缺口继续保留，但不构成新的本轮 Goal；未验证的历史行业字典、严格 PIT、复权和账户资格仍按各自限制列示。
 
 ### Historical DataHub V3 P0 gates
 

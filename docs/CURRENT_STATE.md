@@ -5,7 +5,7 @@
 ## Repository and runtime
 
 - Development branch: `main`. DataHub feature work and the launcher change are merged into main.
-- 当前活动目标为 `DATA_V4_G5_OFFLINE_MATRIX_REPLAY`。G4 已验证 FactorLab 与回测共用固定 release Provider、发布版生命周期 universe 和交易日预热；#1/#56 可算，#58/#48/#59 因未验证的历史申万字典明确阻塞。旧的 ETF／FactorLab P3 状态仅为冻结历史里程碑，不是当前目标。
+- DataHub V4 全市场数据底账与 RAW Alpha101 里程碑已关闭。G4 已验证 FactorLab 与回测共用固定 release Provider、发布版生命周期 universe 和交易日预热；#1/#56 可算，#58/#48/#59 因未验证的历史申万字典明确阻塞。G5 的固定 release 101 条矩阵和既有低 Beta 策略回放均已存证；旧的 ETF／FactorLab P3 状态仅为冻结历史里程碑。
 - ETF 研究和 FactorLab 当前静态 WebUI 已在本机浏览器验收：固定版本选择、ETF 模板预检与行业 BLOCKED 原因、FactorLab 输入与静态池选择均由真实本地接口返回；FactorLab 还可按不可变批次 ID 恢复摘要并展示研究／验证段相关性，未由系统访问保留段。验收记录位于 `docs/acceptance/webui-etf-factorlab/browser-workbench-acceptance.md`。
 - ETF 研究组使用固定 release、ETF_RAW 和 BulletTrade 原生费用，逐个提交五个模板；网页显示子项状态、运行标识及原生报告入口。当前已冻结的行业定义只有本地身份资料可证明时才可用；现有 ETF 主数据不能证明五个宽行业身份，因此均保持 BLOCKED。
 - FactorLab 的量价因子按固定静态对象池计算，研究／验证／保留段按交易日 60%／20%／20% 切分，跨边界标签剔除。相关性保留正负号，完全链接按 `1 - |rho| <= 0.2`，且相关计算每次只加载一对已注册的因子产物。
