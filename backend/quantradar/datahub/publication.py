@@ -484,6 +484,61 @@ def publish_etf_trading_rule_stage(service, stage_path: Path) -> dict:
     return {'status':'PARTIAL','release_id':manifest['release_id'],'supplemental_commit':commit,'rows':len(rows),'validation':{'status':'PASS','stage_sha256':digest}}
 
 
+def publish_security_lifecycle(service, rows: list[dict]) -> dict:
+    """Publish the lifecycle master used by every fixed-release reader."""
+    required = ("symbol", "list_date", "status", "source", "raw_sha256", "adapter_version", "fetched_at", "pit_status")
+    rows = [dict(row) for row in rows if str(row.get("symbol", "")).endswith((".SH", ".SZ"))]
+    if not rows or any(not row.get(field) for row in rows for field in required):
+        raise ValueError("lifecycle publication requires evidenced SH/SZ rows")
+    if any(row.get("status") not in {"LISTED", "DELISTED"} for row in rows):
+        raise ValueError("lifecycle publication has unsupported listing status")
+    if any(row.get("delist_date") and str(row["delist_date"]) < str(row["list_date"]) for row in rows):
+        raise ValueError("lifecycle publication has invalid date interval")
+    old = service.releases.current()
+    previous: list[dict] = []
+    if old.get("supplemental_commit"):
+        with service._connection(service.config.supplemental_database + "/" + old["supplemental_commit"]) as frozen, frozen.cursor() as cur:
+            cur.execute("SELECT symbol, list_date, delist_date, status FROM qr_security_lifecycle ORDER BY symbol")
+            previous = list(cur.fetchall())
+    semantic = lambda items: sorted((str(row["symbol"]), str(row["list_date"])[:10], str(row.get("delist_date") or "")[:10], str(row["status"])) for row in items)
+    if semantic(previous) == semantic(rows):
+        return {"status": "NO_CHANGE", "release_id": old["release_id"], "rows": len(rows)}
+    identity = hashlib.sha256(json.dumps(semantic(rows), ensure_ascii=False).encode()).hexdigest()[:16]
+    conn = service._connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM dolt_status")
+            if cursor.fetchall():
+                raise ValueError("supplemental repository has uncommitted changes")
+            branch = "candidate_lifecycle_" + identity
+            cursor.execute("SELECT name FROM dolt_branches WHERE name=%s", (branch,))
+            if cursor.fetchone():
+                cursor.execute("CALL DOLT_CHECKOUT(%s)", (branch,))
+            elif old.get("supplemental_commit"):
+                cursor.execute("CALL DOLT_CHECKOUT('-b', %s, %s)", (branch, old["supplemental_commit"]))
+            else:
+                cursor.execute("CALL DOLT_CHECKOUT('-b', %s)", (branch,))
+        writer = SupplementalStore(conn)
+        writer.ensure_schema()
+        writer.upsert_lifecycles(rows)
+        commit = writer.commit("datahub: evidenced lifecycle master " + identity)
+    finally:
+        conn.close()
+    with service._connection(service.config.supplemental_database + "/" + commit) as frozen, frozen.cursor() as cur:
+        cur.execute("SELECT COUNT(*) AS row_count, COUNT(DISTINCT symbol) AS stocks, MIN(list_date) AS first_date, MAX(list_date) AS latest_date FROM qr_security_lifecycle")
+        metrics = {key: str(value) if hasattr(value, "isoformat") else value for key, value in cur.fetchone().items()}
+        if metrics["row_count"] != len(rows) or metrics["stocks"] != len(rows):
+            raise ValueError("fixed-commit lifecycle verification failed")
+    datasets = {**old["datasets"], "security_lifecycle": {**metrics, "source": sorted({row["source"] for row in rows}),
+        "pit_status": "PARTIAL", "quality_status": "PARTIAL", "refresh_status": "UPDATED"}}
+    manifest = service.releases.publish(base_commit=old["base_commit"], supplemental_commit=commit, datasets=datasets,
+        source_adapters={**old["source_adapters"], "security_lifecycle": "investment-data-and-baostock-lifecycle-v1"},
+        metadata={**old.get("metadata", {}), "security_master": {"rows": len(rows), "semantic_hash": identity,
+            "qualification": "CURRENT_LIFECYCLE_OBSERVATION_PIT_PARTIAL"}})
+    return {"status": "UPDATED", "release_id": manifest["release_id"], "supplemental_commit": commit, "rows": len(rows)}
+
+
+
 def publish_trade_status_patch(service, rows: list[dict]) -> dict:
     """Publish a validated, additive status patch on an isolated Dolt branch."""
     check = validate_trade_status_patch(rows)

@@ -64,12 +64,22 @@ def canonical_sh_sz_security_master(
         target = master.setdefault(symbol, {"symbol": symbol})
         if row.get("source"):
             target.setdefault("source", row["source"])
+        lifecycle_changed = False
         for field in ("list_date", "delist_date"):
             value = row.get(field)
-            if value not in (None, ""):
+            if value not in (None, "") and target.get(field) != value:
                 target[field] = value
-        if row.get("status") not in (None, ""):
+                lifecycle_changed = True
+        if row.get("status") not in (None, "") and target.get("listing_status") != row["status"]:
             target["listing_status"] = row["status"]
+            lifecycle_changed = True
+        # The published row has one provenance envelope.  When lifecycle facts
+        # are revised, carry the evidence that supported those values instead
+        # of leaving an investment-data source label on BaoStock facts.
+        if lifecycle_changed:
+            for field in ("source", "raw_sha256", "adapter_version", "fetched_at", "available_date", "pit_status"):
+                if row.get(field) not in (None, ""):
+                    target[field] = row[field]
         target.setdefault("lifecycle_evidence", []).append({
             "source": row.get("source"), "raw_sha256": row.get("raw_sha256"),
             "observed_at": row.get("fetched_at"), "qualification": row.get("pit_status"),
@@ -1316,6 +1326,13 @@ class DataHubService:
         pending_created = journal.ensure_pending([row["symbol"] for row in delta], reason="canonical SH/SZ security-master delta")
         journal.set_total_shards(len(rows))
         return {key: payload[key] for key in ("base_commit", "version", "base_symbol_count", "delta_symbol_count", "symbol_count", "scope")} | {"path": str(path), "pending_created": pending_created}
+
+    def security_master_records(self) -> list[dict[str, Any]]:
+        """Read the staged master only for publication/planning, never research."""
+        path = self._security_master_path()
+        if not path.is_file():
+            return []
+        return list(json.loads(path.read_text(encoding="utf-8")).get("records", []))
 
     def valuation_universe(self) -> list[str]:
         """Canonical SH/SZ ingestion pool, never described as an all-market universe."""

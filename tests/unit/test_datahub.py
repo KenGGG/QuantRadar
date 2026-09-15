@@ -129,9 +129,10 @@ def test_canonical_security_master_preserves_identity_and_merges_lifecycle_evide
     master = canonical_sh_sz_security_master(base, lifecycle)
 
     assert [row["symbol"] for row in master] == ["430001.BJ", "600000.SH", "688999.SH"]
-    assert master[1]["source"] == "investment_data"
+    assert master[1]["source"] == "baostock"
     assert master[1]["name"] == "浦发银行"
     assert master[1]["listing_status"] == "1"
+    assert master[1]["provenance"]["source"] == "baostock"
     assert master[2]["source"] == "baostock"
     assert master[0]["capabilities"]["price"] == "UNSUPPORTED"
 

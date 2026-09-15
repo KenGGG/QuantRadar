@@ -216,8 +216,25 @@ class DailyUpdate:
                     record('valuation', {'status': 'SKIPPED', 'reason': 'G2 status maintenance does not run valuation collection'})
                     record('industry', {'status': 'SKIPPED', 'reason': 'G2 status maintenance does not run industry collection'})
                     record('lifecycle', {'status': 'RUNNING', 'base_commit': commit})
+                    try:
+                        evidence = self.service.collect_lifecycle_evidence()
+                    except Exception as exc:
+                        # Existing evidenced facts remain usable; a failed current
+                        # probe is visible as a source limitation, never a reason
+                        # to silently shrink the published lifecycle universe.
+                        evidence = {'status': 'SOURCE_BLOCKED', 'reason': str(exc)}
                     master = self.service.refresh_security_master()
-                    record('lifecycle', {'status': 'UPDATED', 'base_commit': commit, 'security_master': master})
+                    from .publication import publish_security_lifecycle
+                    lifecycle_rows = [
+                        {**row, 'status': row.get('listing_status')}
+                        for row in self.service.security_master_records()
+                        if row.get('capabilities', {}).get('price') == 'SUPPORTED'
+                    ]
+                    publication = publish_security_lifecycle(self.service, lifecycle_rows)
+                    lifecycle_status = 'UPDATED' if publication.get('status') == 'UPDATED' else ('PARTIAL' if evidence.get('status') == 'SOURCE_BLOCKED' else 'NO_CHANGE')
+                    record('lifecycle', {'status': lifecycle_status, 'base_commit': commit,
+                                         'evidence': evidence, 'security_master': master,
+                                         'publication': publication})
                     recent_start = calendar[max(0, calendar.index(target) - 19)]
                     record('trade_status', {'status': 'RUNNING', 'start': recent_start, 'end': target,
                                             'queue': 'current', 'correction_window_trading_days': 20})
