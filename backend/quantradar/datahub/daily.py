@@ -194,7 +194,7 @@ class DailyUpdate:
                 target = max(d for d in calendar if d <= cutoff)
                 state['target_as_of'] = target
                 if mode == 'status':
-                    if base['status'] == 'UPDATED':
+                    if base['status'] == 'UPDATED' or self.service.releases.current()['base_commit'] != commit:
                         from .publication import publish_base_only
                         base_release = publish_base_only(self.service, commit, 'G2 status maintenance fixed base release')
                     else:
