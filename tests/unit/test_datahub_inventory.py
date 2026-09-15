@@ -216,6 +216,27 @@ def test_service_persists_strategy_gap_plan(tmp_path, monkeypatch):
     assert (tmp_path / "gap_plan.json").is_file()
 
 
+def test_market_status_plan_excludes_bse_and_keys_tasks_by_contract(tmp_path, monkeypatch):
+    import json
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.service import DataHubService
+
+    root = tmp_path / "supp"
+    (root / "security-master").mkdir(parents=True)
+    (root / "security-master" / "sh_sz.json").write_text(json.dumps({"records": [
+        {"symbol": "600000.SH", "capabilities": {"trade_status": "SUPPORTED"}},
+        {"symbol": "430001.BJ", "capabilities": {"trade_status": "UNSUPPORTED"}},
+    ]}))
+    service = DataHubService(DataHubConfig(supplemental_repo=str(root)))
+    monkeypatch.setattr(service.releases, "resolve", lambda release_id=None: {"release_id": "R1", "base_commit": "base"})
+
+    plan = service.market_trade_status_plan("2024-01-02", "2024-01-03")
+
+    assert plan["symbol_count"] == 1
+    assert plan["tasks"][0]["symbols"] == ["600000.SH"]
+    assert plan["tasks"][0]["expected_key_contract"] == "baostock-trade-status-v1"
+
+
 def test_low_beta_status_plan_has_exact_symbols_and_release_fingerprint(tmp_path, monkeypatch):
     from quantradar.config import DataHubConfig
     from quantradar.datahub.service import DataHubService

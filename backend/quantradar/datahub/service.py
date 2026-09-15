@@ -276,6 +276,35 @@ class DataHubService:
         _atomic_json(Path(self.config.supplemental_repo) / "gap_plan.json", report)
         return report
 
+    def market_trade_status_plan(self, start: str, end: str, release_id: str | None = None) -> dict[str, Any]:
+        """Create auditable per-symbol status checks from the canonical master.
+
+        This deliberately plans inspection, rather than declaring every range a
+        download. A worker must re-audit each task against its fixed release.
+        """
+        manifest = self.releases.resolve(release_id)
+        path = self._security_master_path()
+        if not path.is_file():
+            raise FileNotFoundError("security master must be refreshed before status planning")
+        records = json.loads(path.read_text(encoding="utf-8")).get("records", [])
+        symbols = sorted(str(row["symbol"]) for row in records
+                         if (row.get("capabilities") or {}).get("trade_status") == "SUPPORTED")
+        tasks = []
+        for symbol in symbols:
+            identity = {"domain": "trade_status", "field": "tradestatus,is_st", "symbol": symbol,
+                        "missing_interval": {"start": start, "end": end},
+                        "expected_key_contract": "baostock-trade-status-v1"}
+            tasks.append({"source_contract_id": "baostock-daily-v2", "domain": "trade_status",
+                          "fields": ["tradestatus", "is_st"], "symbols": [symbol], "range": identity["missing_interval"],
+                          "expected_key_contract": identity["expected_key_contract"], "gap_reason": "market-ledger coverage check",
+                          "gap_fingerprint": hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest(),
+                          "release_id": manifest["release_id"], "base_commit": manifest["base_commit"]})
+        return {"release_id": manifest["release_id"], "base_commit": manifest["base_commit"],
+                "expected_key_contract": "baostock-trade-status-v1", "range": {"start": start, "end": end},
+                "symbol_count": len(symbols), "tasks": tasks,
+                "unsupported": sorted(str(row["symbol"]) for row in records
+                                      if (row.get("capabilities") or {}).get("trade_status") == "UNSUPPORTED")}
+
     def supplemental_inventory(self, release_id: str | None = None) -> dict[str, dict[str, Any]]:
         """Read coverage available from the release-pinned supplement only."""
         manifest = self.releases.resolve(release_id)
