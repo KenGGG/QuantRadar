@@ -850,3 +850,23 @@ def test_partial_valuation_publication_retains_other_declared_domains():
     )
     assert set(datasets) == {"trade_status_daily", "etf_eod_price", "valuation_daily"}
     assert adapters == {"trade_status": "bao", "etf": "ak", "valuation": "eastmoney"}
+
+
+def test_work_queue_defers_source_failures_until_retry_window(tmp_path):
+    from quantradar.datahub.work_queue import DataHubWorkQueue
+
+    queue = DataHubWorkQueue(tmp_path / "work-queue.json")
+    task = {
+        "source_contract_id": "baostock-daily-v2", "domain": "trade_status", "fields": ["is_st"],
+        "symbols": ["600000.SH"], "range": {"start": "2024-01-02", "end": "2024-01-02"},
+        "gap_reason": "test", "gap_fingerprint": "b" * 64,
+    }
+    queued = queue.enqueue("historical", task)["task"]
+    claimed = queue.claim_matching("historical", domain="trade_status", limit=1)[0]
+
+    deferred = queue.defer(claimed["task_id"], evidence={"source_error": "timeout"})["task"]
+
+    assert deferred["status"] == "PENDING"
+    assert deferred["next_eligible_at"] > deferred["updated_at"]
+    assert queue.claim_matching("historical", domain="trade_status", limit=1) == []
+    assert queue.status()["tasks"][0]["task_id"] == queued["task_id"]

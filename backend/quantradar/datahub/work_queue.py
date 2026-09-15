@@ -131,12 +131,15 @@ class DataHubWorkQueue:
     def claim_next(self) -> dict[str, Any] | None:
         """Rotate queues so current updates cannot starve historical repair."""
         data = self._load()
+        now = datetime.now(timezone.utc)
         start = (int(data.get("dispatch_cursor", -1)) + 1) % len(QUEUES)
         for offset in range(len(QUEUES)):
             queue_index = (start + offset) % len(QUEUES)
             queue = QUEUES[queue_index]
             candidates = sorted(
-                (task for task in data["tasks"].values() if task.get("queue") == queue and task.get("status") == "PENDING"),
+                (task for task in data["tasks"].values()
+                 if task.get("queue") == queue and task.get("status") == "PENDING"
+                 and (not task.get("next_eligible_at") or datetime.fromisoformat(task["next_eligible_at"]) <= now)),
                 key=lambda task: (task.get("created_at", ""), task["task_id"]),
             )
             if not candidates:
@@ -154,7 +157,10 @@ class DataHubWorkQueue:
         if queue not in QUEUES:
             raise ValueError(f"unknown queue: {queue}")
         data = self._load()
-        candidates = sorted((task for task in data["tasks"].values() if task.get("queue") == queue and task.get("status") == "PENDING"),
+        now = datetime.now(timezone.utc)
+        candidates = sorted((task for task in data["tasks"].values()
+                             if task.get("queue") == queue and task.get("status") == "PENDING"
+                             and (not task.get("next_eligible_at") or datetime.fromisoformat(task["next_eligible_at"]) <= now)),
                             key=lambda task: (task.get("created_at", ""), task["task_id"]))
         if not candidates:
             return None
@@ -171,9 +177,11 @@ class DataHubWorkQueue:
         if limit < 1:
             raise ValueError("limit must be positive")
         data = self._load()
+        now = datetime.now(timezone.utc)
         candidates = sorted(
             (task for task in data["tasks"].values()
-             if task.get("queue") == queue and task.get("status") == "PENDING" and task.get("domain") == domain),
+             if task.get("queue") == queue and task.get("status") == "PENDING" and task.get("domain") == domain
+             and (not task.get("next_eligible_at") or datetime.fromisoformat(task["next_eligible_at"]) <= now)),
             key=lambda task: (task.get("created_at", ""), task["task_id"]),
         )[:limit]
         now = datetime.now(timezone.utc).isoformat()
@@ -218,7 +226,14 @@ class DataHubWorkQueue:
             raise KeyError(task_id)
         if task.get("status") != "RUNNING":
             raise ValueError("only a running task can be deferred")
-        task.update(status="PENDING", updated_at=datetime.now(timezone.utc).isoformat(), re_audit=evidence)
+        now = datetime.now(timezone.utc)
+        # Retry later failures without letting one unavailable source monopolize
+        # the oldest-first queue.  The audit trail retains both the cause and
+        # the exact time at which another source call is permitted.
+        delay_seconds = min(3600, 30 * (2 ** max(0, int(task.get("attempts", 1)) - 1)))
+        task.update(status="PENDING", updated_at=now.isoformat(),
+                    next_eligible_at=(now + timedelta(seconds=delay_seconds)).isoformat(),
+                    re_audit=evidence)
         if release_id is not None:
             task["release_id"] = release_id
         self._save(data)
