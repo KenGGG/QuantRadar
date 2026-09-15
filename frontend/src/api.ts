@@ -285,6 +285,7 @@ export interface DataHubDataset {
   name: string;
   version?: string;
   pit_status?: string;
+  qualification?: string;
   row_count?: number;
   rows?: number;
   first_date?: string;

@@ -56,7 +56,7 @@ export function DataStatus() {
     source: source.upstream,
     published: source.coverage,
     usage: source.read_rule,
-    qualification: source.domain === 'price' ? 'RAW_RESEARCH' : source.domain === 'valuation_daily' ? 'RAW_RESEARCH' : source.domain === 'sw_industry_history' ? 'READABLE · 严格 PIT 否' : 'READABLE',
+    qualification: source.coverage?.qualification ?? '未声明',
     dateLabel: source.domain === 'security_lifecycle' ? '上市日期范围' : '',
   })) : fallbackRows;
   const stages = [['base', '同步基础库'], ['valuation', '更新估值'], ['industry', '更新行业'], ['lifecycle', '更新基础资料'], ['check', '自动检查'], ['publish', '发布结果']].map(([key, name]) => ({ key, name, ...data?.update.stages[key] }));
