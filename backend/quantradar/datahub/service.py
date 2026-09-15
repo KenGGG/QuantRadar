@@ -145,6 +145,11 @@ def merge_trade_status_observations(base_rows: Iterable[dict[str, Any]], patch_r
     return list(merged.values())
 
 
+def execution_release_task(task: dict[str, Any], release_id: str) -> dict[str, Any]:
+    """Bind a queued inspection to the release visible when its worker starts."""
+    return {**task, "release_id": release_id, "planned_release_id": task.get("planned_release_id", task.get("release_id"))}
+
+
 class JsonlRows:
     """Repeatable disk staging for a full valuation backfill without RAM growth."""
 
@@ -395,17 +400,20 @@ class DataHubService:
         staged: list[tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]] = []
         lock = self._updater_lock() if acquire_lock else nullcontext()
         with lock:
+            execution_release = self.releases.current()["release_id"]
             adapter = BaostockAdapter(host=self.config.baostock_host)
             for task in tasks:
+                audit_task = execution_release_task(task, execution_release)
                 try:
-                    audit = self.reaudit_market_status_task(task)
+                    audit = self.reaudit_market_status_task(audit_task)
                 except Exception as exc:
                     queue.defer(task["task_id"], evidence={"audit_error": str(exc), "attempt": task["attempts"],
                                                             "recovery": "coverage audit did not reach a terminal conclusion"})
                     outcomes.append({"task_id": task["task_id"], "status": "PENDING", "error": str(exc)})
                     continue
                 if audit["status"] in {"SATISFIED", "OBSOLETE"}:
-                    queue.finish(task["task_id"], audit["status"], evidence=audit["evidence"])
+                    queue.finish(task["task_id"], audit["status"], evidence={**audit["evidence"],
+                                 "planned_release_id": audit_task["planned_release_id"], "execution_release_id": execution_release})
                     outcomes.append({"task_id": task["task_id"], "status": audit["status"]})
                     continue
                 missing = audit["coverage"]["missing"]
@@ -444,11 +452,12 @@ class DataHubService:
                     queue.defer(task["task_id"], evidence={**audit["evidence"], "publication_error": str(exc)})
                 return {"claimed": len(tasks), "outcomes": outcomes, "published": {"status": "DEFERRED", "error": str(exc)}}
             for task, audit, _ in staged:
-                published_task = {**task, "release_id": publication["release_id"]}
+                published_task = execution_release_task(task, publication["release_id"])
                 final = self.reaudit_market_status_task(published_task)
                 if final["status"] == "SATISFIED":
                     queue.finish(task["task_id"], "COMPLETE", evidence={**final["evidence"],
-                                 "initial_release_id": task.get("release_id"), "published_release_id": publication["release_id"]})
+                                 "planned_release_id": published_task["planned_release_id"], "execution_release_id": execution_release,
+                                 "published_release_id": publication["release_id"]})
                     outcomes.append({"task_id": task["task_id"], "status": "COMPLETE"})
                 else:
                     queue.defer(task["task_id"], evidence={**final["evidence"], "published_release_id": publication["release_id"]},

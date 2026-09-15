@@ -309,6 +309,15 @@ def test_release_status_merge_keeps_non_null_base_values_without_hiding_patch_fi
     assert merged == [{"symbol": "600000.SH", "trade_date": "2024-01-03", "tradestatus": 1, "is_st": 0}]
 
 
+def test_market_status_execution_binds_to_current_release_but_keeps_planned_release():
+    from quantradar.datahub.service import execution_release_task
+
+    task = execution_release_task({"release_id": "R-plan", "task_id": "task"}, "R-current")
+
+    assert task["release_id"] == "R-current"
+    assert task["planned_release_id"] == "R-plan"
+
+
 def test_work_queue_claim_matching_does_not_consume_another_domain(tmp_path):
     from quantradar.datahub.work_queue import DataHubWorkQueue
 
