@@ -9,7 +9,7 @@ Phase 2A 范围（仅基础能力与历史时点查询，禁止伪造 / 禁止�
     - get_index_stocks（Point-in-Time）
     - get_index_weights（Point-in-Time）
     - get_price（fq='none' 日频原始价；Phase 2B）
-    - get_split_dividend（公司行为；bao_a_stock_eod_info 真实 adjfactor / preclose，PARTIAL）
+    - get_split_dividend（股票公司行为条款未发布；明确阻塞账户级语义）
     - get_extras（is_st / tradestatus；bao_a_stock_eod_info 真实列）
 
 数据正确性优先：所有历史查询按 date 截断到「当时可得」，避免未来函数与幸存者偏差。

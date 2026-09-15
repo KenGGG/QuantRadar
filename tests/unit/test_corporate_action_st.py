@@ -1,9 +1,9 @@
-"""Phase 5 完整性（目标口径）—— 公司行为 + ST 状态（DB-backed，无 mock）。
+"""Phase 5 边界——公司行为阻塞与 ST 状态（DB-backed，无 mock）。
 
 数据源：bao_a_stock_eod_info（真实 is_st / tradestatus / preclose / adjfactor）。
 
-- get_split_dividend：以「preclose(D) != close(D-1)」识别除权除息日，除权缺口 =
-  每股税前红利；与原始表字段对账（以 600519 2022-06-30 已知分红验证）。
+- get_split_dividend：价格跳空不是正式现金或拆分条款，必须明确阻塞，不能从
+  preclose 推断每股红利。
 - get_extras('is_st') / get_extras('tradestatus')：直接读真实列，与 bao_a_stock_eod_info
   逐行对账（含一个确为 ST 的标的 SH600078）。
 """
