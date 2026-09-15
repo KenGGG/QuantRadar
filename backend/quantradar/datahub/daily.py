@@ -19,6 +19,9 @@ from .quality import validate_candidate
 from .mvp import ShardRunner, AkshareValuationFetcher
 from .governor import RequestGovernor
 
+CURRENT_STATUS_TASK_LIMIT = 50
+HISTORICAL_STATUS_TASK_LIMIT = 50
+
 
 def process_identity(pid):
     try:
@@ -219,8 +222,8 @@ class DailyUpdate:
                     record('trade_status', {'status': 'RUNNING', 'start': recent_start, 'end': target,
                                             'queue': 'current', 'correction_window_trading_days': 20})
                     planned_status = self.service.enqueue_market_trade_status_plan(recent_start, target, queue_name='current')
-                    current_result = self.service.process_market_trade_status_queue(limit=5, queue_name='current', acquire_lock=False)
-                    historical_result = self.service.process_market_trade_status_queue(limit=50, queue_name='historical', acquire_lock=False)
+                    current_result = self.service.process_market_trade_status_queue(limit=CURRENT_STATUS_TASK_LIMIT, queue_name='current', acquire_lock=False)
+                    historical_result = self.service.process_market_trade_status_queue(limit=HISTORICAL_STATUS_TASK_LIMIT, queue_name='historical', acquire_lock=False)
                     record('trade_status', {'status': 'UPDATED' if current_result.get('published') or historical_result.get('published') else 'NO_CHANGE',
                                             'start': recent_start, 'end': target, 'planned': planned_status['symbol_count'],
                                             'enqueued': planned_status['enqueued'], 'worker': current_result,
@@ -257,8 +260,8 @@ class DailyUpdate:
                 record('trade_status', {'status': 'RUNNING', 'start': recent_start, 'end': target,
                                         'queue': 'current', 'correction_window_trading_days': 20})
                 planned_status = self.service.enqueue_market_trade_status_plan(recent_start, target, queue_name='current')
-                status_result = self.service.process_market_trade_status_queue(limit=5, queue_name='current', acquire_lock=False)
-                historical_result = self.service.process_market_trade_status_queue(limit=50, queue_name='historical', acquire_lock=False)
+                status_result = self.service.process_market_trade_status_queue(limit=CURRENT_STATUS_TASK_LIMIT, queue_name='current', acquire_lock=False)
+                historical_result = self.service.process_market_trade_status_queue(limit=HISTORICAL_STATUS_TASK_LIMIT, queue_name='historical', acquire_lock=False)
                 record('trade_status', {'status': 'UPDATED' if status_result.get('published') else 'NO_CHANGE',
                                         'start': recent_start, 'end': target, 'planned': planned_status['symbol_count'],
                                         'enqueued': planned_status['enqueued'], 'worker': status_result,

@@ -174,6 +174,12 @@ def test_daily_double_click_reserves_only_one_process(tmp_path, monkeypatch):
         update.start('sync', start='2026-09-01')
 
 
+def test_status_maintenance_processes_a_bounded_current_window_batch():
+    from quantradar.datahub.daily import CURRENT_STATUS_TASK_LIMIT
+
+    assert CURRENT_STATUS_TASK_LIMIT == 50
+
+
 def test_cli_does_not_silently_ignore_unsupported_dataset(capsys):
     from quantradar.datahub.cli import main
     assert main(['sync', '--dataset', 'sw_industry_history']) == 1
