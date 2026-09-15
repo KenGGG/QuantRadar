@@ -213,8 +213,8 @@ class DailyUpdate:
                     else:
                         base_release = {'status': 'NO_CHANGE', 'release_id': self.service.releases.current()['release_id']}
                     record('base_release', {**base_release, 'base_commit': commit})
-                    record('valuation', {'status': 'NO_CHANGE', 'reason': 'G2 status maintenance does not run valuation collection'})
-                    record('industry', {'status': 'NO_CHANGE', 'reason': 'G2 status maintenance does not run industry collection'})
+                    record('valuation', {'status': 'SKIPPED', 'reason': 'G2 status maintenance does not run valuation collection'})
+                    record('industry', {'status': 'SKIPPED', 'reason': 'G2 status maintenance does not run industry collection'})
                     record('lifecycle', {'status': 'RUNNING', 'base_commit': commit})
                     master = self.service.refresh_security_master()
                     record('lifecycle', {'status': 'UPDATED', 'base_commit': commit, 'security_master': master})
@@ -228,8 +228,8 @@ class DailyUpdate:
                                             'start': recent_start, 'end': target, 'planned': planned_status['symbol_count'],
                                             'enqueued': planned_status['enqueued'], 'worker': current_result,
                                             'historical_worker': historical_result})
-                    record('check', {'status': 'NO_CHANGE', 'reason': 'status rows are validated and published by the status worker'})
-                    record('publish', {'status': 'NO_CHANGE', 'reason': 'status worker publishes its own fixed release'})
+                    record('check', {'status': 'SKIPPED', 'reason': 'status rows are validated and published by the status worker'})
+                    record('publish', {'status': 'SKIPPED', 'reason': 'status worker publishes its own fixed release'})
                     state['status'] = 'PARTIAL'
                     return state
                 journal = UpdateJournal(Path(self.service.config.journal_root) / 'valuation_daily-mvp.json')
