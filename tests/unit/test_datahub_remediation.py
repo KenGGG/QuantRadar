@@ -343,6 +343,26 @@ def test_sync_and_queued_backtests_share_the_same_price_mode_contract():
         normalize_backtest_fq("invalid", caller="test")
 
 
+def test_backtest_release_activation_is_shared_and_never_falls_back_for_explicit_release(monkeypatch):
+    from types import SimpleNamespace
+    from quantradar import backtest
+
+    scope = SimpleNamespace(release_id="R1", manifest={"base_commit": "base", "supplemental_commit": "supp",
+                                                          "schema_version": "v1", "metadata": {"price_units": "joinquant-shares-yuan-v2"}})
+    monkeypatch.setattr("quantradar.bootstrap.bootstrap_data_release", lambda release_id: scope)
+    monkeypatch.setattr(backtest, "collect_audit_env", lambda: {"provider_version": "test"})
+    got_scope, audit = backtest.activate_backtest_release("R1")
+    assert got_scope is scope
+    assert audit["data_release"] == {"release_id": "R1", "base_commit": "base", "supplemental_commit": "supp",
+                                      "schema_version": "v1", "price_units": "joinquant-shares-yuan-v2"}
+
+    def missing(_release_id):
+        raise FileNotFoundError("missing")
+    monkeypatch.setattr("quantradar.bootstrap.bootstrap_data_release", missing)
+    with pytest.raises(FileNotFoundError):
+        backtest.activate_backtest_release("missing-release")
+
+
 def test_provider_industry_refuses_unverified_code_prefixes():
     from types import SimpleNamespace
     from quantradar.datahub.strategy import DataUnavailable, industry

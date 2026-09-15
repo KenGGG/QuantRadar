@@ -37,6 +37,37 @@ def normalize_backtest_fq(fq: str | None, *, caller: str) -> str:
     return value
 
 
+def activate_backtest_release(release_id: str | None) -> tuple[Any | None, Dict[str, Any]]:
+    """Activate one release and build the shared audit envelope for every runner.
+
+    The synchronous API path and the persisted-worker path deliberately retain
+    different BulletTrade report adapters, but they must not have separate
+    release fallback or data-usage semantics.
+    """
+    from quantradar.bootstrap import bootstrap_data_release, bootstrap_investment_data
+
+    try:
+        scope = bootstrap_data_release(release_id)
+    except FileNotFoundError:
+        if release_id is not None:
+            raise
+        # Compatibility is confined to callers made before any DataHub
+        # release existed; an explicit missing release never falls back.
+        scope = None
+        bootstrap_investment_data(set_active=True, overwrite=True)
+    audit_env = collect_audit_env()
+    if scope is not None:
+        audit_env["data_release"] = {
+            "release_id": scope.release_id,
+            "base_commit": scope.manifest["base_commit"],
+            "supplemental_commit": scope.manifest["supplemental_commit"],
+            "schema_version": scope.manifest["schema_version"],
+            "price_units": scope.manifest.get("metadata", {}).get("price_units", "legacy-v1"),
+        }
+        audit_env["dolt_commit"] = scope.manifest["base_commit"]
+    return scope, audit_env
+
+
 def _serialize_trades(engine: Any) -> List[Dict[str, Any]]:
     """把引擎成交对象序列化为原生 JSON 可序列化 dict 列表。"""
     trades = getattr(engine, "trades", []) or []
@@ -116,8 +147,6 @@ def run_backtest(
     """
     from bullet_trade.core.engine import BacktestEngine
 
-    from quantradar.bootstrap import bootstrap_data_release, bootstrap_investment_data
-
     _fq = normalize_backtest_fq(fq, caller="run_backtest")
     # bullet_trade 撮合仅区分「原始价(none)」与「连续前复权(pre)」；后复权(hfq/post)与前复权
     # (qfq/pre) 在同一回测窗口内收益率严格等价（仅净值绝对水平缩放常数因子）。无论请求何种
@@ -130,24 +159,7 @@ def run_backtest(
         _prev_real_price = get_settings().options.get("use_real_price", False)
         set_option("use_real_price", _use_real_price)
         try:
-            try:
-                scope = bootstrap_data_release(release_id)
-            except FileNotFoundError:
-                if release_id is not None:
-                    raise
-                # Legacy direct callers are retained until the first DataHub release exists.
-                scope = None
-                bootstrap_investment_data(set_active=True, overwrite=True)
-            audit_env = collect_audit_env()
-            if scope is not None:
-                audit_env["data_release"] = {
-                    "release_id": scope.release_id,
-                    "base_commit": scope.manifest["base_commit"],
-                    "supplemental_commit": scope.manifest["supplemental_commit"],
-                    "schema_version": scope.manifest["schema_version"],
-                    "price_units": scope.manifest.get('metadata', {}).get('price_units', 'legacy-v1'),
-                }
-                audit_env["dolt_commit"] = scope.manifest["base_commit"]
+            _scope, audit_env = activate_backtest_release(release_id)
 
             if code:
                 tmp = tempfile.NamedTemporaryFile(

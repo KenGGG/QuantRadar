@@ -27,8 +27,7 @@ import os
 import uuid
 from typing import Any, Dict, Optional
 
-from quantradar.backtest import _FQ_LOCK, normalize_backtest_fq
-from quantradar.audit import collect_audit_env
+from quantradar.backtest import _FQ_LOCK, activate_backtest_release, normalize_backtest_fq
 from quantradar.snapshot import _to_native, build_snapshot_from_results, write_snapshot_json
 from quantradar.datahub.maintenance import base_lease
 
@@ -118,31 +117,12 @@ def run_unified_backtest(
     from bullet_trade.reporting import generate_cli_report
     from bullet_trade.core.settings import get_settings, set_option
 
-    from quantradar.bootstrap import bootstrap_data_release, bootstrap_investment_data
-
     # 2) 复权口径（全局线程安全临界区）+ 激活只读 InvestmentDataProvider + 原生回测
     with _FQ_LOCK, base_lease():
         _prev = get_settings().options.get("use_real_price", False)
         set_option("use_real_price", _use_real_price)
         try:
-            release_id = payload.get("release_id")
-            try:
-                scope = bootstrap_data_release(release_id)
-            except FileNotFoundError:
-                if release_id is not None:
-                    raise
-                scope = None
-                bootstrap_investment_data(set_active=True, overwrite=True)
-            audit_env = collect_audit_env()
-            if scope is not None:
-                audit_env["data_release"] = {
-                    "release_id": scope.release_id,
-                    "base_commit": scope.manifest["base_commit"],
-                    "supplemental_commit": scope.manifest["supplemental_commit"],
-                    "schema_version": scope.manifest["schema_version"],
-                    "price_units": scope.manifest.get('metadata', {}).get('price_units', 'legacy-v1'),
-                }
-                audit_env["dolt_commit"] = scope.manifest["base_commit"]
+            _scope, audit_env = activate_backtest_release(payload.get("release_id"))
             try:
                 results = create_backtest(
                     strategy_file=strategy_path,
