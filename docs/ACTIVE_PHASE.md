@@ -1,7 +1,7 @@
 # QuantRadar Active Phase
 
 **Milestone:** `DATAHUB_V4_MARKET_LEDGER_ALPHA101`
-**Active Goal:** `DATA_V4_G0_COVERAGE_FOUNDATION`
+**Active Goal:** `DATA_V4_G1_SECURITY_IDENTITY_LIFECYCLE`
 **Status:** IN_PROGRESS
 
 ## Scope
@@ -14,8 +14,8 @@
 
 ### DataHub V4 gates
 
-- **G0 Coverage Foundation — IN_PROGRESS.** 固定运行基线与 release，验证来源状态语义，建立按字段、合同版本和固定双库 release 计算的 Coverage Service；审计不得产生下载任务。
-- **G1 Security Identity & Lifecycle — QUEUED.** 分离证券身份和生命周期字段证据，保留退市证券，北交所能力单列。
+- **G0 Coverage Foundation — PASSED.** 固定 release 审计已执行；Coverage Service 按字段与合同版本产生只读缺口；BaoStock 正常、ST、连续停牌、早期上市与退市边界候选的真实探针已固定。停牌日 `turn`/OHLCV 可合法为空，缺记录仍为 UNKNOWN。见 [语义收据](acceptance/datahub-v4/g0-baostock-status-semantics.md)。
+- **G1 Security Identity & Lifecycle — IN_PROGRESS.** 分离证券身份和生命周期字段证据，保留退市证券，北交所能力单列。
 - **G2 Trade Status Ledger — QUEUED.** 按 G0 合同重算实际缺口；Worker 执行前再次审计，仅采集仍缺失键。
 - **G3-A Alpha101 Inputs — QUEUED.** 历史总市值与申万三级历史归属、字典和版本映射。
 - **G3-B Valuation Ledger — QUEUED_NON_BLOCKING.** PE/PB/PS/PCF 失败与字段缺口台账，不阻塞 G4/G5。
