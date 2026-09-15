@@ -32,3 +32,20 @@ This is a real coverage result, not a queue proxy: the sparse current-window
 coverage is expected while the bounded five-task worker continues to consume
 the 5,551 pending per-security checks. It is explicit evidence that G2 has not
 passed.
+
+## 2026-09-15 complete lifecycle-range audit
+
+The same read-only report was run for every open SSE trading date from
+1990-12-19 through the fixed base-price target 2026-09-14. It scanned the
+5,556 SH/SZ securities in bounded 50-security partitions at
+`R05b433fd8803f501` and did not enqueue or execute repair work. Its
+lifecycle-qualified denominator is 36,959,510 fields: 29,812,010 are valid,
+7,147,500 are missing, and coverage is 80.6612695893425%. The remaining facts
+are compressed into 32,690 field intervals. All 343 BSE securities remain
+explicitly `UNSUPPORTED`; no SH/SZ lifecycle denominator is unknown.
+
+The exact fixed-release evidence, including every interval and the paired Dolt
+commits, is [g2-full-coverage-R05b433fd8803f501.json](g2-full-coverage-R05b433fd8803f501.json).
+The report process had emitted a parseable final JSON response but failed to
+exit its interpreter; the user-scoped transient unit was stopped after the
+evidence was validated. This does not change any source, queue, or release.
