@@ -12,7 +12,7 @@
 - FactorLab 的量价因子按固定静态对象池计算，研究／验证／保留段按交易日 60%／20%／20% 切分，跨边界标签剔除。相关性保留正负号，完全链接按 `1 - |rho| <= 0.2`，且相关计算每次只加载一对已注册的因子产物。
 - The Web process at `127.0.0.1:7231` serves the main checkout.
 - Old worktrees remain available for reference. Local runtime and browser scratch files are not source data.
-- DataHub V4 G2 状态底账已通过固定 release 审计与真实补数验收；持续队列作为日常维护保留。G3-A 市值与行业来源限制、G4 统一读取与 FactorLab 已完成验收，当前进行 G5 固定版本矩阵与回放交付。
+- DataHub V4 G2 状态底账已通过固定 release 审计与真实补数验收；持续队列作为日常维护保留。G3-A 市值与行业来源限制、G4 统一读取与 FactorLab、G5 固定版本矩阵与既有低 Beta 回放均已完成验收。
 - Current verification and source limitations: [2026-09-11 remediation evidence](acceptance/datahub-remediation-2026-09-11/README.md).
 
 ## DataHub facts
@@ -21,7 +21,7 @@
 - Supplemental Dolt: `/data/quantradar_data`, localhost:3308. Candidate branches and immutable paired manifests isolate publication from backtests.
 - The failure baseline contains 5,554 securities: 5,235 COMPLETE, 196 FAILED, 123 legacy NOT_COVERED. The 196 failures share the AKShare 1.18.94 NoneType parse fingerprint. The 123 records lack sufficient coverage evidence and remain unverified.
 - A controlled three-security Eastmoney health probe on 2026-09-12 (000022.SZ, 000043.SZ, 002504.SZ) remained `UNHEALTHY`: all three repeated the same `NoneType` adapter parse failure. It produced no 403, 429, timeout, or circuit cooldown, so the 196 failures remain isolated rather than bulk-retried. The Data Status page exposes this bounded probe separately from retry.
-- Current release is `Rb9b7f3acc2fdab9c`, pairing base commit `0o6tgnmq5vabt3orqrk8rhqptniae26l` with supplemental commit `6gbkv4cik3ena0eh87p8ktmb6n0m4d86`. The valuation failure baseline remains 196 parsing failures plus 123 unverified-coverage records; no failed security was silently reclassified or deleted.
+- Current release is `R99a42307383acedd`, pairing base commit `0o6tgnmq5vabt3orqrk8rhqptniae26l` with supplemental commit `7a4vrm1fkvp3cfeo4lnsdure5j6sgh75`. Its lifecycle manifest and fixed-reader table both contain 5,556 SH/SZ securities; BSE remains a separate 343-security identity record with unsupported price/status capabilities. The valuation failure baseline remains 196 parsing failures plus 123 unverified-coverage records; no failed security was silently reclassified or deleted.
 - The current release has 11,347 published BaoStock trade-status records for 298 securities from 2023-06-30 through 2026-07-31. They fill verified base gaps only and remain PIT_PARTIAL. 600837.SH and 601989.SH remain `NOT_COVERED` because their fixed-base price history ends before each requested status date; no state was invented. The strict low-Beta strategy successfully completed its 2023-07-03 first-rebalance window against R22. Evidence: `acceptance/datahub-v2-p3/low-beta-status-full-repair.md`.
 - Low-Beta status repair journals are keyed by the fixed base commit and exact date×security scope, separately from the release-specific audit fingerprint. The R22 scope journal reused the completed R3 evidence (298 COMPLETE, 2 NOT_COVERED), so a later release pointer does not trigger a duplicate BaoStock download.
 - R22 full-range low-Beta verification succeeded: run `run_4acb95f4946a440abc7b924fea7af4aa` covered 1,615 daily records from 2020-01-01 through 2026-08-31 and produced result hash `49849a788b8b506c4430264d73153c2e2a35bee7e6480bf3c2b095f6162a0484`. Its fixed-release usage recorded 37,102 base price calls and 12,478 supplemental status rows; details are in `acceptance/datahub-v2-p3/low-beta-r22-full-backtest.md`.
