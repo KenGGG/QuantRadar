@@ -228,6 +228,16 @@ def test_market_status_report_separates_unsupported_and_unknown_lifecycle_from_c
     assert report["coverage_ratio"] == 1.0
 
 
+def test_market_status_report_cli_accepts_bounded_partition_size():
+    from quantradar.datahub.cli import _parser
+
+    args = _parser().parse_args([
+        "market-trade-status-report", "--start", "2024-01-02", "--end", "2024-01-03", "--partition-size", "50",
+    ])
+
+    assert args.partition_size == 50
+
+
 def test_monthly_status_dependencies_use_previous_trade_day_and_exact_constituents():
     from quantradar.datahub.inventory import monthly_status_dependencies
 

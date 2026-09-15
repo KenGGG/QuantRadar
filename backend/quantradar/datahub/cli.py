@@ -69,6 +69,7 @@ def _parser() -> argparse.ArgumentParser:
     market_status_report.add_argument("--start", required=True)
     market_status_report.add_argument("--end", required=True)
     market_status_report.add_argument("--release")
+    market_status_report.add_argument("--partition-size", type=int, default=25)
     return parser
 
 
@@ -146,7 +147,11 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "process-market-trade-status":
             result = service.process_market_trade_status_queue(limit=args.limit, queue_name=args.queue)
         elif args.command == "market-trade-status-report":
-            result = service.market_trade_status_coverage_report(args.start, args.end, release_id=args.release)
+            if args.partition_size < 1:
+                raise ValueError("partition-size must be positive")
+            result = service.market_trade_status_coverage_report(
+                args.start, args.end, release_id=args.release, partition_size=args.partition_size,
+            )
     except Exception as exc:
         print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
         return 1
