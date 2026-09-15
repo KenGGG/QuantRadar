@@ -34,24 +34,43 @@ from .mvp import AkshareValuationFetcher, ShardRunner
 def canonical_sh_sz_security_master(
     base_rows: Iterable[dict[str, Any]], lifecycle_rows: Iterable[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Use the immutable base pool, adding only SH/SZ lifecycle records absent from it."""
+    """Keep security identity and lifecycle evidence separate at field level."""
     master: dict[str, dict[str, Any]] = {}
     for row in base_rows:
         symbol = str(row.get("symbol") or "")
-        if len(symbol) == 9 and symbol[:6].isdigit() and symbol.endswith((".SH", ".SZ")):
+        if len(symbol) == 9 and symbol[:6].isdigit() and symbol.endswith((".SH", ".SZ", ".BJ")):
             master[symbol] = dict(row)
     for row in lifecycle_rows:
         symbol = str(row.get("symbol") or "")
-        if symbol not in master and len(symbol) == 9 and symbol[:6].isdigit() and symbol.endswith((".SH", ".SZ")):
-            master[symbol] = dict(row)
+        if len(symbol) != 9 or not symbol[:6].isdigit() or not symbol.endswith((".SH", ".SZ", ".BJ")):
+            continue
+        target = master.setdefault(symbol, {"symbol": symbol})
+        if row.get("source"):
+            target.setdefault("source", row["source"])
+        for field in ("list_date", "delist_date"):
+            value = row.get(field)
+            if value not in (None, ""):
+                target[field] = value
+        if row.get("status") not in (None, ""):
+            target["listing_status"] = row["status"]
+        target.setdefault("lifecycle_evidence", []).append({
+            "source": row.get("source"), "raw_sha256": row.get("raw_sha256"),
+            "observed_at": row.get("fetched_at"), "qualification": row.get("pit_status"),
+        })
     generated_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     records = []
     for symbol in sorted(master):
         row = dict(master[symbol])
         row["symbol"] = symbol
         row["exchange"] = symbol.rsplit(".", 1)[-1]
+        row["security_type"] = row.get("security_type") or "A_SHARE"
         row["first_seen_date"] = row.get("first_seen_date") or generated_at[:10]
         row["quality_status"] = row.get("quality_status") or row.get("pit_status") or "PARTIAL"
+        row["capabilities"] = {
+            "identity": "KNOWN", "lifecycle": "PARTIAL" if row.get("list_date") else "UNKNOWN",
+            "price": "SUPPORTED" if row["exchange"] in {"SH", "SZ"} else "UNSUPPORTED",
+            "trade_status": "SUPPORTED" if row["exchange"] in {"SH", "SZ"} else "UNSUPPORTED",
+        }
         row["provenance"] = {
             key: row.get(key) for key in ("source", "raw_sha256", "adapter_version", "fetched_at", "available_date", "pit_status")
         }

@@ -95,6 +95,40 @@ def _panel(config: dict[str, Any]) -> tuple[dict[str, pd.DataFrame], pd.DataFram
     frame = pd.concat(all_rows, ignore_index=True)
     fields = {name: frame.pivot(index="trade_date", columns="symbol", values=name).sort_index() for name in ("open", "high", "low", "close", "volume_shares", "amount_cny", "vwap", "returns")}
     fields["volume"] = fields.pop("volume_shares"); fields["amount"] = fields.pop("amount_cny")
+    if scope.supplemental_database:
+        supplement = reader.supplemental_reader(scope)
+        try:
+            cap_rows = supplement.market_caps(config["members"], config.get("calculation_start", config["start_date"]), config["end_date"])
+            industry_rows = supplement._query(
+                "SELECT symbol, industry_code, effective_from, effective_to FROM qr_sw_industry_history "
+                "WHERE symbol IN (" + ",".join(["%s"] * len(config["members"])) + ") "
+                "AND effective_from <= %s AND (effective_to IS NULL OR effective_to >= %s)",
+                (*config["members"], config["end_date"], config.get("calculation_start", config["start_date"])),
+            )
+        except Exception as exc:
+            # A historical release may predate one optional research table.
+            # Treat that as an input block; do not convert it to a batch error.
+            if exc.__class__.__name__ != "ProgrammingError":
+                raise
+            cap_rows, industry_rows = {}, []
+        cap_frame = pd.DataFrame([
+            {"symbol": symbol, "trade_date": row["trade_date"], "cap": row["total_market_cap_cny"]}
+            for symbol, values in cap_rows.items() for row in values
+        ])
+        if not cap_frame.empty:
+            fields["cap"] = cap_frame.pivot(index="trade_date", columns="symbol", values="cap").reindex(
+                index=fields["close"].index, columns=fields["close"].columns
+            )
+        if industry_rows:
+            dates = fields["close"].index
+            for level, width in (("sector", 2), ("industry", 4), ("subindustry", 6)):
+                industry = pd.DataFrame(index=dates, columns=fields["close"].columns, dtype=object)
+                for row in industry_rows:
+                    active = (dates >= pd.Timestamp(row["effective_from"]))
+                    if row.get("effective_to"):
+                        active &= dates <= pd.Timestamp(row["effective_to"])
+                    industry.loc[active, row["symbol"]] = str(row["industry_code"])[:width]
+                fields["indclass." + level] = industry
     # Membership is explicit and intentionally independent of per-day price
     # availability: missing facts must remain visible to qualification.
     fields["universe"] = pd.DataFrame(True, index=fields["close"].index, columns=fields["close"].columns)

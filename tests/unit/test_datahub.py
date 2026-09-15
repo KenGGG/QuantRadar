@@ -116,21 +116,24 @@ def test_request_governor_records_sdk_invocation_without_claiming_opaque_http_at
     assert observed["observed_403"] == 0
 
 
-def test_canonical_security_master_adds_only_delta_records():
+def test_canonical_security_master_preserves_identity_and_merges_lifecycle_evidence():
     from quantradar.datahub.service import canonical_sh_sz_security_master
 
-    base = [{"symbol": "600000.SH", "list_date": "1999-11-10", "source": "investment_data"}]
+    base = [{"symbol": "600000.SH", "name": "浦发银行", "list_date": "1999-11-10", "source": "investment_data"}]
     lifecycle = [
-        {"symbol": "600000.SH", "list_date": "1999-11-10", "source": "baostock"},
+        {"symbol": "600000.SH", "delist_date": "", "status": "1", "source": "baostock"},
         {"symbol": "688999.SH", "list_date": "2023-01-03", "source": "baostock"},
         {"symbol": "430001.BJ", "list_date": "2023-01-03", "source": "baostock"},
     ]
 
     master = canonical_sh_sz_security_master(base, lifecycle)
 
-    assert [row["symbol"] for row in master] == ["600000.SH", "688999.SH"]
-    assert master[0]["source"] == "investment_data"
-    assert master[1]["source"] == "baostock"
+    assert [row["symbol"] for row in master] == ["430001.BJ", "600000.SH", "688999.SH"]
+    assert master[1]["source"] == "investment_data"
+    assert master[1]["name"] == "浦发银行"
+    assert master[1]["listing_status"] == "1"
+    assert master[2]["source"] == "baostock"
+    assert master[0]["capabilities"]["price"] == "UNSUPPORTED"
 
 
 def test_journal_creates_pending_entries_without_overwriting_completed(tmp_path):
