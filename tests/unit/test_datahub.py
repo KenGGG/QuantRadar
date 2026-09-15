@@ -1134,3 +1134,10 @@ def test_status_maintenance_uses_multiple_fair_batches(tmp_path):
     assert result["historical"]["claimed"] == 2
     assert result["budget_batches"] == STATUS_MAINTENANCE_MAX_BATCHES
     assert result["budget_exhausted"] is False
+
+
+def test_candidate_branch_is_bound_to_its_publication_baseline():
+    from quantradar.datahub.publication import candidate_branch
+
+    assert candidate_branch("status", "same-content", "commit-a") != candidate_branch("status", "same-content", "commit-b")
+    assert candidate_branch("status", "same-content", "commit-a") == candidate_branch("status", "same-content", "commit-a")

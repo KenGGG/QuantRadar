@@ -16,6 +16,12 @@ from .index_snapshots import validate_index_snapshot_candidate
 PUBLICATION_POLICY = 'canonical-valuation-base-lifecycle-units-v3'
 
 
+def candidate_branch(prefix: str, identity: str, base_commit: str) -> str:
+    """Bind reusable candidate branches to the release lineage they extend."""
+    baseline = hashlib.sha256(str(base_commit).encode()).hexdigest()[:12]
+    return f"candidate_{prefix}_{identity}_{baseline}"
+
+
 def publish_index_snapshot(service, version: dict, *, constituents: list[dict], weights: list[dict],
                            sw_components: list[dict]) -> dict:
     """Publish one validated V3 snapshot on an isolated supplemental branch."""
@@ -31,7 +37,7 @@ def publish_index_snapshot(service, version: dict, *, constituents: list[dict], 
             cursor.execute("SELECT * FROM dolt_status")
             if cursor.fetchall():
                 raise ValueError("supplemental repository has uncommitted changes")
-            branch = "candidate_index_snapshot_" + identity
+            branch = candidate_branch("index_snapshot", identity, old["supplemental_commit"])
             cursor.execute("SELECT name FROM dolt_branches WHERE name=%s", (branch,))
             if cursor.fetchone():
                 cursor.execute("CALL DOLT_CHECKOUT(%s)", (branch,))
@@ -227,7 +233,7 @@ def publish_market_cap_stage(service, stage_path: Path) -> dict:
             cursor.execute('SELECT * FROM dolt_status')
             if cursor.fetchall():
                 raise ValueError('supplemental repository has uncommitted changes')
-            branch = 'candidate_market_cap_' + identity
+            branch = candidate_branch('market_cap', identity, old['supplemental_commit'])
             cursor.execute('SELECT name FROM dolt_branches WHERE name=%s', (branch,))
             if cursor.fetchone():
                 cursor.execute('CALL DOLT_CHECKOUT(%s)', (branch,))
@@ -283,7 +289,7 @@ def publish_etf_daily_stage(service, stage_path: Path) -> dict:
             cursor.execute('SELECT * FROM dolt_status')
             if cursor.fetchall():
                 raise ValueError('supplemental repository has uncommitted changes')
-            branch = 'candidate_etf_daily_' + identity
+            branch = candidate_branch('etf_daily', identity, old['supplemental_commit'])
             cursor.execute('SELECT name FROM dolt_branches WHERE name=%s', (branch,))
             if cursor.fetchone(): cursor.execute('CALL DOLT_CHECKOUT(%s)', (branch,))
             else: cursor.execute('CALL DOLT_CHECKOUT(\'-b\', %s, %s)', (branch, old['supplemental_commit']))
@@ -338,7 +344,7 @@ def publish_etf_announcement_stage(service, stage_path: Path) -> dict:
         with conn.cursor() as cursor:
             cursor.execute('SELECT * FROM dolt_status')
             if cursor.fetchall(): raise ValueError('supplemental repository has uncommitted changes')
-            branch = 'candidate_etf_announcement_' + identity
+            branch = candidate_branch('etf_announcement', identity, old['supplemental_commit'])
             cursor.execute('SELECT name FROM dolt_branches WHERE name=%s', (branch,))
             if cursor.fetchone(): cursor.execute('CALL DOLT_CHECKOUT(%s)', (branch,))
             else: cursor.execute('CALL DOLT_CHECKOUT(\'-b\', %s, %s)', (branch, old['supplemental_commit']))
@@ -385,7 +391,7 @@ def publish_etf_master_stage(service, stage_path: Path) -> dict:
     stage_path=Path(stage_path); rows=list(_etf_master_stage_rows(stage_path))
     if len(rows) != 10: raise ValueError('ETF master candidate must cover fixed ten-symbol scope')
     digest=hashlib.sha256(''.join(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n' for r in rows).encode()).hexdigest()
-    old=service.releases.current(); conn=service._connection(); branch='candidate_etf_master_'+digest[:16]
+    old=service.releases.current(); conn=service._connection(); branch=candidate_branch('etf_master', digest[:16], old['supplemental_commit'])
     try:
         with conn.cursor() as cur:
             cur.execute('SELECT * FROM dolt_status')
@@ -426,7 +432,7 @@ def publish_etf_corporate_action_stage(service, stage_path: Path) -> dict:
             valid=row.get('cash_per_unit') is None and row.get('record_date') is None and row.get('pay_date') is None and 0 < float(row.get('share_multiplier')) and row.get('qualification') == 'OFFICIAL_SPLIT_DOCUMENT'
         if not valid or len(str(row.get('raw_sha256') or '')) != 64:
             raise ValueError('ETF corporate-action candidate lacks official terms')
-    digest=hashlib.sha256(''.join(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n' for r in rows).encode()).hexdigest(); old=service.releases.current(); conn=service._connection(); branch='candidate_etf_action_'+digest[:16]
+    digest=hashlib.sha256(''.join(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n' for r in rows).encode()).hexdigest(); old=service.releases.current(); conn=service._connection(); branch=candidate_branch('etf_action', digest[:16], old['supplemental_commit'])
     try:
         with conn.cursor() as cur:
             cur.execute('SELECT * FROM dolt_status')
@@ -461,7 +467,7 @@ def publish_etf_trading_rule_stage(service, stage_path: Path) -> dict:
             try: date.fromisoformat(str(row.get(field))[:10])
             except ValueError: raise ValueError('ETF rule candidate has invalid date')
         if row.get('lot_size') != 100 or float(row.get('tick_size')) != .001 or row.get('turnover_status') != 'UNKNOWN' or row.get('fee_status') != 'UNKNOWN' or row.get('special_status') != 'UNKNOWN' or len(str(row.get('raw_sha256') or '')) != 64: raise ValueError('ETF rule candidate has unsupported fields')
-    digest=hashlib.sha256(''.join(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n' for r in rows).encode()).hexdigest(); old=service.releases.current(); conn=service._connection(); branch='candidate_etf_rule_'+digest[:16]
+    digest=hashlib.sha256(''.join(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n' for r in rows).encode()).hexdigest(); old=service.releases.current(); conn=service._connection(); branch=candidate_branch('etf_rule', digest[:16], old['supplemental_commit'])
     try:
         with conn.cursor() as cur:
             cur.execute('SELECT * FROM dolt_status')
@@ -510,7 +516,7 @@ def publish_security_lifecycle(service, rows: list[dict]) -> dict:
             cursor.execute("SELECT * FROM dolt_status")
             if cursor.fetchall():
                 raise ValueError("supplemental repository has uncommitted changes")
-            branch = "candidate_lifecycle_" + identity
+            branch = candidate_branch("lifecycle", identity, old["supplemental_commit"])
             cursor.execute("SELECT name FROM dolt_branches WHERE name=%s", (branch,))
             if cursor.fetchone():
                 cursor.execute("CALL DOLT_CHECKOUT(%s)", (branch,))
@@ -568,7 +574,7 @@ def publish_trade_status_patch(service, rows: list[dict]) -> dict:
             if cursor.fetchall():
                 raise ValueError("supplemental repository has uncommitted changes")
             identity = hashlib.sha256(json.dumps(sorted((r["trade_date"], r["symbol"], r["raw_sha256"]) for r in rows)).encode()).hexdigest()[:16]
-            branch = "candidate_status_" + identity
+            branch = candidate_branch("status", identity, old["supplemental_commit"])
             cursor.execute("SELECT name FROM dolt_branches WHERE name=%s", (branch,))
             if cursor.fetchone():
                 cursor.execute("CALL DOLT_CHECKOUT(%s)", (branch,))
@@ -616,7 +622,7 @@ def publish_price_patch(service, rows: list[dict]) -> dict:
             if cursor.fetchall():
                 raise ValueError("supplemental repository has uncommitted changes")
             identity = hashlib.sha256(json.dumps(sorted((r["trade_date"], r["symbol"], r["raw_sha256"]) for r in rows)).encode()).hexdigest()[:16]
-            branch = "candidate_price_" + identity
+            branch = candidate_branch("price", identity, old["supplemental_commit"])
             cursor.execute("SELECT name FROM dolt_branches WHERE name=%s", (branch,))
             if cursor.fetchone(): cursor.execute("CALL DOLT_CHECKOUT(%s)", (branch,))
             else: cursor.execute("CALL DOLT_CHECKOUT('-b', %s, %s)", (branch, old["supplemental_commit"]))
@@ -686,7 +692,7 @@ def publish_candidate(service, candidate, progress=None):
             if cursor.fetchall():
                 raise ValueError('补充库主分支存在未提交内容，保留原状')
             # Each candidate owns a separate branch; the serving branch is never reset.
-            branch = 'candidate_' + candidate['candidate_id'][1:17] + '_p2'
+            branch = candidate_branch('valuation_p2', candidate['candidate_id'][1:17], old.get('supplemental_commit') or candidate['base_commit'])
             cursor.execute('SELECT name FROM dolt_branches WHERE name=%s', (branch,))
             if cursor.fetchone():
                 cursor.execute('CALL DOLT_CHECKOUT(%s)', (branch,))
