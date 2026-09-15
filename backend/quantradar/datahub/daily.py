@@ -222,7 +222,7 @@ class DailyUpdate:
                                         'queue': 'current', 'correction_window_trading_days': 20})
                 planned_status = self.service.enqueue_market_trade_status_plan(recent_start, target, queue_name='current')
                 status_result = self.service.process_market_trade_status_queue(limit=5, queue_name='current', acquire_lock=False)
-                historical_result = self.service.process_market_trade_status_queue(limit=5, queue_name='historical', acquire_lock=False)
+                historical_result = self.service.process_market_trade_status_queue(limit=50, queue_name='historical', acquire_lock=False)
                 record('trade_status', {'status': 'UPDATED' if status_result.get('published') else 'NO_CHANGE',
                                         'start': recent_start, 'end': target, 'planned': planned_status['symbol_count'],
                                         'enqueued': planned_status['enqueued'], 'worker': status_result,
