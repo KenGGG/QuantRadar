@@ -317,6 +317,10 @@ def _research_qualification(manifest: Dict[str, Any] | None) -> Dict[str, Any]:
     datasets = (manifest or {}).get("datasets", {})
     etf_raw = bool(datasets.get("etf_eod_price") and datasets.get("etf_master"))
     hierarchy = (datasets.get("sw_industry_history") or {}).get("industry_code_levels") == ["L1", "L2", "L3"]
+    alpha = ((manifest or {}).get("metadata", {}).get("alpha101_qualification")
+             if isinstance((manifest or {}).get("metadata", {}), dict) else None)
+    alpha_raw = alpha if isinstance(alpha, dict) else {"status": "UNAUDITED", "ready": None, "partial": None, "blocked": None,
+                                                         "reason": "no fixed-release Alpha101 qualification summary"}
     return {
         "etf": {
             "ETF_RAW": "READY" if etf_raw else "BLOCKED",
@@ -325,7 +329,7 @@ def _research_qualification(manifest: Dict[str, Any] | None) -> Dict[str, Any]:
             "blockers": ["ETF_ADJUSTMENT_FACTOR_UNPUBLISHED", "ETF_EVENT_COVERAGE_INCOMPLETE", "ETF_TRADING_RULES_INCOMPLETE"],
         },
         "alpha101": {
-            "ALPHA101_RAW_ENGINEERING": {"ready": 82, "partial": 19, "blocked": 0},
+            "ALPHA101_RAW_ENGINEERING": alpha_raw,
             "ALPHA101_ADJ_RESEARCH": {"ready": 0, "partial": 0, "blocked": 101},
             "ALPHA101_PIT_STRICT": {"ready": 0, "partial": 0, "blocked": 101},
             "industry_hierarchy": "PIT_PARTIAL" if hierarchy else "BLOCKED",
