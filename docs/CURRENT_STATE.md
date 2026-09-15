@@ -14,6 +14,7 @@
 - Old worktrees remain available for reference. Local runtime and browser scratch files are not source data.
 - DataHub V4 G2 状态底账已通过固定 release 审计与真实补数验收；持续队列作为日常维护保留。G3-A 市值与行业来源限制、G4 统一读取与 FactorLab、G5 固定版本矩阵与既有低 Beta 回放均已完成验收。
 - Current verification and source limitations: [2026-09-11 remediation evidence](acceptance/datahub-remediation-2026-09-11/README.md).
+- A bounded read-only FactorLab input check on `R99a42307383acedd` found 20 explicit lifecycle members and 1,240 eligible universe cells; #1 preflight was `READY`, while #58 remained `BLOCKED_INPUT(indclass.sector)`. Evidence: [2026-09-15 batch 3 read](acceptance/datahub-audit-remediation-2026-09-15/batch-3-research-read.md).
 
 ## DataHub facts
 
