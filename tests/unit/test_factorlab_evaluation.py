@@ -40,3 +40,21 @@ def test_split_excludes_labels_that_cross_a_boundary():
 def test_split_requires_a_complete_positive_partition():
     with pytest.raises(ValueError):
         split_dates(pd.date_range("2024-01-01", periods=10), (.5, .5, .5))
+
+
+def test_factor_preflight_reports_missing_input_without_rejecting_other_formulas():
+    from quantradar.factorlab.qualification import preflight
+
+    ready = preflight({"open", "high", "low", "close", "volume", "amount", "vwap", "returns", "universe"}, {"open", "close"})
+    blocked = preflight({"open", "close", "universe"}, {"open", "cap"})
+
+    assert ready == {"status": "READY", "missing_fields": []}
+    assert blocked == {"status": "BLOCKED_INPUT", "missing_fields": ["cap"]}
+
+
+def test_factor_batch_status_distinguishes_data_blocks_from_engine_failures():
+    from quantradar.factorlab.qualification import batch_status
+
+    assert batch_status(["COMPUTED", "BLOCKED_INPUT"]) == "PARTIAL_SUCCESS"
+    assert batch_status(["BLOCKED_INPUT", "BLOCKED_WARMUP"]) == "BLOCKED"
+    assert batch_status(["COMPUTED", "FAILED_ENGINE"]) == "FAILED"

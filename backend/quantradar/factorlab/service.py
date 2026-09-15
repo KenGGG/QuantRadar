@@ -38,8 +38,8 @@ def create_batch(config: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("horizons must be a non-empty subset of 1, 5, 20")
     from quantradar.datahub.alpha101.catalog import dependency_matrix
     catalog = {r["alpha_id"]: r for r in dependency_matrix()}
-    if not ids or any(i not in catalog or catalog[i]["group"] != "price_volume" for i in ids):
-        raise ValueError("alpha_ids must contain only price_volume catalog entries")
+    if not ids or any(i not in catalog for i in ids):
+        raise ValueError("alpha_ids must contain implemented Alpha101 catalog entries")
     max_lookback = max(catalog[i]["lookback_days"] for i in ids)
     start = str(config.get("start_date") or "")
     calculation_start = (pd.Timestamp(start) - pd.Timedelta(days=max_lookback * 2 + 20)).date().isoformat() if start else ""
@@ -95,7 +95,9 @@ def _panel(config: dict[str, Any]) -> tuple[dict[str, pd.DataFrame], pd.DataFram
     frame = pd.concat(all_rows, ignore_index=True)
     fields = {name: frame.pivot(index="trade_date", columns="symbol", values=name).sort_index() for name in ("open", "high", "low", "close", "volume_shares", "amount_cny", "vwap", "returns")}
     fields["volume"] = fields.pop("volume_shares"); fields["amount"] = fields.pop("amount_cny")
-    fields["universe"] = fields["close"].notna()
+    # Membership is explicit and intentionally independent of per-day price
+    # availability: missing facts must remain visible to qualification.
+    fields["universe"] = pd.DataFrame(True, index=fields["close"].index, columns=fields["close"].columns)
     return fields, fields["open"]
 
 
@@ -110,8 +112,14 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
         splits = split_dates(requested_dates, tuple(config["split_ratios"]))
         config["split_dates"] = {name: [str(pd.Timestamp(x).date()) for x in dates] for name, dates in splits.items()}
         catalog = {r["alpha_id"]: r for r in dependency_matrix()}
+        from .qualification import batch_status, preflight
         for alpha_id in config["alpha_ids"]:
             row = catalog[alpha_id]
+            qualification = preflight(set(panel), set(row["fields"]))
+            if qualification["status"] != "READY":
+                config["items"].append({"alpha_id": alpha_id, **qualification})
+                update_experiment(batch_id, config=config)
+                continue
             calc_identity = {k: config[k] for k in ("release_id", "base_commit", "supplemental_commit", "members_hash", "pool_type", "snapshot_date", "calculation_start", "start_date", "end_date", "price_mode", "unit_contract", "adv_basis", "operator_bundle_hash", "research_input_version")}
             calc_identity.update({"alpha_id": alpha_id, "formula_hash": row["formula_hash"], "semantics_version": row["semantics_version"]})
             key = cache_key(calc_identity); value_path = root / "factor_values" / f"alpha{alpha_id:03}_{key}.parquet"; value_path.parent.mkdir(exist_ok=True)
@@ -137,9 +145,10 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
                 epath.write_text(json.dumps(result))
                 validation = result.get("validation", {})
                 evaluations[str(horizon)] = {"status": status, "artifact": str(epath), "summary": {k: validation.get(k) for k in ("valid_dates", "ic_mean", "rank_ic_mean", "rank_ic_std", "rank_ic_positive_ratio", "rank_ic_positive_month_ratio", "mean_cross_section", "top_quantile_turnover")}, "scopes": result}
-            config["items"].append({"alpha_id": alpha_id, "calculation": calc_status, "value_artifact": str(value_path), "evaluations": evaluations})
+            item_status = "FORMULA_EMPTY_VALID" if factor.notna().sum().sum() == 0 else "COMPUTED"
+            config["items"].append({"alpha_id": alpha_id, "status": item_status, "calculation": calc_status, "value_artifact": str(value_path), "evaluations": evaluations})
             update_experiment(batch_id, config=config)
-        config["status"] = "SUCCESS"
+        config["status"] = batch_status([str(item["status"]) for item in config["items"]])
         fingerprint = cache_key({
             "release_id": config["release_id"], "base_commit": config["base_commit"],
             "supplemental_commit": config["supplemental_commit"], "members_hash": config["members_hash"],
@@ -149,7 +158,8 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
         })
     except Exception as exc:
         config["status"] = "FAILED"; config["error"] = str(exc)
-    update_experiment(batch_id, config=config, result_fingerprint=fingerprint if config["status"] == "SUCCESS" else None)
+    update_experiment(batch_id, config=config,
+                      result_fingerprint=fingerprint if config["status"] in {"SUCCESS", "PARTIAL_SUCCESS", "BLOCKED"} else None)
 
 
 def evaluate_holdout(batch_id: str) -> dict[str, Any]:

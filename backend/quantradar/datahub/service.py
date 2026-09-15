@@ -216,7 +216,7 @@ class DataHubService:
         """Persist the actual strategy window before any source routing is considered."""
         from .inventory import build_gap_plan
         inventory = self.base_inventory(release_id)
-        plan = build_gap_plan(inventory["domains"], start=start, end=end, requirements={
+        plan = build_gap_plan(inventory["domains"], supplemental_domains=self.supplemental_inventory(release_id), start=start, end=end, requirements={
             "price": "base-final-price-v1", "trade_status": "base-bao-daily-v1",
         })
         from .work_queue import DataHubWorkQueue
@@ -239,6 +239,27 @@ class DataHubService:
                   "work_orders": planned, "queue_status": queue.status()["counts"]}
         _atomic_json(Path(self.config.supplemental_repo) / "gap_plan.json", report)
         return report
+
+    def supplemental_inventory(self, release_id: str | None = None) -> dict[str, dict[str, Any]]:
+        """Read coverage available from the release-pinned supplement only."""
+        manifest = self.releases.resolve(release_id)
+        commit = manifest.get("supplemental_commit")
+        if not commit:
+            return {}
+        connection = pymysql.connect(
+            host=self.config.supplemental_host, port=self.config.supplemental_port, user=self.config.user, password=self.config.password,
+            database=f"{self.config.supplemental_database}/{commit}", connect_timeout=self.config.connect_timeout,
+            read_timeout=self.config.read_timeout, charset="utf8mb4", cursorclass=DictCursor,
+        )
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT MIN(trade_date) AS first_date, MAX(trade_date) AS latest_date, COUNT(*) AS row_count, COUNT(DISTINCT symbol) AS stocks FROM qr_trade_status_daily")
+                row = cursor.fetchone() or {}
+        finally:
+            connection.close()
+        coverage = {key: str(value)[:10] if key.endswith("date") and value is not None else value for key, value in row.items()}
+        return {"trade_status": {"state": "VALID" if coverage.get("row_count") else "UNKNOWN", "coverage": coverage,
+                                 "source": "release-pinned-supplement"}}
 
     def _low_beta_status_dependencies(self, start: str, end: str, base_commit: str) -> list[dict[str, Any]]:
         """Read the fixed base calendar and CSI 300 snapshots for this strategy only."""

@@ -1,24 +1,33 @@
 # QuantRadar Active Phase
 
-**Milestone:** `DATAHUB_V3_RESEARCH_DATA_EXPANSION`
-**Active Goal:** `DATA_V3_P0_CANONICAL_DATA_FOUNDATION`
+**Milestone:** `DATAHUB_V4_MARKET_LEDGER_ALPHA101`
+**Active Goal:** `DATA_V4_G0_COVERAGE_FOUNDATION`
 **Status:** IN_PROGRESS
 
 ## Scope
 
-在既有双 Dolt、ReleaseReader、Provider、Publication 和 CLI 上建设两类研究事实：从当前开始累计的版本化指数快照，以及五只样本股票的可审计财务 canonical。基础 Dolt 只读；所有新事实必须走 raw evidence → candidate/quality → supplemental Dolt commit → release manifest，研究和回测不得联网或静默 fallback。
+在既有双 Dolt、ReleaseReader、Provider、Publication 和 CLI 上建设统一、可审计、持续更新的沪深证券数据底账。基础 Dolt 只读；所有新事实必须走 raw evidence → candidate/quality → supplemental Dolt commit → release manifest，研究和回测不得联网或静默 fallback。北交所单列身份、生命周期和各数据域支持状态。
 
-本轮唯一顺序为 **G0 → G1 → G2 → G3**。任何不能证明日期语义、单位、版本或来源的数据可以保存为 raw evidence，但不得提升为严格 PIT canonical。
+主线唯一顺序为 **G0 → G1 → G2 → G3-A → G4 → G5 → CLOSED**。G3-B 估值修复独立记录且不阻塞 Alpha101。RAW 研究不提升复权、账户或严格 PIT 资格；不新增 ETF、研报、公司行为或历史指数成分 Goals。
 
 ## Acceptance
 
-### DataHub V3 P0 gates
+### DataHub V4 gates
+
+- **G0 Coverage Foundation — IN_PROGRESS.** 固定运行基线与 release，验证来源状态语义，建立按字段、合同版本和固定双库 release 计算的 Coverage Service；审计不得产生下载任务。
+- **G1 Security Identity & Lifecycle — QUEUED.** 分离证券身份和生命周期字段证据，保留退市证券，北交所能力单列。
+- **G2 Trade Status Ledger — QUEUED.** 按 G0 合同重算实际缺口；Worker 执行前再次审计，仅采集仍缺失键。
+- **G3-A Alpha101 Inputs — QUEUED.** 历史总市值与申万三级历史归属、字典和版本映射。
+- **G3-B Valuation Ledger — QUEUED_NON_BLOCKING.** PE/PB/PS/PCF 失败与字段缺口台账，不阻塞 G4/G5。
+- **G4 Unified Reader & FactorLab — QUEUED.** Provider/FactorLab 共用固定 release 输入，依赖驱动 Alpha101 资格。
+- **G5 Offline Matrix & Replay — QUEUED.** 101 条矩阵、低 Beta 回放、固定 #1/#56/#58 组合及旧 release 隔离。
+
+### Historical DataHub V3 P0 gates
 
 - **G0 Source Audit — PASSED.** 已归档 CSI300/500/1000 成分和权重、申万一级样本及五只股票三表的真实 AKShare 原始响应；普通企业、银行与保险 schema 已实测不同。中证权重单位为 PERCENT；申万权重仍是 UNIT_UNVERIFIED raw。所有当前历史财务响应均为 PIT_PARTIAL。详见 [G0 审计](acceptance/datahub-v3/g0_source_audit.md)。
 - **G1 Index Snapshot — PASSED.** `qr_index_snapshot_version` 与成员表已在固定 release 发布 CSI300/500/1000 和申万样本；业务 `content_hash` 不含抓取元数据或行顺序，同内容实测 `NO_CHANGE`，变化会追加 revision。正式 CLI 仅在固定 SSE 交易日 20:30 Asia/Shanghai 后执行；申万仅在周五取得实际快照且不补造日期。首个 release 与复读结果见 [G1 记录](acceptance/datahub-v3/g1_first_snapshot_release.md)。
 - **G2 Financial Canonical — PASSED.** 五只样本的三表 raw version 与 mapping 已在 `R8c64f7d5276fbdb7` 发布；固定 commit 核验 1,214 个不可变 statement versions、5 个证券，所有记录均为 `CANONICAL_PIT_PARTIAL`。原公告事实与 `conservative_available_at`/规则版本分开；银行、保险只验证 schema 与 NULL 语义。它不代表全市场或严格 PIT 财务回测资格。
 - **G3 Release & Replay — PASSED.** 指数快照调度、财务 canonical 固定 release 查询、旧 release 隔离及 FactorLab V3 前后冻结比较均已验证；`post_v3_factorlab_freeze_check.json` 九项不变量全部一致。DataHub V3 P0 到此结束，不进入 ETF NAV 或基金域。
-- **G3 Release & Replay — QUEUED.** 验证版本固定查询、调度、旧 release 隔离和 FactorLab 冻结基线未变；之后结束 V3 P0，不进入 ETF NAV 或基金域。
 
 ### Frozen preceding milestone
 

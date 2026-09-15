@@ -118,10 +118,13 @@ def validate_index_alias(left_code: str, right_code: str, samples: list[tuple[st
             "checked_snapshots": len(samples), "relation": "same_constituents_observed"}
 
 
-def build_gap_plan(domains: dict[str, dict[str, Any]], *, start: str, end: str, requirements: dict[str, str]) -> dict[str, Any]:
-    """Make a range-level plan; it never treats a missing table as a network request."""
+def build_gap_plan(domains: dict[str, dict[str, Any]], *, start: str, end: str, requirements: dict[str, str],
+                   supplemental_domains: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Plan against published release coverage, never against base coverage alone."""
     strategy_gap = []
     satisfied = []
+    satisfied_by_release = []
+    supplemental_domains = supplemental_domains or {}
     for domain, contract in requirements.items():
         detail = domains.get(domain, {})
         coverage = detail.get("coverage", {})
@@ -129,13 +132,21 @@ def build_gap_plan(domains: dict[str, dict[str, Any]], *, start: str, end: str, 
         if detail.get("state") == "VALID" and coverage.get("first_date", "9999-12-31") <= start and latest and latest >= end:
             satisfied.append(domain)
             continue
+        supplement = supplemental_domains.get(domain, {})
+        supplement_coverage = supplement.get("coverage", {})
+        supplement_first, supplement_latest = supplement_coverage.get("first_date"), supplement_coverage.get("latest_date")
+        if (latest and supplement_first and supplement_latest and latest < end
+                and str(supplement_first)[:10] <= (date.fromisoformat(str(latest)[:10]) + timedelta(days=1)).isoformat()
+                and str(supplement_latest)[:10] >= end):
+            satisfied_by_release.append(domain)
+            continue
         if latest and latest < end:
             next_day = (date.fromisoformat(str(latest)[:10]) + timedelta(days=1)).isoformat()
             gap_start = max(start, next_day)
         else:
             gap_start = start
         strategy_gap.append({"domain": domain, "range": {"start": gap_start, "end": end}, "state": "UNKNOWN", "source_contract_id": contract})
-    return {"strategy_window": {"start": start, "end": end}, "satisfied_by_base": satisfied, "strategy_gap": strategy_gap,
+    return {"strategy_window": {"start": start, "end": end}, "satisfied_by_base": satisfied, "satisfied_by_release": satisfied_by_release, "strategy_gap": strategy_gap,
             "current_update": [], "historical_repair": []}
 
 

@@ -112,6 +112,60 @@ def test_gap_plan_uses_base_coverage_before_scheduling_network_work():
     assert plan["satisfied_by_base"] == ["price"]
 
 
+def test_gap_plan_uses_published_supplemental_coverage_before_queueing_work():
+    from quantradar.datahub.inventory import build_gap_plan
+
+    plan = build_gap_plan(
+        {"trade_status": {"state": "PARTIAL", "coverage": {"first_date": "1990-01-01", "latest_date": "2023-06-09"}}},
+        supplemental_domains={"trade_status": {"state": "VALID", "coverage": {"first_date": "2023-06-10", "latest_date": "2026-08-31"}}},
+        start="2020-01-01", end="2026-08-31", requirements={"trade_status": "base-bao-daily-v1"},
+    )
+
+    assert plan["satisfied_by_base"] == []
+    assert plan["satisfied_by_release"] == ["trade_status"]
+    assert plan["strategy_gap"] == []
+
+
+def test_coverage_contract_counts_only_expected_keys_and_compresses_missing_intervals():
+    from quantradar.datahub.coverage import CoverageService
+
+    report = CoverageService("trade-status-v1").audit(
+        expected=[
+            {"symbol": "000001.SZ", "trade_date": "2024-01-02", "fields": ("tradestatus", "is_st")},
+            {"symbol": "000001.SZ", "trade_date": "2024-01-03", "fields": ("tradestatus", "is_st")},
+            {"symbol": "000001.SZ", "trade_date": "2024-01-04", "fields": ("tradestatus", "is_st")},
+        ],
+        actual=[
+            {"symbol": "000001.SZ", "trade_date": "2024-01-02", "tradestatus": "1", "is_st": "0"},
+            {"symbol": "000001.SZ", "trade_date": "2024-01-03", "tradestatus": "1", "is_st": None},
+        ],
+    )
+
+    assert report["expected_key_contract"] == "trade-status-v1"
+    assert report["expected_fields"] == 6
+    assert report["valid_fields"] == 3
+    assert report["missing"] == [
+        {"symbol": "000001.SZ", "field": "is_st", "start": "2024-01-03", "end": "2024-01-04", "expected_key_contract": "trade-status-v1"},
+        {"symbol": "000001.SZ", "field": "tradestatus", "start": "2024-01-04", "end": "2024-01-04", "expected_key_contract": "trade-status-v1"},
+    ]
+
+
+def test_coverage_contract_keeps_non_applicable_keys_out_of_the_denominator():
+    from quantradar.datahub.coverage import CoverageService
+
+    report = CoverageService("trade-status-v1").audit(
+        expected=[
+            {"symbol": "000001.SZ", "trade_date": "2024-01-02", "fields": ("tradestatus",), "applicable": False},
+            {"symbol": "000001.SZ", "trade_date": "2024-01-03", "fields": ("tradestatus",)},
+        ],
+        actual=[{"symbol": "000001.SZ", "trade_date": "2024-01-03", "tradestatus": "1"}],
+    )
+
+    assert report["expected_fields"] == 1
+    assert report["valid_fields"] == 1
+    assert report["missing"] == []
+
+
 def test_monthly_status_dependencies_use_previous_trade_day_and_exact_constituents():
     from quantradar.datahub.inventory import monthly_status_dependencies
 
@@ -134,6 +188,7 @@ def test_service_persists_strategy_gap_plan(tmp_path, monkeypatch):
     from quantradar.datahub.service import DataHubService
 
     service = DataHubService(DataHubConfig(supplemental_repo=str(tmp_path)))
+    monkeypatch.setattr(service, "supplemental_inventory", lambda release_id=None: {})
     monkeypatch.setattr(service, "base_inventory", lambda release_id=None: {
         "release_id": "R1", "base_commit": "base", "domains": {
             "price": {"state": "VALID", "coverage": {"first_date": "2010-01-01", "latest_date": "2026-09-11"}},
