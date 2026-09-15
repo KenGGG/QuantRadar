@@ -1111,3 +1111,26 @@ def test_datahub_overview_work_queue_excludes_task_evidence():
     })
 
     assert overview == {"counts": {"current": {"PENDING": 2, "COMPLETE": 1}}, "total": 3}
+
+
+def test_status_maintenance_uses_multiple_fair_batches(tmp_path):
+    from types import SimpleNamespace
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.daily import DailyUpdate, STATUS_MAINTENANCE_MAX_BATCHES
+
+    calls = []
+    class Service:
+        config = DataHubConfig(supplemental_repo=str(tmp_path))
+        def process_market_trade_status_queue(self, *, limit, queue_name, acquire_lock):
+            calls.append((queue_name, limit, acquire_lock))
+            # The first two passes have work, then both queues become idle.
+            claimed = 1 if len(calls) <= 4 else 0
+            return {"claimed": claimed, "outcomes": [], "published": None}
+
+    result = DailyUpdate(Service())._process_status_maintenance_budget()
+
+    assert calls == [("current", 50, False), ("historical", 50, False)] * 3
+    assert result["current"]["claimed"] == 2
+    assert result["historical"]["claimed"] == 2
+    assert result["budget_batches"] == STATUS_MAINTENANCE_MAX_BATCHES
+    assert result["budget_exhausted"] is False

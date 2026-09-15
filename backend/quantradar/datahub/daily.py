@@ -21,6 +21,9 @@ from .governor import RequestGovernor
 
 CURRENT_STATUS_TASK_LIMIT = 50
 HISTORICAL_STATUS_TASK_LIMIT = 50
+# A batch protects each upstream request group.  A maintenance run may use a
+# bounded number of fair batches so 50 is not mistaken for daily throughput.
+STATUS_MAINTENANCE_MAX_BATCHES = 20
 
 
 def process_identity(pid):
@@ -110,6 +113,32 @@ class DailyUpdate:
             state['requested_range'] = {'start': start, 'end': end}
             _atomic_json(self.path, state)
             return state
+
+    def _process_status_maintenance_budget(self) -> dict:
+        """Alternate bounded batches until idle or the maintenance budget ends."""
+        current, historical = [], []
+        for _ in range(STATUS_MAINTENANCE_MAX_BATCHES):
+            current_batch = self.service.process_market_trade_status_queue(
+                limit=CURRENT_STATUS_TASK_LIMIT, queue_name='current', acquire_lock=False)
+            historical_batch = self.service.process_market_trade_status_queue(
+                limit=HISTORICAL_STATUS_TASK_LIMIT, queue_name='historical', acquire_lock=False)
+            current.append(current_batch)
+            historical.append(historical_batch)
+            if not current_batch.get('claimed') and not historical_batch.get('claimed'):
+                break
+        def summary(batches):
+            return {
+                'batches': len(batches),
+                'claimed': sum(int(batch.get('claimed', 0)) for batch in batches),
+                'published': [batch.get('published') for batch in batches if batch.get('published')],
+                'outcomes': [outcome for batch in batches for outcome in batch.get('outcomes', [])],
+            }
+        return {
+            'current': summary(current), 'historical': summary(historical),
+            'budget_batches': STATUS_MAINTENANCE_MAX_BATCHES,
+            'budget_exhausted': len(current) == STATUS_MAINTENANCE_MAX_BATCHES
+                and bool(current[-1].get('claimed') or historical[-1].get('claimed')) if current else False,
+        }
 
     def _base_connection(self, commit=None):
         c = self.service.config
@@ -239,12 +268,10 @@ class DailyUpdate:
                     record('trade_status', {'status': 'RUNNING', 'start': recent_start, 'end': target,
                                             'queue': 'current', 'correction_window_trading_days': 20})
                     planned_status = self.service.enqueue_market_trade_status_plan(recent_start, target, queue_name='current')
-                    current_result = self.service.process_market_trade_status_queue(limit=CURRENT_STATUS_TASK_LIMIT, queue_name='current', acquire_lock=False)
-                    historical_result = self.service.process_market_trade_status_queue(limit=HISTORICAL_STATUS_TASK_LIMIT, queue_name='historical', acquire_lock=False)
-                    record('trade_status', {'status': 'UPDATED' if current_result.get('published') or historical_result.get('published') else 'NO_CHANGE',
+                    maintenance = self._process_status_maintenance_budget()
+                    record('trade_status', {'status': 'UPDATED' if maintenance['current']['published'] or maintenance['historical']['published'] else 'NO_CHANGE',
                                             'start': recent_start, 'end': target, 'planned': planned_status['symbol_count'],
-                                            'enqueued': planned_status['enqueued'], 'worker': current_result,
-                                            'historical_worker': historical_result})
+                                            'enqueued': planned_status['enqueued'], 'maintenance': maintenance})
                     record('check', {'status': 'SKIPPED', 'reason': 'status rows are validated and published by the status worker'})
                     record('publish', {'status': 'SKIPPED', 'reason': 'status worker publishes its own fixed release'})
                     state['status'] = 'PARTIAL'
@@ -277,12 +304,10 @@ class DailyUpdate:
                 record('trade_status', {'status': 'RUNNING', 'start': recent_start, 'end': target,
                                         'queue': 'current', 'correction_window_trading_days': 20})
                 planned_status = self.service.enqueue_market_trade_status_plan(recent_start, target, queue_name='current')
-                status_result = self.service.process_market_trade_status_queue(limit=CURRENT_STATUS_TASK_LIMIT, queue_name='current', acquire_lock=False)
-                historical_result = self.service.process_market_trade_status_queue(limit=HISTORICAL_STATUS_TASK_LIMIT, queue_name='historical', acquire_lock=False)
-                record('trade_status', {'status': 'UPDATED' if status_result.get('published') else 'NO_CHANGE',
+                maintenance = self._process_status_maintenance_budget()
+                record('trade_status', {'status': 'UPDATED' if maintenance['current']['published'] or maintenance['historical']['published'] else 'NO_CHANGE',
                                         'start': recent_start, 'end': target, 'planned': planned_status['symbol_count'],
-                                        'enqueued': planned_status['enqueued'], 'worker': status_result,
-                                        'historical_worker': historical_result})
+                                        'enqueued': planned_status['enqueued'], 'maintenance': maintenance})
                 record('check', {'status': 'RUNNING'})
                 candidate = validate_candidate(self.root / 'staging' / 'valuation_daily-mvp', journal.data['units'], base_commit=commit, raw_store=self.service.raw, calendar=calendar)
                 _atomic_json(self.root / 'candidate-check.json', candidate)
