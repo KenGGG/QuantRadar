@@ -395,11 +395,13 @@ class DataHubService:
         from .work_queue import DataHubWorkQueue
 
         queue = DataHubWorkQueue(Path(self.config.supplemental_repo) / "work-queue.json")
-        tasks = queue.claim_matching(queue_name, domain="trade_status", limit=limit)
         outcomes: list[dict[str, Any]] = []
         staged: list[tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]] = []
         lock = self._updater_lock() if acquire_lock else nullcontext()
         with lock:
+            recovered = queue.recover_running(queue_name, domain="trade_status", evidence={
+                "recovery": "previous worker ended before terminal outcome; coverage must be re-audited"})
+            tasks = queue.claim_matching(queue_name, domain="trade_status", limit=limit)
             execution_release = self.releases.current()["release_id"]
             adapter = BaostockAdapter(host=self.config.baostock_host)
             source_work: dict[tuple[str, str, str], tuple[dict[str, Any], dict[str, Any]]] = {}
@@ -464,14 +466,14 @@ class DataHubService:
                                                                 "recovery": "source session ended before this request"})
                         outcomes.append({"task_id": task["task_id"], "status": "PENDING", "error": str(exc)})
             if not staged:
-                return {"claimed": len(tasks), "outcomes": outcomes, "published": None}
+                return {"recovered": recovered, "claimed": len(tasks), "outcomes": outcomes, "published": None}
             try:
                 rows = [row for _, _, candidates in staged for row in candidates]
                 publication = publish_trade_status_patch(self, rows)
             except Exception as exc:
                 for task, audit, _ in staged:
                     queue.defer(task["task_id"], evidence={**audit["evidence"], "publication_error": str(exc)})
-                return {"claimed": len(tasks), "outcomes": outcomes, "published": {"status": "DEFERRED", "error": str(exc)}}
+                return {"recovered": recovered, "claimed": len(tasks), "outcomes": outcomes, "published": {"status": "DEFERRED", "error": str(exc)}}
             for task, audit, _ in staged:
                 published_task = execution_release_task(task, publication["release_id"])
                 final = self.reaudit_market_status_task(published_task)
@@ -484,7 +486,7 @@ class DataHubService:
                     queue.defer(task["task_id"], evidence={**final["evidence"], "published_release_id": publication["release_id"]},
                                 release_id=publication["release_id"])
                     outcomes.append({"task_id": task["task_id"], "status": "PENDING"})
-        return {"claimed": len(tasks), "outcomes": outcomes, "published": publication}
+        return {"recovered": recovered, "claimed": len(tasks), "outcomes": outcomes, "published": publication}
 
     def supplemental_inventory(self, release_id: str | None = None) -> dict[str, dict[str, Any]]:
         """Read coverage available from the release-pinned supplement only."""

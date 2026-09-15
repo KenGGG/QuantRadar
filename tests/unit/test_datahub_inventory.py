@@ -348,6 +348,20 @@ def test_work_queue_defer_can_rebase_a_follow_up_audit_to_its_published_release(
     assert deferred["task"]["release_id"] == "R2"
 
 
+def test_work_queue_recovers_abandoned_running_domain_work(tmp_path):
+    from quantradar.datahub.work_queue import DataHubWorkQueue
+
+    queue = DataHubWorkQueue(tmp_path / "work-queue.json")
+    task = queue.enqueue("historical", {"source_contract_id": "source", "domain": "trade_status", "fields": [],
+                                         "symbols": ["600000.SH"], "range": {"start": "2024-01-02", "end": "2024-01-02"},
+                                         "gap_reason": "test", "gap_fingerprint": "recover"})["task"]
+    queue.claim_matching("historical", domain="trade_status", limit=1)
+
+    assert queue.recover_running("historical", domain="trade_status", evidence={"recovery": "test"}) == 1
+    assert queue.status()["tasks"][0]["task_id"] == task["task_id"]
+    assert queue.status()["counts"]["historical"]["PENDING"] == 1
+
+
 def test_low_beta_status_plan_has_exact_symbols_and_release_fingerprint(tmp_path, monkeypatch):
     from quantradar.config import DataHubConfig
     from quantradar.datahub.service import DataHubService

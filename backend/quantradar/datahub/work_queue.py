@@ -144,6 +144,19 @@ class DataHubWorkQueue:
             self._save(data)
         return [dict(task) for task in candidates]
 
+    def recover_running(self, queue: str, *, domain: str, evidence: dict[str, Any]) -> int:
+        """Return abandoned domain work to pending before its next exclusive run."""
+        if queue not in QUEUES:
+            raise ValueError(f"unknown queue: {queue}")
+        data = self._load()
+        tasks = [task for task in data["tasks"].values()
+                 if task.get("queue") == queue and task.get("domain") == domain and task.get("status") == "RUNNING"]
+        for task in tasks:
+            task.update(status="PENDING", updated_at=datetime.now(timezone.utc).isoformat(), re_audit=evidence)
+        if tasks:
+            self._save(data)
+        return len(tasks)
+
     def finish(self, task_id: str, status: str, *, evidence: dict[str, Any] | None = None) -> dict[str, Any]:
         """Persist a terminal outcome; retryability stays explicit in the task."""
         if status not in TERMINAL:
