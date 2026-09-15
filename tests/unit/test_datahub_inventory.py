@@ -179,6 +179,55 @@ def test_coverage_reaudit_marks_a_work_order_satisfied_only_when_no_fields_remai
     assert outcome["evidence"]["remaining_gap_fingerprint"]
 
 
+def test_coverage_partition_report_aggregates_field_counts_without_requiring_a_global_cartesian_product():
+    from quantradar.datahub.coverage import CoverageService
+
+    report = CoverageService("trade-status-v1").audit_partitions([
+        (
+            [{"symbol": "600000.SH", "trade_date": "2024-01-02", "fields": ("tradestatus", "is_st")}],
+            [{"symbol": "600000.SH", "trade_date": "2024-01-02", "tradestatus": 1, "is_st": 0}],
+        ),
+        (
+            [{"symbol": "000001.SZ", "trade_date": "2024-01-03", "fields": ("tradestatus", "is_st")}],
+            [{"symbol": "000001.SZ", "trade_date": "2024-01-03", "tradestatus": 1}],
+        ),
+    ])
+
+    assert report["expected_fields"] == 4
+    assert report["valid_fields"] == 3
+    assert report["missing_fields"] == 1
+    assert report["coverage_ratio"] == 0.75
+    assert report["missing"] == [{
+        "symbol": "000001.SZ", "field": "is_st", "start": "2024-01-03", "end": "2024-01-03",
+        "expected_key_contract": "trade-status-v1",
+    }]
+
+
+def test_market_status_report_separates_unsupported_and_unknown_lifecycle_from_coverage_denominator():
+    from quantradar.datahub.service import build_market_trade_status_coverage_report
+
+    report = build_market_trade_status_coverage_report(
+        records=[
+            {"symbol": "600000.SH", "list_date": "2024-01-02", "delist_date": None,
+             "capabilities": {"trade_status": "SUPPORTED"}},
+            {"symbol": "000001.SZ", "list_date": None, "capabilities": {"trade_status": "SUPPORTED"}},
+            {"symbol": "430001.BJ", "list_date": "2024-01-02", "capabilities": {"trade_status": "UNSUPPORTED"}},
+        ],
+        calendar=["2024-01-02", "2024-01-03"], start="2024-01-02", end="2024-01-03",
+        observations_by_symbol={"600000.SH": [
+            {"symbol": "600000.SH", "trade_date": "2024-01-02", "tradestatus": 1, "is_st": 0},
+            {"symbol": "600000.SH", "trade_date": "2024-01-03", "tradestatus": 1, "is_st": 0},
+        ]},
+    )
+
+    assert report["symbols"]["supported"] == 2
+    assert report["symbols"]["lifecycle_unknown"] == ["000001.SZ"]
+    assert report["symbols"]["unsupported"] == ["430001.BJ"]
+    assert report["expected_fields"] == 4
+    assert report["valid_fields"] == 4
+    assert report["coverage_ratio"] == 1.0
+
+
 def test_monthly_status_dependencies_use_previous_trade_day_and_exact_constituents():
     from quantradar.datahub.inventory import monthly_status_dependencies
 

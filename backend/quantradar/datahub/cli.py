@@ -65,6 +65,10 @@ def _parser() -> argparse.ArgumentParser:
     market_status_worker = commands.add_parser("process-market-trade-status")
     market_status_worker.add_argument("--limit", type=int, default=10)
     market_status_worker.add_argument("--queue", choices=("current", "historical"), default="historical")
+    market_status_report = commands.add_parser("market-trade-status-report")
+    market_status_report.add_argument("--start", required=True)
+    market_status_report.add_argument("--end", required=True)
+    market_status_report.add_argument("--release")
     return parser
 
 
@@ -141,6 +145,8 @@ def main(argv: list[str] | None = None) -> int:
             result = service.reconcile_low_beta_status_coverage(args.start, args.end, release_id=args.release)
         elif args.command == "process-market-trade-status":
             result = service.process_market_trade_status_queue(limit=args.limit, queue_name=args.queue)
+        elif args.command == "market-trade-status-report":
+            result = service.market_trade_status_coverage_report(args.start, args.end, release_id=args.release)
     except Exception as exc:
         print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
         return 1

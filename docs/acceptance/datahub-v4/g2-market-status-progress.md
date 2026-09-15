@@ -14,3 +14,21 @@ Recorded 2026-09-15 against fixed base commit `uhdpedb4pr97ve80aq6nrabr66atsqtq`
 - `000003.SZ` has no BaoStock records for either status field from 2002-06-17 through 2026-09-11 after its single returned row. `000004.SZ` ends at 2026-07-13 and `000005.SZ` at 2024-04-26. Each has exact field/date gaps and a source-limitation reason in the durable queue; no missing row was inferred to mean normal trading or non-ST.
 
 This is progress evidence only. G2 remains in progress until the market queue is exhausted or every residual source limitation has been classified and the full fixed-release coverage report is produced.
+
+## 2026-09-15 fixed-release current-window audit
+
+The new read-only `market-trade-status-report` scanned the entire SH/SZ master
+in bounded 25-security partitions. It does not create or modify queue tasks.
+At `R05b433fd8803f501` (base `0o6tgnmq5vabt3orqrk8rhqptniae26l`,
+supplemental `66fg9p699hveeka64udf0h5u4bimcsdu`), the 2026-08-18 through
+2026-09-14 correction window had 5,556 supported SH/SZ securities, zero
+lifecycle-unknown securities, and 343 explicitly unsupported BSE securities.
+The lifecycle-qualified denominator was 208,552 fields; 17,764 were valid and
+190,788 remained missing (8.51777973838659%). The exact 10,428 compressed
+field intervals, contract version, release and commits are preserved in
+[`g2-current-window-R05b433fd8803f501.json`](g2-current-window-R05b433fd8803f501.json).
+
+This is a real coverage result, not a queue proxy: the sparse current-window
+coverage is expected while the bounded five-task worker continues to consume
+the 5,551 pending per-security checks. It is explicit evidence that G2 has not
+passed.

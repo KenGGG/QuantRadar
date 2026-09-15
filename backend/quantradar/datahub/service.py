@@ -145,6 +145,47 @@ def merge_trade_status_observations(base_rows: Iterable[dict[str, Any]], patch_r
     return list(merged.values())
 
 
+def build_market_trade_status_coverage_report(
+    *, records: Iterable[dict[str, Any]], calendar: Iterable[str], start: str, end: str,
+    observations_by_symbol: dict[str, Iterable[dict[str, Any]]],
+) -> dict[str, Any]:
+    """Audit only lifecycle-qualified SH/SZ keys against merged observations."""
+    from .coverage import CoverageService
+
+    days = [str(day)[:10] for day in calendar if start <= str(day)[:10] <= end]
+    supported: list[str] = []
+    unsupported: list[str] = []
+    lifecycle_unknown: list[str] = []
+    qualified: list[tuple[str, str, str]] = []
+    for record in sorted(records, key=lambda row: str(row.get("symbol"))):
+        symbol = str(record.get("symbol") or "")
+        if (record.get("capabilities") or {}).get("trade_status") != "SUPPORTED":
+            unsupported.append(symbol)
+        else:
+            supported.append(symbol)
+            list_date = str(record.get("list_date") or "")[:10]
+            if not list_date:
+                lifecycle_unknown.append(symbol)
+            else:
+                qualified.append((symbol, list_date, str(record.get("delist_date") or end)[:10]))
+
+    def partitions():
+        for symbol, list_date, delist_date in qualified:
+            expected = [
+                {"symbol": symbol, "trade_date": day, "fields": ("tradestatus", "is_st")}
+                for day in days if list_date <= day <= delist_date
+            ]
+            yield expected, observations_by_symbol.get(symbol, [])
+
+    report = CoverageService("baostock-trade-status-v1").audit_partitions(partitions())
+    return {
+        **report,
+        "range": {"start": start, "end": end},
+        "symbols": {"supported": len(supported), "unsupported": unsupported, "lifecycle_unknown": lifecycle_unknown},
+        "qualification": "RAW_RESEARCH" if not lifecycle_unknown else "PARTIAL",
+    }
+
+
 def execution_release_task(task: dict[str, Any], release_id: str) -> dict[str, Any]:
     """Bind a queued inspection to the release visible when its worker starts."""
     return {**task, "release_id": release_id, "planned_release_id": task.get("planned_release_id", task.get("release_id"))}
@@ -349,6 +390,62 @@ class DataHubService:
         outcomes = queue.enqueue_many(queue_name, plan["tasks"])
         return {**plan, "enqueued": sum(item["status"] == "ENQUEUED" for item in outcomes),
                 "queue_status": queue.status()["counts"]}
+
+    def market_trade_status_coverage_report(self, start: str, end: str, release_id: str | None = None,
+                                            *, partition_size: int = 25) -> dict[str, Any]:
+        """Read a paired release in bounded symbol partitions and never enqueue work."""
+        from ..providers.investment_data.symbols import normalize_stock_symbol
+
+        scope = self.releases.resolve(release_id)
+        records = json.loads(self._security_master_path().read_text(encoding="utf-8")).get("records", [])
+        base = pymysql.connect(host=self.config.base_host, port=self.config.base_port, user=self.config.user,
+            password=self.config.password, database=f"{self.config.base_database}/{scope['base_commit']}",
+            connect_timeout=self.config.connect_timeout, read_timeout=self.config.read_timeout, charset="utf8mb4", cursorclass=DictCursor)
+        try:
+            with base.cursor() as cursor:
+                cursor.execute("SELECT date FROM ts_trade_day_calendar WHERE exchange=%s AND is_open=1 AND date >= %s AND date <= %s ORDER BY date", ("SSE", start, end))
+                calendar = [str(row["date"])[:10] for row in cursor.fetchall()]
+        finally:
+            base.close()
+        qualified = [row for row in records if (row.get("capabilities") or {}).get("trade_status") == "SUPPORTED" and row.get("list_date")]
+        totals = {"expected_fields": 0, "valid_fields": 0, "missing_fields": 0}
+        missing: list[dict[str, Any]] = []
+        for offset in range(0, len(qualified), partition_size):
+            batch = qualified[offset:offset + partition_size]
+            external = [str(row["symbol"]) for row in batch]
+            internal = [normalize_stock_symbol(symbol) for symbol in external]
+            marks = ",".join(["%s"] * len(internal))
+            observed: dict[str, list[dict[str, Any]]] = {symbol: [] for symbol in external}
+            base = pymysql.connect(host=self.config.base_host, port=self.config.base_port, user=self.config.user,
+                password=self.config.password, database=f"{self.config.base_database}/{scope['base_commit']}",
+                connect_timeout=self.config.connect_timeout, read_timeout=self.config.read_timeout, charset="utf8mb4", cursorclass=DictCursor)
+            try:
+                with base.cursor() as cursor:
+                    cursor.execute("SELECT symbol, tradedate, tradestatus, is_st FROM bao_a_stock_eod_info WHERE symbol IN (" + marks + ") AND tradedate >= %s AND tradedate <= %s", (*internal, start, end))
+                    lookup = dict(zip(internal, external))
+                    for row in cursor.fetchall():
+                        observed[lookup[str(row["symbol"])]].append({"symbol": lookup[str(row["symbol"])], "trade_date": str(row["tradedate"])[:10], "tradestatus": row["tradestatus"], "is_st": row["is_st"]})
+            finally:
+                base.close()
+            if scope.get("supplemental_commit"):
+                patch = self._connection(f"{self.config.supplemental_database}/{scope['supplemental_commit']}")
+                try:
+                    with patch.cursor() as cursor:
+                        cursor.execute("SELECT symbol, trade_date, tradestatus, is_st FROM qr_trade_status_daily WHERE symbol IN (" + marks + ") AND trade_date >= %s AND trade_date <= %s", (*external, start, end))
+                        patches: dict[str, list[dict[str, Any]]] = {symbol: [] for symbol in external}
+                        for row in cursor.fetchall():
+                            patches[str(row["symbol"])].append({"symbol": str(row["symbol"]), "trade_date": str(row["trade_date"])[:10], "tradestatus": row["tradestatus"], "is_st": row["is_st"]})
+                    observed = {symbol: merge_trade_status_observations(observed[symbol], patches[symbol]) for symbol in external}
+                finally:
+                    patch.close()
+            report = build_market_trade_status_coverage_report(records=batch, calendar=calendar, start=start, end=end, observations_by_symbol=observed)
+            for field in totals:
+                totals[field] += report[field]
+            missing.extend(report["missing"])
+        summary = build_market_trade_status_coverage_report(records=records, calendar=[], start=start, end=end, observations_by_symbol={})
+        return {**summary, **totals, "coverage_ratio": totals["valid_fields"] / totals["expected_fields"] if totals["expected_fields"] else None,
+                "missing": missing, "release_id": scope["release_id"], "base_commit": scope["base_commit"],
+                "supplemental_commit": scope.get("supplemental_commit"), "checked_at": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()}
 
     def reaudit_market_status_task(self, task: dict[str, Any]) -> dict[str, Any]:
         """Recompute one claimed status task against its fixed paired release."""

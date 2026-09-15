@@ -64,6 +64,25 @@ class CoverageService:
                 "expected_fields": expected_fields, "valid_fields": valid_fields,
                 "missing_fields": expected_fields - valid_fields, "missing": missing}
 
+    def audit_partitions(self, partitions: Iterable[tuple[Iterable[dict[str, Any]], Iterable[dict[str, Any]]]]) -> dict[str, Any]:
+        """Aggregate independent coverage partitions without materializing their union."""
+        expected_fields = valid_fields = 0
+        missing: list[dict[str, Any]] = []
+        for expected, actual in partitions:
+            report = self.audit(expected=expected, actual=actual)
+            expected_fields += report["expected_fields"]
+            valid_fields += report["valid_fields"]
+            missing.extend(report["missing"])
+        missing_fields = expected_fields - valid_fields
+        return {
+            "expected_key_contract": self.expected_key_contract,
+            "expected_fields": expected_fields,
+            "valid_fields": valid_fields,
+            "missing_fields": missing_fields,
+            "coverage_ratio": valid_fields / expected_fields if expected_fields else None,
+            "missing": missing,
+        }
+
     def reaudit_work_order(self, work_order: dict[str, Any], *, expected: Iterable[dict[str, Any]],
                            actual: Iterable[dict[str, Any]]) -> dict[str, Any]:
         """Turn a claimed task into an evidence-backed no-op or residual job."""
