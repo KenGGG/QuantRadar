@@ -281,6 +281,17 @@ def test_market_status_worker_keeps_only_rows_in_a_reaudited_gap():
     assert selected == [{"symbol": "600000.SH", "trade_date": "2024-01-03"}]
 
 
+def test_release_status_merge_keeps_non_null_base_values_without_hiding_patch_fields():
+    from quantradar.datahub.service import merge_trade_status_observations
+
+    merged = merge_trade_status_observations(
+        [{"symbol": "600000.SH", "trade_date": "2024-01-03", "tradestatus": 1, "is_st": None}],
+        [{"symbol": "600000.SH", "trade_date": "2024-01-03", "tradestatus": 0, "is_st": 0}],
+    )
+
+    assert merged == [{"symbol": "600000.SH", "trade_date": "2024-01-03", "tradestatus": 1, "is_st": 0}]
+
+
 def test_work_queue_claim_matching_does_not_consume_another_domain(tmp_path):
     from quantradar.datahub.work_queue import DataHubWorkQueue
 

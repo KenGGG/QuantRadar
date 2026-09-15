@@ -135,6 +135,16 @@ def remaining_trade_status_rows(rows: Iterable[dict[str, Any]], missing: Iterabl
     return result
 
 
+def merge_trade_status_observations(base_rows: Iterable[dict[str, Any]], patch_rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge paired releases at field granularity without hiding a valid patch."""
+    merged = {str(row["trade_date"])[:10]: dict(row) for row in patch_rows}
+    for base in base_rows:
+        day = str(base["trade_date"])[:10]
+        prior = merged.get(day, {})
+        merged[day] = {**prior, **{key: value for key, value in base.items() if value is not None}}
+    return list(merged.values())
+
+
 class JsonlRows:
     """Repeatable disk staging for a full valuation backfill without RAM growth."""
 
@@ -361,9 +371,7 @@ class DataHubService:
                     patches = [{"symbol": symbol, "trade_date": str(row["trade_date"])[:10], "tradestatus": row["tradestatus"], "is_st": row["is_st"]} for row in cursor.fetchall()]
             finally:
                 connection.close()
-            by_day = {row["trade_date"]: row for row in patches}
-            by_day.update({row["trade_date"]: row for row in base_rows})
-            actual = list(by_day.values())
+            actual = merge_trade_status_observations(base_rows, patches)
         else:
             actual = base_rows
         return CoverageService("baostock-trade-status-v1").reaudit_work_order(task, expected=expected, actual=actual)
