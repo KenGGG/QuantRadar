@@ -33,6 +33,7 @@ def _parser() -> argparse.ArgumentParser:
     repair.add_argument('--symbol', action='append', dest='symbols')
     commands.add_parser("publish")
     commands.add_parser("security-master")
+    commands.add_parser("collect-lifecycle-evidence")
     commands.add_parser("collect-index-snapshots")
     update_all = commands.add_parser("update-all")
     update_all.add_argument('--wait', action='store_true', help='Keep the timer service alive until its update finishes')
@@ -115,6 +116,8 @@ def main(argv: list[str] | None = None) -> int:
             result = service.mvp_publish()
         elif args.command == "security-master":
             result = service.refresh_security_master()
+        elif args.command == "collect-lifecycle-evidence":
+            result = service.collect_lifecycle_evidence()
         elif args.command == "collect-index-snapshots":
             result = service.collect_index_snapshots()
         elif args.command == "resolve-false-positive-circuit":

@@ -890,6 +890,23 @@ class DataHubService:
     def _security_master_path(self) -> Path:
         return Path(self.config.supplemental_repo) / "security-master" / "sh_sz.json"
 
+    def collect_lifecycle_evidence(self) -> dict[str, Any]:
+        """Archive one current BaoStock lifecycle observation before any merge.
+
+        This creates candidate evidence only.  It never changes a release or
+        claims that today's observation was historically available.
+        """
+        fetched = BaostockAdapter(host=self.config.baostock_host).lifecycle()
+        receipt = self.raw.put("security_lifecycle/baostock", fetched.raw_bytes)
+        path = Path(self.config.supplemental_repo) / "staging" / "security_lifecycle" / "baostock.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        content = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True, default=str) + "\n" for row in fetched.rows)
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(content, encoding="utf-8")
+        os.replace(temporary, path)
+        return {"rows": len(fetched.rows), "source": fetched.source, "fetched_at": fetched.fetched_at,
+                "raw_sha256": receipt["sha256"], "stage_path": str(path), "qualification": "CURRENT_OBSERVATION_PIT_PARTIAL"}
+
     def _supplemental_lifecycle_candidates(self) -> list[dict[str, Any]]:
         connection = self._connection()
         try:
@@ -899,10 +916,17 @@ class DataHubService:
         finally:
             connection.close()
 
+    def _staged_lifecycle_candidates(self) -> list[dict[str, Any]]:
+        """Read immutable candidate rows staged by ``collect_lifecycle_evidence``."""
+        path = Path(self.config.supplemental_repo) / "staging" / "security_lifecycle" / "baostock.jsonl"
+        if not path.is_file():
+            return []
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
     def refresh_security_master(self) -> dict[str, Any]:
         """Build a governed ingestion pool; it is metadata, not a fourth formal dataset."""
         base = self._base_lifecycle(persist_raw=False)
-        candidates = self._supplemental_lifecycle_candidates()
+        candidates = self._staged_lifecycle_candidates() or self._supplemental_lifecycle_candidates()
         rows = canonical_sh_sz_security_master(base, candidates)
         base_symbols = {row["symbol"] for row in base}
         delta = [row for row in rows if row["symbol"] not in base_symbols]

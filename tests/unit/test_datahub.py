@@ -136,6 +136,39 @@ def test_canonical_security_master_preserves_identity_and_merges_lifecycle_evide
     assert master[0]["capabilities"]["price"] == "UNSUPPORTED"
 
 
+def test_lifecycle_evidence_collection_archives_raw_before_building_master(tmp_path, monkeypatch):
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.adapters import FetchedRows
+    from quantradar.datahub.service import DataHubService
+
+    service = DataHubService(DataHubConfig(supplemental_repo=str(tmp_path / "supp"), raw_root=str(tmp_path / "raw")))
+    rows = [{"symbol": "600000.SH", "list_date": "1999-11-10", "delist_date": None, "status": "LISTED",
+             "source": "baostock", "raw_sha256": "a" * 64, "adapter_version": "test", "fetched_at": "now",
+             "available_date": None, "pit_status": "PARTIAL"}]
+    class Adapter:
+        def lifecycle(self):
+            return FetchedRows("security_lifecycle", b"raw", rows, "baostock", "now")
+    monkeypatch.setattr("quantradar.datahub.service.BaostockAdapter", lambda **_: Adapter())
+
+    result = service.collect_lifecycle_evidence()
+
+    assert result["rows"] == 1
+    assert service.raw.read(result["raw_sha256"]) == b"raw"
+    assert (tmp_path / "supp" / "staging" / "security_lifecycle" / "baostock.jsonl").is_file()
+
+
+def test_security_master_uses_staged_lifecycle_evidence_before_published_candidates(tmp_path):
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.service import DataHubService
+
+    service = DataHubService(DataHubConfig(supplemental_repo=str(tmp_path)))
+    stage = tmp_path / "staging" / "security_lifecycle"
+    stage.mkdir(parents=True)
+    stage.joinpath("baostock.jsonl").write_text('{"symbol":"600000.SH","status":"LISTED"}\n')
+
+    assert service._staged_lifecycle_candidates() == [{"symbol": "600000.SH", "status": "LISTED"}]
+
+
 def test_journal_creates_pending_entries_without_overwriting_completed(tmp_path):
     from quantradar.datahub.store import UpdateJournal
 
