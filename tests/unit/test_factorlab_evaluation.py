@@ -58,6 +58,27 @@ def test_factor_preflight_rejects_all_empty_required_input():
     assert preflight({"close", "universe"}, {"close"}, panel=panel)["status"] == "BLOCKED_INPUT"
 
 
+def test_factor_preflight_rejects_inputs_without_a_joint_eligible_observation():
+    from quantradar.factorlab.qualification import preflight
+
+    # Each field exists somewhere, but no listed security/date has both inputs.
+    # This must be an input block, not a later "formula empty" result.
+    dates = pd.date_range("2024-01-02", periods=2, freq="B")
+    panel = {
+        "open": pd.DataFrame([[1.0], [float("nan")]], index=dates, columns=["000001.SZ"]),
+        "close": pd.DataFrame([[float("nan")], [2.0]], index=dates, columns=["000001.SZ"]),
+        "universe": pd.DataFrame([[True], [True]], index=dates, columns=["000001.SZ"]),
+    }
+
+    outcome = preflight({"open", "close", "universe"}, {"open", "close"}, panel=panel)
+
+    assert outcome == {
+        "status": "BLOCKED_INPUT",
+        "missing_fields": ["close", "open"],
+        "reason": "no jointly eligible observations",
+    }
+
+
 def test_industry_inputs_require_a_versioned_dictionary_not_only_code_prefixes():
     from quantradar.factorlab.qualification import qualified_industry_fields
 

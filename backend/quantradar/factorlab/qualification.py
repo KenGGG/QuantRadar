@@ -29,12 +29,34 @@ def preflight(available_fields: set[str], required_fields: set[str], *,
     if missing:
         return {"status": "BLOCKED_INPUT", "missing_fields": missing}
     if panel is not None:
-        empty = sorted(field for field in required_fields if field in panel and not panel[field].notna().any().any())
         universe = panel.get("universe")
         if universe is not None and not universe.fillna(False).astype(bool).any().any():
-            empty.append("universe")
-        if empty:
-            return {"status": "BLOCKED_INPUT", "missing_fields": sorted(set(empty)), "reason": "no effective observations"}
+            return {"status": "BLOCKED_INPUT", "missing_fields": ["universe"], "reason": "no effective observations"}
+        # A field existing somewhere in the panel does not prove that the
+        # formula has one computable security/date.  Intersect every required
+        # input with the explicit lifecycle universe before allowing the
+        # engine to classify an all-NaN result as mathematical.
+        if universe is not None:
+            eligible = universe.fillna(False).astype(bool)
+            individually_empty: list[str] = []
+            for field in sorted(required_fields):
+                frame = panel.get(field)
+                if frame is None:
+                    continue
+                valid = frame.notna().reindex(index=eligible.index, columns=eligible.columns, fill_value=False)
+                if not (universe.fillna(False).astype(bool) & valid).any().any():
+                    individually_empty.append(field)
+                eligible &= valid
+            if individually_empty:
+                return {"status": "BLOCKED_INPUT", "missing_fields": individually_empty,
+                        "reason": "no effective observations"}
+            if not eligible.any().any():
+                return {"status": "BLOCKED_INPUT", "missing_fields": sorted(required_fields),
+                        "reason": "no jointly eligible observations"}
+        else:
+            empty = sorted(field for field in required_fields if field in panel and not panel[field].notna().any().any())
+            if empty:
+                return {"status": "BLOCKED_INPUT", "missing_fields": empty, "reason": "no effective observations"}
     if panel_dates is not None and requested_dates is not None and lookback_days:
         if len(requested_dates) == 0:
             return {"status": "BLOCKED_WARMUP", "missing_fields": [],
