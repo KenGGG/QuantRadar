@@ -60,6 +60,8 @@ def _parser() -> argparse.ArgumentParser:
     low_beta_reconcile.add_argument("--start", required=True)
     low_beta_reconcile.add_argument("--end", required=True)
     low_beta_reconcile.add_argument("--release")
+    market_status_worker = commands.add_parser("process-market-trade-status")
+    market_status_worker.add_argument("--limit", type=int, default=10)
     return parser
 
 
@@ -133,6 +135,8 @@ def main(argv: list[str] | None = None) -> int:
             result = service.publish_low_beta_status(args.start, args.end, release_id=args.release)
         elif args.command == "reconcile-low-beta-status":
             result = service.reconcile_low_beta_status_coverage(args.start, args.end, release_id=args.release)
+        elif args.command == "process-market-trade-status":
+            result = service.process_market_trade_status_queue(limit=args.limit)
     except Exception as exc:
         print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
         return 1

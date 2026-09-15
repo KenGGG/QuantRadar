@@ -268,6 +268,34 @@ def test_work_queue_enqueues_many_tasks_in_one_durable_operation(tmp_path):
     assert queue.status()["counts"]["historical"]["PENDING"] == 2
 
 
+def test_market_status_worker_keeps_only_rows_in_a_reaudited_gap():
+    from quantradar.datahub.service import remaining_trade_status_rows
+
+    rows = [
+        {"symbol": "600000.SH", "trade_date": "2024-01-02"},
+        {"symbol": "600000.SH", "trade_date": "2024-01-03"},
+        {"symbol": "600000.SH", "trade_date": "2024-01-04"},
+    ]
+    selected = remaining_trade_status_rows(rows, [{"symbol": "600000.SH", "field": "is_st", "start": "2024-01-03", "end": "2024-01-03"}])
+
+    assert selected == [{"symbol": "600000.SH", "trade_date": "2024-01-03"}]
+
+
+def test_work_queue_claim_matching_does_not_consume_another_domain(tmp_path):
+    from quantradar.datahub.work_queue import DataHubWorkQueue
+
+    queue = DataHubWorkQueue(tmp_path / "work-queue.json")
+    for domain in ("trade_status", "valuation_daily"):
+        queue.enqueue("historical", {"source_contract_id": "source", "domain": domain, "fields": [],
+                                      "symbols": [domain], "range": {"start": "2024-01-02", "end": "2024-01-02"},
+                                      "gap_reason": "test", "gap_fingerprint": domain})
+
+    claimed = queue.claim_matching("historical", domain="trade_status", limit=5)
+
+    assert [task["domain"] for task in claimed] == ["trade_status"]
+    assert queue.status()["counts"]["historical"]["PENDING"] == 1
+
+
 def test_low_beta_status_plan_has_exact_symbols_and_release_fingerprint(tmp_path, monkeypatch):
     from quantradar.config import DataHubConfig
     from quantradar.datahub.service import DataHubService

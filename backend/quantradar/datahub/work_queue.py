@@ -110,6 +110,40 @@ class DataHubWorkQueue:
             return dict(task)
         return None
 
+    def claim_next_from(self, queue: str) -> dict[str, Any] | None:
+        """Claim only one named queue; used by domain-specific workers."""
+        if queue not in QUEUES:
+            raise ValueError(f"unknown queue: {queue}")
+        data = self._load()
+        candidates = sorted((task for task in data["tasks"].values() if task.get("queue") == queue and task.get("status") == "PENDING"),
+                            key=lambda task: (task.get("created_at", ""), task["task_id"]))
+        if not candidates:
+            return None
+        task = candidates[0]
+        task.update(status="RUNNING", attempts=int(task.get("attempts", 0)) + 1,
+                    updated_at=datetime.now(timezone.utc).isoformat())
+        self._save(data)
+        return dict(task)
+
+    def claim_matching(self, queue: str, *, domain: str, limit: int) -> list[dict[str, Any]]:
+        """Claim a bounded homogeneous batch without consuming other work."""
+        if queue not in QUEUES:
+            raise ValueError(f"unknown queue: {queue}")
+        if limit < 1:
+            raise ValueError("limit must be positive")
+        data = self._load()
+        candidates = sorted(
+            (task for task in data["tasks"].values()
+             if task.get("queue") == queue and task.get("status") == "PENDING" and task.get("domain") == domain),
+            key=lambda task: (task.get("created_at", ""), task["task_id"]),
+        )[:limit]
+        now = datetime.now(timezone.utc).isoformat()
+        for task in candidates:
+            task.update(status="RUNNING", attempts=int(task.get("attempts", 0)) + 1, updated_at=now)
+        if candidates:
+            self._save(data)
+        return [dict(task) for task in candidates]
+
     def finish(self, task_id: str, status: str, *, evidence: dict[str, Any] | None = None) -> dict[str, Any]:
         """Persist a terminal outcome; retryability stays explicit in the task."""
         if status not in TERMINAL:
@@ -123,6 +157,18 @@ class DataHubWorkQueue:
         task.update(status=status, updated_at=datetime.now(timezone.utc).isoformat(), evidence=evidence or {})
         self._save(data)
         return {"status": status, "task": task}
+
+    def defer(self, task_id: str, *, evidence: dict[str, Any]) -> dict[str, Any]:
+        """Return a re-audited task to pending without losing its audit trail."""
+        data = self._load()
+        task = data["tasks"].get(task_id)
+        if task is None:
+            raise KeyError(task_id)
+        if task.get("status") != "RUNNING":
+            raise ValueError("only a running task can be deferred")
+        task.update(status="PENDING", updated_at=datetime.now(timezone.utc).isoformat(), re_audit=evidence)
+        self._save(data)
+        return {"status": "PENDING", "task": task}
 
     def status(self) -> dict[str, Any]:
         data = self._load()

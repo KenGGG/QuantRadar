@@ -118,6 +118,23 @@ def group_trade_status_candidates_by_day(rows: Iterable[dict[str, Any]]) -> dict
     return grouped
 
 
+def remaining_trade_status_rows(rows: Iterable[dict[str, Any]], missing: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep source rows only where the fixed coverage audit still needs them.
+
+    ``CoverageService`` deliberately compresses gaps for reporting.  Expand
+    those intervals against the source response here, rather than treating a
+    broad task range as permission to republish already observed base rows.
+    """
+    intervals = [(str(item["symbol"]), str(item["start"])[:10], str(item["end"])[:10])
+                 for item in missing]
+    result = []
+    for row in rows:
+        symbol, day = str(row.get("symbol")), str(row.get("trade_date"))[:10]
+        if any(symbol == expected_symbol and start <= day <= end for expected_symbol, start, end in intervals):
+            result.append(row)
+    return result
+
+
 class JsonlRows:
     """Repeatable disk staging for a full valuation backfill without RAM growth."""
 
@@ -316,6 +333,110 @@ class DataHubService:
         outcomes = queue.enqueue_many("historical", plan["tasks"])
         return {**plan, "enqueued": sum(item["status"] == "ENQUEUED" for item in outcomes),
                 "queue_status": queue.status()["counts"]}
+
+    def reaudit_market_status_task(self, task: dict[str, Any]) -> dict[str, Any]:
+        """Recompute one claimed status task against its fixed paired release."""
+        from ..providers.investment_data.symbols import normalize_stock_symbol
+        from .coverage import CoverageService
+        release_id = task.get("release_id")
+        scope = ReleaseStore(self.config.release_root).resolve(release_id)
+        symbol, span = task["symbols"][0], task["range"]
+        base_rows, actual, expected = [], [], []
+        connection = pymysql.connect(host=self.config.base_host, port=self.config.base_port, user=self.config.user,
+            password=self.config.password, database=f"{self.config.base_database}/{scope['base_commit']}",
+            connect_timeout=self.config.connect_timeout, read_timeout=self.config.read_timeout, charset="utf8mb4", cursorclass=DictCursor)
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT date FROM ts_trade_day_calendar WHERE exchange=%s AND is_open=1 AND date >= %s AND date <= %s ORDER BY date", ("SSE", span["start"], span["end"]))
+                expected = [{"symbol": symbol, "trade_date": str(row["date"])[:10], "fields": ("tradestatus", "is_st")} for row in cursor.fetchall()]
+                cursor.execute("SELECT tradedate, tradestatus, is_st FROM bao_a_stock_eod_info WHERE symbol=%s AND tradedate >= %s AND tradedate <= %s", (normalize_stock_symbol(symbol), span["start"], span["end"]))
+                base_rows = [{"symbol": symbol, "trade_date": str(row["tradedate"])[:10], "tradestatus": row["tradestatus"], "is_st": row["is_st"]} for row in cursor.fetchall()]
+        finally:
+            connection.close()
+        if scope.get("supplemental_commit"):
+            connection = self._connection(f"{self.config.supplemental_database}/{scope['supplemental_commit']}")
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT trade_date, tradestatus, is_st FROM qr_trade_status_daily WHERE symbol=%s AND trade_date >= %s AND trade_date <= %s", (symbol, span["start"], span["end"]))
+                    patches = [{"symbol": symbol, "trade_date": str(row["trade_date"])[:10], "tradestatus": row["tradestatus"], "is_st": row["is_st"]} for row in cursor.fetchall()]
+            finally:
+                connection.close()
+            by_day = {row["trade_date"]: row for row in patches}
+            by_day.update({row["trade_date"]: row for row in base_rows})
+            actual = list(by_day.values())
+        else:
+            actual = base_rows
+        return CoverageService("baostock-trade-status-v1").reaudit_work_order(task, expected=expected, actual=actual)
+
+    def process_market_trade_status_queue(self, *, limit: int = 10) -> dict[str, Any]:
+        """Run a bounded, release-audited status repair batch.
+
+        A task first proves its residual gap at the release it names.  Source
+        requests then cover only that residual range; one additive publication
+        makes the batch visible to a new fixed release, which is audited again
+        before any task is completed.
+        """
+        from .publication import publish_trade_status_patch
+        from .work_queue import DataHubWorkQueue
+
+        queue = DataHubWorkQueue(Path(self.config.supplemental_repo) / "work-queue.json")
+        tasks = queue.claim_matching("historical", domain="trade_status", limit=limit)
+        outcomes: list[dict[str, Any]] = []
+        staged: list[tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]] = []
+        with self._updater_lock():
+            adapter = BaostockAdapter(host=self.config.baostock_host)
+            for task in tasks:
+                audit = self.reaudit_market_status_task(task)
+                if audit["status"] in {"SATISFIED", "OBSOLETE"}:
+                    queue.finish(task["task_id"], audit["status"], evidence=audit["evidence"])
+                    outcomes.append({"task_id": task["task_id"], "status": audit["status"]})
+                    continue
+                missing = audit["coverage"]["missing"]
+                start = min(item["start"] for item in missing)
+                end = max(item["end"] for item in missing)
+                symbol = task["symbols"][0]
+                try:
+                    _, fetched = next(adapter.daily_bundles([symbol], start, end))
+                    receipt = self.raw.put(f"trade_status_daily/market-ledger/{symbol}", fetched.raw_bytes)
+                    rows = remaining_trade_status_rows(fetched.rows, missing)
+                    if not rows:
+                        raise ValueError("source response contains no rows for the remaining expected keys")
+                    stage_path = Path(self.config.supplemental_repo) / "staging" / "market-trade-status" / f"{task['task_id']}.jsonl"
+                    stage_path.parent.mkdir(parents=True, exist_ok=True)
+                    content = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows)
+                    stage_path.write_text(content, encoding="utf-8")
+                    staged.append((task, audit, rows))
+                    outcomes.append({"task_id": task["task_id"], "status": "STAGED", "rows": len(rows),
+                                     "raw_sha256": receipt["sha256"], "stage_path": str(stage_path)})
+                except Exception as exc:
+                    evidence = {**audit["evidence"], "source_error": str(exc), "attempt": task["attempts"]}
+                    if int(task["attempts"]) >= 3:
+                        queue.finish(task["task_id"], "QUARANTINED", evidence=evidence)
+                        status = "QUARANTINED"
+                    else:
+                        queue.defer(task["task_id"], evidence=evidence)
+                        status = "PENDING"
+                    outcomes.append({"task_id": task["task_id"], "status": status, "error": str(exc)})
+            if not staged:
+                return {"claimed": len(tasks), "outcomes": outcomes, "published": None}
+            try:
+                rows = [row for _, _, candidates in staged for row in candidates]
+                publication = publish_trade_status_patch(self, rows)
+            except Exception as exc:
+                for task, audit, _ in staged:
+                    queue.defer(task["task_id"], evidence={**audit["evidence"], "publication_error": str(exc)})
+                return {"claimed": len(tasks), "outcomes": outcomes, "published": {"status": "DEFERRED", "error": str(exc)}}
+            for task, audit, _ in staged:
+                published_task = {**task, "release_id": publication["release_id"]}
+                final = self.reaudit_market_status_task(published_task)
+                if final["status"] == "SATISFIED":
+                    queue.finish(task["task_id"], "COMPLETE", evidence={**final["evidence"],
+                                 "initial_release_id": task.get("release_id"), "published_release_id": publication["release_id"]})
+                    outcomes.append({"task_id": task["task_id"], "status": "COMPLETE"})
+                else:
+                    queue.defer(task["task_id"], evidence={**final["evidence"], "published_release_id": publication["release_id"]})
+                    outcomes.append({"task_id": task["task_id"], "status": "PENDING"})
+        return {"claimed": len(tasks), "outcomes": outcomes, "published": publication}
 
     def supplemental_inventory(self, release_id: str | None = None) -> dict[str, dict[str, Any]]:
         """Read coverage available from the release-pinned supplement only."""
