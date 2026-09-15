@@ -402,6 +402,7 @@ class DataHubService:
         with lock:
             execution_release = self.releases.current()["release_id"]
             adapter = BaostockAdapter(host=self.config.baostock_host)
+            source_work: dict[tuple[str, str, str], tuple[dict[str, Any], dict[str, Any]]] = {}
             for task in tasks:
                 audit_task = execution_release_task(task, execution_release)
                 try:
@@ -420,33 +421,48 @@ class DataHubService:
                 start = min(item["start"] for item in missing)
                 end = max(item["end"] for item in missing)
                 symbol = task["symbols"][0]
-                receipt = None
-                try:
-                    _, fetched = next(adapter.daily_bundles([symbol], start, end))
-                    receipt = self.raw.put(f"trade_status_daily/market-ledger/{symbol}", fetched.raw_bytes)
-                    rows = remaining_trade_status_rows(fetched.rows, missing)
-                    if not rows:
-                        raise ValueError("source response contains no rows for the remaining expected keys")
-                    stage_path = Path(self.config.supplemental_repo) / "staging" / "market-trade-status" / f"{task['task_id']}.jsonl"
-                    stage_path.parent.mkdir(parents=True, exist_ok=True)
-                    content = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows)
-                    stage_path.write_text(content, encoding="utf-8")
-                    staged.append((task, audit, rows))
-                    outcomes.append({"task_id": task["task_id"], "status": "STAGED", "rows": len(rows),
-                                     "raw_sha256": receipt["sha256"], "stage_path": str(stage_path)})
-                except Exception as exc:
-                    rejected = getattr(exc, "raw_bytes", None)
-                    if rejected is not None:
-                        receipt = self.raw.put(f"trade_status_daily/market-ledger/{symbol}/rejected", rejected)
-                    evidence = {**audit["evidence"], "source_error": str(exc), "attempt": task["attempts"],
-                                "raw_sha256": receipt["sha256"] if receipt else None}
-                    if int(task["attempts"]) >= 3:
-                        queue.finish(task["task_id"], "QUARANTINED", evidence=evidence)
-                        status = "QUARANTINED"
-                    else:
-                        queue.defer(task["task_id"], evidence=evidence)
-                        status = "PENDING"
-                    outcomes.append({"task_id": task["task_id"], "status": status, "error": str(exc)})
+                source_work[(symbol, start, end)] = (task, audit)
+            processed: set[str] = set()
+            try:
+                source_results = adapter.daily_bundle_requests(source_work)
+                for request, fetched, source_exception in source_results:
+                    task, audit = source_work[request]
+                    processed.add(task["task_id"])
+                    symbol = task["symbols"][0]
+                    receipt = None
+                    try:
+                        if source_exception is not None:
+                            raise source_exception
+                        receipt = self.raw.put(f"trade_status_daily/market-ledger/{symbol}", fetched.raw_bytes)
+                        rows = remaining_trade_status_rows(fetched.rows, audit["coverage"]["missing"])
+                        if not rows:
+                            raise ValueError("source response contains no rows for the remaining expected keys")
+                        stage_path = Path(self.config.supplemental_repo) / "staging" / "market-trade-status" / f"{task['task_id']}.jsonl"
+                        stage_path.parent.mkdir(parents=True, exist_ok=True)
+                        content = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows)
+                        stage_path.write_text(content, encoding="utf-8")
+                        staged.append((task, audit, rows))
+                        outcomes.append({"task_id": task["task_id"], "status": "STAGED", "rows": len(rows),
+                                         "raw_sha256": receipt["sha256"], "stage_path": str(stage_path)})
+                    except Exception as exc:
+                        rejected = getattr(exc, "raw_bytes", None)
+                        if rejected is not None:
+                            receipt = self.raw.put(f"trade_status_daily/market-ledger/{symbol}/rejected", rejected)
+                        evidence = {**audit["evidence"], "source_error": str(exc), "attempt": task["attempts"],
+                                    "raw_sha256": receipt["sha256"] if receipt else None}
+                        if int(task["attempts"]) >= 3:
+                            queue.finish(task["task_id"], "QUARANTINED", evidence=evidence)
+                            status = "QUARANTINED"
+                        else:
+                            queue.defer(task["task_id"], evidence=evidence)
+                            status = "PENDING"
+                        outcomes.append({"task_id": task["task_id"], "status": status, "error": str(exc)})
+            except Exception as exc:
+                for task, audit in source_work.values():
+                    if task["task_id"] not in processed:
+                        queue.defer(task["task_id"], evidence={**audit["evidence"], "source_session_error": str(exc),
+                                                                "recovery": "source session ended before this request"})
+                        outcomes.append({"task_id": task["task_id"], "status": "PENDING", "error": str(exc)})
             if not staged:
                 return {"claimed": len(tasks), "outcomes": outcomes, "published": None}
             try:
