@@ -310,7 +310,7 @@ def test_datahub_overview_qualification_keeps_etf_strict_account_closed():
     }})
     assert qualification['etf']['ETF_RAW'] == 'READY'
     assert qualification['etf']['ACCOUNT_STRICT'] == 'BLOCKED'
-    assert qualification['alpha101']['industry_hierarchy'] == 'PIT_PARTIAL'
+    assert qualification['alpha101']['industry_hierarchy'] == 'BLOCKED'
 
 
 def test_etf_raw_provider_refuses_unpublished_adjusted_modes(monkeypatch):
@@ -341,3 +341,17 @@ def test_sync_and_queued_backtests_share_the_same_price_mode_contract():
     assert normalize_backtest_fq("hfq", caller="test") == "hfq"
     with pytest.raises(ValueError, match="支持 none / pre / qfq / post / hfq"):
         normalize_backtest_fq("invalid", caller="test")
+
+
+def test_provider_industry_refuses_unverified_code_prefixes():
+    from types import SimpleNamespace
+    from quantradar.datahub.strategy import DataUnavailable, industry
+
+    provider = SimpleNamespace(
+        _supplemental_reader=object(),
+        _release_scope=SimpleNamespace(manifest={"metadata": {"sw_industry_hierarchy": {
+            "dictionary_version": "unverified", "levels": ["L1", "L2", "L3"],
+        }}}),
+    )
+    with pytest.raises(DataUnavailable, match="禁止由代码前缀推断"):
+        industry(provider, "600000.XSHG", "2024-01-02")

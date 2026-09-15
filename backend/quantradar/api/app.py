@@ -316,7 +316,8 @@ def _research_qualification(manifest: Dict[str, Any] | None) -> Dict[str, Any]:
     """Expose qualification facts; never infer strict eligibility from row counts."""
     datasets = (manifest or {}).get("datasets", {})
     etf_raw = bool(datasets.get("etf_eod_price") and datasets.get("etf_master"))
-    hierarchy = (datasets.get("sw_industry_history") or {}).get("industry_code_levels") == ["L1", "L2", "L3"]
+    from quantradar.factorlab.qualification import qualified_industry_fields
+    hierarchy = bool(qualified_industry_fields(manifest or {}))
     alpha = ((manifest or {}).get("metadata", {}).get("alpha101_qualification")
              if isinstance((manifest or {}).get("metadata", {}), dict) else None)
     alpha_raw = alpha if isinstance(alpha, dict) else {"status": "UNAUDITED", "ready": None, "partial": None, "blocked": None,

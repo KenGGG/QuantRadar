@@ -12,6 +12,11 @@ def qualified_industry_fields(manifest: dict[str, object]) -> set[str]:
         return set()
     if hierarchy.get("levels") != ["L1", "L2", "L3"]:
         return set()
+    # A six-digit assignment alone does not prove that its prefixes map to
+    # documented SW hierarchy levels.  The published dictionary must attest
+    # that relation before either the Provider or FactorLab derives levels.
+    if hierarchy.get("code_hierarchy") != "PREFIX_VERIFIED_BY_DICTIONARY":
+        return set()
     return {"indclass.sector", "indclass.industry", "indclass.subindustry"}
 
 

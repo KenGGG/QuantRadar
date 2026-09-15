@@ -83,8 +83,12 @@ def fundamentals(provider, query_object, date=None, statDate=None):
 def industry(provider, securities, date=None):
     from ..providers.investment_data.symbols import to_ts_symbol, to_joinquant_symbol
     reader = getattr(provider, '_supplemental_reader', None)
-    if not reader or date is None:
+    scope = getattr(provider, '_release_scope', None)
+    if not reader or scope is None or date is None:
         raise DataUnavailable('行业查询需要固定版本与历史日期')
+    from ..factorlab.qualification import qualified_industry_fields
+    if not qualified_industry_fields(scope.manifest):
+        raise DataUnavailable('当前 release 未发布经字典验证的申万三级层级；禁止由代码前缀推断')
     symbols = [to_ts_symbol(s) for s in ([securities] if isinstance(securities, str) else securities)]
     result = {}
     for symbol in symbols:

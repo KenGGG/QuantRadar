@@ -66,6 +66,10 @@ def test_industry_inputs_require_a_versioned_dictionary_not_only_code_prefixes()
     }}}) == set()
     assert qualified_industry_fields({"metadata": {"sw_industry_hierarchy": {
         "dictionary_version": "sw-2021-v1", "levels": ["L1", "L2", "L3"],
+    }}}) == set()
+    assert qualified_industry_fields({"metadata": {"sw_industry_hierarchy": {
+        "dictionary_version": "sw-2021-v1", "levels": ["L1", "L2", "L3"],
+        "code_hierarchy": "PREFIX_VERIFIED_BY_DICTIONARY",
     }}}) == {"indclass.sector", "indclass.industry", "indclass.subindustry"}
 
 
