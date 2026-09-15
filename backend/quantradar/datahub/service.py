@@ -1132,6 +1132,31 @@ class DataHubService:
             connection.close()
         return found
 
+    def base_trade_status_rows(self, rows: Iterable[dict[str, Any]], *, base_commit: str) -> dict[tuple[str, str], dict]:
+        """Return base status cells for field-level supplemental filling."""
+        grouped = group_trade_status_candidates_by_day(rows)
+        result: dict[tuple[str, str], dict] = {}
+        if not grouped:
+            return result
+        connection = pymysql.connect(host=self.config.base_host, port=self.config.base_port, user=self.config.user,
+            password=self.config.password, database=f"{self.config.base_database}/{base_commit}",
+            connect_timeout=self.config.connect_timeout, read_timeout=self.config.read_timeout, charset="utf8mb4", cursorclass=DictCursor)
+        try:
+            with connection.cursor() as cursor:
+                for day, external_by_internal in grouped.items():
+                    internal = sorted(external_by_internal)
+                    for offset in range(0, len(internal), 500):
+                        chunk = internal[offset:offset + 500]; marks = ", ".join(["%s"] * len(chunk))
+                        cursor.execute("SELECT tradedate, symbol, tradestatus, is_st, turn FROM bao_a_stock_eod_info "
+                            f"WHERE tradedate=%s AND symbol IN ({marks})", (day, *chunk))
+                        for item in cursor.fetchall():
+                            symbol = external_by_internal.get(str(item["symbol"]))
+                            if symbol:
+                                result[(day, symbol)] = {"tradestatus": item.get("tradestatus"), "is_st": item.get("is_st"), "turn": item.get("turn")}
+        finally:
+            connection.close()
+        return result
+
     def supplemental_trade_status_rows(self, rows: Iterable[dict[str, Any]], *, supplemental_commit: str | None) -> dict[tuple[str, str], dict]:
         """Read matching records from a fixed supplemental commit for retry safety."""
         if not supplemental_commit:

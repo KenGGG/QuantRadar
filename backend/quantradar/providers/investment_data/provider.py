@@ -86,7 +86,7 @@ def overlay_status_patch(base: pd.DataFrame, rows: list[dict[str, Any]]) -> pd.D
 
 
 def overlay_price_patch(base: pd.DataFrame, rows: list[dict[str, Any]]) -> pd.DataFrame:
-    """Append release-pinned raw prices only for dates absent from immutable base."""
+    """Fill genuinely absent raw rows, converting each patch to base storage units."""
     if not rows:
         return base
     patch = pd.DataFrame(rows)
@@ -95,9 +95,25 @@ def overlay_price_patch(base: pd.DataFrame, rows: list[dict[str, Any]]) -> pd.Da
     patch.index = pd.to_datetime(patch.pop("trade_date"))
     base = base.copy()
     base.index = pd.to_datetime(base.index)
-    patch = patch.loc[~patch.index.isin(base.index)]
+    # ``get_price`` may have already materialised a calendar row with NaN
+    # values.  Index membership therefore does not prove a base observation.
+    present = base.notna().any(axis=1)
+    absent_dates = set(base.index[~present])
+    patch = patch.loc[~patch.index.isin(base.index) | patch.index.isin(absent_dates)]
     if patch.empty:
         return base
+    # final_a_stock_eod_price stores stock volume in lots and amount in
+    # thousand-yuan.  BaoStock patches are explicitly shares/yuan; normalize
+    # before the common public conversion below so the values change exactly once.
+    if "unit_contract_version" in patch.columns:
+        bao = patch["unit_contract_version"].eq("baostock-shares-yuan")
+        if "volume" in patch.columns:
+            patch.loc[bao, "volume"] = patch.loc[bao, "volume"] / 100.0
+        if "amount" in patch.columns:
+            patch.loc[bao, "amount"] = patch.loc[bao, "amount"] / 1000.0
+    # Replace only the empty calendar placeholders selected above; concatenating
+    # them would create duplicate timestamps and hide the patch from callers.
+    base = base.drop(index=patch.index.intersection(absent_dates), errors="ignore")
     # Base columns encode the caller's public field selection.  Supplement
     # provenance and unrequested fields (for example preclose) stay internal.
     return pd.concat([base, patch.reindex(columns=base.columns)], axis=0).sort_index()

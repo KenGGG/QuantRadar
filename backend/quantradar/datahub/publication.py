@@ -110,7 +110,13 @@ def validate_price_patch(rows: list[dict]) -> dict:
     return {"status": "PASS" if rows and not errors else "FAIL", "rows": len(rows), "errors": sorted(set(errors))}
 
 
-def validate_trade_status_base_gap(rows: list[dict], base_keys: set[tuple[str, str]]) -> dict:
+def preserved_publication_context(old: dict | None, datasets: dict, source_adapters: dict) -> tuple[dict, dict]:
+    """Merge a partial publication without withdrawing unrelated release domains."""
+    return ({**(old.get("datasets", {}) if old else {}), **datasets},
+            {**(old.get("source_adapters", {}) if old else {}), **source_adapters})
+
+
+def validate_trade_status_base_gap(rows: list[dict], base_keys: set[tuple[str, str]] | dict[tuple[str, str], dict]) -> dict:
     """Reject a candidate that would replace a base status observation.
 
     Supplemental records are deliberately additive.  Runtime reads also favour
@@ -118,11 +124,15 @@ def validate_trade_status_base_gap(rows: list[dict], base_keys: set[tuple[str, s
     allowing an overlapping row into a release would make provenance and later
     audits ambiguous.
     """
-    overlapping = sorted(
-        (str(row["trade_date"])[:10], str(row["symbol"]))
-        for row in rows
-        if (str(row["trade_date"])[:10], str(row["symbol"])) in base_keys
-    )
+    if isinstance(base_keys, set):
+        overlapping = sorted((str(row["trade_date"])[:10], str(row["symbol"])) for row in rows if (str(row["trade_date"])[:10], str(row["symbol"])) in base_keys)
+    else:
+        overlapping = []
+        for row in rows:
+            key = (str(row["trade_date"])[:10], str(row["symbol"]))
+            base = base_keys.get(key)
+            if base and any(base.get(field) is not None and base.get(field) != row.get(field) for field in ("tradestatus", "is_st", "turn")):
+                overlapping.append(key)
     return {
         "status": "PASS" if not overlapping else "FAIL",
         "base_overlap_count": len(overlapping),
@@ -480,9 +490,7 @@ def publish_trade_status_patch(service, rows: list[dict]) -> dict:
     if check["status"] != "PASS":
         raise ValueError("trade status candidate failed: " + ", ".join(check["errors"]))
     old = service.releases.current()
-    base_gap = validate_trade_status_base_gap(
-        rows, service.base_trade_status_keys(rows, base_commit=old["base_commit"])
-    )
+    base_gap = validate_trade_status_base_gap(rows, service.base_trade_status_rows(rows, base_commit=old["base_commit"]))
     if base_gap["status"] != "PASS":
         raise ValueError(
             "trade status candidate overlaps immutable base observations: "
@@ -635,9 +643,6 @@ def publish_candidate(service, candidate, progress=None):
         writer = SupplementalStore(conn, progress=progress)
         writer.ensure_schema()
         writer.prepare_canonical_valuation()
-        with conn.cursor() as cursor:
-            # Frozen legacy records remain in their immutable historical release.
-            cursor.execute("DELETE FROM qr_security_lifecycle WHERE source NOT LIKE 'investment_data:%'")
         root = Path(service.config.supplemental_repo) / 'staging' / 'valuation_daily-mvp'
         previous_hashes = old.get('metadata', {}).get('shard_hashes', {}) if old else {}
         changed = [] if same_values else [s for s in candidate['accepted'] if previous_hashes.get(s) != candidate['shards'][s]['economic_hash']]
@@ -649,6 +654,8 @@ def publish_candidate(service, candidate, progress=None):
         commit = writer.commit('datahub: checked candidate ' + candidate['candidate_id'])
     finally:
         conn.close()
+    # A valuation candidate is a partial publication.  Carry every previously
+    # declared domain forward; only the three domains written below may change.
     datasets = {}
     with service._connection(service.config.supplemental_database + '/' + commit) as frozen, frozen.cursor() as cur:
         for name, table, field in [('valuation_daily', 'qr_valuation_daily', 'trade_date'), ('sw_industry_history', 'qr_sw_industry_history', 'effective_from'), ('security_lifecycle', 'qr_security_lifecycle', 'list_date')]:
@@ -671,8 +678,9 @@ def publish_candidate(service, candidate, progress=None):
         contracts = {contract for summary in candidate['shards'].values() for contract in summary.get('source_contract_ids', [])}
         if not contracts <= set(valuation_contracts()):
             raise ValueError('candidate references an unapproved valuation contract')
+    datasets, source_adapters = preserved_publication_context(old, datasets, {'valuation': sorted({contract for summary in candidate['shards'].values() for contract in summary.get('source_contract_ids', [])}), 'quality_policy': POLICY})
     manifest = service.releases.publish(base_commit=candidate['base_commit'], supplemental_commit=commit, datasets=datasets,
-        source_adapters={'valuation': sorted({contract for summary in candidate['shards'].values() for contract in summary.get('source_contract_ids', [])}), 'quality_policy': POLICY},
+        source_adapters=source_adapters,
         metadata={'candidate_id': candidate['candidate_id'], 'economic_hash': identity, 'isolated': candidate['isolated'],
                   'publication_policy': PUBLICATION_POLICY,
                   'price_units': 'joinquant-shares-yuan-v2',

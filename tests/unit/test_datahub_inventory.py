@@ -699,6 +699,18 @@ def test_price_patch_adds_only_dates_absent_from_base_table():
     assert patched.loc["2023-06-12", "close"] == 4
 
 
+def test_price_patch_fills_calendar_placeholder_and_normalizes_baostock_units_once():
+    import pandas as pd
+    from quantradar.providers.investment_data.provider import overlay_price_patch
+    base = pd.DataFrame({"open": [10.0, float("nan")], "close": [11.0, float("nan")], "volume": [2.0, float("nan")], "amount": [3.0, float("nan")]}, index=pd.to_datetime(["2023-06-09", "2023-06-12"]))
+    patched = overlay_price_patch(base, [{"trade_date": "2023-06-12", "open": 10, "close": 11, "volume": 1000, "amount": 10000, "unit_contract_version": "baostock-shares-yuan"}])
+    assert patched.loc["2023-06-12", "close"] == 11
+    # The provider's legacy final-table conversion subsequently multiplies these
+    # stored lots/thousand-yuan values once, returning the original source values.
+    assert patched.loc["2023-06-12", "volume"] == 10
+    assert patched.loc["2023-06-12", "amount"] == 10
+
+
 def test_bao_raw_price_fills_absent_final_row_but_never_replaces_final_row():
     import pandas as pd
     from quantradar.providers.investment_data.provider import overlay_bao_raw_price
@@ -813,6 +825,7 @@ def test_status_patch_validation_rejects_duplicate_or_invalid_state():
     bad = [dict(good[0], tradestatus=3)]
     assert validate_trade_status_patch(bad)["status"] == "FAIL"
     assert validate_trade_status_base_gap(good, set())["status"] == "PASS"
+    assert validate_trade_status_base_gap(good, {("2023-09-01", "600519.SH"): {"tradestatus": 1, "is_st": None, "turn": None}})["status"] == "PASS"
     overlap = validate_trade_status_base_gap(good, {("2023-09-01", "600519.SH")})
     assert overlap == {"status": "FAIL", "base_overlap_count": 1, "base_overlaps": [("2023-09-01", "600519.SH")]}
     existing = {("2023-09-01", "600519.SH"): dict(good[0])}
@@ -822,3 +835,13 @@ def test_status_patch_validation_rejects_duplicate_or_invalid_state():
     assert status_patch_delta([dict(good[0], raw_sha256="b" * 64)], existing) == {"new_rows": [], "conflicts": []}
     assert status_patch_delta([dict(good[0], is_st=1)], existing)["conflicts"] == [("2023-09-01", "600519.SH")]
     assert status_patch_delta([dict(good[0], source_contract_id="another-qualified-contract")], existing)["conflicts"] == [("2023-09-01", "600519.SH")]
+
+
+def test_partial_valuation_publication_retains_other_declared_domains():
+    from quantradar.datahub.publication import preserved_publication_context
+    datasets, adapters = preserved_publication_context(
+        {"datasets": {"trade_status_daily": {"rows": 2}, "etf_eod_price": {"rows": 3}}, "source_adapters": {"trade_status": "bao", "etf": "ak"}},
+        {"valuation_daily": {"rows": 1}}, {"valuation": "eastmoney"},
+    )
+    assert set(datasets) == {"trade_status_daily", "etf_eod_price", "valuation_daily"}
+    assert adapters == {"trade_status": "bao", "etf": "ak", "valuation": "eastmoney"}

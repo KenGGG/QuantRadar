@@ -1,8 +1,8 @@
 # QuantRadar Active Phase
 
-**Milestone:** `DATAHUB_V4_MARKET_LEDGER_ALPHA101`
-**Active Goal:** `NONE — milestone closed`
-**Status:** CLOSED
+**Milestone:** `DATAHUB_AUDIT_REMEDIATION`
+**Active Goal:** `AUDIT_BATCH_2_MASTER_AND_MAINTENANCE`
+**Status:** IN_PROGRESS
 
 ## Scope
 
@@ -23,6 +23,10 @@
 - **G5 Offline Matrix & Replay — PASSED_WITH_SOURCE_LIMITATIONS.** 固定 release 断网 101 条矩阵记录 71 项计算完成、12 项合法空值、18 项明确输入阻塞且无引擎错误；#1/#56 可算而 #58 因历史申万字典缺失阻塞，故固定组合按约定不替换因子也不产出伪造净值。低 Beta 按既有代码、参数、费用与资金完成 1,615 个交易日当前 release 回放，结果及与历史基线的差异已存证；页面将 Coverage 与 Qualification 分列，并提供估值缺口台账下载与既有修复入口。见 [101 条矩阵](acceptance/datahub-v4/g5-offline-alpha101-matrix.md) 与 [低 Beta 回放](acceptance/datahub-v4/g5-low-beta-current-release-replay.md)。
 
 本里程碑至此 **CLOSED**。G2 日常状态维护与已登记的来源缺口继续保留，但不构成新的本轮 Goal；未验证的历史行业字典、严格 PIT、复权和账户资格仍按各自限制列示。
+
+当前审查修复目标：仅处理发布保留、行情补丁和状态字段补丁安全（F01–F03）；不新增数据域、不重跑全历史回放。后续批次须在本批固定窗口验证和提交后才开始。
+
+审查第一批（F01–F03）已通过：局部估值发布继承既有 manifest 域与 source adapters，且不再清理非基础生命周期；BaoStock 行情补丁可替换日历空占位并在公共转换前归一单位；状态补丁按字段填补基础库空值而保护有效值。短范围 DataHub 验证 111 项通过。
 
 **Post-close contract alignment — PASSED.** 随后完成了 V3 P0 的有限契约收尾：财务读取明确映射版本和 PIT 观察边界，指数修订链按来源隔离，财务不可变写入拒绝同键冲突；没有增加数据域或研究目标。见 [收尾记录](acceptance/datahub-v3/p0-contract-closure.md)。
 
