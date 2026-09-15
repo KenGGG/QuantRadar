@@ -11,7 +11,7 @@ from .store import _atomic_json
 
 
 QUEUES = ("current", "strategy", "historical")
-TERMINAL = {"COMPLETE", "QUARANTINED", "BLOCKED"}
+TERMINAL = {"COMPLETE", "QUARANTINED", "BLOCKED", "SATISFIED", "OBSOLETE"}
 
 
 class DataHubWorkQueue:

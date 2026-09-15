@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+import hashlib
+import json
 from typing import Any, Iterable
 
 
@@ -61,3 +63,15 @@ class CoverageService:
         return {"expected_key_contract": self.expected_key_contract,
                 "expected_fields": expected_fields, "valid_fields": valid_fields,
                 "missing_fields": expected_fields - valid_fields, "missing": missing}
+
+    def reaudit_work_order(self, work_order: dict[str, Any], *, expected: Iterable[dict[str, Any]],
+                           actual: Iterable[dict[str, Any]]) -> dict[str, Any]:
+        """Turn a claimed task into an evidence-backed no-op or residual job."""
+        if work_order.get("expected_key_contract") not in (None, self.expected_key_contract):
+            return {"status": "OBSOLETE", "evidence": {"reason": "expected key contract changed"}}
+        report = self.audit(expected=expected, actual=actual)
+        digest = hashlib.sha256(json.dumps(report["missing"], sort_keys=True).encode()).hexdigest()
+        return {"status": "SATISFIED" if not report["missing"] else "PENDING",
+                "coverage": report,
+                "evidence": {"remaining_gap_fingerprint": digest,
+                             "expected_key_contract": self.expected_key_contract}}

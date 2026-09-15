@@ -166,6 +166,19 @@ def test_coverage_contract_keeps_non_applicable_keys_out_of_the_denominator():
     assert report["missing"] == []
 
 
+def test_coverage_reaudit_marks_a_work_order_satisfied_only_when_no_fields_remain():
+    from quantradar.datahub.coverage import CoverageService
+
+    outcome = CoverageService("trade-status-v1").reaudit_work_order(
+        {"domain": "trade_status", "expected_key_contract": "trade-status-v1"},
+        expected=[{"symbol": "600000.SH", "trade_date": "2024-01-02", "fields": ("is_st",)}],
+        actual=[{"symbol": "600000.SH", "trade_date": "2024-01-02", "is_st": 0}],
+    )
+
+    assert outcome["status"] == "SATISFIED"
+    assert outcome["evidence"]["remaining_gap_fingerprint"]
+
+
 def test_monthly_status_dependencies_use_previous_trade_day_and_exact_constituents():
     from quantradar.datahub.inventory import monthly_status_dependencies
 
@@ -324,6 +337,23 @@ def test_work_queue_is_idempotent_and_rotates_all_three_queues(tmp_path):
     assert queue.enqueue("historical", task("historical"))["status"] == "ENQUEUED"
     assert queue.enqueue("current", task("current"))["status"] == "NO_CHANGE"
     assert [queue.claim_next()["queue"] for _ in range(3)] == ["current", "strategy", "historical"]
+
+
+def test_work_queue_records_a_reaudit_satisfied_or_obsolete_outcome(tmp_path):
+    from quantradar.datahub.work_queue import DataHubWorkQueue
+
+    queue = DataHubWorkQueue(tmp_path / "work-queue.json")
+    task = queue.enqueue("strategy", {
+        "source_contract_id": "baostock-daily-v2", "domain": "trade_status", "fields": ["is_st"],
+        "symbols": ["600000.SH"], "range": {"start": "2024-01-02", "end": "2024-01-02"},
+        "gap_reason": "test", "gap_fingerprint": "a" * 64,
+    })["task"]
+    queue.claim_next()
+
+    satisfied = queue.finish(task["task_id"], "SATISFIED", evidence={"remaining_gap_fingerprint": "b" * 64})
+
+    assert satisfied["status"] == "SATISFIED"
+    assert queue.status()["counts"]["strategy"]["SATISFIED"] == 1
 
 
 def test_work_queue_blocks_a_pending_task_superseded_by_a_new_source_contract(tmp_path):
