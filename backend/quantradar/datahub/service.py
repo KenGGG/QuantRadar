@@ -394,7 +394,13 @@ class DataHubService:
         with self._updater_lock():
             adapter = BaostockAdapter(host=self.config.baostock_host)
             for task in tasks:
-                audit = self.reaudit_market_status_task(task)
+                try:
+                    audit = self.reaudit_market_status_task(task)
+                except Exception as exc:
+                    queue.defer(task["task_id"], evidence={"audit_error": str(exc), "attempt": task["attempts"],
+                                                            "recovery": "coverage audit did not reach a terminal conclusion"})
+                    outcomes.append({"task_id": task["task_id"], "status": "PENDING", "error": str(exc)})
+                    continue
                 if audit["status"] in {"SATISFIED", "OBSOLETE"}:
                     queue.finish(task["task_id"], audit["status"], evidence=audit["evidence"])
                     outcomes.append({"task_id": task["task_id"], "status": audit["status"]})
