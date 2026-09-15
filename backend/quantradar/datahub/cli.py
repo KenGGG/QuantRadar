@@ -38,6 +38,8 @@ def _parser() -> argparse.ArgumentParser:
     commands.add_parser("collect-index-snapshots")
     update_all = commands.add_parser("update-all")
     update_all.add_argument('--wait', action='store_true', help='Keep the timer service alive until its update finishes')
+    status_maintenance = commands.add_parser("maintain-market-status")
+    status_maintenance.add_argument('--wait', action='store_true', help='Keep the timer service alive until status maintenance finishes')
     run_update = commands.add_parser('run-update')
     run_update.add_argument('--job-id', required=True)
     run_update.add_argument('--mode', required=True)
@@ -73,13 +75,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == 'run-update':
             from .daily import DailyUpdate
             result = DailyUpdate(service).run(args.job_id, args.mode, args.start, args.end)
-        elif args.command in ('update-all', 'sync', 'update'):
+        elif args.command in ('update-all', 'sync', 'update', 'maintain-market-status'):
             from .daily import DailyUpdate
             if getattr(args, 'dataset', 'valuation_daily') != 'valuation_daily':
                 raise ValueError('该数据集没有已验收的增量入口；update-all 会明确报告来源受阻')
             if getattr(args, 'retries', 1) != 1 or getattr(args, 'limit', 0) or getattr(args, 'symbols', None) or getattr(args, 'start', None) or getattr(args, 'resume', False):
                 raise ValueError('sync/update 不支持 retries/limit/symbol/start/resume；指定历史范围请使用 backfill')
-            result = DailyUpdate(service).start('sync' if args.command == 'sync' else 'update-all', end=getattr(args, 'end', None))
+            mode = 'status' if args.command == 'maintain-market-status' else ('sync' if args.command == 'sync' else 'update-all')
+            result = DailyUpdate(service).start(mode, end=getattr(args, 'end', None))
             if getattr(args, 'wait', False) and result['status'] != 'ALREADY_RUNNING':
                 job_id = result['job_id']
                 while result['status'] == 'RUNNING':

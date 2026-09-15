@@ -66,7 +66,7 @@ class DailyUpdate:
         return data
 
     def start(self, mode='update-all', start=None, end=None):
-        if mode not in ('update-all', 'sync', 'backfill', 'audit', 'publish', 'base-sync'):
+        if mode not in ('update-all', 'sync', 'backfill', 'audit', 'publish', 'base-sync', 'status'):
             raise ValueError('unsupported update mode')
         if mode == 'backfill' and (not start or not end):
             raise ValueError('backfill requires start and end')
@@ -174,7 +174,7 @@ class DailyUpdate:
         try:
             with self.service._updater_lock():
                 record('base', {'status': 'RUNNING'})
-                base = self.base_sync() if mode in ('update-all', 'base-sync') else {'status': 'NO_CHANGE', 'commit_hash': self.service._base_commit()}
+                base = self.base_sync() if mode in ('update-all', 'base-sync', 'status') else {'status': 'NO_CHANGE', 'commit_hash': self.service._base_commit()}
                 record('base', base)
                 commit = base['commit_hash']
                 record('coverage', {'status': 'RUNNING'})
@@ -193,6 +193,26 @@ class DailyUpdate:
                 cutoff = end or (now.date() if now.hour >= 18 else now.date() - timedelta(days=1)).isoformat()
                 target = max(d for d in calendar if d <= cutoff)
                 state['target_as_of'] = target
+                if mode == 'status':
+                    record('valuation', {'status': 'NO_CHANGE', 'reason': 'G2 status maintenance does not run valuation collection'})
+                    record('industry', {'status': 'NO_CHANGE', 'reason': 'G2 status maintenance does not run industry collection'})
+                    record('lifecycle', {'status': 'RUNNING', 'base_commit': commit})
+                    master = self.service.refresh_security_master()
+                    record('lifecycle', {'status': 'UPDATED', 'base_commit': commit, 'security_master': master})
+                    recent_start = calendar[max(0, calendar.index(target) - 19)]
+                    record('trade_status', {'status': 'RUNNING', 'start': recent_start, 'end': target,
+                                            'queue': 'current', 'correction_window_trading_days': 20})
+                    planned_status = self.service.enqueue_market_trade_status_plan(recent_start, target, queue_name='current')
+                    current_result = self.service.process_market_trade_status_queue(limit=5, queue_name='current', acquire_lock=False)
+                    historical_result = self.service.process_market_trade_status_queue(limit=50, queue_name='historical', acquire_lock=False)
+                    record('trade_status', {'status': 'UPDATED' if current_result.get('published') or historical_result.get('published') else 'NO_CHANGE',
+                                            'start': recent_start, 'end': target, 'planned': planned_status['symbol_count'],
+                                            'enqueued': planned_status['enqueued'], 'worker': current_result,
+                                            'historical_worker': historical_result})
+                    record('check', {'status': 'NO_CHANGE', 'reason': 'status rows are validated and published by the status worker'})
+                    record('publish', {'status': 'NO_CHANGE', 'reason': 'status worker publishes its own fixed release'})
+                    state['status'] = 'PARTIAL'
+                    return state
                 journal = UpdateJournal(Path(self.service.config.journal_root) / 'valuation_daily-mvp.json')
                 lifecycle = {r['symbol']: r for r in self.service._base_lifecycle(base_commit=commit)}
                 journal.ensure_pending([s for s, r in lifecycle.items() if r['list_date'] <= target and not r.get('delist_date')], reason='fixed base lifecycle')

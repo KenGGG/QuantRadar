@@ -10,5 +10,5 @@ Type=oneshot
 WorkingDirectory=/data/Projects/a-stock-research/QuantRadar
 EnvironmentFile=-/data/quantradar_data/datahub.env
 Environment=PYTHONPATH=/data/Projects/a-stock-research/QuantRadar/backend
-ExecStart=/data/Projects/a-stock-research/QuantRadar/.venv/bin/python -m quantradar.datahub.cli update-all --wait
+ExecStart=/data/Projects/a-stock-research/QuantRadar/.venv/bin/python -m quantradar.datahub.cli maintain-market-status --wait
 TimeoutStartSec=infinity
