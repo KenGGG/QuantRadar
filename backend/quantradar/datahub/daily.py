@@ -194,6 +194,12 @@ class DailyUpdate:
                 target = max(d for d in calendar if d <= cutoff)
                 state['target_as_of'] = target
                 if mode == 'status':
+                    if base['status'] == 'UPDATED':
+                        from .publication import publish_base_only
+                        base_release = publish_base_only(self.service, commit, 'G2 status maintenance fixed base release')
+                    else:
+                        base_release = {'status': 'NO_CHANGE', 'release_id': self.service.releases.current()['release_id']}
+                    record('base_release', {**base_release, 'base_commit': commit})
                     record('valuation', {'status': 'NO_CHANGE', 'reason': 'G2 status maintenance does not run valuation collection'})
                     record('industry', {'status': 'NO_CHANGE', 'reason': 'G2 status maintenance does not run industry collection'})
                     record('lifecycle', {'status': 'RUNNING', 'base_commit': commit})
