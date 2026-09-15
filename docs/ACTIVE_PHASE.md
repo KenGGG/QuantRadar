@@ -1,7 +1,7 @@
 # QuantRadar Active Phase
 
 **Milestone:** `DATAHUB_AUDIT_REMEDIATION`
-**Active Goal:** `AUDIT_BATCH_3_RESEARCH_AND_PRESENTATION`
+**Active Goal:** `AUDIT_BATCH_4_RETURN_SEMANTICS_AND_ENTRYPOINTS`
 **Status:** IN_PROGRESS
 
 ## Scope
@@ -24,7 +24,7 @@
 
 本里程碑至此 **CLOSED**。G2 日常状态维护与已登记的来源缺口继续保留，但不构成新的本轮 Goal；未验证的历史行业字典、严格 PIT、复权和账户资格仍按各自限制列示。
 
-当前审查修复目标：持续处理 F01–F15 的代码路径一致性；不新增数据域、不重跑全历史回放。`AUDIT_BATCH_2_MASTER_AND_MAINTENANCE` 已通过：固定 release `R99a42307383acedd` 发布 5,556 条沪深生命周期事实，ReleaseReader 与 Provider 均复读同一范围；详见 [批次 2 收据](acceptance/datahub-audit-remediation-2026-09-15/batch-2-master-maintenance.md)。当前唯一 Active Goal 为 `AUDIT_BATCH_3_RESEARCH_AND_PRESENTATION`，继续处理 F07/F08/F09/F11/F13/F15 的真实读取和页面一致性证据。
+当前审查修复目标：持续处理 F01–F15 的代码路径一致性；不新增数据域、不重跑全历史回放。`AUDIT_BATCH_2_MASTER_AND_MAINTENANCE` 已通过：固定 release `R99a42307383acedd` 发布 5,556 条沪深生命周期事实，ReleaseReader 与 Provider 均复读同一范围；详见 [批次 2 收据](acceptance/datahub-audit-remediation-2026-09-15/batch-2-master-maintenance.md)。`AUDIT_BATCH_3_RESEARCH_AND_PRESENTATION` 已通过：固定 release 读取将 #1 判为 READY、将未验证行业输入判为 BLOCKED_INPUT；页面读取 manifest 资格，缺口台账区分已审计状态域和未审计库存域；详见 [批次 3 收据](acceptance/datahub-audit-remediation-2026-09-15/batch-3-research-read.md)。当前唯一 Active Goal 为 `AUDIT_BATCH_4_RETURN_SEMANTICS_AND_ENTRYPOINTS`，处理 F10/F14 的收益语义和同步／异步回测入口一致性。
 
 审查第一批（F01–F03）已通过：局部估值发布继承既有 manifest 域与 source adapters，且不再清理非基础生命周期；BaoStock 行情补丁可替换日历空占位并在公共转换前归一单位；状态补丁按字段填补基础库空值而保护有效值。随后修复已覆盖生命周期发布与日常采集、队列退避/合同身份/多批公平推进、固定版本字段台账、行业层级资格、FactorLab 逐项摘要及轮询、候选分支基线、收益事件阻塞和同步/异步价格模式契约。它们均已完成相应的定向单测或前端构建；尚未作为本 Active Goal 的真实 release 验收结论。
 
