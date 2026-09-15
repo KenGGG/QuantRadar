@@ -63,3 +63,17 @@ supplemental commit `id9v6i459efka9l102lrt018uj9rbg39`; validation found zero
 overlaps with base rows. The durable historical queue afterwards recorded 180
 complete, 34 satisfied, 45 quarantined, and 5,290 pending tasks, with none
 running.
+
+## 2026-09-15 current-window throughput verification
+
+After raising the bounded current-window batch to 50 securities, job
+`update_88514d5c01df40499e8bb6be60efe83b` completed successfully. It claimed
+50 current tasks: five were already satisfied and 44 completed after publishing
+825 validated rows at `R1d298d6ecf938d14`. Its sequenced historical batch
+claimed 50 tasks and published 25,896 rows at final release
+`Rb9b7f3acc2fdab9c`. That release contains 605,926 supplemental trade-status
+rows, up from 580,030 at the preceding current-window release, verifying that
+the historical publish inherited rather than replaced the 825 current-window
+rows. Both validations found zero base overlaps. The current queue is now 44
+complete, five satisfied and 5,507 pending; the historical queue is 210
+complete, 34 satisfied, 53 quarantined and 5,252 pending, with none running.
