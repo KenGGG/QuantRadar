@@ -91,9 +91,10 @@ def _hash_members(members: list[str]) -> str:
 
 
 def _research_input_version() -> str:
+    """Fingerprint every local reader contract that changes panel semantics."""
     root = Path(__file__).resolve().parents[1]
-    source = root / "datahub" / "research_inputs.py"
-    return hashlib.sha256(source.read_bytes()).hexdigest()
+    sources = (root / "datahub" / "research_inputs.py", root / "providers" / "investment_data" / "provider.py", Path(__file__))
+    return hashlib.sha256(b"\0".join(source.read_bytes() for source in sources)).hexdigest()
 
 
 def create_batch(config: dict[str, Any]) -> dict[str, Any]:
