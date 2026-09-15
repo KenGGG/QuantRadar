@@ -828,6 +828,9 @@ def test_status_patch_validation_rejects_duplicate_or_invalid_state():
     good = [{"trade_date": "2023-09-01", "symbol": "600519.SH", "tradestatus": 1, "is_st": 0, "turn": 0.12,
              "source": "baostock", "raw_sha256": "a" * 64, "adapter_version": "test", "source_contract_id": "baostock-daily-v2", "fetched_at": "2026-09-11T00:00:00Z", "available_date": None, "pit_status": "PARTIAL"}]
     assert validate_trade_status_patch(good)["status"] == "PASS"
+    partial = [dict(good[0], is_st=None)]
+    assert validate_trade_status_patch(partial)["status"] == "PASS"
+    assert validate_trade_status_patch([dict(good[0], is_st=None, tradestatus=None)])["status"] == "FAIL"
     assert validate_trade_status_patch(good + good)["status"] == "FAIL"
     bad = [dict(good[0], tradestatus=3)]
     assert validate_trade_status_patch(bad)["status"] == "FAIL"
@@ -840,6 +843,10 @@ def test_status_patch_validation_rejects_duplicate_or_invalid_state():
     legacy_existing = {("2023-09-01", "600519.SH"): {key: value for key, value in good[0].items() if key != "source_contract_id"}}
     assert status_patch_delta(good, legacy_existing) == {"new_rows": [], "conflicts": []}
     assert status_patch_delta([dict(good[0], raw_sha256="b" * 64)], existing) == {"new_rows": [], "conflicts": []}
+    partial_existing = {("2023-09-01", "600519.SH"): dict(good[0], is_st=None)}
+    merged = status_patch_delta(good, partial_existing)
+    assert merged["conflicts"] == []
+    assert merged["new_rows"][0]["is_st"] == 0
     assert status_patch_delta([dict(good[0], is_st=1)], existing)["conflicts"] == [("2023-09-01", "600519.SH")]
     assert status_patch_delta([dict(good[0], source_contract_id="another-qualified-contract")], existing)["conflicts"] == [("2023-09-01", "600519.SH")]
 

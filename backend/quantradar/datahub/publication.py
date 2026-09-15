@@ -78,7 +78,8 @@ def validate_trade_status_patch(rows: list[dict]) -> dict:
         if key in seen:
             errors.append("duplicate key")
         seen.add(key)
-        if row.get("tradestatus") not in (0, 1) or row.get("is_st") not in (0, 1):
+        states = (row.get("tradestatus"), row.get("is_st"))
+        if all(value is None for value in states) or any(value is not None and value not in (0, 1) for value in states):
             errors.append("invalid status")
         if len(str(row.get("raw_sha256") or "")) != 64 or not row.get("source") or not row.get("adapter_version") or row.get("source_contract_id") != "baostock-daily-v2":
             errors.append("missing provenance")
@@ -137,7 +138,8 @@ def validate_trade_status_base_gap(rows: list[dict], base_keys: set[tuple[str, s
         for row in rows:
             key = (str(row["trade_date"])[:10], str(row["symbol"]))
             base = base_keys.get(key)
-            if base and any(base.get(field) is not None and base.get(field) != row.get(field) for field in ("tradestatus", "is_st", "turn")):
+            if base and any(row.get(field) is not None and base.get(field) is not None and base.get(field) != row.get(field)
+                            for field in ("tradestatus", "is_st", "turn")):
                 overlapping.append(key)
     return {
         "status": "PASS" if not overlapping else "FAIL",
@@ -147,20 +149,12 @@ def validate_trade_status_base_gap(rows: list[dict], base_keys: set[tuple[str, s
 
 
 def status_patch_delta(rows: list[dict], existing: dict[tuple[str, str], dict]) -> dict:
-    """Split an idempotent retry from a conflicting rewrite attempt."""
-    # A full-range source receipt and a one-day receipt legitimately have
-    # different byte hashes for the same observation.  Keep the first raw
-    # receipt immutable; only a change to the state or source contract is a
-    # publication conflict.
-    comparable = ("tradestatus", "is_st", "turn", "source", "adapter_version", "source_contract_id", "available_date", "pit_status")
+    """Merge supplemental status observations at cell level without rewrites."""
+    provenance = ("source", "adapter_version", "source_contract_id", "available_date", "pit_status")
+    state_fields = ("tradestatus", "is_st", "turn")
 
-    def value(row: dict, field: str):
-        if field != "source_contract_id":
-            return row.get(field)
-        # Releases published before the explicit column still carry BaoStock
-        # provenance.  Treat that immutable source label as its only approved
-        # historical contract, so an idempotent retry remains retryable.
-        return row.get(field) or ("baostock-daily-v2" if row.get("source") == "baostock" else None)
+    def source_contract(row: dict) -> object:
+        return row.get("source_contract_id") or ("baostock-daily-v2" if row.get("source") == "baostock" else None)
 
     new, conflicts = [], []
     for row in rows:
@@ -168,8 +162,18 @@ def status_patch_delta(rows: list[dict], existing: dict[tuple[str, str], dict]) 
         prior = existing.get(key)
         if prior is None:
             new.append(row)
-        elif any(value(prior, field) != value(row, field) for field in comparable):
+            continue
+        if any(prior.get(field) != row.get(field) for field in provenance if field != "source_contract_id") or source_contract(prior) != source_contract(row):
             conflicts.append(key)
+            continue
+        if any(row.get(field) is not None and prior.get(field) is not None and row.get(field) != prior.get(field) for field in state_fields):
+            conflicts.append(key)
+            continue
+        merged = dict(prior)
+        merged.update({key: value for key, value in row.items() if key not in state_fields and value is not None})
+        merged.update({field: row[field] for field in state_fields if row.get(field) is not None and prior.get(field) is None})
+        if any(merged.get(field) != prior.get(field) for field in state_fields):
+            new.append(merged)
     return {"new_rows": new, "conflicts": sorted(conflicts)}
 
 
