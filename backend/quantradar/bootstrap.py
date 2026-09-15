@@ -29,6 +29,21 @@ from .providers.investment_data.provider import InvestmentDataProvider
 PROVIDER_NAME = "investment_data"
 
 
+def release_provider(release_id: Optional[str] = None, *, config: Optional[DataHubConfig] = None):
+    """Build one non-global Provider bound to an immutable paired release."""
+    from .datahub.reader import ReleaseReader
+
+    reader = ReleaseReader(config or load_datahub_config())
+    scope = reader.resolve(release_id)
+    provider = InvestmentDataProvider(reader.base_config(scope))
+    provider._release_scope = scope
+    provider._price_units = scope.manifest.get('metadata', {}).get('price_units', 'legacy-v1')
+    if provider._price_units not in ('legacy-v1', 'joinquant-shares-yuan-v2'):
+        raise ValueError('unsupported release price units')
+    provider._supplemental_reader = reader.supplemental_reader(scope) if scope.supplemental_database else None
+    return provider, scope
+
+
 def bootstrap_data_release(release_id: Optional[str] = None, *, config: Optional[DataHubConfig] = None):
     """Resolve one immutable paired release and activate its base Dolt commit."""
     from .datahub.reader import ReleaseReader

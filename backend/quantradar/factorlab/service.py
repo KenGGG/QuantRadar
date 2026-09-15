@@ -52,6 +52,25 @@ def _calendar_until(reader: Any, scope: Any, end_date: str) -> list[str]:
     return [str(row["date"])[:10] for row in rows]
 
 
+def provider_price_rows(provider: Any, members: list[str], start_date: str, end_date: str) -> dict[str, list[dict[str, Any]]]:
+    """Read RAW prices through the same release-bound Provider as backtests."""
+    from quantradar.providers.investment_data.symbols import to_joinquant_symbol
+
+    fields = ["open", "high", "low", "close", "volume", "amount"]
+    jq_members = [to_joinquant_symbol(symbol) for symbol in members]
+    wide = provider.get_price(jq_members, start_date=start_date, end_date=end_date,
+                              frequency="daily", fields=fields)
+    result: dict[str, list[dict[str, Any]]] = {}
+    for symbol, jq_symbol in zip(members, jq_members):
+        frame = wide.xs(jq_symbol, level="security", axis=1) if isinstance(wide.columns, pd.MultiIndex) else wide
+        frame = frame.reindex(columns=fields)
+        result[symbol] = [
+            {**row, "trade_date": index, "unit_contract_version": "joinquant-shares-yuan-v2"}
+            for index, row in frame.to_dict(orient="index").items()
+        ]
+    return result
+
+
 def _hash_members(members: list[str]) -> str:
     return hashlib.sha256("\n".join(sorted(members)).encode()).hexdigest()
 
@@ -104,23 +123,13 @@ def create_batch(config: dict[str, Any]) -> dict[str, Any]:
 
 
 def _panel(config: dict[str, Any]) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
+    from quantradar.bootstrap import release_provider
     from quantradar.config import load_datahub_config
     from quantradar.datahub.reader import ReleaseReader
     from quantradar.datahub.research_inputs import standard_panel
-    scope = ReleaseReader(load_datahub_config()).resolve(config["release_id"])
+    provider, scope = release_provider(config["release_id"])
     reader = ReleaseReader(load_datahub_config())
-    # A-share OHLCV is a reusable fact in the immutable base Dolt.  The
-    # supplement is not a replacement warehouse for it.
-    conn = reader.base_connection(scope)
-    base_rows = {}
-    for symbol in config["members"]:
-        code, exchange = symbol.split(".")
-        internal = exchange + code
-        values = conn.query("SELECT tradedate, open, high, low, close, volume, amount "
-                            "FROM final_a_stock_eod_price WHERE symbol=%s AND tradedate >= %s AND tradedate <= %s ORDER BY tradedate",
-                            (internal, config.get("calculation_start", config["start_date"]), config["end_date"]))
-        base_rows[symbol] = [dict(row, trade_date=row.pop("tradedate"), unit_contract_version="base-hands-thousand-yuan") for row in values]
-    rows = base_rows
+    rows = provider_price_rows(provider, config["members"], config.get("calculation_start", config["start_date"]), config["end_date"])
     all_rows = []
     for symbol, values in rows.items():
         if not values: continue

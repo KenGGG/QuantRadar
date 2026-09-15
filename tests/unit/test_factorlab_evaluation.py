@@ -145,3 +145,20 @@ def test_engine_failure_does_not_stop_later_independent_formula(monkeypatch, tmp
 
     assert config["status"] == "FAILED"
     assert [(item["alpha_id"], item["status"]) for item in config["items"]] == [(1, "FAILED_ENGINE"), (2, "COMPUTED")]
+
+
+def test_factorlab_price_rows_use_release_provider_and_native_units():
+    from quantradar.factorlab.service import provider_price_rows
+
+    dates = pd.to_datetime(["2024-01-02", "2024-01-03"])
+    columns = pd.MultiIndex.from_product([["open", "high", "low", "close", "volume", "amount"], ["000001.XSHE"]], names=["field", "security"])
+    wide = pd.DataFrame([[1, 2, .5, 1.5, 100, 150], [2, 3, 1, 2.5, 200, 500]], index=dates, columns=columns)
+
+    class Provider:
+        def get_price(self, securities, **kwargs):
+            assert securities == ["000001.XSHE"]
+            assert kwargs == {"start_date": "2024-01-02", "end_date": "2024-01-03", "frequency": "daily", "fields": ["open", "high", "low", "close", "volume", "amount"]}
+            return wide
+
+    rows = provider_price_rows(Provider(), ["000001.SZ"], "2024-01-02", "2024-01-03")
+    assert rows["000001.SZ"][0] == {"open": 1, "high": 2, "low": .5, "close": 1.5, "volume": 100, "amount": 150, "trade_date": dates[0], "unit_contract_version": "joinquant-shares-yuan-v2"}
