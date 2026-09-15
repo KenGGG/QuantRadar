@@ -169,6 +169,18 @@ def test_security_master_uses_staged_lifecycle_evidence_before_published_candida
     assert service._staged_lifecycle_candidates() == [{"symbol": "600000.SH", "status": "LISTED"}]
 
 
+def test_bj_identity_rows_preserve_identity_without_claiming_unsupported_prices():
+    from quantradar.datahub.service import normalize_bj_identity_rows
+
+    rows = normalize_bj_identity_rows([{"证券代码": "920001", "证券简称": "纬达光电", "上市日期": "2022-12-26"}],
+                                      raw_sha256="a" * 64, fetched_at="now")
+
+    assert rows[0]["symbol"] == "920001.BJ"
+    assert rows[0]["name"] == "纬达光电"
+    assert rows[0]["listing_status"] == "LISTED"
+    assert rows[0]["capabilities"]["trade_status"] == "UNSUPPORTED"
+
+
 def test_journal_creates_pending_entries_without_overwriting_completed(tmp_path):
     from quantradar.datahub.store import UpdateJournal
 

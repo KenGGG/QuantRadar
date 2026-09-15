@@ -31,6 +31,23 @@ from .governor import RequestGovernor, CircuitOpen
 from .mvp import AkshareValuationFetcher, ShardRunner
 
 
+def normalize_bj_identity_rows(rows: Iterable[dict[str, Any]], *, raw_sha256: str, fetched_at: str) -> list[dict[str, Any]]:
+    """Record current BSE identity facts without inventing price/status support."""
+    result = []
+    for raw in rows:
+        code = str(raw.get("证券代码") or "").strip().zfill(6)
+        listed = str(raw.get("上市日期") or "")[:10]
+        if not code.isdigit() or len(code) != 6 or not listed:
+            continue
+        result.append({"symbol": f"{code}.BJ", "name": str(raw.get("证券简称") or "").strip() or None,
+                       "exchange": "BJ", "security_type": "A_SHARE", "list_date": listed,
+                       "listing_status": "LISTED", "source": "akshare:stock_info_bj_name_code",
+                       "raw_sha256": raw_sha256, "fetched_at": fetched_at, "qualification": "CURRENT_OBSERVATION_PIT_PARTIAL",
+                       "capabilities": {"identity": "KNOWN", "lifecycle": "PARTIAL", "price": "UNSUPPORTED",
+                                        "trade_status": "UNSUPPORTED"}})
+    return sorted(result, key=lambda row: row["symbol"])
+
+
 def canonical_sh_sz_security_master(
     base_rows: Iterable[dict[str, Any]], lifecycle_rows: Iterable[dict[str, Any]],
 ) -> list[dict[str, Any]]:
@@ -907,6 +924,22 @@ class DataHubService:
         return {"rows": len(fetched.rows), "source": fetched.source, "fetched_at": fetched.fetched_at,
                 "raw_sha256": receipt["sha256"], "stage_path": str(path), "qualification": "CURRENT_OBSERVATION_PIT_PARTIAL"}
 
+    def collect_bj_identity_evidence(self) -> dict[str, Any]:
+        """Stage current BSE identity evidence with explicit unsupported domains."""
+        import akshare as ak
+        frame = ak.stock_info_bj_name_code()
+        raw = frame.to_json(orient="records", force_ascii=False, date_format="iso").encode("utf-8")
+        fetched_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        receipt = self.raw.put("security_identity/bj", raw)
+        rows = normalize_bj_identity_rows(json.loads(raw), raw_sha256=receipt["sha256"], fetched_at=fetched_at)
+        path = Path(self.config.supplemental_repo) / "staging" / "security_identity" / "bj.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text("".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows), encoding="utf-8")
+        os.replace(temporary, path)
+        return {"rows": len(rows), "source": "akshare:stock_info_bj_name_code", "fetched_at": fetched_at,
+                "raw_sha256": receipt["sha256"], "stage_path": str(path), "qualification": "CURRENT_OBSERVATION_PIT_PARTIAL"}
+
     def _supplemental_lifecycle_candidates(self) -> list[dict[str, Any]]:
         connection = self._connection()
         try:
@@ -923,16 +956,22 @@ class DataHubService:
             return []
         return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
+    def _staged_bj_identity_rows(self) -> list[dict[str, Any]]:
+        path = Path(self.config.supplemental_repo) / "staging" / "security_identity" / "bj.jsonl"
+        if not path.is_file():
+            return []
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
     def refresh_security_master(self) -> dict[str, Any]:
         """Build a governed ingestion pool; it is metadata, not a fourth formal dataset."""
         base = self._base_lifecycle(persist_raw=False)
         candidates = self._staged_lifecycle_candidates() or self._supplemental_lifecycle_candidates()
-        rows = canonical_sh_sz_security_master(base, candidates)
+        rows = canonical_sh_sz_security_master([*base, *self._staged_bj_identity_rows()], candidates)
         base_symbols = {row["symbol"] for row in base}
         delta = [row for row in rows if row["symbol"] not in base_symbols]
         version = hashlib.sha256(json.dumps(rows, ensure_ascii=False, sort_keys=True, default=str).encode()).hexdigest()
         payload = {"generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                   "base_commit": self._base_commit(), "scope": "SH/SZ A shares; supplemental lifecycle candidates remain PARTIAL",
+                   "base_commit": self._base_commit(), "scope": "SH/SZ lifecycle PARTIAL; BSE current identity only (price/trade_status UNSUPPORTED)",
                    "version": version, "base_symbol_count": len(base), "delta_symbol_count": len(delta), "symbol_count": len(rows), "records": rows}
         path = self._security_master_path()
         path.parent.mkdir(parents=True, exist_ok=True)
