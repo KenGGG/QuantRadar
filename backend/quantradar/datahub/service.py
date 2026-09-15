@@ -188,10 +188,13 @@ def build_market_trade_status_coverage_report(
             yield expected, observations_by_symbol.get(symbol, [])
 
     report = CoverageService("baostock-trade-status-v1").audit_partitions(partitions())
+    incomplete = {str(item["symbol"]) for item in report["missing"]}
     return {
         **report,
         "range": {"start": start, "end": end},
         "symbols": {"supported": len(supported), "unsupported": unsupported, "lifecycle_unknown": lifecycle_unknown},
+        "stock_coverage": {"eligible": len(qualified), "complete": len(qualified) - len(incomplete),
+                            "partial": len(incomplete), "source_limited": 0},
         "qualification": "RAW_RESEARCH" if not lifecycle_unknown else "PARTIAL",
     }
 
@@ -453,9 +456,14 @@ class DataHubService:
                 totals[field] += report[field]
             missing.extend(report["missing"])
         summary = build_market_trade_status_coverage_report(records=records, calendar=[], start=start, end=end, observations_by_symbol={})
+        incomplete = {str(item["symbol"]) for item in missing}
+        eligible = len(qualified)
         return {**summary, **totals, "coverage_ratio": totals["valid_fields"] / totals["expected_fields"] if totals["expected_fields"] else None,
                 "missing": missing, "release_id": scope["release_id"], "base_commit": scope["base_commit"],
-                "supplemental_commit": scope.get("supplemental_commit"), "checked_at": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()}
+                "supplemental_commit": scope.get("supplemental_commit"),
+                "stock_coverage": {"eligible": eligible, "complete": eligible - len(incomplete),
+                                   "partial": len(incomplete), "source_limited": 0},
+                "checked_at": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()}
 
     def reaudit_market_status_task(self, task: dict[str, Any]) -> dict[str, Any]:
         """Recompute one claimed status task against its fixed paired release."""

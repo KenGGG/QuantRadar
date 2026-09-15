@@ -44,7 +44,7 @@ export function DataStatus() {
   const fallbackRows = [
     { key: 'price', name: '行情', location: '/data/investment_data', source: '存量行情表', published: base?.['行情'], usage: '日频回测直接读取', qualification: 'RAW_RESEARCH', dateLabel: '' },
     { key: 'status-base', name: 'ST / 停牌（历史）', location: '/data/investment_data', source: 'BaoStock 历史表', published: base?.['ST / 停牌'], usage: '先读取；覆盖至此日期', qualification: 'READABLE', dateLabel: '' },
-    { key: 'status-patch', name: 'ST / 停牌（补数）', location: '/data/quantradar_data', source: 'BaoStock 补数', published: statusPatch, usage: '自动补在历史表之后', qualification: 'RAW_RESEARCH', dateLabel: '' },
+    { key: 'status-patch', name: 'ST / 停牌（补数）', location: '/data/quantradar_data', source: 'BaoStock 补数', published: statusPatch, usage: '自动补在历史表之后', qualification: 'RAW_RESEARCH', dateLabel: '', stockLabel: '补数涉及股票' },
     { key: 'valuation_daily', name: '估值', location: '/data/quantradar_data', source: '东方财富', published: release?.datasets.valuation_daily, usage: '策略按字段自动读取', qualification: 'RAW_RESEARCH', dateLabel: '' },
     { key: 'sw_industry_history', name: '行业', location: '/data/quantradar_data', source: '申万', published: release?.datasets.sw_industry_history, usage: '策略按字段自动读取', qualification: 'READABLE · 严格 PIT 否', dateLabel: '' },
     { key: 'security_lifecycle', name: '基础资料', location: '/data/investment_data', source: 'Tushare 名录', published: release?.datasets.security_lifecycle, usage: '上市、退市判断', qualification: 'READABLE', dateLabel: '上市日期范围' },
@@ -57,6 +57,7 @@ export function DataStatus() {
     published: source.coverage,
     usage: source.read_rule,
     qualification: source.coverage?.qualification ?? '未声明',
+    stockLabel: source.name.includes('补数') ? '补数涉及股票' : undefined,
     dateLabel: source.domain === 'security_lifecycle' ? '上市日期范围' : '',
   })) : fallbackRows;
   const stages = [['base', '同步基础库'], ['valuation', '更新估值'], ['industry', '更新行业'], ['lifecycle', '更新基础资料'], ['check', '自动检查'], ['publish', '发布结果']].map(([key, name]) => ({ key, name, ...data?.update.stages[key] }));
@@ -70,7 +71,7 @@ export function DataStatus() {
         { title: '数据', dataIndex: 'name' },
         { title: '存放位置', dataIndex: 'location' },
         { title: '数据源', dataIndex: 'source' },
-        { title: 'Coverage（有效股票）', render: (_, r) => fmt(r.published?.stocks) },
+        { title: 'Coverage（股票）', render: (_, r) => r.stockLabel ? `${r.stockLabel}：${fmt(r.published?.stocks)}` : fmt(r.published?.stocks) },
         { title: 'Coverage（有效行）', render: (_, r) => fmt(r.published?.row_count ?? r.published?.rows) },
         { title: '日期范围', render: (_, r) => r.published?.first_date ? `${r.published.first_date} 至 ${r.published.latest_date ?? '未统计'}${r.dateLabel ? '（上市日期）' : ''}` : '未统计' },
         { title: '最近核查', render: (_, r) => r.published?.checked_at ? new Date(r.published.checked_at).toLocaleString('zh-CN') : '未单独核查' },
