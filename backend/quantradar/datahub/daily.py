@@ -59,6 +59,16 @@ def plan_symbols(units, lifecycle, target, *, mode='sync', start=None, summaries
     return selected
 
 
+def maintenance_stage_status(maintenance: dict) -> str:
+    """Describe attempted queue work without calling deferred work 'no change'."""
+    queues = (maintenance.get("current", {}), maintenance.get("historical", {}))
+    if any(queue.get("published") for queue in queues):
+        return "UPDATED"
+    if any(queue.get("claimed") or queue.get("outcomes") for queue in queues):
+        return "PARTIAL"
+    return "NO_CHANGE"
+
+
 def latest_complete_target(calendar, cutoff: str, price_latest: str | None) -> str:
     """Choose a trading target from observed source coverage, never wall time alone."""
     if not price_latest:
@@ -269,7 +279,7 @@ class DailyUpdate:
                                             'queue': 'current', 'correction_window_trading_days': 20})
                     planned_status = self.service.enqueue_market_trade_status_plan(recent_start, target, queue_name='current')
                     maintenance = self._process_status_maintenance_budget()
-                    record('trade_status', {'status': 'UPDATED' if maintenance['current']['published'] or maintenance['historical']['published'] else 'NO_CHANGE',
+                    record('trade_status', {'status': maintenance_stage_status(maintenance),
                                             'start': recent_start, 'end': target, 'planned': planned_status['symbol_count'],
                                             'enqueued': planned_status['enqueued'], 'maintenance': maintenance})
                     record('check', {'status': 'SKIPPED', 'reason': 'status rows are validated and published by the status worker'})
@@ -305,7 +315,7 @@ class DailyUpdate:
                                         'queue': 'current', 'correction_window_trading_days': 20})
                 planned_status = self.service.enqueue_market_trade_status_plan(recent_start, target, queue_name='current')
                 maintenance = self._process_status_maintenance_budget()
-                record('trade_status', {'status': 'UPDATED' if maintenance['current']['published'] or maintenance['historical']['published'] else 'NO_CHANGE',
+                record('trade_status', {'status': maintenance_stage_status(maintenance),
                                         'start': recent_start, 'end': target, 'planned': planned_status['symbol_count'],
                                         'enqueued': planned_status['enqueued'], 'maintenance': maintenance})
                 record('check', {'status': 'RUNNING'})

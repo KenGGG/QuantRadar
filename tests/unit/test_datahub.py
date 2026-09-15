@@ -1160,3 +1160,11 @@ def test_datahub_gap_ledger_requires_a_pinned_audit_window():
     assert audited["field_ledger"] == {"status": "AUDITED", "domain": "trade_status", "release_id": "R1",
                                         "expected_fields": 4, "valid_fields": 3,
                                         "missing": [{"symbol": "000001.SZ", "field": "is_st"}]}
+
+
+def test_status_maintenance_stage_does_not_hide_deferred_work():
+    from quantradar.datahub.daily import maintenance_stage_status
+
+    assert maintenance_stage_status({"current": {"claimed": 0, "outcomes": [], "published": []}, "historical": {"claimed": 0, "outcomes": [], "published": []}}) == "NO_CHANGE"
+    assert maintenance_stage_status({"current": {"claimed": 1, "outcomes": [{"status": "PENDING"}], "published": []}, "historical": {}}) == "PARTIAL"
+    assert maintenance_stage_status({"current": {"claimed": 1, "outcomes": [], "published": [{"release_id": "R1"}]}, "historical": {}}) == "UPDATED"
