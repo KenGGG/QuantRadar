@@ -1,7 +1,7 @@
 # QuantRadar Active Phase
 
 **Milestone:** `DATAHUB_V4_MARKET_LEDGER_ALPHA101`
-**Active Goal:** `DATA_V4_G2_TRADE_STATUS_LEDGER`
+**Active Goal:** `DATA_V4_G3A_ALPHA101_INPUTS`
 **Status:** IN_PROGRESS
 
 ## Scope
@@ -16,8 +16,8 @@
 
 - **G0 Coverage Foundation — PASSED.** 固定 release 审计已执行；Coverage Service 按字段与合同版本产生只读缺口；BaoStock 正常、ST、连续停牌、早期上市与退市边界候选的真实探针已固定。停牌日 `turn`/OHLCV 可合法为空，缺记录仍为 UNKNOWN。见 [语义收据](acceptance/datahub-v4/g0-baostock-status-semantics.md)。
 - **G1 Security Identity & Lifecycle — PASSED.** BaoStock 当前生命周期证据覆盖 5,556 只沪深证券；基础 4,916 只与候选事实字段级合并。AKShare 北交所当前名录 343 只单列身份与 PARTIAL 生命周期，价格／状态均明确 UNSUPPORTED；主表共 5,899 只且不发布或回写旧 release。见 [G1 收据](acceptance/datahub-v4/g1-security-master.md)。
-- **G2 Trade Status Ledger — IN_PROGRESS.** 按 G0 合同重算实际缺口；Worker 执行前再次审计，仅采集仍缺失键。
-- **G3-A Alpha101 Inputs — QUEUED.** 历史总市值与申万三级历史归属、字典和版本映射。
+- **G2 Trade Status Ledger — PASSED.** 固定 release 的完整上市存续期审计已产生 36,959,510 个逐字段应有事实与 32,690 个压缩缺口区间；Worker 在执行前重审计，真实补数按字段合并发布，断点恢复与重复执行均有证据。持续队列保留为日常维护：来源限制不被推断为正常状态，未完成检查不阻塞本轮后续 Gate。见 [G2 收据](acceptance/datahub-v4/g2-market-status-progress.md)。
+- **G3-A Alpha101 Inputs — IN_PROGRESS.** 历史总市值与申万三级历史归属、字典和版本映射。
 - **G3-B Valuation Ledger — QUEUED_NON_BLOCKING.** PE/PB/PS/PCF 失败与字段缺口台账，不阻塞 G4/G5。
 - **G4 Unified Reader & FactorLab — QUEUED.** Provider/FactorLab 共用固定 release 输入，依赖驱动 Alpha101 资格。
 - **G5 Offline Matrix & Replay — QUEUED.** 101 条矩阵、低 Beta 回放、固定 #1/#56/#58 组合及旧 release 隔离。
