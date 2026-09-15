@@ -1099,3 +1099,14 @@ def test_legacy_publication_uses_daily_candidate_checks(tmp_path, monkeypatch):
     from quantradar.datahub.daily import DailyUpdate
     monkeypatch.setattr(DailyUpdate, 'start', lambda self, mode: {'mode': mode})
     assert service.mvp_publish() == {'mode': 'publish'}
+
+
+def test_datahub_overview_work_queue_excludes_task_evidence():
+    from quantradar.api.app import _work_queue_overview
+
+    overview = _work_queue_overview({
+        "counts": {"current": {"PENDING": 2, "COMPLETE": 1}},
+        "tasks": [{"task_id": "contains-evidence"}],
+    })
+
+    assert overview == {"counts": {"current": {"PENDING": 2, "COMPLETE": 1}}, "total": 3}

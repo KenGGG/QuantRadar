@@ -348,6 +348,15 @@ def _candidate_issues(candidate: Dict[str, Any] | None, *, include_symbols: bool
     ]
 
 
+def _work_queue_overview(status: Dict[str, Any]) -> Dict[str, Any]:
+    """Keep the polling payload bounded; task evidence is requested separately."""
+    counts = status.get("counts", {})
+    return {
+        "counts": counts,
+        "total": sum(sum(int(value) for value in states.values()) for states in counts.values()),
+    }
+
+
 @app.get("/api/datahub/status")
 def datahub_status() -> Dict[str, Any]:
     from quantradar.datahub.service import DataHubService
@@ -376,10 +385,19 @@ def datahub_overview() -> Dict[str, Any]:
     candidate = saved('candidate-check.json')
     base_coverage = saved('base-coverage.json')
     return {'release': _overview_release(manifest), 'qualification': _research_qualification(manifest), 'base_coverage': base_coverage, 'data_sources': _overview_data_sources(manifest, base_coverage), 'base_inventory': saved('base_inventory.json'), 'gap_plan': saved('gap_plan.json'),
-            'work_queue': DataHubWorkQueue(root / 'work-queue.json').status(),
+            'work_queue': _work_queue_overview(DataHubWorkQueue(root / 'work-queue.json').status()),
             'update': DailyUpdate(service).status(), 'job': service.job_status(),
             'candidate': {k: candidate[k] for k in ('candidate_id', 'quality', 'coverage', 'row_count')} if candidate else None,
             'issues': _candidate_issues(candidate, include_symbols=False)}
+
+
+@app.get('/api/datahub/work-queue')
+def datahub_work_queue() -> Dict[str, Any]:
+    """Return detailed work-order evidence only when a caller explicitly asks."""
+    from quantradar.datahub.service import DataHubService
+    from quantradar.datahub.work_queue import DataHubWorkQueue
+    service = DataHubService()
+    return DataHubWorkQueue(Path(service.config.supplemental_repo) / 'work-queue.json').status()
 
 
 @app.post('/api/datahub/update-all')
