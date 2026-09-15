@@ -348,6 +348,19 @@ def _candidate_issues(candidate: Dict[str, Any] | None, *, include_symbols: bool
     ]
 
 
+def _datahub_gap_ledger(service: Any, *, release_id: str | None, start: str | None, end: str | None,
+                        candidate: Dict[str, Any] | None) -> Dict[str, Any]:
+    """Keep failed candidates distinct from release-pinned field coverage."""
+    response = {
+        "candidate": {key: candidate[key] for key in ("candidate_id", "quality", "coverage", "row_count") if key in candidate} if candidate else None,
+        "candidate_issues": _candidate_issues(candidate, include_symbols=True),
+    }
+    if not release_id or not start or not end:
+        return {**response, "field_ledger": {"status": "UNAUDITED", "reason": "release, start and end are required for a field-level coverage audit"}}
+    report = service.market_trade_status_coverage_report(start, end, release_id=release_id)
+    return {**response, "field_ledger": {"status": "AUDITED", "domain": "trade_status", **report}}
+
+
 def _work_queue_overview(status: Dict[str, Any]) -> Dict[str, Any]:
     """Keep the polling payload bounded; task evidence is requested separately."""
     counts = status.get("counts", {})
@@ -449,15 +462,14 @@ def datahub_job_resume(payload: Dict[str, Any] = Body(default={})) -> Dict[str, 
 
 
 @app.get("/api/datahub/gaps")
-def datahub_gaps() -> Dict[str, Any]:
+def datahub_gaps(release_id: str | None = Query(None, alias="release"),
+                 start: str | None = Query(None), end: str | None = Query(None)) -> Dict[str, Any]:
     from quantradar.datahub.service import DataHubService
-    root = Path(DataHubService().config.supplemental_repo)
+    service = DataHubService()
+    root = Path(service.config.supplemental_repo)
     candidate_path = root / 'candidate-check.json'
     candidate = json.loads(candidate_path.read_text()) if candidate_path.exists() else None
-    return {
-        'candidate': {k: candidate[k] for k in ('candidate_id', 'quality', 'coverage', 'row_count')} if candidate else None,
-        'issues': _candidate_issues(candidate, include_symbols=True),
-    }
+    return _datahub_gap_ledger(service, release_id=release_id, start=start, end=end, candidate=candidate)
 
 
 @app.post("/api/datahub/repair")

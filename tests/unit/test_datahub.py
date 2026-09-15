@@ -1141,3 +1141,22 @@ def test_candidate_branch_is_bound_to_its_publication_baseline():
 
     assert candidate_branch("status", "same-content", "commit-a") != candidate_branch("status", "same-content", "commit-b")
     assert candidate_branch("status", "same-content", "commit-a") == candidate_branch("status", "same-content", "commit-a")
+
+
+def test_datahub_gap_ledger_requires_a_pinned_audit_window():
+    from quantradar.api.app import _datahub_gap_ledger
+
+    no_audit = _datahub_gap_ledger(object(), release_id=None, start=None, end=None, candidate={"candidate_id": "C1", "isolated": {"000001.SZ": "BAD"}})
+    assert no_audit["field_ledger"]["status"] == "UNAUDITED"
+    assert no_audit["candidate_issues"] == [{"reason": "BAD", "count": 1, "symbols": ["000001.SZ"]}]
+
+    class Service:
+        def market_trade_status_coverage_report(self, start, end, *, release_id):
+            assert (release_id, start, end) == ("R1", "2024-01-02", "2024-01-03")
+            return {"release_id": "R1", "expected_fields": 4, "valid_fields": 3,
+                    "missing": [{"symbol": "000001.SZ", "field": "is_st"}]}
+
+    audited = _datahub_gap_ledger(Service(), release_id="R1", start="2024-01-02", end="2024-01-03", candidate=None)
+    assert audited["field_ledger"] == {"status": "AUDITED", "domain": "trade_status", "release_id": "R1",
+                                        "expected_fields": 4, "valid_fields": 3,
+                                        "missing": [{"symbol": "000001.SZ", "field": "is_st"}]}
