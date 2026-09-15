@@ -65,6 +65,30 @@ class DataHubWorkQueue:
         self._save(data)
         return {"status": "ENQUEUED", "task": record}
 
+    def enqueue_many(self, queue: str, tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Persist a large deterministic plan with one load and one atomic save."""
+        if queue not in QUEUES:
+            raise ValueError(f"unknown queue: {queue}")
+        data, outcomes = self._load(), []
+        now = datetime.now(timezone.utc).isoformat()
+        for task in tasks:
+            required = {"source_contract_id", "domain", "range", "gap_reason", "gap_fingerprint"}
+            missing = sorted(key for key in required if not task.get(key))
+            if missing:
+                raise ValueError("work order missing: " + ", ".join(missing))
+            task_id = self._identity(queue, task)
+            previous = data["tasks"].get(task_id)
+            if previous and previous.get("status") not in TERMINAL:
+                outcomes.append({"status": "NO_CHANGE", "task": previous})
+                continue
+            record = {**task, "task_id": task_id, "queue": queue, "status": "PENDING",
+                      "created_at": previous.get("created_at", now) if previous else now, "updated_at": now,
+                      "attempts": int(previous.get("attempts", 0)) if previous else 0}
+            data["tasks"][task_id] = record
+            outcomes.append({"status": "ENQUEUED", "task": record})
+        self._save(data)
+        return outcomes
+
     def claim_next(self) -> dict[str, Any] | None:
         """Rotate queues so current updates cannot starve historical repair."""
         data = self._load()

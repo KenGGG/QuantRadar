@@ -287,12 +287,15 @@ class DataHubService:
         if not path.is_file():
             raise FileNotFoundError("security master must be refreshed before status planning")
         records = json.loads(path.read_text(encoding="utf-8")).get("records", [])
-        symbols = sorted(str(row["symbol"]) for row in records
-                         if (row.get("capabilities") or {}).get("trade_status") == "SUPPORTED")
+        supported = [row for row in records if (row.get("capabilities") or {}).get("trade_status") == "SUPPORTED"]
         tasks = []
-        for symbol in symbols:
+        for row in sorted(supported, key=lambda value: str(value["symbol"])):
+            symbol = str(row["symbol"])
+            task_start = max(start, str(row.get("list_date") or start)[:10])
+            if task_start > end:
+                continue
             identity = {"domain": "trade_status", "field": "tradestatus,is_st", "symbol": symbol,
-                        "missing_interval": {"start": start, "end": end},
+                        "missing_interval": {"start": task_start, "end": end},
                         "expected_key_contract": "baostock-trade-status-v1"}
             tasks.append({"source_contract_id": "baostock-daily-v2", "domain": "trade_status",
                           "fields": ["tradestatus", "is_st"], "symbols": [symbol], "range": identity["missing_interval"],
@@ -301,9 +304,18 @@ class DataHubService:
                           "release_id": manifest["release_id"], "base_commit": manifest["base_commit"]})
         return {"release_id": manifest["release_id"], "base_commit": manifest["base_commit"],
                 "expected_key_contract": "baostock-trade-status-v1", "range": {"start": start, "end": end},
-                "symbol_count": len(symbols), "tasks": tasks,
+                "symbol_count": len(tasks), "tasks": tasks,
                 "unsupported": sorted(str(row["symbol"]) for row in records
                                       if (row.get("capabilities") or {}).get("trade_status") == "UNSUPPORTED")}
+
+    def enqueue_market_trade_status_plan(self, start: str, end: str, release_id: str | None = None) -> dict[str, Any]:
+        """Persist market-ledger checks; claiming a task still requires re-audit."""
+        from .work_queue import DataHubWorkQueue
+        plan = self.market_trade_status_plan(start, end, release_id)
+        queue = DataHubWorkQueue(Path(self.config.supplemental_repo) / "work-queue.json")
+        outcomes = queue.enqueue_many("historical", plan["tasks"])
+        return {**plan, "enqueued": sum(item["status"] == "ENQUEUED" for item in outcomes),
+                "queue_status": queue.status()["counts"]}
 
     def supplemental_inventory(self, release_id: str | None = None) -> dict[str, dict[str, Any]]:
         """Read coverage available from the release-pinned supplement only."""
