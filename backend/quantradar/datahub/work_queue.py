@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -44,7 +44,7 @@ class DataHubWorkQueue:
         """A new rolling correction window replaces older overlapping checks."""
         if record["queue"] != "current":
             return
-        for old_id, old in data["tasks"].items():
+        for old_id, old in list(data["tasks"].items()):
             if old_id == record["task_id"] or old.get("queue") != "current" or old.get("status") != "PENDING":
                 continue
             if (old.get("domain"), old.get("symbols"), old.get("fields"), old.get("expected_key_contract")) != (
@@ -52,6 +52,20 @@ class DataHubWorkQueue:
             ):
                 continue
             if cls._overlaps(old["range"], record["range"]):
+                # Retain any old dates outside the new correction window as a
+                # historical repair task.  Dropping the whole interval would
+                # turn a rolling window into silent data loss.
+                old_start, old_end = (date.fromisoformat(str(old["range"][key])[:10]) for key in ("start", "end"))
+                new_start, new_end = (date.fromisoformat(str(record["range"][key])[:10]) for key in ("start", "end"))
+                for start, end in ((old_start, min(old_end, new_start - timedelta(days=1))),
+                                   (max(old_start, new_end + timedelta(days=1)), old_end)):
+                    if start > end:
+                        continue
+                    carry = {key: value for key, value in old.items() if key not in {"task_id", "queue", "status", "updated_at", "superseded_by", "resolution", "evidence", "attempts"}}
+                    carry["range"] = {"start": start.isoformat(), "end": end.isoformat()}
+                    carry["gap_reason"] = "uncovered tail of superseded current correction window"
+                    carry_id = cls._identity("historical", carry)
+                    data["tasks"].setdefault(carry_id, {**carry, "task_id": carry_id, "queue": "historical", "status": "PENDING", "created_at": old.get("created_at", now), "updated_at": now, "attempts": 0, "carried_from": old_id})
                 old.update(status="OBSOLETE", updated_at=now, superseded_by=record["task_id"],
                            resolution="newer rolling correction window supersedes overlapping pending check")
 

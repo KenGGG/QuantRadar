@@ -344,6 +344,8 @@ def test_current_rolling_window_supersedes_only_overlapping_pending_task(tmp_pat
     rows = {row["task_id"]: row for row in queue.status()["tasks"]}
     assert rows[old["task_id"]]["status"] == "OBSOLETE"
     assert queue.status()["counts"]["current"]["PENDING"] == 1
+    carried = [row for row in rows.values() if row.get("carried_from") == old["task_id"]]
+    assert [row["range"] for row in carried] == [{"start": "2024-01-02", "end": "2024-01-02"}]
 
 
 def test_work_queue_enqueues_many_tasks_in_one_durable_operation(tmp_path):
