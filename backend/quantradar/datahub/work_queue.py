@@ -31,7 +31,7 @@ class DataHubWorkQueue:
     @staticmethod
     def _identity(queue: str, task: dict[str, Any]) -> str:
         semantic = {key: task.get(key) for key in (
-            "source_contract_id", "domain", "fields", "symbols", "range", "gap_reason", "gap_fingerprint",
+            "source_contract_id", "expected_key_contract", "domain", "fields", "symbols", "range", "gap_reason", "gap_fingerprint",
         )}
         return hashlib.sha256((queue + "\0" + json.dumps(semantic, ensure_ascii=False, sort_keys=True)).encode()).hexdigest()[:24]
 

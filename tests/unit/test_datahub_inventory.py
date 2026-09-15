@@ -879,3 +879,19 @@ def test_work_queue_defers_source_failures_until_retry_window(tmp_path):
     assert deferred["next_eligible_at"] > deferred["updated_at"]
     assert queue.claim_matching("historical", domain="trade_status", limit=1) == []
     assert queue.status()["tasks"][0]["task_id"] == queued["task_id"]
+
+
+def test_work_queue_identity_includes_expected_key_contract(tmp_path):
+    from quantradar.datahub.work_queue import DataHubWorkQueue
+
+    queue = DataHubWorkQueue(tmp_path / "work-queue.json")
+    task = {
+        "source_contract_id": "baostock-daily-v2", "domain": "trade_status", "fields": ["is_st"],
+        "symbols": ["600000.SH"], "range": {"start": "2024-01-02", "end": "2024-01-02"},
+        "gap_reason": "test", "gap_fingerprint": "c" * 64, "expected_key_contract": "status-v1",
+    }
+    first = queue.enqueue("historical", task)
+    second = queue.enqueue("historical", {**task, "expected_key_contract": "status-v2"})
+
+    assert first["status"] == second["status"] == "ENQUEUED"
+    assert first["task"]["task_id"] != second["task"]["task_id"]
