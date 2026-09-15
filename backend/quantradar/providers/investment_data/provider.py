@@ -545,84 +545,20 @@ class InvestmentDataProvider(DataProvider):
         start_date: Optional[Union[str, datetime]] = None,
         end_date: Optional[Union[str, datetime]] = None,
     ) -> List[Dict[str, Any]]:
-        """返回标的在区间 [start_date, end_date] 内的分红 / 拆分等权益事件。
+        """Return only structured corporate-action facts.
 
-        数据源：bao_a_stock_eod_info（真实 preclose / close）。
-        由于 investment_data 未提供独立的「每股红利 / 送转比例」列，本实现据真实数据
-        还原权益事件：
-
-            - 除权除息日判定：preclose(D) != close(D-1)（正常交易日两者严格相等；
-              仅除权除息日交易所将参考价调整为 (昨收 - 每股红利) / (1 + 送转比例)，
-              故产生缺口）。
-            - 每股税前红利 bonus_pre_tax = close(D-1) - preclose(D)（除权缺口，真实可审计）。
-            - scale_factor 暂置 1.0：送转（股份增多）与派息（现金增多）无法从本表分离，
-              故统一以「税前现金红利」口径入账；引擎按 20% 预提税后，总收益（NAV）与
-              不复权口径一致（除权日市值 + 税后红利 = 昨收市值 - 税损），会计正确。
-
-        数据正确性优先：所有数值均来自真实列，绝不伪造每股红利 / 送转比例；
-        无法分离送转的部分显式标记为 PARTIAL（见返回字典 _partial 字段）。
-
-        Returns:
-            事件列表，元素形如
-            {'date': 'YYYY-MM-DD', 'scale_factor': 1.0, 'bonus_pre_tax': float,
-             'security_type': 'stock', 'per_base': 10,
-             '_source': 'bao_a_stock_eod_info', '_partial': '送转/派息未分离'}
+        The base price table exposes an ex-right ``preclose`` reference, not
+        the cash and share terms of an event.  A price gap can represent cash
+        dividends, splits, rights issues, or a combination, so it must never
+        be converted into a formal cash event for BulletTrade accounting.
+        Stock corporate-action terms are not published in the selected
+        release; callers requiring total-return or account semantics must be
+        blocked explicitly.
         """
-        internal = normalize_stock_symbol(security)
-        start = _fmt_date(start_date)
-        end = _fmt_date(end_date)
-        if not start and not end:
-            # 无边界时无法约束扫描范围；与 get_price 一致，要求至少有一个边界
-            raise ValueError(
-                "get_split_dividend: 必须指定 start_date 或 end_date 之一"
-            )
-        # 向前多取一日，确保区间首日若是除权日也能检测到（需其昨收）
-        pad_start = None
-        if start:
-            pad_start = (pd.to_datetime(start) - pd.DateOffset(days=1)).strftime("%Y-%m-%d")
-
-        rows = self._connection.query(
-            f"SELECT {_INFO_DATE_COL}, close, preclose FROM {_INFO_TABLE} "
-            f"WHERE symbol = %s AND {_INFO_DATE_COL} >= %s"
-            + (" AND {0} <= %s".format(_INFO_DATE_COL) if end else "")
-            + f" ORDER BY {_INFO_DATE_COL} ASC",
-            tuple(
-                filter(
-                    None,
-                    [internal, pad_start or start, end] if end else [internal, pad_start or start],
-                )
-            ),
+        raise NotImplementedError(
+            "stock split/dividend terms are unavailable in this release; "
+            "RAW price research must not infer cash events from preclose gaps"
         )
-
-        events: List[Dict[str, Any]] = []
-        prev_close = None
-        for r in rows:
-            cur_close = r["close"]
-            cur_preclose = r["preclose"]
-            cur_date = _fmt_date(r[_INFO_DATE_COL])
-            if prev_close is not None and cur_preclose is not None:
-                # 除权缺口：preclose(D) < close(D-1) 即为权益事件
-                gap = float(prev_close) - float(cur_preclose)
-                if gap > 1e-6:
-                    # 仅保留落在请求区间内的事件（pad 首日用于探测，不作为结果）
-                    if (start is None or cur_date >= start) and (
-                        end is None or cur_date <= end
-                    ):
-                        events.append(
-                            {
-                                "date": cur_date,
-                                "scale_factor": 1.0,
-                                "bonus_pre_tax": round(gap, 6),
-                                "security_type": "stock",
-                                "per_base": 10,
-                                "_source": _INFO_TABLE,
-                                "_partial": "送转/派息未分离：仅以除权缺口作为税前红利入账",
-                            }
-                        )
-            if cur_close is not None:
-                prev_close = cur_close
-
-        return events
 
     # -- 扩展元数据（ST / 停牌状态）---------------------------------------
 

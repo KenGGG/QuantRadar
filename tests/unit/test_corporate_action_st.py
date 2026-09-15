@@ -35,46 +35,11 @@ ST_JQ = "600078.XSHG"
 
 @pytest.mark.unit
 class TestCorporateAction:
-    def test_ex_date_detected(self):
+    def test_price_gap_is_not_a_cash_dividend_event(self):
         p = bootstrap_investment_data(set_active=True, overwrite=True)
-        events = p.get_split_dividend(DIV_SECURITY, "2022-06-01", "2022-07-31")
-        assert any(e["date"] == DIV_EX_DATE for e in events), "未识别 600519 2022-06-30 除权日"
+        with pytest.raises(NotImplementedError, match="must not infer cash events"):
+            p.get_split_dividend(DIV_SECURITY, "2022-06-01", "2022-07-31")
 
-    def test_dividend_gap_equals_preclose_drop(self):
-        """除权缺口（close(D-1) - preclose(D)）应等于原始表 2022-06-29/06-30 之差。"""
-        p = bootstrap_investment_data(set_active=True, overwrite=True)
-        events = p.get_split_dividend(DIV_SECURITY, "2022-06-01", "2022-07-31")
-        ev = next(e for e in events if e["date"] == DIV_EX_DATE)
-        expected_gap = round(DIV_PREV_CLOSE - DIV_PRECLOSE, 6)
-        assert abs(ev["bonus_pre_tax"] - expected_gap) < 1e-3, (
-            f"bonus_pre_tax={ev['bonus_pre_tax']} 与真实除权缺口 {expected_gap} 不符"
-        )
-        # 与原始 bao_a_stock_eod_info 对账
-        c = InvestmentDataConnection(load_investment_data_config())
-        prev = c.query_one(
-            "SELECT close FROM bao_a_stock_eod_info WHERE symbol=%s AND tradedate=%s",
-            ("SH600519", "2022-06-29"),
-        )["close"]
-        pre = c.query_one(
-            "SELECT preclose FROM bao_a_stock_eod_info WHERE symbol=%s AND tradedate=%s",
-            ("SH600519", "2022-06-30"),
-        )["preclose"]
-        assert abs((prev - pre) - ev["bonus_pre_tax"]) < 1e-3
-
-    def test_event_fields_for_engine(self):
-        """引擎依赖的字段齐备：date / scale_factor / bonus_pre_tax / security_type / per_base。"""
-        p = bootstrap_investment_data(set_active=True, overwrite=True)
-        events = p.get_split_dividend(DIV_SECURITY, "2022-06-01", "2022-07-31")
-        ev = next(e for e in events if e["date"] == DIV_EX_DATE)
-        assert ev["scale_factor"] == 1.0
-        assert ev["security_type"] == "stock"
-        assert ev["per_base"] == 10
-        assert "_source" in ev and "_partial" in ev  # 透明标记 PARTIAL
-
-    def test_requires_boundary(self):
-        p = bootstrap_investment_data(set_active=True, overwrite=True)
-        with pytest.raises(ValueError):
-            p.get_split_dividend(DIV_SECURITY)  # 无边界 -> ValueError
 
 
 @pytest.mark.unit

@@ -58,9 +58,9 @@ CAPABILITIES: Dict[str, Dict[str, str]] = {
         "未知状态保持 NaN，绝不以成交量推断；缺行显式 NaN（PARTIAL）",
     },
     "get_split_dividend": {
-        "status": "PARTIAL",
-        "note": "bao_a_stock_eod_info 真实 preclose/close；按除权缺口还原每股税前红利"
-        "（引擎按 20% 预提税，NAV 与不复权口径一致）。送转/派息无法从本表分离 -> PARTIAL",
+        "status": "BLOCKED",
+        "note": "基础行情的 preclose 价差不提供现金分红或送转条款；没有固定发布的结构化股票权益事件，"
+        "因此禁止将价差推断为账户收益。仅 RAW 价格研究可用。",
     },
     "get_extras": {
         "status": "PASS",

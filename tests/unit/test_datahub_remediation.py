@@ -326,3 +326,10 @@ def test_etf_raw_provider_refuses_unpublished_adjusted_modes(monkeypatch):
     provider._supplemental_reader = Reader()
     with pytest.raises(NotImplementedError, match='ETF_RAW'):
         provider.get_price('510300.XSHG', '2024-01-02', '2024-01-02', fq='hfq')
+
+
+def test_stock_corporate_actions_refuse_preclose_gap_inference():
+    from quantradar.providers.investment_data.provider import InvestmentDataProvider
+
+    with pytest.raises(NotImplementedError, match="must not infer cash events"):
+        InvestmentDataProvider().get_split_dividend("600519.XSHG", "2022-06-01", "2022-07-31")
