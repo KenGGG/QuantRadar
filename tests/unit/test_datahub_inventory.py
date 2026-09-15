@@ -307,6 +307,21 @@ def test_work_queue_claim_matching_does_not_consume_another_domain(tmp_path):
     assert queue.status()["counts"]["historical"]["PENDING"] == 1
 
 
+def test_work_queue_defer_can_rebase_a_follow_up_audit_to_its_published_release(tmp_path):
+    from quantradar.datahub.work_queue import DataHubWorkQueue
+
+    queue = DataHubWorkQueue(tmp_path / "work-queue.json")
+    task = queue.enqueue("historical", {"source_contract_id": "source", "domain": "trade_status", "fields": [],
+                                         "symbols": ["600000.SH"], "range": {"start": "2024-01-02", "end": "2024-01-02"},
+                                         "gap_reason": "test", "gap_fingerprint": "gap", "release_id": "R1"})["task"]
+    queue.claim_matching("historical", domain="trade_status", limit=1)
+
+    deferred = queue.defer(task["task_id"], evidence={"published_release_id": "R2"}, release_id="R2")
+
+    assert deferred["task"]["status"] == "PENDING"
+    assert deferred["task"]["release_id"] == "R2"
+
+
 def test_low_beta_status_plan_has_exact_symbols_and_release_fingerprint(tmp_path, monkeypatch):
     from quantradar.config import DataHubConfig
     from quantradar.datahub.service import DataHubService

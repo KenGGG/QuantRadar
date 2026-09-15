@@ -158,7 +158,7 @@ class DataHubWorkQueue:
         self._save(data)
         return {"status": status, "task": task}
 
-    def defer(self, task_id: str, *, evidence: dict[str, Any]) -> dict[str, Any]:
+    def defer(self, task_id: str, *, evidence: dict[str, Any], release_id: str | None = None) -> dict[str, Any]:
         """Return a re-audited task to pending without losing its audit trail."""
         data = self._load()
         task = data["tasks"].get(task_id)
@@ -167,6 +167,8 @@ class DataHubWorkQueue:
         if task.get("status") != "RUNNING":
             raise ValueError("only a running task can be deferred")
         task.update(status="PENDING", updated_at=datetime.now(timezone.utc).isoformat(), re_audit=evidence)
+        if release_id is not None:
+            task["release_id"] = release_id
         self._save(data)
         return {"status": "PENDING", "task": task}
 

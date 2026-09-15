@@ -442,7 +442,8 @@ class DataHubService:
                                  "initial_release_id": task.get("release_id"), "published_release_id": publication["release_id"]})
                     outcomes.append({"task_id": task["task_id"], "status": "COMPLETE"})
                 else:
-                    queue.defer(task["task_id"], evidence={**final["evidence"], "published_release_id": publication["release_id"]})
+                    queue.defer(task["task_id"], evidence={**final["evidence"], "published_release_id": publication["release_id"]},
+                                release_id=publication["release_id"])
                     outcomes.append({"task_id": task["task_id"], "status": "PENDING"})
         return {"claimed": len(tasks), "outcomes": outcomes, "published": publication}
 
