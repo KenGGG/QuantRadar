@@ -333,3 +333,11 @@ def test_stock_corporate_actions_refuse_preclose_gap_inference():
 
     with pytest.raises(NotImplementedError, match="must not infer cash events"):
         InvestmentDataProvider().get_split_dividend("600519.XSHG", "2022-06-01", "2022-07-31")
+
+
+def test_sync_and_queued_backtests_share_the_same_price_mode_contract():
+    from quantradar.backtest import normalize_backtest_fq
+
+    assert normalize_backtest_fq("hfq", caller="test") == "hfq"
+    with pytest.raises(ValueError, match="支持 none / pre / qfq / post / hfq"):
+        normalize_backtest_fq("invalid", caller="test")

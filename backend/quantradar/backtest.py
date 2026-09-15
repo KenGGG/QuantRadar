@@ -23,6 +23,19 @@ from quantradar.audit import collect_audit_env
 # 单进程内回测本就基本串行；此锁避免 Worker 多线程并发提交时复权口径互相串扰。
 _FQ_LOCK = threading.Lock()
 
+_SUPPORTED_BACKTEST_FQ = ("none", "pre", "qfq", "post", "hfq")
+
+
+def normalize_backtest_fq(fq: str | None, *, caller: str) -> str:
+    """The single public price-mode contract for synchronous and queued runs."""
+    value = (fq or "none").lower()
+    if value not in _SUPPORTED_BACKTEST_FQ:
+        raise ValueError(
+            f"{caller}: 不支持的复权方式 fq={fq!r}；"
+            "支持 none / pre / qfq / post / hfq"
+        )
+    return value
+
 
 def _serialize_trades(engine: Any) -> List[Dict[str, Any]]:
     """把引擎成交对象序列化为原生 JSON 可序列化 dict 列表。"""
@@ -105,12 +118,7 @@ def run_backtest(
 
     from quantradar.bootstrap import bootstrap_data_release, bootstrap_investment_data
 
-    _fq = (fq or "none").lower()
-    if _fq not in ("none", "pre", "qfq", "post", "hfq"):
-        raise ValueError(
-            f"run_backtest: 不支持的复权方式 fq={fq!r}；"
-            f"支持 none（真实现金流水，含除权跳变）/ pre / qfq / post / hfq（连续复权）"
-        )
+    _fq = normalize_backtest_fq(fq, caller="run_backtest")
     # bullet_trade 撮合仅区分「原始价(none)」与「连续前复权(pre)」；后复权(hfq/post)与前复权
     # (qfq/pre) 在同一回测窗口内收益率严格等价（仅净值绝对水平缩放常数因子）。无论请求何种
     # 连续复权，撮合统一启用 use_real_price（pre），使账户净值连续、除权日无假跳变，与 Qlib

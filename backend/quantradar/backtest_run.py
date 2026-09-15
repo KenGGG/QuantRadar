@@ -27,7 +27,7 @@ import os
 import uuid
 from typing import Any, Dict, Optional
 
-from quantradar.backtest import _FQ_LOCK
+from quantradar.backtest import _FQ_LOCK, normalize_backtest_fq
 from quantradar.audit import collect_audit_env
 from quantradar.snapshot import _to_native, build_snapshot_from_results, write_snapshot_json
 from quantradar.datahub.maintenance import base_lease
@@ -98,15 +98,9 @@ def run_unified_backtest(
     frequency = payload.get("frequency", "day")
     amount = int(payload.get("amount", 100))
     benchmark = payload.get("benchmark")
-    fq = (payload.get("fq") or "none").lower()
+    fq = normalize_backtest_fq(payload.get("fq"), caller="run_unified_backtest")
     extras = payload.get("extras") or {}
     strategy_name = payload.get("strategy_name") or "user_strategy"
-
-    if fq not in ("none", "pre", "qfq"):
-        raise ValueError(
-            f"run_unified_backtest: 不支持的复权方式 fq={fq!r}；"
-            f"支持 none / pre / qfq；不支持后复权撮合"
-        )
 
     # 1) 版本化策略文件（用户源码或内置 Buy&Hold）
     strategy_path = os.path.join(run_dir, "strategy.py")
