@@ -16,7 +16,7 @@ export function DataStatus() {
     try { setData(await getDataHubOverview()); setError(null); }
     catch (e) { setError(String(e)); }
   };
-  useEffect(() => { void refresh(); const id = window.setInterval(refresh, 4000); return () => window.clearInterval(id); }, []);
+  useEffect(() => { void refresh(); if (data?.update?.status !== "RUNNING") return; const id = window.setInterval(refresh, 4000); return () => window.clearInterval(id); }, [data?.update?.status]);
   const action = async (operation: () => Promise<unknown>) => {
     setBusy(true);
     try {
