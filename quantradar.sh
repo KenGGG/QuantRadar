@@ -56,6 +56,17 @@ is_running() {
   [[ -f "$PID_FILE" ]] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null
 }
 
+# A user-level systemd unit is the durable launcher after a host reboot.  If
+# present, never start a competing nohup instance or rely on a transient PID
+# file that systemd does not own.
+is_systemd_managed() {
+  systemctl --user cat quantradar-webui.service >/dev/null 2>&1
+}
+
+systemd_active() {
+  systemctl --user is-active --quiet quantradar-webui.service
+}
+
 # ---- 外部依赖预检（仅警告，不阻断启动） ----
 preflight() {
   if (exec 3<>/dev/tcp/127.0.0.1/3307) 2>/dev/null; then
@@ -82,6 +93,21 @@ load_env() {
 
 # ---- 启动 ----
 do_start() {
+  if is_systemd_managed; then
+    if systemd_active; then
+      echo "[$APP_NAME] systemd 服务已在运行 -> http://$HOST:$PORT"
+      return 0
+    fi
+    echo "[$APP_NAME] 正在通过 systemd 启动 WebUI ..."
+    systemctl --user start quantradar-webui.service
+    sleep 2
+    if systemd_active; then
+      echo "[$APP_NAME] 已启动（systemd 托管） -> http://$HOST:$PORT"
+      return 0
+    fi
+    echo "[$APP_NAME] systemd 启动失败，请执行：systemctl --user status quantradar-webui.service" >&2
+    return 1
+  fi
   if is_running; then
     echo "[$APP_NAME] 已在运行 (PID=$(cat "$PID_FILE")) -> http://$HOST:$PORT"
     return 0
@@ -109,6 +135,16 @@ do_start() {
 
 # ---- 停止 ----
 do_stop() {
+  if is_systemd_managed; then
+    if ! systemd_active; then
+      echo "[$APP_NAME] systemd 服务未运行"
+      return 0
+    fi
+    echo "[$APP_NAME] 正在停止 systemd WebUI 服务 ..."
+    systemctl --user stop quantradar-webui.service
+    echo "[$APP_NAME] 已停止"
+    return 0
+  fi
   if ! is_running; then
     echo "[$APP_NAME] 未在运行（无有效 PID 或无进程）"
     rm -f "$PID_FILE"
@@ -135,6 +171,14 @@ do_stop() {
 
 # ---- 状态 ----
 do_status() {
+  if is_systemd_managed; then
+    if systemd_active; then
+      echo "[$APP_NAME] systemd 服务运行中 -> http://$HOST:$PORT"
+    else
+      echo "[$APP_NAME] systemd 服务未运行"
+    fi
+    return 0
+  fi
   if is_running; then
     echo "[$APP_NAME] 运行中 (PID=$(cat "$PID_FILE")) -> http://$HOST:$PORT"
   else
