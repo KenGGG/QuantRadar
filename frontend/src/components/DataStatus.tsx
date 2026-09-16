@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Collapse, DatePicker, Descriptions, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Collapse, DatePicker, Descriptions, Progress, Space, Table, Tag, Typography } from 'antd';
 import { dataHubJobAction, getDataHubOverview, updateAllData, type DataHubOverview } from '../api';
 
 const labels: Record<string, string> = { IDLE: '未开始', RUNNING: '进行中', UPDATED: '已更新', NO_CHANGE: '无变化', PARTIAL: '部分完成', FAILED: '失败', SOURCE_BLOCKED: '来源受阻', INTERRUPTED: '已中断', PASS: '通过', COMPLETED: '已结束', SKIPPED: '未执行' };
 const reasons: Record<string, string> = { SYMBOL_DATA_ERROR: '估值解析异常', UNKNOWN_EMPTY: '空响应待确认', UNVERIFIED_COVERAGE: '无覆盖证明待核实', QUALITY_FAILURE: '数据校验未通过', FAILED: '采集失败', PENDING: '待处理', RUNNING: '处理中' };
-const fmt = (v: number | undefined) => v == null ? '未统计' : v.toLocaleString();
+const fmt = (v: number | null | undefined) => v == null ? '未统计' : v.toLocaleString();
 
 export function DataStatus() {
   const [data, setData] = useState<DataHubOverview | null>(null);
@@ -16,7 +16,9 @@ export function DataStatus() {
     try { setData(await getDataHubOverview()); setError(null); }
     catch (e) { setError(String(e)); }
   };
-  useEffect(() => { void refresh(); if (data?.update?.status !== "RUNNING") return; const id = window.setInterval(refresh, 4000); return () => window.clearInterval(id); }, [data?.update?.status]);
+  const activities = data?.activities ?? [];
+  const hasRunningActivity = activities.some(activity => activity.status === 'RUNNING');
+  useEffect(() => { void refresh(); if (data?.update?.status !== "RUNNING" && !hasRunningActivity) return; const id = window.setInterval(refresh, 4000); return () => window.clearInterval(id); }, [data?.update?.status, hasRunningActivity]);
   const action = async (operation: () => Promise<unknown>) => {
     setBusy(true);
     try {
@@ -66,6 +68,25 @@ export function DataStatus() {
     <Space style={{ width: '100%', justifyContent: 'space-between' }}><Typography.Title level={4} style={{ margin: 0 }}>数据状态</Typography.Title><Button type="primary" loading={busy} disabled={!data || !!running} onClick={() => action(() => updateAllData())}>更新全部数据</Button></Space>
     {error && <Alert showIcon type="error" message="操作或状态读取失败" description={error} />}
     {notice && <Alert showIcon closable onClose={() => setNotice(null)} type="info" message={notice} />}
+    <Card title="后台数据任务">
+      {activities.length === 0 ? <Typography.Text type="secondary">当前没有后台下载任务</Typography.Text> : <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Typography.Text type="secondary">运行中数据源：{new Set(activities.filter(activity => activity.status === 'RUNNING').map(activity => activity.source_contract_id)).size} · 运行任务：{activities.filter(activity => activity.status === 'RUNNING').length} · 待处理任务：{activities.reduce((sum, activity) => sum + (activity.task_progress.pending ?? 0), 0)}</Typography.Text>
+        {activities.map(activity => <Card key={activity.activity_id} size="small" title={<Space><Typography.Text strong>{activity.label}</Typography.Text><Tag color={activity.status === 'RUNNING' ? 'processing' : activity.status === 'SOURCE_BLOCKED' ? 'warning' : undefined}>{labels[activity.status] ?? activity.status}</Tag></Space>}>
+          <Descriptions size="small" column={{ xs: 1, sm: 2 }}>
+            <Descriptions.Item label="数据源">{activity.source ?? '未声明'}</Descriptions.Item><Descriptions.Item label="接口">{activity.adapter ?? activity.endpoint ?? '未声明'}</Descriptions.Item>
+            <Descriptions.Item label="队列">{activity.queue ?? '—'}</Descriptions.Item><Descriptions.Item label="范围">{activity.range.start && activity.range.end ? `${activity.range.start} 至 ${activity.range.end}` : '未声明'}</Descriptions.Item>
+            <Descriptions.Item label="当前">{activity.current_item ?? '—'}</Descriptions.Item><Descriptions.Item label="最后心跳">{activity.last_heartbeat ? new Date(activity.last_heartbeat).toLocaleString('zh-CN') : '未记录'}</Descriptions.Item>
+          </Descriptions>
+          <Typography.Text>任务进度 {activity.task_progress.percentage == null ? '未统计' : `${activity.task_progress.percentage.toFixed(1)}%`}</Typography.Text>
+          <Progress percent={activity.task_progress.percentage ?? 0} status={activity.status === 'RUNNING' ? 'active' : 'normal'} showInfo={false} />
+          <Typography.Text type="secondary">完成 {fmt(activity.task_progress.completed)} · 待处理 {fmt(activity.task_progress.pending)} · 运行中 {fmt(activity.task_progress.running)} · 来源受限 {fmt(activity.task_progress.source_limited)}</Typography.Text>
+          {activity.coverage_progress && <><Typography.Paragraph style={{ margin: '12px 0 0' }}>数据覆盖 {activity.coverage_progress.percentage == null ? '未统计' : `${activity.coverage_progress.percentage.toFixed(2)}%`}</Typography.Paragraph>
+            <Progress percent={activity.coverage_progress.percentage ?? 0} showInfo={false} />
+            <Typography.Text type="secondary">eligible {fmt(activity.coverage_progress.eligible)} · complete {fmt(activity.coverage_progress.complete)} · partial {fmt(activity.coverage_progress.partial)} · 有效字段 {fmt(activity.coverage_progress.valid_fields)} / {fmt(activity.coverage_progress.expected_fields)}</Typography.Text>
+          </>}
+        </Card>)}
+      </Space>}
+    </Card>
     <Card title="Coverage 与 Qualification">
       <Table rowKey="key" pagination={false} size="middle" scroll={{ x: 1050 }} dataSource={rows} columns={[
         { title: '数据', dataIndex: 'name' },

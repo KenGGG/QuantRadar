@@ -321,6 +321,15 @@ export interface DataHubJob {
   estimated_remaining_seconds?: number | null; governor: Record<string, unknown>;
 }
 export function getDataHubJob(): Promise<DataHubJob> { return httpJson<DataHubJob>("/api/datahub/job"); }
+export interface DataHubActivity {
+  activity_id: string; dataset: string; label: string; source: string | null; source_contract_id: string | null;
+  adapter: string | null; endpoint: string | null; status: string; queue: string | null; mode: string | null;
+  current_item: string | null; current_items: string[]; range: { start: string | null; end: string | null };
+  task_progress: { total: number | null; completed: number | null; pending: number | null; running: number | null; failed: number | null; source_limited: number | null; percentage: number | null };
+  coverage_progress: { eligible: number | null; complete: number | null; partial: number | null; expected_fields: number | null; valid_fields: number | null; missing_fields: number | null; percentage: number | null; qualification: string | null } | null;
+  download: { rows: number | null; processed_items: number | null; rate_per_minute: number | null; elapsed_seconds: number | null; estimated_remaining_seconds: number | null };
+  started_at: string | null; last_heartbeat: string | null; release_id: string | null;
+}
 export interface DataHubOverview {
   release: { release_id: string; base_commit: string; supplemental_commit?: string; published_at: string; datasets: Record<string, DataHubDataset>; source_adapters?: Record<string, string[]>; metadata?: Record<string, unknown> } | null;
   base_coverage: { base_commit: string; datasets: Record<string, DataHubDataset> } | null;
@@ -332,6 +341,7 @@ export interface DataHubOverview {
   base_inventory?: { release_id: string; base_commit: string; domains: Record<string, { state: string; selected_table?: string; reusable_tables?: string[]; coverage?: DataHubDataset }> } | null;
   gap_plan?: { strategy_window: { start: string; end: string }; satisfied_by_base: string[]; unaudited_inventory?: { domain: string; range: { start: string; end: string }; state: string; reason: string; expected_key_contract: string }[]; strategy_gap: { domain: string; range: { start: string; end: string }; state: string; source_contract_id: string }[] } | null;
   work_queue?: { counts: Record<string, Record<string, number>> } | null;
+  activities?: DataHubActivity[];
 }
 export function getDataHubOverview(): Promise<DataHubOverview> { return httpJson<DataHubOverview>('/api/datahub/overview'); }
 export function updateAllData(mode = 'update-all', start?: string, end?: string): Promise<unknown> {

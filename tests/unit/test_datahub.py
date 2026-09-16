@@ -58,7 +58,38 @@ def test_trade_status_coverage_counts_merged_complete_and_partial_securities():
                             {"symbol": "000002.SZ", "trade_date": "2024-01-03", "tradestatus": "1", "is_st": "0"}],
         },
     )
-    assert report["stock_coverage"] == {"eligible": 2, "complete": 1, "partial": 1, "source_limited": 0}
+    assert report["stock_coverage"] == {"eligible": 2, "complete": 1, "partial": 1,
+                                         "source_limited": None, "source_limited_status": "NOT_CLASSIFIED"}
+    compact = build_market_trade_status_coverage_report(
+        records=records, calendar=["2024-01-02", "2024-01-03"], start="2024-01-02", end="2024-01-03",
+        observations_by_symbol={
+            "000001.SZ": [{"symbol": "000001.SZ", "trade_date": "2024-01-02", "tradestatus": "1", "is_st": "0"},
+                            {"symbol": "000001.SZ", "trade_date": "2024-01-03", "tradestatus": "1", "is_st": "0"}],
+            "000002.SZ": [{"symbol": "000002.SZ", "trade_date": "2024-01-02", "tradestatus": "1", "is_st": None},
+                            {"symbol": "000002.SZ", "trade_date": "2024-01-03", "tradestatus": "1", "is_st": "0"}],
+        }, summary_only=True,
+    )
+    assert {key: compact[key] for key in ("expected_fields", "valid_fields", "missing_fields", "stock_coverage")} == {
+        key: report[key] for key in ("expected_fields", "valid_fields", "missing_fields", "stock_coverage")}
+
+
+def test_trade_status_coverage_excludes_pre_window_delisting_and_limits_mid_window_delisting():
+    from quantradar.datahub.service import build_market_trade_status_coverage_report
+
+    report = build_market_trade_status_coverage_report(
+        records=[
+            {"symbol": "000001.SZ", "list_date": "2020-01-01", "delist_date": "2023-12-29", "capabilities": {"trade_status": "SUPPORTED"}},
+            {"symbol": "000002.SZ", "list_date": "2020-01-01", "delist_date": "2024-01-03", "capabilities": {"trade_status": "SUPPORTED"}},
+            {"symbol": "000003.SZ", "list_date": "2024-01-02", "capabilities": {"trade_status": "SUPPORTED"}},
+        ], calendar=["2024-01-02", "2024-01-03", "2024-01-04"], start="2024-01-02", end="2024-01-04",
+        observations_by_symbol={
+            "000002.SZ": [{"symbol": "000002.SZ", "trade_date": "2024-01-02", "tradestatus": "1", "is_st": "0"},
+                            {"symbol": "000002.SZ", "trade_date": "2024-01-03", "tradestatus": "1", "is_st": "0"}],
+            "000003.SZ": [{"symbol": "000003.SZ", "trade_date": day, "tradestatus": "1", "is_st": "0"}
+                            for day in ("2024-01-02", "2024-01-03", "2024-01-04")]},
+    )
+    assert report["stock_coverage"]["eligible"] == 2
+    assert report["stock_coverage"]["complete"] + report["stock_coverage"]["partial"] == 2
 
 
 def test_request_governor_persists_one_retry_and_opens_circuit_across_restart(tmp_path):
@@ -1131,6 +1162,56 @@ def test_datahub_overview_work_queue_excludes_task_evidence():
     })
 
     assert overview == {"counts": {"current": {"PENDING": 2, "COMPLETE": 1}}, "total": 3}
+
+
+def test_datahub_activity_status_keeps_task_and_coverage_progress_distinct():
+    from quantradar.datahub.service import build_datahub_activities
+
+    activities = build_datahub_activities(
+        queue_status={"tasks": [
+            {"domain": "trade_status", "source_contract_id": "baostock-daily-v2", "queue": "current",
+             "status": "RUNNING", "symbols": ["000001.SZ"], "range": {"start": "2026-08-18", "end": "2026-09-14"}},
+            {"domain": "trade_status", "source_contract_id": "baostock-daily-v2", "queue": "current",
+             "status": "PENDING", "symbols": ["000002.SZ"], "range": {"start": "2026-08-18", "end": "2026-09-14"}},
+            {"domain": "valuation", "source_contract_id": "eastmoney-valuation-v1", "queue": "historical",
+             "status": "RUNNING", "symbols": ["600000.SH"], "range": {"start": "2026-01-01", "end": "2026-01-31"}},
+        ]}, update={"status": "RUNNING", "started_at": "start", "heartbeat": "beat"}, job={},
+        coverage={"release_id": "R1", "coverage_ratio": .5582, "qualification": "RAW_RESEARCH",
+                  "expected_fields": 10, "valid_fields": 6, "missing_fields": 4,
+                  "stock_coverage": {"eligible": 2, "complete": 1, "partial": 1}},
+        contracts={"contracts": {
+            "baostock-daily-v2": {"upstream": "BaoStock", "adapter": "baostock.query_history_k_data_plus"},
+            "eastmoney-valuation-v1": {"upstream": "Eastmoney", "adapter": "akshare.stock_value_em"},
+        }},
+    )
+    assert len(activities) == 2
+    status = next(item for item in activities if item["dataset"] == "trade_status")
+    assert status["status"] == "RUNNING"
+    assert status["current_item"] == "000001.SZ"
+    assert status["task_progress"] == {"total": 2, "completed": 0, "pending": 1, "running": 1,
+                                        "failed": None, "source_limited": 0, "percentage": 0.0}
+    assert status["coverage_progress"]["percentage"] == pytest.approx(55.82)
+    valuation = next(item for item in activities if item["dataset"] == "valuation")
+    assert valuation["coverage_progress"] is None
+
+
+def test_datahub_activity_status_returns_no_activity_without_queue_tasks():
+    from quantradar.datahub.service import build_datahub_activities
+    assert build_datahub_activities(queue_status={"tasks": []}, update={}, job={}, coverage=None, contracts={}) == []
+
+
+def test_datahub_activity_status_retains_completed_queue_activity():
+    from quantradar.datahub.service import build_datahub_activities
+    activities = build_datahub_activities(
+        queue_status={"tasks": [{"domain": "trade_status", "source_contract_id": "baostock-daily-v2",
+                                  "queue": "current", "status": "COMPLETE", "symbols": ["000001.SZ"],
+                                  "range": {"start": "2026-08-18", "end": "2026-09-14"}}]},
+        update={"status": "PARTIAL", "finished_at": "finished"}, job={}, coverage=None,
+        contracts={"contracts": {"baostock-daily-v2": {"upstream": "baostock"}}},
+    )
+    assert activities[0]["status"] == "COMPLETED"
+    assert activities[0]["last_heartbeat"] == "finished"
+    assert activities[0]["task_progress"]["completed"] == 1
 
 
 def test_status_maintenance_uses_multiple_fair_batches(tmp_path):

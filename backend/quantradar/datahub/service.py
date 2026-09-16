@@ -157,7 +157,7 @@ def merge_trade_status_observations(base_rows: Iterable[dict[str, Any]], patch_r
 
 def build_market_trade_status_coverage_report(
     *, records: Iterable[dict[str, Any]], calendar: Iterable[str], start: str, end: str,
-    observations_by_symbol: dict[str, Iterable[dict[str, Any]]],
+    observations_by_symbol: dict[str, Iterable[dict[str, Any]]], summary_only: bool = False,
 ) -> dict[str, Any]:
     """Audit only lifecycle-qualified SH/SZ keys against merged observations."""
     from .coverage import CoverageService
@@ -176,7 +176,7 @@ def build_market_trade_status_coverage_report(
             list_date = str(record.get("list_date") or "")[:10]
             if not list_date:
                 lifecycle_unknown.append(symbol)
-            else:
+            elif list_date <= end and str(record.get("delist_date") or end)[:10] >= start:
                 qualified.append((symbol, list_date, str(record.get("delist_date") or end)[:10]))
 
     def partitions():
@@ -187,14 +187,37 @@ def build_market_trade_status_coverage_report(
             ]
             yield expected, observations_by_symbol.get(symbol, [])
 
-    report = CoverageService("baostock-trade-status-v1").audit_partitions(partitions())
-    incomplete = {str(item["symbol"]) for item in report["missing"]}
+    if summary_only:
+        # Use the same expected-key semantics as CoverageService but do not
+        # materialize compressed intervals for a full-history headline.
+        expected_fields = valid_fields = 0
+        partial_symbols: set[str] = set()
+        for expected, actual in partitions():
+            facts = {(str(row.get("symbol")), str(row.get("trade_date"))[:10]): row for row in actual}
+            symbol_partial = False
+            for item in expected:
+                fact = facts.get((str(item["symbol"]), str(item["trade_date"])[:10]), {})
+                for field in item["fields"]:
+                    expected_fields += 1
+                    if fact.get(field) is not None:
+                        valid_fields += 1
+                    else:
+                        symbol_partial = True
+            if symbol_partial and expected:
+                partial_symbols.add(str(expected[0]["symbol"]))
+        report = {"expected_key_contract": "baostock-trade-status-v1", "expected_fields": expected_fields,
+                  "valid_fields": valid_fields, "missing_fields": expected_fields - valid_fields,
+                  "coverage_ratio": valid_fields / expected_fields if expected_fields else None, "missing": []}
+    else:
+        report = CoverageService("baostock-trade-status-v1").audit_partitions(partitions())
+    incomplete = partial_symbols if summary_only else {str(item["symbol"]) for item in report["missing"]}
     return {
         **report,
         "range": {"start": start, "end": end},
         "symbols": {"supported": len(supported), "unsupported": unsupported, "lifecycle_unknown": lifecycle_unknown},
         "stock_coverage": {"eligible": len(qualified), "complete": len(qualified) - len(incomplete),
-                            "partial": len(incomplete), "source_limited": 0},
+                            "partial": len(incomplete), "source_limited": None,
+                            "source_limited_status": "NOT_CLASSIFIED"},
         "qualification": "RAW_RESEARCH" if not lifecycle_unknown else "PARTIAL",
     }
 
@@ -202,6 +225,73 @@ def build_market_trade_status_coverage_report(
 def execution_release_task(task: dict[str, Any], release_id: str) -> dict[str, Any]:
     """Bind a queued inspection to the release visible when its worker starts."""
     return {**task, "release_id": release_id, "planned_release_id": task.get("planned_release_id", task.get("release_id"))}
+
+
+def build_datahub_activities(*, queue_status: dict[str, Any], update: dict[str, Any], job: dict[str, Any],
+                             coverage: dict[str, Any] | None, contracts: dict[str, Any]) -> list[dict[str, Any]]:
+    """Translate durable queue and worker facts into bounded UI activities."""
+    grouped: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for task in queue_status.get("tasks", []):
+        key = (str(task.get("domain") or "unknown"), str(task.get("source_contract_id") or ""), str(task.get("queue") or ""))
+        grouped.setdefault(key, []).append(task)
+    activities = []
+    terminal_done = {"COMPLETE", "SATISFIED"}
+    applicable = {"PENDING", "RUNNING", "COMPLETE", "SATISFIED", "QUARANTINED"}
+    for (domain, contract_id, queue_name), tasks in sorted(grouped.items()):
+        relevant = [task for task in tasks if task.get("status") in applicable]
+        if not relevant:
+            continue
+        states = {state: sum(task.get("status") == state for task in relevant)
+                  for state in ("PENDING", "RUNNING", "COMPLETE", "SATISFIED", "QUARANTINED")}
+        running = [task for task in relevant if task.get("status") == "RUNNING"]
+        contract = (contracts.get("contracts") or {}).get(contract_id, {})
+        completed = states["COMPLETE"] + states["SATISFIED"]
+        total = sum(states.values())
+        if running or update.get("status") == "RUNNING" and domain == "trade_status":
+            status = "RUNNING"
+        elif states["PENDING"]:
+            status = "PENDING"
+        elif states["QUARANTINED"]:
+            status = "SOURCE_BLOCKED"
+        else:
+            status = "COMPLETED"
+        ranges = [task.get("range") or {} for task in relevant]
+        symbols = sorted({str(symbol) for task in running for symbol in task.get("symbols", []) if symbol})
+        activity_coverage = coverage if domain == "trade_status" and queue_name == "current" else None
+        activities.append({
+            "activity_id": f"{domain}:{contract_id}:{queue_name}", "dataset": domain,
+            "label": "ST / 停牌补数" if domain == "trade_status" else domain,
+            "source": ("BaoStock" if contract.get("upstream") == "baostock" else contract.get("upstream")) or None, "source_contract_id": contract_id or None,
+            "adapter": contract.get("adapter") or None, "endpoint": contract.get("upstream") or None,
+            "status": status, "queue": queue_name or None,
+            "mode": "incremental" if queue_name == "current" else "repair",
+            "current_item": symbols[0] if symbols else ("当前批次处理中" if status == "RUNNING" else None),
+            "current_items": symbols,
+            "range": {"start": min((item.get("start") for item in ranges if item.get("start")), default=None),
+                      "end": max((item.get("end") for item in ranges if item.get("end")), default=None)},
+            "task_progress": {"total": total, "completed": completed, "pending": states["PENDING"],
+                              "running": states["RUNNING"], "failed": None,
+                              "source_limited": states["QUARANTINED"],
+                              "percentage": completed / total * 100 if total else None},
+            "coverage_progress": None if activity_coverage is None else {
+                "eligible": activity_coverage.get("stock_coverage", {}).get("eligible"),
+                "complete": activity_coverage.get("stock_coverage", {}).get("complete"),
+                "partial": activity_coverage.get("stock_coverage", {}).get("partial"),
+                "expected_fields": activity_coverage.get("expected_fields"),
+                "valid_fields": activity_coverage.get("valid_fields"),
+                "missing_fields": activity_coverage.get("missing_fields"),
+                "percentage": (activity_coverage.get("coverage_ratio") * 100
+                               if activity_coverage.get("coverage_ratio") is not None else None),
+                "qualification": activity_coverage.get("qualification")},
+            "download": {"rows": job.get("rows_downloaded") if domain == job.get("dataset") else None,
+                         "processed_items": completed,
+                         "rate_per_minute": (job.get("processing_rate") * 60 if domain == job.get("dataset") and job.get("processing_rate") is not None else None),
+                         "elapsed_seconds": job.get("elapsed_seconds") if domain == job.get("dataset") else None,
+                         "estimated_remaining_seconds": job.get("estimated_remaining_seconds") if domain == job.get("dataset") else None},
+            "started_at": update.get("started_at"), "last_heartbeat": update.get("heartbeat") or update.get("finished_at"),
+            "release_id": activity_coverage.get("release_id") if activity_coverage else None,
+        })
+    return activities
 
 
 class JsonlRows:
@@ -260,6 +350,16 @@ class DataHubService:
         self.config = config or load_datahub_config()
         self.releases = ReleaseStore(self.config.release_root)
         self.raw = RawStore(self.config.raw_root)
+
+    def activity_status(self, *, update: dict[str, Any], coverage: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Read existing task, worker and contract records for the overview API."""
+        import yaml
+        from .work_queue import DataHubWorkQueue
+        contract_path = Path(__file__).with_name("source_contracts.yaml")
+        contracts = yaml.safe_load(contract_path.read_text(encoding="utf-8")) or {}
+        queue = DataHubWorkQueue(Path(self.config.supplemental_repo) / "work-queue.json")
+        return build_datahub_activities(queue_status=queue.status(), update=update,
+                                        job=self.job_status(), coverage=coverage, contracts=contracts)
 
     def collect_index_snapshots(self, *, now: datetime | None = None) -> dict[str, Any]:
         """Collect current V3 index evidence only when the fixed SSE calendar allows it."""
@@ -405,7 +505,7 @@ class DataHubService:
                 "queue_status": queue.status()["counts"]}
 
     def market_trade_status_coverage_report(self, start: str, end: str, release_id: str | None = None,
-                                            *, partition_size: int = 25) -> dict[str, Any]:
+                                            *, partition_size: int = 25, summary_only: bool = False) -> dict[str, Any]:
         """Read a paired release in bounded symbol partitions and never enqueue work."""
         from ..providers.investment_data.symbols import normalize_stock_symbol
 
@@ -421,7 +521,10 @@ class DataHubService:
         finally:
             base.close()
         qualified = [row for row in records if (row.get("capabilities") or {}).get("trade_status") == "SUPPORTED" and row.get("list_date")]
+        if summary_only:
+            return self._market_trade_status_summary_only(scope, qualified, calendar, start, end)
         totals = {"expected_fields": 0, "valid_fields": 0, "missing_fields": 0}
+        stock_totals = {"eligible": 0, "complete": 0, "partial": 0}
         missing: list[dict[str, Any]] = []
         for offset in range(0, len(qualified), partition_size):
             batch = qualified[offset:offset + partition_size]
@@ -451,18 +554,93 @@ class DataHubService:
                     observed = {symbol: merge_trade_status_observations(observed[symbol], patches[symbol]) for symbol in external}
                 finally:
                     patch.close()
-            report = build_market_trade_status_coverage_report(records=batch, calendar=calendar, start=start, end=end, observations_by_symbol=observed)
+            report = build_market_trade_status_coverage_report(records=batch, calendar=calendar, start=start, end=end,
+                                                                observations_by_symbol=observed, summary_only=summary_only)
             for field in totals:
                 totals[field] += report[field]
-            missing.extend(report["missing"])
-        summary = build_market_trade_status_coverage_report(records=records, calendar=[], start=start, end=end, observations_by_symbol={})
+            for field in stock_totals:
+                stock_totals[field] += int(report["stock_coverage"][field])
+            if not summary_only:
+                missing.extend(report["missing"])
+        summary = build_market_trade_status_coverage_report(records=records, calendar=[], start=start, end=end,
+                                                             observations_by_symbol={}, summary_only=summary_only)
         incomplete = {str(item["symbol"]) for item in missing}
-        eligible = len(qualified)
+        eligible = stock_totals["eligible"]
         return {**summary, **totals, "coverage_ratio": totals["valid_fields"] / totals["expected_fields"] if totals["expected_fields"] else None,
                 "missing": missing, "release_id": scope["release_id"], "base_commit": scope["base_commit"],
                 "supplemental_commit": scope.get("supplemental_commit"),
-                "stock_coverage": {"eligible": eligible, "complete": eligible - len(incomplete),
-                                   "partial": len(incomplete), "source_limited": 0},
+                "stock_coverage": {"eligible": eligible,
+                                   "complete": stock_totals["complete"] if summary_only else eligible - len(incomplete),
+                                   "partial": stock_totals["partial"] if summary_only else len(incomplete), "source_limited": None,
+                                   "source_limited_status": "NOT_CLASSIFIED"},
+                "checked_at": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()}
+
+    def _market_trade_status_summary_only(self, scope: dict[str, Any], records: list[dict[str, Any]],
+                                          calendar: list[str], start: str, end: str) -> dict[str, Any]:
+        """Low-memory equivalent of the coverage headline, without row detail.
+
+        Published status patches may only fill a base null field, so aggregate
+        valid-field counts are additive under the same release contract used by
+        the detailed CoverageService path.  Expected counts are derived from
+        the fixed trading calendar and lifecycle intersection, never row count.
+        """
+        from bisect import bisect_left, bisect_right
+        from ..providers.investment_data.symbols import normalize_stock_symbol
+
+        days = [str(day)[:10] for day in calendar if start <= str(day)[:10] <= end]
+        expected: dict[str, int] = {}
+        for row in records:
+            symbol = str(row["symbol"])
+            left = max(str(row.get("list_date") or "")[:10], start)
+            right = min(str(row.get("delist_date") or end)[:10], end)
+            count = bisect_right(days, right) - bisect_left(days, left)
+            if count > 0:
+                expected[symbol] = count
+        base_valid = {symbol: [0, 0] for symbol in expected}
+        patch_valid = {symbol: [0, 0] for symbol in expected}
+        for offset in range(0, len(expected), 500):
+            external = list(expected)[offset:offset + 500]
+            internal = [normalize_stock_symbol(symbol) for symbol in external]
+            marks = ",".join(["%s"] * len(internal))
+            lookup = dict(zip(internal, external))
+            connection = pymysql.connect(host=self.config.base_host, port=self.config.base_port, user=self.config.user,
+                password=self.config.password, database=f"{self.config.base_database}/{scope['base_commit']}",
+                connect_timeout=self.config.connect_timeout, read_timeout=self.config.read_timeout, charset="utf8mb4", cursorclass=DictCursor)
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT symbol, SUM(tradestatus IS NOT NULL) AS tradestatus_valid, SUM(is_st IS NOT NULL) AS is_st_valid FROM bao_a_stock_eod_info WHERE symbol IN (" + marks + ") AND tradedate >= %s AND tradedate <= %s GROUP BY symbol", (*internal, start, end))
+                    for row in cursor.fetchall():
+                        base_valid[lookup[str(row["symbol"])]] = [int(row["tradestatus_valid"] or 0), int(row["is_st_valid"] or 0)]
+            finally:
+                connection.close()
+            if scope.get("supplemental_commit"):
+                connection = self._connection(f"{self.config.supplemental_database}/{scope['supplemental_commit']}")
+                try:
+                    with connection.cursor() as cursor:
+                        cursor.execute("SELECT symbol, SUM(tradestatus IS NOT NULL) AS tradestatus_valid, SUM(is_st IS NOT NULL) AS is_st_valid FROM qr_trade_status_daily WHERE symbol IN (" + marks + ") AND trade_date >= %s AND trade_date <= %s GROUP BY symbol", (*external, start, end))
+                        for row in cursor.fetchall():
+                            patch_valid[str(row["symbol"])] = [int(row["tradestatus_valid"] or 0), int(row["is_st_valid"] or 0)]
+                finally:
+                    connection.close()
+        valid_fields = complete = partial = 0
+        for symbol, sessions in expected.items():
+            base_counts, patch_counts = base_valid[symbol], patch_valid[symbol]
+            field_counts = [min(sessions, base_counts[index] + patch_counts[index]) for index in range(2)]
+            valid_fields += sum(field_counts)
+            if field_counts == [sessions, sessions]:
+                complete += 1
+            else:
+                partial += 1
+        expected_fields = sum(expected.values()) * 2
+        return {"expected_key_contract": "baostock-trade-status-v1", "expected_fields": expected_fields,
+                "valid_fields": valid_fields, "missing_fields": expected_fields - valid_fields,
+                "coverage_ratio": valid_fields / expected_fields if expected_fields else None, "missing": [],
+                "range": {"start": start, "end": end},
+                "symbols": {"supported": len(records), "unsupported": [], "lifecycle_unknown": []},
+                "stock_coverage": {"eligible": len(expected), "complete": complete, "partial": partial,
+                                   "source_limited": None, "source_limited_status": "NOT_CLASSIFIED"},
+                "qualification": "RAW_RESEARCH", "release_id": scope["release_id"],
+                "base_commit": scope["base_commit"], "supplemental_commit": scope.get("supplemental_commit"),
                 "checked_at": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()}
 
     def reaudit_market_status_task(self, task: dict[str, Any]) -> dict[str, Any]:

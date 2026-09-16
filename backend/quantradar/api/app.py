@@ -47,6 +47,11 @@ _SNAPSHOT_DIR = os.environ.get(
     os.path.join(tempfile.gettempdir(), "quantradar_snapshots"),
 )
 
+# The activity panel is polled while workers run.  Coverage is a fixed-release
+# read and may be expensive, so retain the one real summary for its release and
+# window instead of recomputing it on every four-second UI refresh.
+_ACTIVITY_COVERAGE_CACHE: dict[tuple[str, str, str], dict[str, Any]] = {}
+
 
 def _research_store():
     from quantradar.research.config import ResearchSettings
@@ -418,6 +423,29 @@ def _work_queue_overview(status: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _activity_trade_status_coverage(service, manifest: Dict[str, Any] | None, update: Dict[str, Any]) -> Dict[str, Any] | None:
+    stage = (update.get('stages') or {}).get('trade_status') or {}
+    start, end = stage.get('start'), stage.get('end')
+    if not start or not end:
+        # A newly launched worker has not written its first stage heartbeat.
+        # Its current queue already contains the real correction windows.
+        from quantradar.datahub.work_queue import DataHubWorkQueue
+        tasks = [task for task in DataHubWorkQueue(Path(service.config.supplemental_repo) / 'work-queue.json').status().get('tasks', [])
+                 if task.get('queue') == 'current' and task.get('domain') == 'trade_status'
+                 and task.get('status') in {'PENDING', 'RUNNING', 'COMPLETE', 'SATISFIED', 'QUARANTINED'}]
+        ranges = [task.get('range') or {} for task in tasks]
+        start = min((item.get('start') for item in ranges if item.get('start')), default=None)
+        end = max((item.get('end') for item in ranges if item.get('end')), default=None)
+    release_id = (manifest or {}).get('release_id')
+    if not release_id or not start or not end:
+        return None
+    key = (str(release_id), str(start), str(end))
+    if key not in _ACTIVITY_COVERAGE_CACHE:
+        _ACTIVITY_COVERAGE_CACHE[key] = service.market_trade_status_coverage_report(
+            start=str(start), end=str(end), release_id=str(release_id), summary_only=True)
+    return _ACTIVITY_COVERAGE_CACHE[key]
+
+
 @app.get("/api/datahub/status")
 def datahub_status() -> Dict[str, Any]:
     from quantradar.datahub.service import DataHubService
@@ -445,9 +473,11 @@ def datahub_overview() -> Dict[str, Any]:
         manifest = None
     candidate = saved('candidate-check.json')
     base_coverage = saved('base-coverage.json')
+    update = DailyUpdate(service).status()
+    coverage = _activity_trade_status_coverage(service, manifest, update)
     return {'release': _overview_release(manifest), 'qualification': _research_qualification(manifest), 'base_coverage': base_coverage, 'data_sources': _overview_data_sources(manifest, base_coverage), 'base_inventory': saved('base_inventory.json'), 'gap_plan': saved('gap_plan.json'),
             'work_queue': _work_queue_overview(DataHubWorkQueue(root / 'work-queue.json').status()),
-            'update': DailyUpdate(service).status(), 'job': service.job_status(),
+            'update': update, 'job': service.job_status(), 'activities': service.activity_status(update=update, coverage=coverage),
             'candidate': {k: candidate[k] for k in ('candidate_id', 'quality', 'coverage', 'row_count')} if candidate else None,
             'issues': _candidate_issues(candidate, include_symbols=False)}
 
