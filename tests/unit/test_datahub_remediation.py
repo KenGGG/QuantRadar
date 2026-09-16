@@ -403,3 +403,48 @@ def test_factorlab_summary_counts_only_computed_items(monkeypatch):
     assert summary["completed"] == 1
     assert summary["researcher_state"] == "AWAITING_RESEARCHER_SELECTION"
     assert summary["items"][1]["missing_fields"] == ["indclass.sector"]
+
+
+def test_collector_locks_are_source_scoped_while_publication_is_global(tmp_path):
+    from quantradar.config import DataHubConfig
+    from quantradar.datahub.service import DataHubService
+
+    service = DataHubService(DataHubConfig(supplemental_repo=str(tmp_path), release_root=str(tmp_path / 'releases')))
+    with service._collector_lock('baostock'):
+        with service._collector_lock('eastmoney'):
+            pass
+        with pytest.raises(RuntimeError, match='ALREADY_RUNNING'):
+            with service._collector_lock('baostock'):
+                pass
+    with service._publish_lock():
+        with pytest.raises(RuntimeError, match='PUBLISH_IN_PROGRESS'):
+            with service._publish_lock():
+                pass
+
+
+def test_daily_start_does_not_use_valuation_worker_as_a_baostock_blocker(tmp_path, monkeypatch):
+    import os
+    from types import SimpleNamespace
+    from quantradar.datahub.daily import DailyUpdate
+    from quantradar.datahub import daily
+
+    launches = []
+    monkeypatch.setattr(daily.subprocess, 'Popen', lambda *args, **kwargs: launches.append(args) or SimpleNamespace(pid=os.getpid()))
+    service = SimpleNamespace(config=SimpleNamespace(supplemental_repo=str(tmp_path)), job_status=lambda: {'worker_alive': True})
+    assert DailyUpdate(service).start('status')['status'] == 'RUNNING'
+    assert len(launches) == 1
+
+
+def test_staged_work_waits_for_publication_and_can_be_reclaimed_without_source_retry(tmp_path):
+    from quantradar.datahub.work_queue import DataHubWorkQueue
+
+    queue = DataHubWorkQueue(tmp_path / 'queue.json')
+    task = {'source_contract_id': 'baostock-daily-v2', 'expected_key_contract': 'status-v1',
+            'domain': 'trade_status', 'fields': ['tradestatus', 'is_st'], 'symbols': ['000001.SZ'],
+            'range': {'start': '2026-09-01', 'end': '2026-09-01'}, 'gap_reason': 'missing', 'gap_fingerprint': 'x'}
+    record = queue.enqueue('current', task)['task']
+    claimed = queue.claim_matching('current', domain='trade_status', limit=1)[0]
+    queue.wait_for_publish(claimed['task_id'], evidence={'stage_path': '/tmp/status.jsonl'})
+    waiting = queue.claim_waiting_publish('current', domain='trade_status', limit=1)
+    assert waiting[0]['task_id'] == record['task_id']
+    assert queue.status()['counts']['current']['PUBLISHING'] == 1

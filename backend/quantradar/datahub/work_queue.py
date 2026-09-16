@@ -12,6 +12,8 @@ from .store import _atomic_json
 
 QUEUES = ("current", "strategy", "historical")
 TERMINAL = {"COMPLETE", "QUARANTINED", "BLOCKED", "SATISFIED", "OBSOLETE"}
+WAITING_PUBLISH = "WAITING_PUBLISH"
+PUBLISHING = "PUBLISHING"
 
 
 class DataHubWorkQueue:
@@ -191,6 +193,30 @@ class DataHubWorkQueue:
             self._save(data)
         return [dict(task) for task in candidates]
 
+    def claim_waiting_publish(self, queue: str, *, domain: str, limit: int) -> list[dict[str, Any]]:
+        """Resume durable staged work without repeating its upstream request."""
+        data = self._load()
+        candidates = [task for task in data["tasks"].values()
+                      if task.get("queue") == queue and task.get("domain") == domain
+                      and task.get("status") == WAITING_PUBLISH][:limit]
+        now = datetime.now(timezone.utc).isoformat()
+        for task in candidates:
+            task.update(status=PUBLISHING, updated_at=now)
+        if candidates:
+            self._save(data)
+        return [dict(task) for task in candidates]
+
+    def wait_for_publish(self, task_id: str, *, evidence: dict[str, Any]) -> dict[str, Any]:
+        data = self._load()
+        task = data["tasks"].get(task_id)
+        if task is None:
+            raise KeyError(task_id)
+        if task.get("status") not in {"RUNNING", PUBLISHING}:
+            raise ValueError("only active task can wait for publication")
+        task.update(status=WAITING_PUBLISH, updated_at=datetime.now(timezone.utc).isoformat(), publication=evidence)
+        self._save(data)
+        return {"status": WAITING_PUBLISH, "task": task}
+
     def recover_running(self, queue: str, *, domain: str, evidence: dict[str, Any]) -> int:
         """Return abandoned domain work to pending before its next exclusive run."""
         if queue not in QUEUES:
@@ -224,8 +250,8 @@ class DataHubWorkQueue:
         task = data["tasks"].get(task_id)
         if task is None:
             raise KeyError(task_id)
-        if task.get("status") != "RUNNING":
-            raise ValueError("only a running task can be deferred")
+        if task.get("status") not in {"RUNNING", PUBLISHING}:
+            raise ValueError("only an active task can be deferred")
         now = datetime.now(timezone.utc)
         # Retry later failures without letting one unavailable source monopolize
         # the oldest-first queue.  The audit trail retains both the cause and
@@ -241,7 +267,7 @@ class DataHubWorkQueue:
 
     def status(self) -> dict[str, Any]:
         data = self._load()
-        counts = {queue: {state: 0 for state in ("PENDING", "RUNNING", *sorted(TERMINAL))} for queue in QUEUES}
+        counts = {queue: {state: 0 for state in ("PENDING", "RUNNING", WAITING_PUBLISH, PUBLISHING, *sorted(TERMINAL))} for queue in QUEUES}
         for task in data["tasks"].values():
             counts[task["queue"]].setdefault(task["status"], 0)
             counts[task["queue"]][task["status"]] += 1

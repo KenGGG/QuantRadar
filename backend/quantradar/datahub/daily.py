@@ -107,7 +107,7 @@ class DailyUpdate:
         with (self.root / 'daily-launch.lock').open('a+') as lock:
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
             previous = self.status()
-            if previous['status'] == 'RUNNING' or self.service.job_status()['worker_alive']:
+            if previous['status'] == 'RUNNING':
                 return {'status': 'ALREADY_RUNNING', 'job': previous}
             if previous.get('job_id'):
                 _atomic_json(self.root / 'updates' / (previous['job_id'] + '.json'), previous)
@@ -224,7 +224,7 @@ class DailyUpdate:
                     mark['last_success_at'] = state['heartbeat']
                 _atomic_json(path, marks)
         try:
-            with self.service._updater_lock():
+            with self.service._collector_lock("baostock"):
                 record('base', {'status': 'RUNNING'})
                 base = self.base_sync() if mode in ('update-all', 'base-sync', 'status') else {'status': 'NO_CHANGE', 'commit_hash': self.service._base_commit()}
                 record('base', base)

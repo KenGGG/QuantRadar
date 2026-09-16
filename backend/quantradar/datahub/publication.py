@@ -4,6 +4,8 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from functools import wraps
+from contextlib import nullcontext
 from datetime import date
 from pathlib import Path
 
@@ -16,12 +18,23 @@ from .index_snapshots import validate_index_snapshot_candidate
 PUBLICATION_POLICY = 'canonical-valuation-base-lifecycle-units-v3'
 
 
+def serialized_publication(func):
+    """Keep Dolt mutation and release switching single-writer across collectors."""
+    @wraps(func)
+    def wrapped(service, *args, **kwargs):
+        lock = service._publish_lock() if hasattr(service, "_publish_lock") else nullcontext()
+        with lock:
+            return func(service, *args, **kwargs)
+    return wrapped
+
+
 def candidate_branch(prefix: str, identity: str, base_commit: str) -> str:
     """Bind reusable candidate branches to the release lineage they extend."""
     baseline = hashlib.sha256(str(base_commit).encode()).hexdigest()[:12]
     return f"candidate_{prefix}_{identity}_{baseline}"
 
 
+@serialized_publication
 def publish_index_snapshot(service, version: dict, *, constituents: list[dict], weights: list[dict],
                            sw_components: list[dict]) -> dict:
     """Publish one validated V3 snapshot on an isolated supplemental branch."""
@@ -215,6 +228,7 @@ def _market_cap_stage_rows(stage_path: Path):
             yield row
 
 
+@serialized_publication
 def publish_market_cap_stage(service, stage_path: Path) -> dict:
     """Publish hash-verified staged total market cap on an isolated Dolt branch."""
     stage_path = Path(stage_path)
@@ -276,6 +290,7 @@ def _etf_daily_stage_rows(stage_path: Path):
             yield row
 
 
+@serialized_publication
 def publish_etf_daily_stage(service, stage_path: Path) -> dict:
     """Publish unadjusted, unit-qualified ETF daily candidates immutably."""
     stage_path = Path(stage_path)
@@ -337,6 +352,7 @@ def _etf_announcement_stage_rows(stage_path: Path):
             yield row
 
 
+@serialized_publication
 def publish_etf_announcement_stage(service, stage_path: Path) -> dict:
     """Publish announcement-directory evidence without inventing event terms."""
     stage_path = Path(stage_path); digest = hashlib.sha256(); rows = 0
@@ -391,6 +407,7 @@ def _etf_master_stage_rows(stage_path: Path):
         yield row
 
 
+@serialized_publication
 def publish_etf_master_stage(service, stage_path: Path) -> dict:
     stage_path=Path(stage_path); rows=list(_etf_master_stage_rows(stage_path))
     if len(rows) != 10: raise ValueError('ETF master candidate must cover fixed ten-symbol scope')
@@ -417,6 +434,7 @@ def publish_etf_master_stage(service, stage_path: Path) -> dict:
     return {'status':'PARTIAL','release_id':manifest['release_id'],'supplemental_commit':commit,'rows':10,'validation':{'status':'PASS','stage_sha256':digest}}
 
 
+@serialized_publication
 def publish_etf_corporate_action_stage(service, stage_path: Path) -> dict:
     rows=[json.loads(line) for line in Path(stage_path).read_text(encoding='utf-8').splitlines()]
     if not rows: raise ValueError('ETF corporate-action candidate is empty')
@@ -460,6 +478,7 @@ def publish_etf_corporate_action_stage(service, stage_path: Path) -> dict:
     return {'status':'PARTIAL','release_id':manifest['release_id'],'supplemental_commit':commit,'rows':len(rows),'validation':{'status':'PASS','stage_sha256':digest}}
 
 
+@serialized_publication
 def publish_etf_trading_rule_stage(service, stage_path: Path) -> dict:
     """Publish only exchange-rule facts; incomplete per-fund fields remain explicit."""
     rows=[json.loads(line) for line in Path(stage_path).read_text(encoding='utf-8').splitlines() if line.strip()]
@@ -494,6 +513,7 @@ def publish_etf_trading_rule_stage(service, stage_path: Path) -> dict:
     return {'status':'PARTIAL','release_id':manifest['release_id'],'supplemental_commit':commit,'rows':len(rows),'validation':{'status':'PASS','stage_sha256':digest}}
 
 
+@serialized_publication
 def publish_security_lifecycle(service, rows: list[dict]) -> dict:
     """Publish the lifecycle master used by every fixed-release reader."""
     required = ("symbol", "list_date", "status", "source", "raw_sha256", "adapter_version", "fetched_at", "pit_status")
@@ -549,6 +569,7 @@ def publish_security_lifecycle(service, rows: list[dict]) -> dict:
 
 
 
+@serialized_publication
 def publish_trade_status_patch(service, rows: list[dict]) -> dict:
     """Publish a validated, additive status patch on an isolated Dolt branch."""
     check = validate_trade_status_patch(rows)
@@ -603,6 +624,7 @@ def publish_trade_status_patch(service, rows: list[dict]) -> dict:
     return {"status": "PARTIAL", "release_id": manifest["release_id"], "supplemental_commit": commit, "rows": len(rows), "validation": {**check, "base_gap": base_gap}}
 
 
+@serialized_publication
 def publish_price_patch(service, rows: list[dict]) -> dict:
     """Publish an additive raw-price patch; adjusted price remains unavailable."""
     check = validate_price_patch(rows)
@@ -660,6 +682,7 @@ def checked_rows(root, candidate, symbols=None):
             yield json.loads(line)
 
 
+@serialized_publication
 def publish_candidate(service, candidate, progress=None):
     if candidate['policy'] != POLICY or candidate['quality'] != 'PASS' or not candidate['accepted']:
         raise ValueError('candidate quality failed')
@@ -755,6 +778,7 @@ def publish_candidate(service, candidate, progress=None):
     return {'status': 'PARTIAL' if candidate['isolated'] else 'UPDATED', 'release_id': manifest['release_id'], 'base_commit': manifest['base_commit'], 'supplemental_commit': commit}
 
 
+@serialized_publication
 def publish_base_only(service, base_commit, reason):
     """Base availability must not depend on missing/frozen supplemental records."""
     try:

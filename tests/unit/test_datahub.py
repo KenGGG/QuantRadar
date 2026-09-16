@@ -1281,3 +1281,20 @@ def test_datahub_gap_ledger_csv_keeps_audit_and_candidate_records():
 
     assert "missing_field,R1,trade_status,AUDITED,000001.SZ,is_st,2024-01-02,2024-01-03,status-v1" in content
     assert "600000.SH" in content and "PARSE_ERROR" in content
+
+
+def test_datahub_activity_status_exposes_eastmoney_collector_without_a_queue_task():
+    from quantradar.datahub.service import build_datahub_activities
+
+    activities = build_datahub_activities(
+        queue_status={"tasks": []}, update={},
+        job={"dataset": "valuation_daily", "status": "RUNNING", "total_shards": 10,
+             "processed_shards": 2, "counts": {"pending": 7, "running": 1, "failed": 0},
+             "progress_percentage": 20., "current_shard": "600000.SH", "last_heartbeat": "now",
+             "rows_downloaded": 4, "processing_rate": 1., "elapsed_seconds": 2., "estimated_remaining_seconds": 8.},
+        coverage=None, contracts={},
+    )
+    assert len(activities) == 1
+    assert activities[0]["source"] == "Eastmoney"
+    assert activities[0]["status"] == "RUNNING"
+    assert activities[0]["current_item"] == "600000.SH"

@@ -1,7 +1,7 @@
 # QuantRadar Active Phase
 
 **Milestone:** `DATA_PRACTICALIZATION_CLOSEOUT`
-**Active Goal:** `PRACTICALIZATION_SW_INDUSTRY_RESEARCH`
+**Active Goal:** `PRACTICALIZATION_CONCURRENT_SOURCE_COLLECTORS`
 **Status:** PASSED
 
 ## Scope
@@ -29,6 +29,8 @@
 审查第一批（F01–F03）已通过：局部估值发布继承既有 manifest 域与 source adapters，且不再清理非基础生命周期；BaoStock 行情补丁可替换日历空占位并在公共转换前归一单位；状态补丁按字段填补基础库空值而保护有效值。随后修复已覆盖生命周期发布与日常采集、队列退避/合同身份/多批公平推进、固定版本字段台账、行业层级资格、FactorLab 逐项摘要及轮询、候选分支基线、收益事件阻塞和同步/异步价格模式契约。它们均已完成相应的定向单测或前端构建；尚未作为本 Active Goal 的真实 release 验收结论。
 
 **SW 行业普通研究开放 — PASSED.** 固定 release `R68844b1e324c7969` 的已发布六位历史申万归属现在可供普通策略和 FactorLab 生成三级研究分组，资格为 `SW_RESEARCH_APPROX`；严格历史分类版本仍为 `SW_PIT_STRICT = BLOCKED`。25 只股票的定向烟测中 #1、#58、#59 已计算，#48 为公式合法空值而非输入阻塞。见 [行业研究烟测](acceptance/sw-industry-research-smoke.md)。
+
+**并发来源采集 — PASSED.** BaoStock 状态采集与 Eastmoney 估值采集使用独立 collector locks、PID、heartbeat、journal 和 staging；Supplemental Dolt 写入、commit 与 release publication 统一串行于 `datahub-publish.lock`。暂存任务遇发布锁进入 `WAITING_PUBLISH` 并复用 stage，不重新访问上游。两个 collector 已同时在真实环境启动；当前 Supplemental Dolt 状态干净且固定 release 可解析。见 [并发采集收据](acceptance/concurrent-source-collectors.md)。
 
 **Post-close contract alignment — PASSED.** 随后完成了 V3 P0 的有限契约收尾：财务读取明确映射版本和 PIT 观察边界，指数修订链按来源隔离，财务不可变写入拒绝同键冲突；没有增加数据域或研究目标。见 [收尾记录](acceptance/datahub-v3/p0-contract-closure.md)。
 

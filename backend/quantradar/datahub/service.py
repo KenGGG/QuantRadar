@@ -236,18 +236,22 @@ def build_datahub_activities(*, queue_status: dict[str, Any], update: dict[str, 
         grouped.setdefault(key, []).append(task)
     activities = []
     terminal_done = {"COMPLETE", "SATISFIED"}
-    applicable = {"PENDING", "RUNNING", "COMPLETE", "SATISFIED", "QUARANTINED"}
+    applicable = {"PENDING", "RUNNING", "WAITING_PUBLISH", "PUBLISHING", "COMPLETE", "SATISFIED", "QUARANTINED"}
     for (domain, contract_id, queue_name), tasks in sorted(grouped.items()):
         relevant = [task for task in tasks if task.get("status") in applicable]
         if not relevant:
             continue
         states = {state: sum(task.get("status") == state for task in relevant)
-                  for state in ("PENDING", "RUNNING", "COMPLETE", "SATISFIED", "QUARANTINED")}
+                  for state in ("PENDING", "RUNNING", "WAITING_PUBLISH", "PUBLISHING", "COMPLETE", "SATISFIED", "QUARANTINED")}
         running = [task for task in relevant if task.get("status") == "RUNNING"]
         contract = (contracts.get("contracts") or {}).get(contract_id, {})
         completed = states["COMPLETE"] + states["SATISFIED"]
         total = sum(states.values())
-        if running or update.get("status") == "RUNNING" and domain == "trade_status":
+        if states["PUBLISHING"]:
+            status = "PUBLISHING"
+        elif states["WAITING_PUBLISH"]:
+            status = "WAITING_PUBLISH"
+        elif running or update.get("status") == "RUNNING" and domain == "trade_status":
             status = "RUNNING"
         elif states["PENDING"]:
             status = "PENDING"
@@ -270,7 +274,7 @@ def build_datahub_activities(*, queue_status: dict[str, Any], update: dict[str, 
             "range": {"start": min((item.get("start") for item in ranges if item.get("start")), default=None),
                       "end": max((item.get("end") for item in ranges if item.get("end")), default=None)},
             "task_progress": {"total": total, "completed": completed, "pending": states["PENDING"],
-                              "running": states["RUNNING"], "failed": None,
+                              "running": states["RUNNING"] + states["PUBLISHING"], "failed": None,
                               "source_limited": states["QUARANTINED"],
                               "percentage": completed / total * 100 if total else None},
             "coverage_progress": None if activity_coverage is None else {
@@ -290,6 +294,25 @@ def build_datahub_activities(*, queue_status: dict[str, Any], update: dict[str, 
                          "estimated_remaining_seconds": job.get("estimated_remaining_seconds") if domain == job.get("dataset") else None},
             "started_at": update.get("started_at"), "last_heartbeat": update.get("heartbeat") or update.get("finished_at"),
             "release_id": activity_coverage.get("release_id") if activity_coverage else None,
+        })
+    if job.get("dataset") == "valuation_daily" and job.get("status") in {"RUNNING", "WAITING_PUBLISH"}:
+        total = int(job.get("total_shards") or 0)
+        processed = int(job.get("processed_shards") or 0)
+        activities.append({
+            "activity_id": "valuation_daily:eastmoney-valuation-v1", "dataset": "valuation_daily",
+            "label": "估值采集", "source": "Eastmoney", "source_contract_id": "eastmoney-valuation-v1",
+            "adapter": "akshare.stock_value_em", "endpoint": "valuation", "status": str(job["status"]),
+            "queue": None, "mode": "incremental", "current_item": job.get("current_shard"),
+            "current_items": [job["current_shard"]] if job.get("current_shard") else [],
+            "range": {"start": None, "end": None},
+            "task_progress": {"total": total, "completed": processed, "pending": (job.get("counts") or {}).get("pending"),
+                              "running": (job.get("counts") or {}).get("running"), "failed": (job.get("counts") or {}).get("failed"),
+                              "source_limited": None, "percentage": job.get("progress_percentage")},
+            "coverage_progress": None,
+            "download": {"rows": job.get("rows_downloaded"), "processed_items": processed,
+                         "rate_per_minute": (job.get("processing_rate") or 0) * 60,
+                         "elapsed_seconds": job.get("elapsed_seconds"), "estimated_remaining_seconds": job.get("estimated_remaining_seconds")},
+            "started_at": None, "last_heartbeat": job.get("last_heartbeat"), "release_id": None,
         })
     return activities
 
@@ -690,14 +713,23 @@ class DataHubService:
         queue = DataHubWorkQueue(Path(self.config.supplemental_repo) / "work-queue.json")
         outcomes: list[dict[str, Any]] = []
         staged: list[tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]] = []
-        lock = self._updater_lock() if acquire_lock else nullcontext()
+        lock = self._collector_lock("baostock") if acquire_lock else nullcontext()
         with lock:
             recovered = queue.recover_running(queue_name, domain="trade_status", evidence={
                 "recovery": "previous worker ended before terminal outcome; coverage must be re-audited"})
-            tasks = queue.claim_matching(queue_name, domain="trade_status", limit=limit)
+            waiting = queue.claim_waiting_publish(queue_name, domain="trade_status", limit=limit)
+            tasks = queue.claim_matching(queue_name, domain="trade_status", limit=max(1, limit - len(waiting)))
             execution_release = self.releases.current()["release_id"]
             adapter = BaostockAdapter(host=self.config.baostock_host)
             source_work: dict[tuple[str, str, str], tuple[dict[str, Any], dict[str, Any]]] = {}
+            for task in waiting:
+                path = Path((task.get("publication") or {}).get("stage_path") or "")
+                if not path.is_file():
+                    queue.defer(task["task_id"], evidence={"publication_error": "staged status file is unavailable"})
+                    continue
+                rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+                staged.append((task, {"evidence": task.get("publication") or {}}, rows))
+                outcomes.append({"task_id": task["task_id"], "status": "PUBLISHING", "stage_path": str(path), "rows": len(rows)})
             for task in tasks:
                 audit_task = execution_release_task(task, execution_release)
                 try:
@@ -764,9 +796,16 @@ class DataHubService:
                 rows = [row for _, _, candidates in staged for row in candidates]
                 publication = publish_trade_status_patch(self, rows)
             except Exception as exc:
-                for task, audit, _ in staged:
-                    queue.defer(task["task_id"], evidence={**audit["evidence"], "publication_error": str(exc)})
-                return {"recovered": recovered, "claimed": len(tasks), "outcomes": outcomes, "published": {"status": "DEFERRED", "error": str(exc)}}
+                waiting_status = "WAITING_PUBLISH" if str(exc) == "PUBLISH_IN_PROGRESS" else "PENDING"
+                for task, audit, rows in staged:
+                    evidence = {**audit.get("evidence", {}), "publication_error": str(exc),
+                                "stage_path": str(Path(self.config.supplemental_repo) / "staging" / "market-trade-status" / f"{task['task_id']}.jsonl"),
+                                "rows": len(rows)}
+                    if waiting_status == "WAITING_PUBLISH":
+                        queue.wait_for_publish(task["task_id"], evidence=evidence)
+                    else:
+                        queue.defer(task["task_id"], evidence=evidence)
+                return {"recovered": recovered, "claimed": len(tasks), "outcomes": outcomes, "published": {"status": waiting_status, "error": str(exc)}}
             for task, audit, _ in staged:
                 published_task = execution_release_task(task, publication["release_id"])
                 final = self.reaudit_market_status_task(published_task)
@@ -966,7 +1005,7 @@ class DataHubService:
         stage_root = Path(self.config.supplemental_repo) / "staging" / "low-beta-status"
         min_date, max_date = min(day for day, _ in wanted), max(day for day, _ in wanted)
         completed = failed = staged_rows = 0
-        with self._updater_lock():
+        with self._collector_lock("baostock"):
             journal.begin_job(total_shards=len(symbols), resume=True)
             journal.phase("download", "RUNNING")
             adapter = BaostockAdapter(host=self.config.baostock_host)
@@ -1030,8 +1069,11 @@ class DataHubService:
         return result
 
     @contextmanager
-    def _updater_lock(self):
-        path = Path(self.config.supplemental_repo) / "datahub-updater.lock"
+    def _collector_lock(self, source: str):
+        """Prevent duplicate collection from one upstream without blocking peers."""
+        if source not in {"baostock", "eastmoney", "sws"}:
+            raise ValueError(f"unsupported collector source: {source}")
+        path = Path(self.config.supplemental_repo) / f"collector-{source}.lock"
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a+") as handle:
             try:
@@ -1043,6 +1085,25 @@ class DataHubService:
             finally:
                 fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
+    @contextmanager
+    def _publish_lock(self):
+        """Serialize Supplemental Dolt writes, commits and release publication only."""
+        path = Path(self.config.supplemental_repo) / "datahub-publish.lock"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a+") as handle:
+            try:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise RuntimeError("PUBLISH_IN_PROGRESS") from exc
+            try:
+                yield
+            finally:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+    def _updater_lock(self):
+        """Compatibility alias for legacy publication-only callers."""
+        return self._publish_lock()
+
     def mvp_backfill(self, *, dataset: str, symbols: list[str], resume: bool, limit: int = 0) -> dict[str, Any]:
         """Run one serial, resumable MVP ingestion job without publishing."""
         if dataset != "valuation_daily":
@@ -1052,7 +1113,7 @@ class DataHubService:
         governor = RequestGovernor(Path(self.config.supplemental_repo) / "governance", "eastmoney")
         fetcher = AkshareValuationFetcher(governor)
         runner = ShardRunner(Path(self.config.supplemental_repo) / "staging" / operation_id, journal, fetcher, self.raw)
-        with self._updater_lock(), governor.operation_lock():
+        with self._collector_lock("eastmoney"), governor.operation_lock():
             runner.restore_circuit_aborts()
             journal.begin_job(total_shards=len(symbols[:limit] if limit else symbols), resume=resume)
             journal.ensure_pending(symbols[:limit] if limit else symbols, reason="canonical SH/SZ security master")
@@ -1061,7 +1122,7 @@ class DataHubService:
             journal.heartbeat(phase="download", current_shard=None, pid=os.getpid())
             journal.phase("download", "FAILED" if result["failed"] else "PAUSED" if runner.stop_requested or any(
                 unit.get("status") == "PENDING" for unit in journal.data["units"].values()
-            ) else "DONE")
+            ) else "STAGED")
         result["governor"] = governor.observed_status()
         result["journal"] = str(journal.path)
         return result
@@ -1088,6 +1149,7 @@ class DataHubService:
             status = "RUNNING"
         elif governor.get("circuit_open"):
             status = "COOLDOWN"
+        elif phase == "STAGED": status = "WAITING_PUBLISH"
         elif phase == "DONE": status = "COMPLETED"
         elif phase == "FAILED": status = "COMPLETED" if not states["PENDING"] and not states["RUNNING"] else "FAILED"
         elif phase == "PAUSED": status = "PAUSED"
@@ -1123,8 +1185,15 @@ class DataHubService:
         dates = [(row.get("first_date"), row.get("last_date")) for row in journal.data.get("units", {}).values() if row.get("status") == "COMPLETE"]
         return {"coverage_start": min((a for a, _ in dates if a), default=None), "coverage_end": max((b for _, b in dates if b), default=None)}
 
+    def _collector_busy(self, source: str) -> bool:
+        try:
+            with self._collector_lock(source):
+                return False
+        except RuntimeError:
+            return True
+
     def start_job(self, *, dataset: str = "valuation_daily", limit: int = 0, resume: bool = True) -> dict[str, Any]:
-        if self.job_status()["status"] in {"RUNNING", "PAUSING", "COOLDOWN"}:
+        if self._collector_busy("eastmoney") or self.job_status()["status"] in {"RUNNING", "PAUSING", "COOLDOWN"}:
             return {"status": "ALREADY_RUNNING", "job": self.job_status()}
         symbols = self.valuation_universe()
         command = [sys.executable, "-m", "quantradar.datahub.cli", "backfill", "--dataset", dataset]
@@ -1182,7 +1251,7 @@ class DataHubService:
             raise ValueError('诊断修复仅接受最多三个现有 FAILED 分片')
         governor = RequestGovernor(Path(self.config.supplemental_repo) / "governance", "eastmoney")
         runner = ShardRunner(Path(self.config.supplemental_repo) / "staging" / "valuation_daily-mvp", journal, AkshareValuationFetcher(governor), self.raw)
-        with self._updater_lock(), governor.operation_lock():
+        with self._collector_lock("eastmoney"), governor.operation_lock():
             journal.begin_job(total_shards=len(journal.data["units"]), resume=True)
             journal.data["retry_progress"] = {"total": sum(u.get("status") == "FAILED" for u in journal.data["units"].values()), "processed": 0, "recovered": 0, "failed": 0, "active": True}
             journal.phase("download", "RUNNING")
@@ -1217,7 +1286,7 @@ class DataHubService:
         governor = RequestGovernor(Path(self.config.supplemental_repo) / "governance", "eastmoney")
         runner = ShardRunner(Path(self.config.supplemental_repo) / "staging" / "valuation_daily-mvp", journal,
                              AkshareValuationFetcher(governor), self.raw)
-        with self._updater_lock(), governor.operation_lock():
+        with self._collector_lock("eastmoney"), governor.operation_lock():
             journal.phase("download", "RUNNING")
             # Health probes deliberately target terminal failures.  A normal
             # resume skips them, which would turn every probe into a false
