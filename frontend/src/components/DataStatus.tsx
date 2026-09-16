@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Collapse, DatePicker, Descriptions, Progress, Space, Table, Tag, Typography } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Card, Collapse, Col, DatePicker, Descriptions, Row, Space, Table, Typography } from 'antd';
 import { dataHubJobAction, getDataHubOverview, updateAllData, type DataHubOverview } from '../api';
+import { DataActivitySummary } from './datahub/DataActivitySummary';
+import { DataActivityCard } from './datahub/DataActivityCard';
+import { DataCoverageTable } from './datahub/DataCoverageTable';
 
-const labels: Record<string, string> = { IDLE: '未开始', RUNNING: '进行中', UPDATED: '已更新', NO_CHANGE: '无变化', PARTIAL: '部分完成', FAILED: '失败', SOURCE_BLOCKED: '来源受阻', INTERRUPTED: '已中断', PASS: '通过', COMPLETED: '已结束', SKIPPED: '未执行' };
 const reasons: Record<string, string> = { SYMBOL_DATA_ERROR: '估值解析异常', UNKNOWN_EMPTY: '空响应待确认', UNVERIFIED_COVERAGE: '无覆盖证明待核实', QUALITY_FAILURE: '数据校验未通过', FAILED: '采集失败', PENDING: '待处理', RUNNING: '处理中' };
-const fmt = (v: number | null | undefined) => v == null ? '未统计' : v.toLocaleString();
+const order: Record<string, number> = { current: 0, historical: 1, strategy: 2 };
 
 export function DataStatus() {
   const [data, setData] = useState<DataHubOverview | null>(null);
@@ -12,115 +14,34 @@ export function DataStatus() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [range, setRange] = useState<[string, string] | null>(null);
-  const refresh = async () => {
-    try { setData(await getDataHubOverview()); setError(null); }
-    catch (e) { setError(String(e)); }
-  };
-  const activities = data?.activities ?? [];
-  const hasRunningActivity = activities.some(activity => activity.status === 'RUNNING');
-  useEffect(() => { void refresh(); if (data?.update?.status !== "RUNNING" && !hasRunningActivity) return; const id = window.setInterval(refresh, 4000); return () => window.clearInterval(id); }, [data?.update?.status, hasRunningActivity]);
-  const action = async (operation: () => Promise<unknown>) => {
-    setBusy(true);
-    try {
-      const result = await operation() as { message?: string; status?: string; outcome?: string; selected?: Record<string, string> };
-      const symbols = result.selected ? Object.keys(result.selected).join('、') : '';
-      setNotice(result.message ?? (result.outcome === 'HEALTHY'
-        ? `来源抽样可用：${symbols}`
-        : result.outcome === 'UNHEALTHY'
-          ? `来源抽样仍异常：${symbols}。失败项保持隔离，不会批量重试。`
-          : result.status === 'ALREADY_RUNNING' ? '任务正在运行，请查看进度' : '操作已提交，请查看下方进度'));
-      await refresh();
-    }
-    catch (e) { setError(String(e)); }
-    finally { setBusy(false); }
-  };
-  const running = data?.update.status === 'RUNNING' || data?.job.worker_alive;
+  const refresh = async () => { try { setData(await getDataHubOverview()); setError(null); } catch (e) { setError(String(e)); } };
+  const activities = useMemo(() => [...(data?.activities ?? [])].sort((a, b) => (order[a.queue ?? ''] ?? 3) - (order[b.queue ?? ''] ?? 3)), [data?.activities]);
+  const hasRunningActivity = activities.some(item => item.status === 'RUNNING');
+  useEffect(() => { void refresh(); if (!hasRunningActivity) return; const id = window.setInterval(refresh, 4000); return () => window.clearInterval(id); }, [hasRunningActivity]);
+  const action = async (operation: () => Promise<unknown>) => { setBusy(true); try { const result = await operation() as { message?: string; status?: string }; setNotice(result.message ?? (result.status === 'ALREADY_RUNNING' ? '任务正在运行，请查看进度' : '操作已提交')); await refresh(); } catch (e) { setError(String(e)); } finally { setBusy(false); } };
   const release = data?.release;
+  const running = hasRunningActivity || data?.job.worker_alive;
   const base = data?.base_coverage?.base_commit === release?.base_commit ? data?.base_coverage?.datasets : undefined;
-  const statusPatch = release?.datasets.trade_status_daily;
-  const targetAsOf = data?.update?.target_as_of;
-  const gapLedgerUrl = release?.release_id && targetAsOf
-    ? `/api/datahub/gaps?release=${encodeURIComponent(release.release_id)}&start=${encodeURIComponent(targetAsOf)}&end=${encodeURIComponent(targetAsOf)}`
-    : undefined;
-  const gapLedgerCsvUrl = gapLedgerUrl ? `${gapLedgerUrl}&format=csv` : undefined;
   const fallbackRows = [
-    { key: 'price', name: '行情', location: '/data/investment_data', source: '存量行情表', published: base?.['行情'], usage: '日频回测直接读取', qualification: 'RAW_RESEARCH', dateLabel: '' },
-    { key: 'status-base', name: 'ST / 停牌（历史）', location: '/data/investment_data', source: 'BaoStock 历史表', published: base?.['ST / 停牌'], usage: '先读取；覆盖至此日期', qualification: 'READABLE', dateLabel: '' },
-    { key: 'status-patch', name: 'ST / 停牌（补数）', location: '/data/quantradar_data', source: 'BaoStock 补数', published: statusPatch, usage: '自动补在历史表之后', qualification: 'RAW_RESEARCH', dateLabel: '', stockLabel: '补数涉及股票' },
-    { key: 'valuation_daily', name: '估值', location: '/data/quantradar_data', source: '东方财富', published: release?.datasets.valuation_daily, usage: '策略按字段自动读取', qualification: 'RAW_RESEARCH', dateLabel: '' },
-    { key: 'sw_industry_history', name: '行业', location: '/data/quantradar_data', source: '申万', published: release?.datasets.sw_industry_history, usage: '策略按字段自动读取', qualification: 'READABLE · 严格 PIT 否', dateLabel: '' },
-    { key: 'security_lifecycle', name: '基础资料', location: '/data/investment_data', source: 'Tushare 名录', published: release?.datasets.security_lifecycle, usage: '上市、退市判断', qualification: 'READABLE', dateLabel: '上市日期范围' },
+    { key: 'price', name: '股票行情', published: base?.['行情'], usage: '可用', qualification: 'RAW_RESEARCH' },
+    { key: 'status', name: 'ST/停牌', published: base?.['ST / 停牌'], usage: hasRunningActivity ? '补数中' : '部分覆盖', qualification: 'PARTIAL' },
+    { key: 'valuation', name: 'PE/PB/PS', published: release?.datasets.valuation_daily, usage: '部分覆盖', qualification: 'RAW_RESEARCH' },
+    { key: 'industry', name: '申万行业', published: release?.datasets.sw_industry_history, usage: '研究接口待开放', qualification: 'READABLE · PIT_PARTIAL' },
   ];
-  const rows = data?.data_sources?.length ? data.data_sources.map(source => ({
-    key: `${source.domain}-${source.storage}`,
-    name: source.name,
-    location: source.storage,
-    source: source.upstream,
-    published: source.coverage,
-    usage: source.read_rule,
-    qualification: source.coverage?.qualification ?? '未声明',
-    stockLabel: source.name.includes('补数') ? '补数涉及股票' : undefined,
-    dateLabel: source.domain === 'security_lifecycle' ? '上市日期范围' : '',
-  })) : fallbackRows;
-  const stages = [['base', '同步基础库'], ['valuation', '更新估值'], ['industry', '更新行业'], ['lifecycle', '更新基础资料'], ['check', '自动检查'], ['publish', '发布结果']].map(([key, name]) => ({ key, name, ...data?.update.stages[key] }));
-  const issues = data?.issues.length ? data.issues : data?.job.counts.failed ? [{ reason: 'FAILED', count: data.job.counts.failed, symbols: [] }] : [];
+  const rows = data?.data_sources?.length ? data.data_sources.map(source => ({ key: `${source.domain}-${source.storage}`, name: source.name, published: source.coverage, usage: source.read_rule === '仅补基础库缺失记录' ? '补数中' : '可用', qualification: source.coverage?.qualification ?? '未提供' })) : fallbackRows;
+  const issues = data?.issues?.length ? data.issues : [];
+  const current = activities.find(item => item.queue === 'current');
+  const historical = activities.find(item => item.queue === 'historical');
+  const strategy = activities.find(item => item.queue === 'strategy');
+  const strategyCompact = !!strategy && (strategy.task_progress.pending ?? 0) === 0 && (strategy.task_progress.running ?? 0) <= 1;
   return <Space direction="vertical" size={16} style={{ width: '100%' }}>
     <Space style={{ width: '100%', justifyContent: 'space-between' }}><Typography.Title level={4} style={{ margin: 0 }}>数据状态</Typography.Title><Button type="primary" loading={busy} disabled={!data || !!running} onClick={() => action(() => updateAllData())}>更新全部数据</Button></Space>
-    {error && <Alert showIcon type="error" message="操作或状态读取失败" description={error} />}
-    {notice && <Alert showIcon closable onClose={() => setNotice(null)} type="info" message={notice} />}
-    <Card title="后台数据任务">
-      {activities.length === 0 ? <Typography.Text type="secondary">当前没有后台下载任务</Typography.Text> : <Space direction="vertical" size={12} style={{ width: '100%' }}>
-        <Typography.Text type="secondary">运行中数据源：{new Set(activities.filter(activity => activity.status === 'RUNNING').map(activity => activity.source_contract_id)).size} · 运行任务：{activities.filter(activity => activity.status === 'RUNNING').length} · 待处理任务：{activities.reduce((sum, activity) => sum + (activity.task_progress.pending ?? 0), 0)}</Typography.Text>
-        {activities.map(activity => <Card key={activity.activity_id} size="small" title={<Space><Typography.Text strong>{activity.label}</Typography.Text><Tag color={activity.status === 'RUNNING' ? 'processing' : activity.status === 'SOURCE_BLOCKED' ? 'warning' : undefined}>{labels[activity.status] ?? activity.status}</Tag></Space>}>
-          <Descriptions size="small" column={{ xs: 1, sm: 2 }}>
-            <Descriptions.Item label="数据源">{activity.source ?? '未声明'}</Descriptions.Item><Descriptions.Item label="接口">{activity.adapter ?? activity.endpoint ?? '未声明'}</Descriptions.Item>
-            <Descriptions.Item label="队列">{activity.queue ?? '—'}</Descriptions.Item><Descriptions.Item label="范围">{activity.range.start && activity.range.end ? `${activity.range.start} 至 ${activity.range.end}` : '未声明'}</Descriptions.Item>
-            <Descriptions.Item label="当前">{activity.current_item ?? '—'}</Descriptions.Item><Descriptions.Item label="最后心跳">{activity.last_heartbeat ? new Date(activity.last_heartbeat).toLocaleString('zh-CN') : '未记录'}</Descriptions.Item>
-          </Descriptions>
-          <Typography.Text>任务进度 {activity.task_progress.percentage == null ? '未统计' : `${activity.task_progress.percentage.toFixed(1)}%`}</Typography.Text>
-          <Progress percent={activity.task_progress.percentage ?? 0} status={activity.status === 'RUNNING' ? 'active' : 'normal'} showInfo={false} />
-          <Typography.Text type="secondary">完成 {fmt(activity.task_progress.completed)} · 待处理 {fmt(activity.task_progress.pending)} · 运行中 {fmt(activity.task_progress.running)} · 来源受限 {fmt(activity.task_progress.source_limited)}</Typography.Text>
-          {activity.coverage_progress && <><Typography.Paragraph style={{ margin: '12px 0 0' }}>数据覆盖 {activity.coverage_progress.percentage == null ? '未统计' : `${activity.coverage_progress.percentage.toFixed(2)}%`}</Typography.Paragraph>
-            <Progress percent={activity.coverage_progress.percentage ?? 0} showInfo={false} />
-            <Typography.Text type="secondary">eligible {fmt(activity.coverage_progress.eligible)} · complete {fmt(activity.coverage_progress.complete)} · partial {fmt(activity.coverage_progress.partial)} · 有效字段 {fmt(activity.coverage_progress.valid_fields)} / {fmt(activity.coverage_progress.expected_fields)}</Typography.Text>
-          </>}
-        </Card>)}
-      </Space>}
+    {error && <Alert showIcon type="error" message="操作或状态读取失败" description={error} />}{notice && <Alert showIcon closable onClose={() => setNotice(null)} type="info" message={notice} />}
+    <DataActivitySummary activities={activities} releaseId={release?.release_id} onRefresh={() => void refresh()} />
+    <Card title="后台数据任务"><Row gutter={[16, 16]}>{current && <Col xs={24} xl={12}><DataActivityCard activity={current} /></Col>}{historical && <Col xs={24} xl={12}><DataActivityCard activity={historical} /></Col>}</Row>{strategy && (strategyCompact ? <Collapse style={{ marginTop: 16 }} items={[{ key: 'strategy', label: `策略专项补数 · ${strategy.task_progress.running ?? 0}项处理中`, children: <DataActivityCard activity={strategy} /> }]} /> : <Row style={{ marginTop: 16 }}><Col xs={24} xl={12}><DataActivityCard activity={strategy} /></Col></Row>)}{activities.length === 0 && <Typography.Text type="secondary">当前没有后台下载任务</Typography.Text>}</Card>
+    <DataCoverageTable rows={rows} />
+    <Card title="问题与高级操作"><Table rowKey="reason" pagination={false} size="small" dataSource={issues} columns={[{ title: '问题', render: (_, row) => reasons[row.reason] ?? row.reason }, { title: '股票数', dataIndex: 'count' }, { title: '处理', render: () => '保留隔离；不计入新版本可用范围' }]} locale={{ emptyText: '当前没有需要关注的问题' }} />
+      <Collapse style={{ marginTop: 16 }} items={[{ key: 'advanced', label: '高级操作与版本详情', children: <Space direction="vertical" style={{ width: '100%' }}><Space wrap><Button disabled={busy || !!running} onClick={() => action(() => updateAllData('audit'))}>检查候选数据</Button><Button disabled={busy || !!running || !data?.job.counts.failed} onClick={() => action(() => dataHubJobAction('repair'))}>重试失败项</Button><DatePicker.RangePicker onChange={(_, values) => setRange(values[0] && values[1] ? values as [string, string] : null)} /><Button disabled={!range || busy || !!running} onClick={() => action(() => updateAllData('backfill', range?.[0], range?.[1]))}>历史回填</Button></Space><Descriptions column={1} size="small"><Descriptions.Item label="版本">{release?.release_id ?? '未提供'}</Descriptions.Item><Descriptions.Item label="基础 commit">{release?.base_commit ?? '未提供'}</Descriptions.Item><Descriptions.Item label="补充 commit">{release?.supplemental_commit ?? '未提供'}</Descriptions.Item></Descriptions><Typography.Text type="secondary">严格历史时点资格与技术细节在此展开查看。</Typography.Text></Space> }]} />
     </Card>
-    <Card title="Coverage 与 Qualification">
-      <Table rowKey="key" pagination={false} size="middle" scroll={{ x: 1050 }} dataSource={rows} columns={[
-        { title: '数据', dataIndex: 'name' },
-        { title: '存放位置', dataIndex: 'location' },
-        { title: '数据源', dataIndex: 'source' },
-        { title: 'Coverage（股票）', render: (_, r) => r.stockLabel ? `${r.stockLabel}：${fmt(r.published?.stocks)}` : fmt(r.published?.stocks) },
-        { title: 'Coverage（有效行）', render: (_, r) => fmt(r.published?.row_count ?? r.published?.rows) },
-        { title: '日期范围', render: (_, r) => r.published?.first_date ? `${r.published.first_date} 至 ${r.published.latest_date ?? '未统计'}${r.dateLabel ? '（上市日期）' : ''}` : '未统计' },
-        { title: '最近核查', render: (_, r) => r.published?.checked_at ? new Date(r.published.checked_at).toLocaleString('zh-CN') : '未单独核查' },
-        { title: '回测怎么用', dataIndex: 'usage' },
-        { title: 'Qualification', dataIndex: 'qualification' },
-      ]} />
-      <Typography.Text type="secondary">Coverage 的应有分母、缺口和比例仅在固定 release 审计产物存在时显示；未审计域不会显示虚假百分比。发布于 {release?.published_at ? new Date(release.published_at).toLocaleString('zh-CN') : '未发布'}</Typography.Text>
-      {data?.gap_plan && <Typography.Paragraph type="secondary" style={{ margin: '8px 0 0' }}>低 Beta 窗口 {data.gap_plan.strategy_window.start} 至 {data.gap_plan.strategy_window.end}：{data.gap_plan.unaudited_inventory?.length ? `存在 ${data.gap_plan.unaudited_inventory.map(g => `${g.domain}（仅有首尾日期库存统计，尚未逐字段审计）`).join('；')}` : '无粗略库存提示'}；{data.gap_plan.strategy_gap.length ? `待检查 ${data.gap_plan.strategy_gap.map(g => `${g.domain}（${g.range.start} 至 ${g.range.end}，${g.state}）`).join('；')}` : '没有已确认的范围提示'}。</Typography.Paragraph>}
-      {data?.work_queue && <Typography.Paragraph type="secondary" style={{ margin: '0' }}>补数工作单：当前更新待处理 {data.work_queue.counts.current?.PENDING ?? 0}；策略缺口待处理 {data.work_queue.counts.strategy?.PENDING ?? 0}；历史修复待处理 {data.work_queue.counts.historical?.PENDING ?? 0}。</Typography.Paragraph>}
-    </Card>
-    <Card title={<Space>本次更新<Tag>{labels[data?.update.status ?? 'IDLE'] ?? data?.update.status}</Tag></Space>}>
-      <Table rowKey="key" pagination={false} size="small" dataSource={stages} columns={[
-        { title: '阶段', dataIndex: 'name' }, { title: '结果', render: (_, r) => labels[r.status ?? ''] ?? r.status ?? '待执行' },
-        { title: '详情', render: (_, r) => r.reason ?? (r.accepted != null ? `通过 ${r.accepted}，隔离 ${r.isolated}` : '—') },
-      ]} />
-      {data?.update.error && <Alert type="error" message={data.update.error} />}
-      <Space wrap style={{ marginTop: 12 }}><Typography.Text>估值下载：{fmt(data?.job.counts.complete)} 成功 / {fmt(data?.job.total_shards)} 总股票</Typography.Text><Typography.Text>{fmt(data?.job.rows_downloaded)} 行</Typography.Text><Typography.Text>失败 {fmt(data?.job.counts.failed)} · 未覆盖待核实 {fmt(data?.job.counts.not_covered)}</Typography.Text></Space>
-      {data?.job.worker_alive && <Typography.Paragraph>当前股票：{data.job.current_shard ?? '等待响应'}</Typography.Paragraph>}
-    </Card>
-    <Card title="需要关注的问题">
-      <Table rowKey="reason" pagination={false} size="small" dataSource={issues} columns={[
-        { title: '问题', render: (_, r) => reasons[r.reason] ?? r.reason }, { title: '股票数', dataIndex: 'count' }, { title: '处理', render: () => '保留隔离；不计入新版本可用范围' },
-      ]} locale={{ emptyText: data?.candidate ? '本次检查无隔离项' : '尚未生成候选检查报告' }} />
-    </Card>
-    <Collapse items={[{ key: 'advanced', label: '高级操作与版本详情', children: <Space direction="vertical" style={{ width: '100%' }}>
-      <Space wrap><Button href={gapLedgerUrl} disabled={!gapLedgerUrl} target="_blank">打开固定版本字段缺口台账</Button><Button href={gapLedgerCsvUrl} disabled={!gapLedgerCsvUrl}>下载字段缺口 CSV</Button><Button disabled={busy || !!running} onClick={() => action(() => updateAllData('audit'))}>检查候选数据</Button><Button disabled={busy || !!running || !data?.job.counts.failed} onClick={() => action(() => dataHubJobAction('repair'))}>重试失败项</Button><Button disabled={busy || !!running || (data?.job.counts.failed ?? 0) < 3} onClick={() => action(() => dataHubJobAction('health_probe'))}>抽样检查失败来源</Button><Button disabled={!data?.job.worker_alive || busy} onClick={() => action(() => dataHubJobAction('pause'))}>暂停采集</Button><DatePicker.RangePicker onChange={(_, values) => setRange(values[0] && values[1] ? values as [string, string] : null)} /><Button disabled={!range || busy || !!running} onClick={() => action(() => updateAllData('backfill', range?.[0], range?.[1]))}>历史回填</Button></Space>
-      <Descriptions column={1} size="small"><Descriptions.Item label="版本">{release?.release_id ?? '—'}</Descriptions.Item><Descriptions.Item label="基础 commit">{release?.base_commit ?? '—'}</Descriptions.Item><Descriptions.Item label="补充 commit">{release?.supplemental_commit ?? '—'}</Descriptions.Item><Descriptions.Item label="候选版本">{data?.candidate?.candidate_id ?? '—'}</Descriptions.Item></Descriptions>
-      <Typography.Text type="secondary">历史可得时点未完全验证；严格 PIT 策略不可按已验证数据使用。行业基础资料可能保留旧记录。</Typography.Text>
-    </Space> }]} />
   </Space>;
 }
