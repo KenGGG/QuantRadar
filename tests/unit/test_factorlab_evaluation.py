@@ -79,8 +79,8 @@ def test_factor_preflight_rejects_inputs_without_a_joint_eligible_observation():
     }
 
 
-def test_industry_inputs_require_a_versioned_dictionary_not_only_code_prefixes():
-    from quantradar.factorlab.qualification import qualified_industry_fields
+def test_industry_inputs_keep_strict_dictionary_gate_but_allow_published_research_groups():
+    from quantradar.factorlab.qualification import qualified_industry_fields, research_industry_fields
 
     assert qualified_industry_fields({"metadata": {"sw_industry_hierarchy": {
         "levels": "derived from preserved six-digit code", "raw_sha256": "a" * 64,
@@ -92,6 +92,8 @@ def test_industry_inputs_require_a_versioned_dictionary_not_only_code_prefixes()
         "dictionary_version": "sw-2021-v1", "levels": ["L1", "L2", "L3"],
         "code_hierarchy": "PREFIX_VERIFIED_BY_DICTIONARY",
     }}}) == {"indclass.sector", "indclass.industry", "indclass.subindustry"}
+    assert research_industry_fields({"datasets": {"sw_industry_history": {}}}) == {"indclass.sector", "indclass.industry", "indclass.subindustry"}
+    assert research_industry_fields({"datasets": {}}) == set()
 
 
 def test_factor_batch_status_distinguishes_data_blocks_from_engine_failures():
@@ -205,3 +207,45 @@ def test_universe_mask_uses_explicit_lifecycle_not_price_presence():
     ])
     assert mask["000001.SZ"].tolist() == [False, True, True, True]
     assert mask["000002.SZ"].tolist() == [True, True, True, False]
+
+
+def test_factor_panel_exposes_published_industry_codes_in_research_mode(monkeypatch):
+    from types import SimpleNamespace
+    from quantradar.factorlab import service
+    from quantradar import bootstrap
+    from quantradar.datahub import reader as reader_module
+
+    dates = pd.date_range("2024-01-02", periods=2, freq="B")
+    members = ["000001.SZ", "000002.SZ"]
+    scope = SimpleNamespace(
+        supplemental_database="supplemental/fixed",
+        manifest={"datasets": {"sw_industry_history": {}}},
+    )
+
+    class Supplement:
+        def market_caps(self, *_): return {}
+        def _query(self, *_): return [
+            {"symbol": "000001.SZ", "industry_code": "340501", "effective_from": "2020-01-01", "effective_to": None},
+            {"symbol": "000002.SZ", "industry_code": "110101", "effective_from": "2020-01-01", "effective_to": None},
+        ]
+        def lifecycles(self, symbols):
+            return {symbol: {"symbol": symbol, "list_date": "2020-01-01", "delist_date": None} for symbol in symbols}
+
+    class Reader:
+        def __init__(self, *_): pass
+        def supplemental_reader(self, *_): return Supplement()
+
+    def rows(*_):
+        return {symbol: [{"trade_date": date, "open": 10., "high": 11., "low": 9., "close": 10.,
+                          "volume": 100., "amount": 1000., "unit_contract_version": "joinquant-shares-yuan-v2"}
+                         for date in dates] for symbol in members}
+
+    monkeypatch.setattr(bootstrap, "release_provider", lambda *_: (object(), scope))
+    monkeypatch.setattr(reader_module, "ReleaseReader", Reader)
+    monkeypatch.setattr(service, "provider_price_rows", rows)
+    fields, _ = service._panel({"release_id": "R-test", "members": members, "start_date": "2024-01-02", "calculation_start": "2024-01-02", "end_date": "2024-01-03", "industry_mode": "SW_RESEARCH_APPROX"})
+
+    assert fields["indclass.sector"].loc[dates[0], "000001.SZ"] == "34"
+    assert fields["indclass.industry"].loc[dates[0], "000001.SZ"] == "3405"
+    assert fields["indclass.subindustry"].loc[dates[0], "000001.SZ"] == "340501"
+    assert fields["indclass.sector"].loc[dates[0], "000002.SZ"] == "11"

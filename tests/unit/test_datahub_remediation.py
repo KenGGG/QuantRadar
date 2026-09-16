@@ -311,6 +311,7 @@ def test_datahub_overview_qualification_keeps_etf_strict_account_closed():
     assert qualification['etf']['ETF_RAW'] == 'READY'
     assert qualification['etf']['ACCOUNT_STRICT'] == 'BLOCKED'
     assert qualification['alpha101']['industry_hierarchy'] == 'BLOCKED'
+    assert qualification['alpha101']['industry'] == {"research": "READY_PARTIAL", "research_mode": "SW_RESEARCH_APPROX", "pit_strict": "BLOCKED"}
 
 
 def test_etf_raw_provider_refuses_unpublished_adjusted_modes(monkeypatch):
@@ -363,17 +364,30 @@ def test_backtest_release_activation_is_shared_and_never_falls_back_for_explicit
         backtest.activate_backtest_release("missing-release")
 
 
-def test_provider_industry_refuses_unverified_code_prefixes():
+def test_provider_industry_uses_real_six_digit_history_as_research_groups():
     from types import SimpleNamespace
-    from quantradar.datahub.strategy import DataUnavailable, industry
+    from quantradar.datahub.strategy import industry
+
+    class Reader:
+        def industry_as_of(self, *_): return {"industry_code": "340501", "pit_status": "PARTIAL"}
 
     provider = SimpleNamespace(
-        _supplemental_reader=object(),
-        _release_scope=SimpleNamespace(manifest={"metadata": {"sw_industry_hierarchy": {
-            "dictionary_version": "unverified", "levels": ["L1", "L2", "L3"],
-        }}}),
+        _supplemental_reader=Reader(),
+        _release_scope=SimpleNamespace(manifest={"datasets": {"sw_industry_history": {}}}),
     )
-    with pytest.raises(DataUnavailable, match="禁止由代码前缀推断"):
+    value = industry(provider, "600000.XSHG", "2024-01-02")["600000.XSHG"]
+    assert value == {"sw_l1": {"industry_code": "340000", "industry_name": None},
+                     "sw_l2": {"industry_code": "340500", "industry_name": None},
+                     "sw_l3": {"industry_code": "340501", "industry_name": None},
+                     "qualification": "SW_RESEARCH_APPROX", "pit_status": "PARTIAL"}
+
+
+def test_provider_industry_keeps_missing_historical_assignment_explicit():
+    from types import SimpleNamespace
+    from quantradar.datahub.strategy import DataUnavailable, industry
+    provider = SimpleNamespace(_supplemental_reader=SimpleNamespace(industry_as_of=lambda *_: None),
+                               _release_scope=SimpleNamespace(manifest={"datasets": {"sw_industry_history": {}}}))
+    with pytest.raises(DataUnavailable, match="缺少 600000.SH 的行业记录"):
         industry(provider, "600000.XSHG", "2024-01-02")
 
 

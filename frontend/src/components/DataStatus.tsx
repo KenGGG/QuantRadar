@@ -27,9 +27,9 @@ export function DataStatus() {
     { key: 'price', name: '股票行情', published: base?.['行情'], usage: '可用', qualification: 'RAW_RESEARCH' },
     { key: 'status', name: 'ST/停牌', published: base?.['ST / 停牌'], usage: hasRunningActivity ? '补数中' : '部分覆盖', qualification: 'PARTIAL' },
     { key: 'valuation', name: 'PE/PB/PS', published: release?.datasets.valuation_daily, usage: '部分覆盖', qualification: 'RAW_RESEARCH' },
-    { key: 'industry', name: '申万行业', published: release?.datasets.sw_industry_history, usage: '研究接口待开放', qualification: 'READABLE · PIT_PARTIAL' },
+    { key: 'industry', name: '申万行业', published: release?.datasets.sw_industry_history, usage: '六位代码三级研究分组', qualification: 'SW_RESEARCH_APPROX', researchLabel: '可回测·部分', researchTooltip: '历史行业归属已进入固定 release；普通研究按六位代码做三级研究分组；严格历史申万分类版本未验证。\nSW_RESEARCH_APPROX\nSW_PIT_STRICT = BLOCKED' },
   ];
-  const rows = data?.data_sources?.length ? data.data_sources.map(source => ({ key: `${source.domain}-${source.storage}`, name: source.name, published: source.coverage, usage: source.read_rule === '仅补基础库缺失记录' ? '补数中' : '可用', qualification: source.coverage?.qualification ?? '未提供' })) : fallbackRows;
+  const rows = data?.data_sources?.length ? data.data_sources.map(source => source.domain === 'sw_industry_history' ? ({ key: `${source.domain}-${source.storage}`, name: '申万行业', published: source.coverage, usage: '六位代码三级研究分组', qualification: 'SW_RESEARCH_APPROX', researchLabel: '可回测·部分', researchTooltip: '历史行业归属已进入固定 release；普通研究按六位代码做三级研究分组；严格历史申万分类版本未验证。\nSW_RESEARCH_APPROX\nSW_PIT_STRICT = BLOCKED' }) : ({ key: `${source.domain}-${source.storage}`, name: source.name, published: source.coverage, usage: source.read_rule === '仅补基础库缺失记录' ? '补数中' : '可用', qualification: source.coverage?.qualification ?? '未提供' })) : fallbackRows;
   const issues = data?.issues?.length ? data.issues : [];
   return <Space direction="vertical" size={16} style={{ width: '100%' }}>
     <Space style={{ width: '100%', justifyContent: 'space-between' }}><Typography.Title level={4} style={{ margin: 0 }}>数据状态</Typography.Title><Button type="primary" loading={busy} disabled={!data || !!running} onClick={() => action(() => updateAllData())}>更新全部数据</Button></Space>

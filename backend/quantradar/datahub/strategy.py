@@ -86,9 +86,9 @@ def industry(provider, securities, date=None):
     scope = getattr(provider, '_release_scope', None)
     if not reader or scope is None or date is None:
         raise DataUnavailable('行业查询需要固定版本与历史日期')
-    from ..factorlab.qualification import qualified_industry_fields
-    if not qualified_industry_fields(scope.manifest):
-        raise DataUnavailable('当前 release 未发布经字典验证的申万三级层级；禁止由代码前缀推断')
+    from ..factorlab.qualification import research_industry_fields
+    if not research_industry_fields(scope.manifest):
+        raise DataUnavailable('当前 release 未发布申万历史行业归属')
     symbols = [to_ts_symbol(s) for s in ([securities] if isinstance(securities, str) else securities)]
     result = {}
     for symbol in symbols:
@@ -100,6 +100,7 @@ def industry(provider, securities, date=None):
             'sw_l1': {'industry_code': code[:2] + '0000', 'industry_name': None},
             'sw_l2': {'industry_code': code[:4] + '00', 'industry_name': None},
             'sw_l3': {'industry_code': code, 'industry_name': None},
+            'qualification': 'SW_RESEARCH_APPROX',
             'pit_status': value['pit_status'],
         }
     return result

@@ -322,8 +322,9 @@ def _research_qualification(manifest: Dict[str, Any] | None) -> Dict[str, Any]:
     """Expose qualification facts; never infer strict eligibility from row counts."""
     datasets = (manifest or {}).get("datasets", {})
     etf_raw = bool(datasets.get("etf_eod_price") and datasets.get("etf_master"))
-    from quantradar.factorlab.qualification import qualified_industry_fields
-    hierarchy = bool(qualified_industry_fields(manifest or {}))
+    from quantradar.factorlab.qualification import research_industry_fields, strict_industry_fields
+    research_hierarchy = bool(research_industry_fields(manifest or {}))
+    strict_hierarchy = bool(strict_industry_fields(manifest or {}))
     alpha = ((manifest or {}).get("metadata", {}).get("alpha101_qualification")
              if isinstance((manifest or {}).get("metadata", {}), dict) else None)
     alpha_raw = alpha if isinstance(alpha, dict) else {"status": "UNAUDITED", "ready": None, "partial": None, "blocked": None,
@@ -339,7 +340,10 @@ def _research_qualification(manifest: Dict[str, Any] | None) -> Dict[str, Any]:
             "ALPHA101_RAW_ENGINEERING": alpha_raw,
             "ALPHA101_ADJ_RESEARCH": {"ready": 0, "partial": 0, "blocked": 101},
             "ALPHA101_PIT_STRICT": {"ready": 0, "partial": 0, "blocked": 101},
-            "industry_hierarchy": "PIT_PARTIAL" if hierarchy else "BLOCKED",
+            "industry_hierarchy": "PIT_PARTIAL" if strict_hierarchy else "BLOCKED",
+            "industry": {"research": "READY_PARTIAL" if research_hierarchy else "BLOCKED",
+                         "research_mode": "SW_RESEARCH_APPROX" if research_hierarchy else None,
+                         "pit_strict": "READY" if strict_hierarchy else "BLOCKED"},
         },
     }
 

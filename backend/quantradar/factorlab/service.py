@@ -126,6 +126,7 @@ def create_batch(config: dict[str, Any]) -> dict[str, Any]:
               "pool_type": config.get("pool_type", "CUSTOM_STATIC_POOL"), "snapshot_date": config.get("snapshot_date"),
               "start_date": start, "calculation_start": calculation_start, "end_date": str(config.get("end_date") or ""),
               "alpha_ids": ids, "horizons": horizons, "split_ratios": list(ratios), "price_mode": "RAW",
+              "industry_mode": str(config.get("industry_mode") or "SW_RESEARCH_APPROX"),
               "adv_basis": "amount", "min_cross_section": int(config.get("min_cross_section", 20)),
               "unit_contract": "base-hands-thousand-yuan", "research_input_version": _research_input_version(),
               "operator_bundle_hash": operator_bundle_hash(), "status": "PENDING", "items": []}
@@ -182,8 +183,10 @@ def _panel(config: dict[str, Any]) -> tuple[dict[str, pd.DataFrame], pd.DataFram
             fields["cap"] = cap_frame.pivot(index="trade_date", columns="symbol", values="cap").reindex(
                 index=fields["close"].index, columns=fields["close"].columns
             )
-        from .qualification import qualified_industry_fields
-        if industry_rows and qualified_industry_fields(scope.manifest):
+        from .qualification import research_industry_fields, strict_industry_fields
+        industry_fields = (strict_industry_fields(scope.manifest) if config.get("industry_mode", "SW_PIT_STRICT") == "SW_PIT_STRICT"
+                           else research_industry_fields(scope.manifest))
+        if industry_rows and industry_fields:
             dates = fields["close"].index
             for level, width in (("sector", 2), ("industry", 4), ("subindustry", 6)):
                 industry = pd.DataFrame(index=dates, columns=fields["close"].columns, dtype=object)
@@ -228,7 +231,7 @@ def _run(batch_id: str, config: dict[str, Any]) -> None:
             item_position = len(config["items"]) - 1
             update_experiment(batch_id, config=config)
             try:
-                calc_identity = {k: config[k] for k in ("release_id", "base_commit", "supplemental_commit", "members_hash", "pool_type", "snapshot_date", "calculation_start", "start_date", "end_date", "price_mode", "unit_contract", "adv_basis", "operator_bundle_hash", "research_input_version")}
+                calc_identity = {k: config.get(k, "SW_PIT_STRICT" if k == "industry_mode" else None) for k in ("release_id", "base_commit", "supplemental_commit", "members_hash", "pool_type", "snapshot_date", "calculation_start", "start_date", "end_date", "price_mode", "industry_mode", "unit_contract", "adv_basis", "operator_bundle_hash", "research_input_version")}
                 calc_identity.update({"alpha_id": alpha_id, "formula_hash": row["formula_hash"], "semantics_version": row["semantics_version"]})
                 key = cache_key(calc_identity); value_path = root / "factor_values" / f"alpha{alpha_id:03}_{key}.parquet"; value_path.parent.mkdir(exist_ok=True)
                 calc_cache = Path.cwd() / "runs" / "factorlab" / "cache" / "calculation" / f"{key}.parquet"; calc_cache.parent.mkdir(parents=True, exist_ok=True)

@@ -4,8 +4,11 @@ from __future__ import annotations
 import pandas as pd
 
 
-def qualified_industry_fields(manifest: dict[str, object]) -> set[str]:
-    """Expose hierarchy inputs only when their fixed release has a dictionary."""
+INDUSTRY_FIELDS = {"indclass.sector", "indclass.industry", "indclass.subindustry"}
+
+
+def strict_industry_fields(manifest: dict[str, object]) -> set[str]:
+    """Strict SW PIT inputs require a published, verified hierarchy dictionary."""
     metadata = manifest.get("metadata") if isinstance(manifest, dict) else None
     hierarchy = metadata.get("sw_industry_hierarchy") if isinstance(metadata, dict) else None
     if not isinstance(hierarchy, dict) or not hierarchy.get("dictionary_version"):
@@ -17,7 +20,18 @@ def qualified_industry_fields(manifest: dict[str, object]) -> set[str]:
     # that relation before either the Provider or FactorLab derives levels.
     if hierarchy.get("code_hierarchy") != "PREFIX_VERIFIED_BY_DICTIONARY":
         return set()
-    return {"indclass.sector", "indclass.industry", "indclass.subindustry"}
+    return INDUSTRY_FIELDS
+
+
+def research_industry_fields(manifest: dict[str, object]) -> set[str]:
+    """Allow real six-digit historical assignments as approximate research groups."""
+    datasets = manifest.get("datasets") if isinstance(manifest, dict) else None
+    return INDUSTRY_FIELDS if isinstance(datasets, dict) and "sw_industry_history" in datasets else set()
+
+
+def qualified_industry_fields(manifest: dict[str, object]) -> set[str]:
+    """Backward-compatible strict gate used by PIT-only callers."""
+    return strict_industry_fields(manifest)
 
 
 def preflight(available_fields: set[str], required_fields: set[str], *,
