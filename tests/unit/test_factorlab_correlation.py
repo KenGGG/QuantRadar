@@ -62,9 +62,11 @@ def test_holdout_route_requires_frozen_representatives(monkeypatch):
     ("config", "expected"),
     [
         ({"status": "RUNNING", "alpha_ids": []}, "NOT_READY"),
-        ({"status": "SUCCESS", "alpha_ids": []}, "AWAITING_RESEARCHER_SELECTION"),
-        ({"status": "SUCCESS", "alpha_ids": [], "representative_selection": {"alpha_ids": [1]}}, "FROZEN_AWAITING_HOLDOUT_EVALUATION"),
-        ({"status": "SUCCESS", "alpha_ids": [], "representative_selection": {"alpha_ids": [1]}, "holdout_access": {"alpha_ids": [1]}}, "HOLDOUT_ACCESSED"),
+        ({"status": "SUCCESS", "alpha_ids": [1], "items": [{"alpha_id": 1, "status": "COMPUTED"}]}, "AWAITING_RESEARCHER_SELECTION"),
+        ({"status": "SUCCESS", "alpha_ids": [1], "items": [{"alpha_id": 1, "status": "COMPUTED"}], "representative_selection": {"alpha_ids": [1]}}, "FROZEN_AWAITING_HOLDOUT_EVALUATION"),
+        ({"status": "SUCCESS", "alpha_ids": [1], "items": [{"alpha_id": 1, "status": "COMPUTED"}], "representative_selection": {"alpha_ids": [1]}, "holdout_access": {"alpha_ids": [1]}}, "HOLDOUT_ACCESSED"),
+        ({"status": "SUCCESS", "alpha_ids": [1], "items": []}, "NOT_READY"),
+        ({"status": "SUCCESS", "alpha_ids": [1], "items": [{"alpha_id": 1, "status": "MISSING_FIELDS"}]}, "NOT_READY"),
     ],
 )
 def test_factorlab_summary_reports_researcher_state(monkeypatch, config, expected):
