@@ -1,0 +1,40 @@
+{
+  "features": [
+    "data"
+  ],
+  "backend_type": "big_qmt",
+  "ready": true,
+  "gateway_trading_enabled": true,
+  "gateway_cancel_enabled": true,
+  "broker_actions": {
+    "broker.account": {
+      "status": "unavailable",
+      "reason": "broker module disabled"
+    },
+    "broker.positions": {
+      "status": "unavailable",
+      "reason": "broker module disabled"
+    },
+    "broker.orders": {
+      "status": "unavailable",
+      "reason": "broker module disabled"
+    },
+    "broker.trades": {
+      "status": "unavailable",
+      "reason": "broker module disabled"
+    },
+    "broker.order_status": {
+      "status": "unavailable",
+      "reason": "broker module disabled"
+    },
+    "broker.place_order": {
+      "status": "unavailable",
+      "reason": "broker module disabled"
+    },
+    "broker.cancel_order": {
+      "status": "unavailable",
+      "reason": "broker module disabled"
+    }
+  },
+  "accounts_present": false
+}

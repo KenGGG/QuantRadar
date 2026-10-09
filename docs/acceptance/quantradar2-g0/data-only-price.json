@@ -1,0 +1,16 @@
+{
+  "provider": "qmt-remote",
+  "port": 58621,
+  "security": "600519.XSHG",
+  "rows": 21,
+  "columns": [
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "money"
+  ],
+  "first": "2026-09-01 00:00:00",
+  "last": "2026-09-30 00:00:00"
+}

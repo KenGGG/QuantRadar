@@ -1,0 +1,94 @@
+{
+  "quantradar": {
+    "path": "D:\\Projects\\QuantDev\\QuantRadar2",
+    "head": "c950d67337de3b096bb03766beb9526714386f93",
+    "branch": "codex/quantradar2-workbench",
+    "dirty": "M .gitignore\n M docs/ACTIVE_PHASE.md\n M docs/CURRENT_STATE.md\n M frontend/dist/assets/editor.worker-C7zlFRnD.js\n M frontend/dist/assets/index-CGY-wyiC.css\n M frontend/dist/assets/index-DThh_-RR.js\n M frontend/dist/assets/python-D93wfDwg.js\n M frontend/dist/index.html\n?? backend/quantradar2/\n?? docs/QUANTRADAR2_DEVELOPMENT_PLAN.md\n?? docs/acceptance/quantradar2-g0/\n?? docs/legacy/\n?? requirements-v2.txt\n?? scripts/v2_data_service.py\n?? tests/v2/",
+    "origin": "https://github.com/KenGGG/QuantRadar.git"
+  },
+  "bullettrade": {
+    "path": "D:\\Projects\\BulletTrade",
+    "head": "9c34c213753c51883852a7bf528dd216b2c8fa3f",
+    "dirty": "",
+    "origin": "https://github.com/BulletTrade/bullet-trade.git",
+    "upstream_main": "9c34c213753c51883852a7bf528dd216b2c8fa3f"
+  },
+  "relevant_files": {
+    "bullet_trade/core/engine.py": {
+      "vendor": {
+        "exists": true,
+        "sha256": "1ce13ce15a058416f93eb71adead109d8348a39570ce79afbba259b101a62f01"
+      },
+      "runtime": {
+        "exists": true,
+        "sha256": "bcc59905f82b35a2f7d73bc876cdf4fb7335b3eaebb7ccd23c9a1b9755390328"
+      }
+    },
+    "bullet_trade/core/analysis.py": {
+      "vendor": {
+        "exists": true,
+        "sha256": "5c3db8314894f81fce8385eba570015c7ed0dddbe08f2b1e8ececa0e1b80a5bb"
+      },
+      "runtime": {
+        "exists": true,
+        "sha256": "bf1fefd256fda34518c980f29481759d562421291dc457ec1f76c32badda6de6"
+      }
+    },
+    "bullet_trade/reporting/__init__.py": {
+      "vendor": {
+        "exists": true,
+        "sha256": "4f63d0ccf029ee54bfefabea6b9d94e4e5155250158f31fa6155f5a79a8fa933"
+      },
+      "runtime": {
+        "exists": true,
+        "sha256": "3b3eb41e3c2fca870c1292cb3073a60a84c31e5262d3324d96688dfb7dd8a9e9"
+      }
+    },
+    "bullet_trade/data/providers/remote_qmt.py": {
+      "vendor": {
+        "exists": true,
+        "sha256": "b30b22630108686193306534b1b34e3b6aaebd1104c766bfaaff1c2a7b8aa038"
+      },
+      "runtime": {
+        "exists": true,
+        "sha256": "c8a125c26d2a8e0b4d1fdcd7c5a3df3a8596907a012195995e8d2a4107283fa0"
+      }
+    },
+    "bullet_trade/server/adapters/big_qmt.py": {
+      "vendor": {
+        "exists": true,
+        "sha256": "505c7f16a78c06c49e227f37ff7848c2cf9b26d61b5673e7a8e0716bbbf9b54b"
+      },
+      "runtime": {
+        "exists": true,
+        "sha256": "dbdb940761fa8e6b1287140f2a396400b0877310cfed928bed2a3b6ba56a0c94"
+      }
+    },
+    "bullet_trade/cli/main.py": {
+      "vendor": {
+        "exists": true,
+        "sha256": "84718d1730c076f04ca21bed8c4a30e47d703e46bcf3a28add80a082c003a812"
+      },
+      "runtime": {
+        "exists": true,
+        "sha256": "4fcc759149827915faa0ae31c586fd2a25e03ab56054977c62fbdfcebe6f31c8"
+      }
+    },
+    "helpers/big_qmt_gateway_strategy_sample.py": {
+      "vendor": {
+        "exists": true,
+        "sha256": "a1109df914d2c5d91c69df94f0aaa71f98b7aeb2282eb6b2e9c6e036fa2db2a6"
+      },
+      "runtime": {
+        "exists": true,
+        "sha256": "021569de96fe8f99d3aef47c1ff5c8e721e6e9eb81781120e079a110aa6720b8"
+      }
+    }
+  },
+  "create_backtest": {
+    "vendor": "strategy_file: str, start_date: str, end_date: str, frequency: str='day', initial_cash: float=100000, benchmark: Optional[str]=None, log_file: Optional[str]=None, extras: Optional[Dict[str, Any]]=None, initial_positions: Optional[List[Dict[str, Any]]]=None, algorithm_id: Optional[str]=None, data_session_config: Optional[Dict[str, Any]]=None, use_real_price: Optional[bool]=None",
+    "runtime": "strategy_file: str, start_date: str, end_date: str, frequency: str='day', initial_cash: float=100000, benchmark: Optional[str]=None, log_file: Optional[str]=None, extras: Optional[Dict[str, Any]]=None, initial_positions: Optional[List[Dict[str, Any]]]=None, algorithm_id: Optional[str]=None, data_session_config: Optional[Dict[str, Any]]=None"
+  },
+  "python_executable": "D:\\Projects\\BulletTrade\\.venv\\Scripts\\python.exe",
+  "python": "3.12.15 | packaged by conda-forge | (main, Oct  6 2026, 23:39:35) [MSC v.1944 64 bit (AMD64)]"
+}

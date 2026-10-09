@@ -250,3 +250,8 @@ mlruns/
 runs/
 # 研究链路产出（make research 的 reports/oos.json+md）
 reports/
+
+# QuantRadar2 local runtime and isolated environment
+.venv-v2/
+var/quantradar2/
+frontend/dist-v2/

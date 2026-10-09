@@ -1,0 +1,915 @@
+{
+  "python": "3.12.15 | packaged by conda-forge | (main, Oct  6 2026, 23:39:35) [MSC v.1944 64 bit (AMD64)]",
+  "rpc": "127.0.0.1:58600",
+  "results": [
+    {
+      "id": 1,
+      "name": "get_last_volume",
+      "args": [
+        "000001.SZ"
+      ],
+      "output": {
+        "type": "float",
+        "value": 19405680000.0
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 2,
+      "name": "get_sector",
+      "args": [
+        "000300.SH"
+      ],
+      "output": {
+        "type": "list",
+        "count": 300,
+        "sample": [
+          "000001.SZ",
+          "000002.SZ",
+          "000063.SZ"
+        ]
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 3,
+      "name": "get_industry",
+      "args": [
+        "CSRC采矿业"
+      ],
+      "output": {
+        "type": "list",
+        "count": 0,
+        "sample": []
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 4,
+      "name": "get_stock_list_in_sector",
+      "args": [
+        "HS300"
+      ],
+      "output": {
+        "type": "list",
+        "count": 300,
+        "sample": [
+          "600000.SH",
+          "600009.SH",
+          "600010.SH"
+        ]
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 5,
+      "name": "get_weight_in_index",
+      "args": [
+        "000300.SH",
+        "000001.SZ"
+      ],
+      "output": {
+        "type": "float",
+        "value": 0.713
+      },
+      "warnings": "",
+      "seconds": 0.016
+    },
+    {
+      "id": 6,
+      "name": "get_contract_multiplier",
+      "args": [
+        "IF00.IF"
+      ],
+      "output": {
+        "type": "int",
+        "value": 2147483647
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 7,
+      "name": "get_risk_free_rate",
+      "args": [
+        "20260930"
+      ],
+      "output": {
+        "type": "float",
+        "value": 1.07
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 8,
+      "name": "get_financial_data",
+      "args": [
+        "CAPITALSTRUCTURE.total_capital",
+        "ASHAREINCOME.net_profit_incl_min_int_inc",
+        "000001.SZ",
+        "20260901",
+        "20260930",
+        "announce_time"
+      ],
+      "output": {
+        "type": "DataFrame",
+        "shape": [
+          21,
+          2
+        ],
+        "index_sample": [
+          "20260901",
+          "20260902"
+        ],
+        "columns": [
+          "total_capital",
+          "net_profit_incl_min_int_inc"
+        ],
+        "nulls": 0,
+        "sample": "          total_capital  net_profit_incl_min_int_inc\n20260901   1.940592e+10                 2.569600e+10\n20260902   1.940592e+10                 2.569600e+10"
+      },
+      "warnings": "",
+      "seconds": 0.047
+    },
+    {
+      "id": 9,
+      "name": "get_market_data",
+      "args": [
+        "OHLCVA",
+        "600519.SH",
+        "20260901",
+        "20260930",
+        "1d",
+        "none"
+      ],
+      "output": {
+        "type": "DataFrame",
+        "shape": [
+          21,
+          6
+        ],
+        "index_sample": [
+          "20260901",
+          "20260902"
+        ],
+        "columns": [
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "amount"
+        ],
+        "nulls": 0,
+        "sample": "            open     high     low    close   volume        amount\n20260901  1295.0  1307.99  1286.1  1299.56  32664.0  4.242441e+09\n20260902  1302.8  1303.00  1291.2  1297.50  20308.0  2.634084e+09"
+      },
+      "warnings": "",
+      "seconds": 0.015
+    },
+    {
+      "id": 10,
+      "name": "get_divid_factors",
+      "args": [
+        "600519.SH",
+        ""
+      ],
+      "output": {
+        "type": "dict",
+        "count": 31,
+        "sample": {
+          "1027526400000": [
+            0.6000000238418579,
+            0.0,
+            0.10000000149011612,
+            0.0,
+            0.0,
+            0,
+            1.1182795698924732
+          ],
+          "1058112000000": [
+            0.20000000298023224,
+            0.10000000149011612,
+            0.0,
+            0.0,
+            0.0,
+            0,
+            1.1087144089732528
+          ],
+          "1088611200000": [
+            0.30000001192092896,
+            0.0,
+            0.30000001192092896,
+            0.0,
+            0.0,
+            0,
+            1.3115071677644325
+          ],
+          "1123171200000": [
+            0.5,
+            0.0,
+            0.20000000298023224,
+            0.0,
+            0.0,
+            0,
+            1.2109511343804535
+          ],
+          "1147968000000": [
+            0.30000001192092896,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0,
+            2.0068057080131725
+          ]
+        }
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 11,
+      "name": "get_main_contract",
+      "args": [
+        "IF00.IF"
+      ],
+      "output": {
+        "type": "str",
+        "value": "IF2610"
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 12,
+      "name": "timetag_to_date_time",
+      "args": [
+        1512748860000,
+        "%Y%m%d %H:%M:%S"
+      ],
+      "output": {
+        "type": "str",
+        "value": "20171209 00:01:00"
+      },
+      "warnings": "",
+      "seconds": 0.016
+    },
+    {
+      "id": 13,
+      "name": "get_trading_dates",
+      "args": [
+        "600519.SH",
+        "20260901",
+        "20260930",
+        1,
+        "1d"
+      ],
+      "output": {
+        "type": "list",
+        "count": 21,
+        "sample": [
+          "20260901",
+          "20260902",
+          "20260903"
+        ]
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 14,
+      "name": "get_factor_data",
+      "args": [
+        "Solvency_and_Capital_Structure.EquityToAsset",
+        "000001.SZ",
+        "20260901",
+        "20260930"
+      ],
+      "output": {
+        "type": "DataFrame",
+        "shape": [
+          21,
+          1
+        ],
+        "index_sample": [
+          "1788192000000",
+          "1788278400000"
+        ],
+        "columns": [
+          "EquityToAsset"
+        ],
+        "nulls": 21,
+        "sample": "               EquityToAsset\n1788192000000            NaN\n1788278400000            NaN"
+      },
+      "warnings": "",
+      "seconds": 0.047
+    },
+    {
+      "id": 15,
+      "name": "get_option_list",
+      "args": [
+        "510300.SH",
+        "20261009",
+        "CALL",
+        true
+      ],
+      "output": {
+        "type": "list",
+        "count": 51,
+        "sample": [
+          "10012182.SHO",
+          "10012460.SHO",
+          "10011450.SHO"
+        ]
+      },
+      "warnings": "",
+      "seconds": 0.812
+    },
+    {
+      "id": 16,
+      "name": "get_his_contract_list",
+      "args": [
+        "SHO"
+      ],
+      "output": {
+        "type": "list",
+        "count": 0,
+        "sample": []
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 17,
+      "name": "get_instrumentdetail",
+      "args": [
+        "600519.SH"
+      ],
+      "output": {
+        "type": "dict",
+        "count": 31,
+        "sample": {
+          "ExchangeID": "SH",
+          "InstrumentID": "600519",
+          "InstrumentName": "贵州茅台",
+          "ProductID": "",
+          "CreateDate": 20010827
+        }
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 18,
+      "name": "get_option_detail_data",
+      "args": [
+        "10012182.SHO"
+      ],
+      "output": {
+        "type": "dict",
+        "count": 27,
+        "sample": {
+          "ExchangeID": "SHO",
+          "InstrumentID": "10012182",
+          "ProductID": "510300(510300)",
+          "OpenDate": 20260723,
+          "ExpireDate": 20270324
+        }
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 19,
+      "name": "get_option_iv",
+      "args": [
+        "10012182.SHO"
+      ],
+      "output": {
+        "type": "float",
+        "value": 0.13289165496826172
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 20,
+      "name": "bsm_price",
+      "args": [
+        "C",
+        3.51,
+        3.5,
+        0.03,
+        0.23,
+        15,
+        0
+      ],
+      "output": {
+        "type": "float",
+        "value": 0.0725
+      },
+      "warnings": "",
+      "seconds": 0.0
+    },
+    {
+      "id": 21,
+      "name": "bsm_iv",
+      "args": [
+        "C",
+        3.51,
+        3.5,
+        0.0725,
+        0.03,
+        15,
+        0
+      ],
+      "output": {
+        "type": "float",
+        "value": 0.2299
+      },
+      "warnings": "",
+      "seconds": 0.0
+    }
+  ],
+  "extra_tests": [
+    {
+      "test": "multiplier_actual_IF2610",
+      "result": 2147483647,
+      "warnings": ""
+    },
+    {
+      "test": "industry:CSRC采矿业",
+      "result": {
+        "count": 0,
+        "sample": []
+      },
+      "warnings": ""
+    },
+    {
+      "test": "industry:采矿业",
+      "result": {
+        "count": 0,
+        "sample": []
+      },
+      "warnings": ""
+    },
+    {
+      "test": "industry:SW1煤炭",
+      "result": {
+        "count": 40,
+        "sample": [
+          "600121.SH",
+          "600123.SH",
+          "600157.SH"
+        ]
+      },
+      "warnings": ""
+    },
+    {
+      "test": "historical_contracts_IF",
+      "result": {
+        "count": 0,
+        "sample": []
+      },
+      "warnings": ""
+    },
+    {
+      "test": "sector_date:20131010",
+      "result": {
+        "count": 0,
+        "sample": []
+      },
+      "warnings": ""
+    },
+    {
+      "test": "sector_date:20260930",
+      "result": {
+        "count": 0,
+        "sample": []
+      },
+      "warnings": ""
+    },
+    {
+      "test": "risk_free_date:20191010",
+      "result": 2.25,
+      "warnings": ""
+    },
+    {
+      "test": "risk_free_date:20260930",
+      "result": 1.07,
+      "warnings": ""
+    },
+    {
+      "test": "financial_multi_security_multi_date",
+      "result": null,
+      "warnings": "\n  File \"D:\\国信iQuant策略交易平台\\bin.x64\\Lib\\site-packages\\qmt_api\\api.py\", line 36, in wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\国信iQuant策略交易平台\\bin.x64\\Lib\\site-packages\\qmt_api\\api.py\", line 290, in getFinancialData\n    return pd.Panel(panels)\n           ^^^^^^^^\n raise AttributeError:module 'pandas' has no attribute 'Panel'\n"
+    },
+    {
+      "test": "bsm_price_list",
+      "result": 0.0725,
+      "warnings": ""
+    },
+    {
+      "test": "tick_history",
+      "result": {
+        "shape": [
+          0,
+          1
+        ],
+        "nulls": 0,
+        "sample": "Empty DataFrame\nColumns: [quoter]\nIndex: []"
+      },
+      "warnings": ""
+    },
+    {
+      "test": "compare:600519:1d",
+      "result": {
+        "research_rows": 21,
+        "bullettrade_rows": 21,
+        "same_times": true,
+        "ohlc_equal": true,
+        "amount_equal": true,
+        "research_volume_first": 32664.0,
+        "bullettrade_volume_first": 3266400.0,
+        "volume_ratio_unique": [
+          100.0
+        ]
+      },
+      "warnings": ""
+    },
+    {
+      "test": "compare:600519:1m",
+      "error": "ValueError: time data \"20260930 09:31:00\" doesn't match format \"%Y%m%d%H%M%S\", at position 0. You might want to try:\n    - passing `format` if your strings have a consistent format;\n    - passing `format='ISO8601'` if your strings are all ISO8601 but not necessarily in exactly the same format;\n    - passing `format='mixed'`, and the format will be inferred for each element individually. You might want to use `dayfirst` alongside this.",
+      "warnings": ""
+    },
+    {
+      "test": "compare:510300:1d",
+      "result": {
+        "research_rows": 21,
+        "bullettrade_rows": 21,
+        "same_times": true,
+        "ohlc_equal": true,
+        "amount_equal": true,
+        "research_volume_first": 8467983.0,
+        "bullettrade_volume_first": 846798300.0,
+        "volume_ratio_unique": [
+          100.0
+        ]
+      },
+      "warnings": ""
+    },
+    {
+      "test": "compare:510300:1m",
+      "error": "ValueError: time data \"20260930 09:31:00\" doesn't match format \"%Y%m%d%H%M%S\", at position 0. You might want to try:\n    - passing `format` if your strings have a consistent format;\n    - passing `format='ISO8601'` if your strings are all ISO8601 but not necessarily in exactly the same format;\n    - passing `format='mixed'`, and the format will be inferred for each element individually. You might want to use `dayfirst` alongside this.",
+      "warnings": ""
+    },
+    {
+      "test": "compare:000300:1d",
+      "result": {
+        "research_rows": 21,
+        "bullettrade_rows": 21,
+        "same_times": true,
+        "ohlc_equal": false,
+        "amount_equal": true,
+        "research_volume_first": 214869581.0,
+        "bullettrade_volume_first": 214869581.0,
+        "volume_ratio_unique": [
+          1.0
+        ]
+      },
+      "warnings": ""
+    },
+    {
+      "test": "compare:000300:1m",
+      "error": "ValueError: time data \"20260930 09:31:00\" doesn't match format \"%Y%m%d%H%M%S\", at position 0. You might want to try:\n    - passing `format` if your strings have a consistent format;\n    - passing `format='ISO8601'` if your strings are all ISO8601 but not necessarily in exactly the same format;\n    - passing `format='mixed'`, and the format will be inferred for each element individually. You might want to use `dayfirst` alongside this.",
+      "warnings": ""
+    }
+  ],
+  "followup_tests": [
+    {
+      "test": "get_sector:timestamp:2013-10-10",
+      "result": {
+        "timestamp": 1381334400000,
+        "count": 300,
+        "sample": [
+          "000001.SZ",
+          "000002.SZ",
+          "000063.SZ"
+        ]
+      }
+    },
+    {
+      "test": "get_stock_list_in_sector:timestamp:2013-10-10",
+      "result": {
+        "timestamp": 1381334400000,
+        "count": 300,
+        "sample": [
+          "600000.SH",
+          "600009.SH",
+          "600010.SH"
+        ]
+      }
+    },
+    {
+      "test": "get_sector:timestamp:2026-09-30",
+      "result": {
+        "timestamp": 1790697600000,
+        "count": 300,
+        "sample": [
+          "000001.SZ",
+          "000002.SZ",
+          "000063.SZ"
+        ]
+      }
+    },
+    {
+      "test": "get_stock_list_in_sector:timestamp:2026-09-30",
+      "result": {
+        "timestamp": 1790697600000,
+        "count": 300,
+        "sample": [
+          "600000.SH",
+          "600009.SH",
+          "600010.SH"
+        ]
+      }
+    },
+    {
+      "test": "comparison_corrected:600519:1d",
+      "result": {
+        "research_rows": 21,
+        "bullettrade_rows": 21,
+        "same_times": true,
+        "ohlc_max_abs_diff": {
+          "open": 2.2737367544323206e-13,
+          "high": 2.2737367544323206e-13,
+          "low": 2.2737367544323206e-13,
+          "close": 2.2737367544323206e-13
+        },
+        "amount_equal": true,
+        "volume_ratios": [
+          100.0
+        ],
+        "first_research": [
+          {
+            "open": 1295.0000000000002,
+            "high": 1307.9900000000002,
+            "low": 1286.1000000000001,
+            "close": 1299.5600000000002,
+            "volume": 32664.0,
+            "amount": 4242440860.9999995
+          }
+        ],
+        "first_bullettrade": [
+          {
+            "open": 1295.0,
+            "high": 1307.99,
+            "low": 1286.1,
+            "close": 1299.56,
+            "volume": 3266400.0,
+            "money": 4242440860.9999995
+          }
+        ]
+      }
+    },
+    {
+      "test": "comparison_corrected:600519:1m",
+      "result": {
+        "research_rows": 240,
+        "bullettrade_rows": 240,
+        "same_times": true,
+        "ohlc_max_abs_diff": {
+          "open": 0.5299999999999727,
+          "high": 0.0,
+          "low": 0.0,
+          "close": 0.0
+        },
+        "amount_equal": false,
+        "volume_ratios": [
+          119.350962,
+          100.0
+        ],
+        "first_research": [
+          {
+            "open": 1239.0,
+            "high": 1244.0,
+            "low": 1237.55,
+            "close": 1238.25,
+            "volume": 832.0,
+            "amount": 103266881.0
+          }
+        ],
+        "first_bullettrade": [
+          {
+            "open": 1239.53,
+            "high": 1244.0,
+            "low": 1237.55,
+            "close": 1238.25,
+            "volume": 99300.0,
+            "money": 123223314.0
+          }
+        ]
+      }
+    },
+    {
+      "test": "comparison_corrected:510300:1d",
+      "result": {
+        "research_rows": 21,
+        "bullettrade_rows": 21,
+        "same_times": true,
+        "ohlc_max_abs_diff": {
+          "open": 8.881784197001252e-16,
+          "high": 8.881784197001252e-16,
+          "low": 8.881784197001252e-16,
+          "close": 8.881784197001252e-16
+        },
+        "amount_equal": true,
+        "volume_ratios": [
+          100.0
+        ],
+        "first_research": [
+          {
+            "open": 4.683000000000001,
+            "high": 4.705,
+            "low": 4.666,
+            "close": 4.684,
+            "volume": 8467983.0,
+            "amount": 3962899774.0
+          }
+        ],
+        "first_bullettrade": [
+          {
+            "open": 4.683,
+            "high": 4.705,
+            "low": 4.666,
+            "close": 4.684,
+            "volume": 846798300.0,
+            "money": 3962899774.0
+          }
+        ]
+      }
+    },
+    {
+      "test": "comparison_corrected:510300:1m",
+      "result": {
+        "research_rows": 240,
+        "bullettrade_rows": 240,
+        "same_times": true,
+        "ohlc_max_abs_diff": {
+          "open": 0.004999999999999893,
+          "high": 0.0,
+          "low": 0.0,
+          "close": 0.0
+        },
+        "amount_equal": false,
+        "volume_ratios": [
+          114.203679,
+          100.0
+        ],
+        "first_research": [
+          {
+            "open": 4.426,
+            "high": 4.428,
+            "low": 4.42,
+            "close": 4.426,
+            "volume": 165260.0,
+            "amount": 73110177.0
+          }
+        ],
+        "first_bullettrade": [
+          {
+            "open": 4.421,
+            "high": 4.428,
+            "low": 4.42,
+            "close": 4.426,
+            "volume": 18873300.0,
+            "money": 83487589.0
+          }
+        ]
+      }
+    },
+    {
+      "test": "comparison_corrected:000300:1d",
+      "result": {
+        "research_rows": 21,
+        "bullettrade_rows": 21,
+        "same_times": true,
+        "ohlc_max_abs_diff": {
+          "open": 0.005000000000109139,
+          "high": 0.005000000000109139,
+          "low": 0.005000000000109139,
+          "close": 0.005000000000109139
+        },
+        "amount_equal": true,
+        "volume_ratios": [
+          1.0
+        ],
+        "first_research": [
+          {
+            "open": 4618.734,
+            "high": 4640.081,
+            "low": 4604.77,
+            "close": 4611.44,
+            "volume": 214869581.0,
+            "amount": 535708359906.0
+          }
+        ],
+        "first_bullettrade": [
+          {
+            "open": 4618.73,
+            "high": 4640.08,
+            "low": 4604.77,
+            "close": 4611.44,
+            "volume": 214869581.0,
+            "money": 535708359906.0
+          }
+        ]
+      }
+    },
+    {
+      "test": "comparison_corrected:000300:1m",
+      "result": {
+        "research_rows": 240,
+        "bullettrade_rows": 240,
+        "same_times": true,
+        "ohlc_max_abs_diff": {
+          "open": 0.005000000000109139,
+          "high": 0.005000000000109139,
+          "low": 0.005000000000109139,
+          "close": 0.005000000000109139
+        },
+        "amount_equal": true,
+        "volume_ratios": [
+          100.0
+        ],
+        "first_research": [
+          {
+            "open": 4356.902,
+            "high": 4357.981,
+            "low": 4350.797,
+            "close": 4356.352,
+            "volume": 5159884.0,
+            "amount": 10300379900.0
+          }
+        ],
+        "first_bullettrade": [
+          {
+            "open": 4356.9,
+            "high": 4357.98,
+            "low": 4350.8,
+            "close": 4356.35,
+            "volume": 515988400.0,
+            "money": 10300379900.0
+          }
+        ]
+      }
+    }
+  ],
+  "semantic_checks": [
+    {
+      "test": "historical_constituents_sets",
+      "2013_count": 300,
+      "2026_count": 300,
+      "sets_identical": true,
+      "only_2013": [],
+      "only_2026": []
+    },
+    {
+      "test": "auction_difference:600519",
+      "different_timestamps": [
+        "2026-09-30 09:31:00"
+      ],
+      "auction": {
+        "open": 1239.53,
+        "high": 1239.53,
+        "low": 1239.53,
+        "close": 1239.53,
+        "volume": 161.0,
+        "amount": 19956433.0
+      },
+      "first_bar_volume_delta": 16100.0,
+      "first_bar_amount_delta": 19956433.0
+    },
+    {
+      "test": "auction_difference:510300",
+      "different_timestamps": [
+        "2026-09-30 09:31:00"
+      ],
+      "auction": {
+        "open": 4.421,
+        "high": 4.421,
+        "low": 4.421,
+        "close": 4.421,
+        "volume": 23473.0,
+        "amount": 10377412.0
+      },
+      "first_bar_volume_delta": 2347300.0,
+      "first_bar_amount_delta": 10377412.0
+    }
+  ]
+}
