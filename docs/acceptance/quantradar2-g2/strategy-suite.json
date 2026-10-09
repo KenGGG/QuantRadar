@@ -1,0 +1,170 @@
+[
+  {
+    "case": "buy_hold",
+    "recorded": "c5a32f58072340239e4451a5b594c3b0",
+    "api_replay": "37dd0bee919646a2af5a425ba5c3272e",
+    "direct_replay": "06ff54292bea450792ac47acc702a4c0",
+    "request": {
+      "benchmark": "000300.XSHG",
+      "data_mode": "record",
+      "end_date": "2026-09-04",
+      "extras": {},
+      "frequency": "day",
+      "initial_cash": 500000.0,
+      "reference_date": "2026-10-09",
+      "start_date": "2026-09-01",
+      "strategy_name": "G2 buy_hold"
+    },
+    "source_sha256": "c891356883a499f73940aff5cd3f4be5bbe248c001081b27c75a15984ae93b0a",
+    "frozen_requests": 24,
+    "actions": [
+      "data.get_split_dividend",
+      "data.history",
+      "data.security_info",
+      "data.trade_days"
+    ],
+    "api_parity": {
+      "trades.csv": "exact",
+      "daily_positions.csv": "exact",
+      "daily_records.csv": "exact",
+      "metrics": "exact"
+    },
+    "direct_parity": {
+      "trades.csv": "exact",
+      "daily_positions.csv": "exact",
+      "daily_records.csv": "exact",
+      "metrics": "exact"
+    },
+    "trades": 1,
+    "fees": 38.9,
+    "frozen_zip_sha256": "8f1b3d8b9f92f96eee177ef30951e41e6a88e8ff2aa895b10d9b8807bdd372b6"
+  },
+  {
+    "case": "daily_ma",
+    "recorded": "67444d2708e643d58b992d48770d94a0",
+    "api_replay": "65c53bfa316942958f39cb19fcbda561",
+    "direct_replay": "c6f6f10075d2456c8dc2c12d44d7ac3d",
+    "request": {
+      "benchmark": "000300.XSHG",
+      "data_mode": "record",
+      "end_date": "2026-09-30",
+      "extras": {},
+      "frequency": "day",
+      "initial_cash": 500000.0,
+      "reference_date": "2026-10-09",
+      "start_date": "2026-09-01",
+      "strategy_name": "G2 daily_ma"
+    },
+    "source_sha256": "e6f3f275158a25f7eea605cc57bee66c80ee6d414a25f8a206748f48bcc6de34",
+    "frozen_requests": 127,
+    "actions": [
+      "data.get_split_dividend",
+      "data.history",
+      "data.security_info",
+      "data.trade_days"
+    ],
+    "api_parity": {
+      "trades.csv": "exact",
+      "daily_positions.csv": "exact",
+      "daily_records.csv": "exact",
+      "metrics": "exact"
+    },
+    "direct_parity": {
+      "trades.csv": "exact",
+      "daily_positions.csv": "exact",
+      "daily_records.csv": "exact",
+      "metrics": "exact"
+    },
+    "trades": 7,
+    "fees": 486.64,
+    "frozen_zip_sha256": "09cb5d87fa134cd1590302fcf2283c02a9fa0a61217d07b74a71424e4d329d16"
+  },
+  {
+    "case": "etf_monthly_momentum",
+    "recorded": "eccbb7d75bb2459290569f0a7d8071cc",
+    "api_replay": "785b591059354e05926976979b49bb61",
+    "direct_replay": "7b617872f4c34573bc74b2831e573fb8",
+    "request": {
+      "benchmark": "000300.XSHG",
+      "data_mode": "record",
+      "end_date": "2026-09-30",
+      "extras": {},
+      "frequency": "day",
+      "initial_cash": 500000.0,
+      "reference_date": "2026-10-09",
+      "start_date": "2026-08-03",
+      "strategy_name": "G2 etf_monthly_momentum"
+    },
+    "source_sha256": "2473925c8d1692178e9099dbcde6182066408823d313b4e8c013beddaafdcd40",
+    "frozen_requests": 188,
+    "actions": [
+      "data.get_split_dividend",
+      "data.history",
+      "data.security_info",
+      "data.trade_days"
+    ],
+    "api_parity": {
+      "trades.csv": "exact",
+      "daily_positions.csv": "exact",
+      "daily_records.csv": "exact",
+      "metrics": "exact"
+    },
+    "direct_parity": {
+      "trades.csv": "exact",
+      "daily_positions.csv": "exact",
+      "daily_records.csv": "exact",
+      "metrics": "exact"
+    },
+    "trades": 3,
+    "fees": 362.49,
+    "frozen_zip_sha256": "757c2db6e7bba82827c79330ebd60ac1ec5b6fbba8d9dd262f8cfdabec97a1ec",
+    "monthly_trade_dates": [
+      "2026-08-03",
+      "2026-09-01"
+    ]
+  },
+  {
+    "case": "minute_sessions",
+    "recorded": "8599d7c272614e0bac1c26d288772318",
+    "api_replay": "2f3b49442e4440ddafb334d9b9b8ba63",
+    "direct_replay": "1fe6f0e5e3014904abcbe47216ba256e",
+    "request": {
+      "benchmark": "000300.XSHG",
+      "data_mode": "record",
+      "end_date": "2026-09-30",
+      "extras": {
+        "exit_date": "2026-09-30"
+      },
+      "frequency": "minute",
+      "initial_cash": 500000.0,
+      "reference_date": "2026-10-09",
+      "start_date": "2026-09-29",
+      "strategy_name": "G2 minute_sessions"
+    },
+    "source_sha256": "893d1c53a80925a100d05bdc49e03319984d33f0ae516014bba16e3770962cf6",
+    "frozen_requests": 257,
+    "actions": [
+      "data.get_split_dividend",
+      "data.history",
+      "data.security_info",
+      "data.trade_days"
+    ],
+    "api_parity": {
+      "trades.csv": "exact",
+      "daily_positions.csv": "exact",
+      "daily_records.csv": "exact",
+      "metrics": "exact"
+    },
+    "direct_parity": {
+      "trades.csv": "exact",
+      "daily_positions.csv": "exact",
+      "daily_records.csv": "exact",
+      "metrics": "exact"
+    },
+    "trades": 2,
+    "fees": 10.0,
+    "frozen_zip_sha256": "53c1f083d0aa06779053e1a5739bc45b51c10ae76fccb9d9cfddf28ea010b1e0",
+    "minute_callbacks": 480,
+    "sessions_checked": 2
+  }
+]

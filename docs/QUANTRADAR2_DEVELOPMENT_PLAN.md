@@ -1,6 +1,8 @@
 # QuantRadar2 开发计划与持续执行目标
 
-版本：1.0；制定日期：2026-10-09（Asia/Shanghai）。
+版本：1.1；制定及首版验收日期：2026-10-09（Asia/Shanghai）。
+
+执行状态：G0、G1、G2 均已完成；[最终验收](acceptance/quantradar2-g2/README.md)。第2节保留制定计划时基线，当前事实见 [CURRENT_STATE](CURRENT_STATE.md)。G3 未启动。
 
 ## 1. 授权、目标和完成边界
 
@@ -53,10 +55,10 @@ WebUI → 精简 FastAPI → SQLite任务元数据 → 独立回测子进程 →
 
 ### 实现布局与复用原则
 
-- 新后端包使用 `backend/quantradar2`，新入口 `quantradar2.api.app:app`；禁止导入V1 bootstrap、InvestmentDataProvider、DataHub维护锁及数据库初始化。保留V1后端供参考和回退。
+- 新后端包使用 `backend/quantradar2`，新入口 `scripts/v2_api.py`（调用 `quantradar2.api.create_app`）；禁止导入V1 bootstrap、InvestmentDataProvider、DataHub维护锁及数据库初始化。保留V1后端供参考和回退。
 - 复用frontend现有React/TypeScript、Ant Design、Monaco、ECharts及三个核心组件的布局；建立V2入口和API模块，迁移时剪除真实依赖，不仅隐藏菜单。V1前端入口保留可单独构建。
 - V2只展示策略工作台、回测记录/报告、数据与连接三个入口；日频/分钟标识来自实际配置。设置放附属面板，不迁入ETF专页、实验组、FactorLab、Qlib、Kronos、研报。
-- pyproject提供V2最小依赖路径，V2安装不能强制安装旧机器学习/数据采集依赖；BulletTrade来源路径与锁定版本显式记录，启动检查实际加载路径，禁止静默加载旧vendor。
+- `requirements-v2.txt` 提供V2最小依赖路径，V2安装不能强制安装旧机器学习/数据采集依赖；BulletTrade来源路径与锁定版本显式记录，启动检查实际加载路径，禁止静默加载旧vendor。
 - Windows启动/停止脚本均位于仓库，服务绑定127.0.0.1；采用V2独立端口，默认Web API 7242，数据服务58621；占用时启动报错，用户可配置，不自动停止已有进程。
 - V2使用独立虚拟环境，基于已验收Python版本；不改现有BulletTrade或QMT环境。新环境安装记录依赖锁和BulletTrade实际源码身份。
 
@@ -83,7 +85,7 @@ SQLite使用Python标准库sqlite3，文件位于可配置V2运行目录，默�
 
 - 首版并发为1，任务先进先出，状态QUEUED → RUNNING → SUCCEEDED/FAILED/CANCELLED/INTERRUPTED；停止排队任务直接CANCELLED，运行任务终止自己的进程树，不操作QMT或共享数据服务。
 - 用户代码是本人编写或审查的可信代码，子进程隔离全局设置并不等于安全沙箱。启动参数显式backtest，不调用live模式，不载入远程券商配置。
-- 执行器设置可配置超时（默认30分钟）；日志持续输出，非零退出码及缺报告产物均FAILED。API重启后检查运行器PID和身份：仍存在则接管监督，已退出则按完成清单恢复或标记INTERRUPTED；不可按单个PID杀未知进程。
+- 执行器设置可配置超时（默认30分钟）；日志持续输出，非零退出码及缺报告产物均FAILED。API重启后检查运行器PID和身份：仍存在则核验身份后终止本应用遗留进程；按有效完成清单恢复，否则标记INTERRUPTED，不重新执行原任务；不可按单个PID杀未知进程。
 - 服务端Broker禁用：本机BulletTrade支持 `--disable-broker`，为V2单独启动数据专用服务、独立端口和令牌，服务与配置均在QMT安装目录外。策略子进程不继承现有broker服务令牌和Gateway内部密码。
 - 用静态路径审查和离线替身测试证明broker请求在服务端进入适配器前拒绝；不向真实QMT发送测试交易请求。真实health只验证features=data及禁用状态，不能以ready作为只读证明。
 - 已有Gateway仍开放交易须如实列示。V2的隔离是可信本地研究流程的应用层隔离，不承诺恶意Python无法自行访问本机。若用户要求Gateway自身只读，属于需单独授权的配置变更，不能自行修改。
@@ -139,3 +141,11 @@ SQLite使用Python标准库sqlite3，文件位于可配置V2运行目录，默�
 - 修改前先检查实际工作树，不覆盖用户修改；本地提交只包含本轮明确改动，不提交凭证/SQLite/大产物，不推送或合并。若权限不允许本地Git操作，保留可审查文件并记录原因。
 - 遇到可修复失败继续诊断；遇到QMT GUI、安装目录变更、外部权限等必须停下相关操作，继续独立可做工作并说明阻塞，不伪造验收。
 - 每次任务收尾报告完成内容、验证证据、当前任务和剩余阻塞；持续执行范围以G2首版交付为终点，不自行开启G3。
+
+## 9. 首版交付记录
+
+G0/G1/G2 已依次完成，源码、报告和运行证据按阶段归档。最终 18 项测试通过，四组有限策略的记录/API 回放/直接离线运行结果精确一致；实际停止、超时、重启、浏览器编辑/报告/归档恢复通过。SQLite schema2 保留历史数据升级；无实盘交易能力。
+
+实际交付采用独立 V2 页面和入口，不强制迁入旧组件或旧 pyproject 依赖。回放严格匹配记录时的软件/配置/请求身份，不支持任意外部导入、随机数或墙上时钟策略的通用冻结。普通 live 读取不承诺永久一致。原生报告初始资金标签误差通过网页说明纠正，保留原产物；已有数据资格缺口未宣称修复。
+
+持续执行目标到此完成，G3 需后续明确研究任务，不在本次自动开发范围。

@@ -24,13 +24,13 @@ class Store:
         with self.connection() as db:
             db.execute("PRAGMA journal_mode=WAL")
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version > 1:
+            if version > 2:
                 raise ValueError("Database schema is newer than this application")
             if version == 0:
                 db.executescript("""
                 BEGIN IMMEDIATE;
                 CREATE TABLE IF NOT EXISTS strategies (
-                    id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+                    id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, archived INTEGER NOT NULL DEFAULT 0);
                 CREATE TABLE IF NOT EXISTS revisions (
                     id TEXT PRIMARY KEY, strategy_id TEXT NOT NULL REFERENCES strategies(id),
                     revision INTEGER NOT NULL, source TEXT NOT NULL, source_hash TEXT NOT NULL,
@@ -52,9 +52,11 @@ class Store:
                     run_id TEXT NOT NULL REFERENCES runs(id), name TEXT NOT NULL,
                     sha256 TEXT NOT NULL, bytes INTEGER NOT NULL, PRIMARY KEY(run_id,name));
                 CREATE INDEX IF NOT EXISTS run_status ON runs(status,created_at);
-                PRAGMA user_version=1;
+                PRAGMA user_version=2;
                 COMMIT;
                 """)
+            elif version == 1:
+                db.executescript("BEGIN IMMEDIATE; ALTER TABLE strategies ADD COLUMN archived INTEGER NOT NULL DEFAULT 0; PRAGMA user_version=2; COMMIT;")
 
     @contextmanager
     def connection(self):
@@ -83,7 +85,7 @@ class Store:
             else:
                 strategy_id = uuid.uuid4().hex
                 timestamp=now()
-                db.execute("INSERT INTO strategies VALUES (?,?,?,?)",(strategy_id,name,timestamp,timestamp))
+                db.execute("INSERT INTO strategies(id,name,created_at,updated_at) VALUES (?,?,?,?)",(strategy_id,name,timestamp,timestamp))
             number=db.execute("SELECT coalesce(max(revision),0)+1 FROM revisions WHERE strategy_id=?",(strategy_id,)).fetchone()[0]
             revision_id=uuid.uuid4().hex
             db.execute("INSERT INTO revisions VALUES (?,?,?,?,?,?)",(revision_id,strategy_id,number,source,hashlib.sha256(source.encode()).hexdigest(),now()))
@@ -97,10 +99,16 @@ class Store:
             if not row: raise KeyError(strategy_id)
             return dict(row)
 
-    def strategies(self):
+    def strategies(self,include_archived=False):
         with self.connection() as db:
-            ids=[r[0] for r in db.execute("SELECT id FROM strategies ORDER BY updated_at DESC")]
+            ids=[r[0] for r in db.execute("SELECT id FROM strategies WHERE archived=0 OR ? ORDER BY updated_at DESC",(int(include_archived),))]
         return [self.strategy(i) for i in ids]
+
+    def archive_strategy(self,strategy_id,archived=True):
+        self.strategy(strategy_id)
+        with self.connection() as db:
+            db.execute("UPDATE strategies SET archived=?,updated_at=? WHERE id=?",(int(archived),now(),strategy_id))
+        return self.strategy(strategy_id)
 
     def revision(self, revision_id):
         with self.connection() as db:

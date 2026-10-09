@@ -1,0 +1,25 @@
+{
+  "tests": [
+    {
+      "descendants_verified": 4,
+      "test": "queued and running cancel",
+      "status": "passed",
+      "pid_identity_checked": true
+    },
+    {
+      "test": "swallowed native callback error mapped to FAILED",
+      "status": "passed"
+    },
+    {
+      "test": "8 second timeout stops owned process",
+      "status": "passed"
+    },
+    {
+      "test": "unclean API restart stops verified orphan and does not reexecute",
+      "status": "passed"
+    }
+  ],
+  "runtime": "D:\\Projects\\QuantDev\\QuantRadar2\\var\\quantradar2\\recovery-626e0de245f24ec4a5f1db998b2809e0",
+  "data_service": "existing data-only 58621",
+  "trading_calls": 0
+}

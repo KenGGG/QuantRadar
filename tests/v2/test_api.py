@@ -39,3 +39,26 @@ def test_log_offsets_preserve_multibyte_and_unregistered_artifacts(tmp_path):
             offset=chunk["offset"];joined+=chunk["text"]
         assert joined==original
         assert client.get(f"/api/v2/runs/{run['id']}/artifacts/secret.env").status_code==404
+
+def test_report_initial_equity_annotation_preserves_original_artifact(tmp_path):
+    import json,hashlib
+    app=create_app(Runtime(tmp_path,tmp_path/"absent.env"),worker=False)
+    store=app.state.store;strategy=store.save_strategy("sample","pass")
+    run=store.create_run(strategy["revision_id"],{});directory=tmp_path/"runs"/run["id"];directory.mkdir(parents=True)
+    content=b"<html><body>Native overview initial: 499995</body></html>"
+    (directory/"standard_report.html").write_bytes(content)
+    (directory/"metrics.json").write_text(json.dumps({"meta":{"initial_total_value":500000}}))
+    store.register_artifacts(run["id"],[{"name":"standard_report.html","sha256":hashlib.sha256(content).hexdigest(),"bytes":len(content)}])
+    with TestClient(app) as client:
+        response=client.get(f"/api/v2/runs/{run['id']}/report")
+        assert response.status_code==200
+        assert "500,000.00" in response.text and "Native overview initial: 499995" in response.text
+    assert (directory/"standard_report.html").read_bytes()==content
+
+def test_preview_range_limits_are_inclusive_and_checked_before_connecting(tmp_path):
+    app=create_app(Runtime(tmp_path,tmp_path/"absent.env"),worker=False)
+    with TestClient(app) as client:
+        base={"security":"510300.XSHG","start":"2026-09-29","end":"2026-09-30","frequency":"minute"}
+        assert client.get("/api/v2/data/preview",params=base).status_code==400
+        assert client.get("/api/v2/data/preview",params=dict(base,end="2026-09-29")).status_code==503
+        assert client.get("/api/v2/data/preview",params=dict(base,start="2026-09-01",end="2026-10-02",frequency="daily")).status_code==400

@@ -65,6 +65,19 @@ class Manager:
     def start(self):
         # Never re-execute a task that was already running when the API stopped.
         for run in self.store.active_runs():
+            if not run.get("pid"):
+                # The child publishes its identity independently, covering an
+                # API crash between Popen and the SQLite identity update.
+                marker=self.runtime.run_dir(run["id"])/"runner-process.json"
+                deadline=time.monotonic()+2
+                while not marker.exists() and time.monotonic()<deadline:time.sleep(.05)
+                if marker.exists():
+                    try:
+                        identity=json.loads(marker.read_text(encoding="utf-8"))
+                        candidate=dict(run,pid=identity["pid"],process_created=identity["process_created"])
+                        if type(candidate["pid"]) is int and isinstance(candidate["process_created"],(int,float)) and self.owned(candidate):
+                            run=self.store.transition(run["id"],"RUNNING",pid=candidate["pid"],process_created=candidate["process_created"])
+                    except (KeyError,ValueError,OSError):pass
             if self.owned(run):self.terminate(run)
             marker=self.runtime.run_dir(run["id"])/"completion.json"
             if marker.exists():

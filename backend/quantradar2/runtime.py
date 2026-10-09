@@ -27,5 +27,15 @@ def engine_identity():
     package=Path(bullet_trade.__file__).resolve().parent
     expected=Path(os.environ.get("QUANTRADAR2_BULLETTRADE_SOURCE","D:/Projects/BulletTrade")).resolve()
     if package!=expected/"bullet_trade":raise RuntimeError("Unexpected BulletTrade load path: "+str(package))
-    return {"python":sys.executable,"python_version":sys.version,"bullettrade_version":version("bullet-trade"),
+    source_hash=hashlib.sha256()
+    for path in sorted(package.rglob("*.py")):
+        source_hash.update(str(path.relative_to(package)).encode());source_hash.update(path.read_bytes())
+    adapter_hash=hashlib.sha256()
+    for name in ["runtime.py","runner.py","provider.py","frozen.py"]:
+        path=Path(__file__).parent/name
+        adapter_hash.update(name.encode());adapter_hash.update(path.read_bytes())
+    configs_hash=hashlib.sha256()
+    for path in sorted((package/"config").glob("*.json")):
+        configs_hash.update(path.name.encode());configs_hash.update(path.read_bytes())
+    return {"adapter_fingerprint":adapter_hash.hexdigest(),"native_config_fingerprint":configs_hash.hexdigest(),"source_fingerprint":source_hash.hexdigest(),"dependency_versions":{name:version(name) for name in ["pandas","numpy","bullet-trade"]},"python":sys.executable,"python_version":sys.version,"bullettrade_version":version("bullet-trade"),
         "bullettrade_source":str(package),"engine_sha256":hashlib.sha256((package/"core/engine.py").read_bytes()).hexdigest()}

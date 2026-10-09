@@ -4,7 +4,7 @@ from datetime import date
 import json
 from pathlib import Path
 from fastapi import FastAPI,HTTPException,Query
-from fastapi.responses import FileResponse,JSONResponse
+from fastapi.responses import FileResponse,JSONResponse,HTMLResponse
 from pydantic import BaseModel,Field,model_validator
 from .runtime import Runtime,ROOT,engine_identity
 from .storage import Store
@@ -22,6 +22,8 @@ class RunInput(BaseModel):
     initial_cash:float=Field(default=500000,gt=0,le=1e12,allow_inf_nan=False)
     benchmark:str|None=Field(default="000300.XSHG",max_length=50)
     extras:dict=Field(default_factory=dict)
+    data_mode:str=Field(default="live",pattern=r"^(live|record)$")
+    reference_date:date=Field(default_factory=date.today)
     @model_validator(mode="after")
     def dates(self):
         if self.end_date<self.start_date:raise ValueError("End date precedes start date")
@@ -59,13 +61,17 @@ def create_app(runtime=None,worker=True):
     @app.get("/api/v2/health")
     def health():return {"status":"ok","trading":False,"engine":engine_identity(),"worker_error":manager.last_error}
     @app.get("/api/v2/strategies")
-    def strategies():return store.strategies()
+    def strategies(include_archived:bool=False):return store.strategies(include_archived)
     @app.post("/api/v2/strategies")
     def create_strategy(body:StrategyInput):return store.save_strategy(body.name,body.source)
     @app.get("/api/v2/strategies/{strategy_id}")
     def strategy(strategy_id:str):return store.strategy(strategy_id)
     @app.put("/api/v2/strategies/{strategy_id}")
     def save(strategy_id:str,body:StrategyInput):return store.save_strategy(body.name,body.source,strategy_id)
+    @app.delete("/api/v2/strategies/{strategy_id}")
+    def archive(strategy_id:str):return store.archive_strategy(strategy_id)
+    @app.post("/api/v2/strategies/{strategy_id}/restore")
+    def restore(strategy_id:str):return store.archive_strategy(strategy_id,False)
     @app.post("/api/v2/strategies/{strategy_id}/copy")
     def copy(strategy_id:str):
         old=store.strategy(strategy_id)
@@ -89,8 +95,16 @@ def create_app(runtime=None,worker=True):
     def run(run_id:str):return store.run(run_id)
     @app.post("/api/v2/runs/{run_id}/stop")
     def stop(run_id:str):return manager.stop_run(run_id)
+    @app.post("/api/v2/runs/{run_id}/replay",status_code=202)
+    def replay_run(run_id:str):
+        source=store.run(run_id)
+        if source["status"]!="SUCCEEDED" or source["request"].get("data_mode")!="record":raise HTTPException(400,"A successful recorded run is required")
+        if not (source.get("effective") or {}).get("engine_policy",{}).get("strict_data"):
+            raise HTTPException(400,"Experimental snapshot lacks the strict engine policy; record a new run")
+        request=dict(source["request"],data_mode="replay",frozen_source_run_id=run_id)
+        return store.create_run(source["revision_id"],request)
     @app.get("/api/v2/runs/{run_id}/logs")
-    def logs(run_id:str,offset:int=Query(default=0,ge=0),limit:int=Query(default=65536,ge=1,le=262144)):
+    def logs(run_id:str,offset:int=Query(default=0,ge=0),limit:int=Query(default=65536,ge=4,le=262144)):
         store.run(run_id);path=runtime.run_dir(run_id)/"stdout.log"
         if not path.exists():return {"text":"","offset":0}
         with path.open("rb") as file:
@@ -112,7 +126,19 @@ def create_app(runtime=None,worker=True):
     @app.get("/api/v2/runs/{run_id}/report")
     def report(run_id:str):
         if "standard_report.html" not in {x["name"] for x in store.artifacts(run_id)}:raise HTTPException(404,"Report not ready")
-        return FileResponse(runtime.run_dir(run_id)/"standard_report.html",media_type="text/html",headers={"Content-Security-Policy":"sandbox allow-scripts; default-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com"})
+        import html,re
+        directory=runtime.run_dir(run_id)
+        metrics=json.loads((directory/"metrics.json").read_text(encoding="utf-8"))
+        initial=(metrics.get("meta") or {}).get("initial_total_value")
+        content=(directory/"standard_report.html").read_text(encoding="utf-8")
+        if isinstance(initial,(int,float)):
+            note=("<div style='padding:16px;margin:16px;background:#fff9e6;border:1px solid #ffe58f;border-radius:8px'>"
+                "\u5b9e\u9645\u521d\u59cb\u6743\u76ca\uff08\u5f15\u64ce\u7ed3\u679c\uff09\uff1a<b>"+html.escape(f"{initial:,.2f}")+" \u5143</b>\u3002"
+                "\u539f\u751f\u6982\u89c8\u4e2d\u7684\u201c\u521d\u59cb\u8d44\u91d1\u201d\u53d6\u9996\u65e5\u6536\u76d8\u6743\u76ca\u3002"
+                "\u6307\u6807\u4e0e\u56fe\u8868\u4fdd\u7559\u539f\u751f\u7ed3\u679c\u3002</div>")
+            content=re.sub(r"(<body[^>]*>)",lambda match:match.group(1)+note,content,count=1,flags=re.I)
+        return HTMLResponse(content,headers={"Content-Security-Policy":"sandbox allow-scripts; default-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com"})
+
     @app.get("/api/v2/data/capabilities")
     def capabilities():return {"source":"big_qmt","trading":False,"periods":["day","minute"],"historical_limits":"native engine estimate","historical_constituents":"unqualified","financial_point_in_time":"unqualified","tick":"unqualified"}
     @app.get("/api/v2/data/health")
@@ -129,7 +155,7 @@ def create_app(runtime=None,worker=True):
         finally:p._connection.close()
     @app.get("/api/v2/data/preview")
     def preview(security:str=Query(pattern=r"^[0-9]{6}\.(XSHG|XSHE)$"),start:date=Query(),end:date=Query(),frequency:str=Query(default="daily",pattern=r"^(daily|minute)$")):
-        if end<start or (end-start).days>(31 if frequency=="daily" else 1):raise HTTPException(400,"Preview range is limited to 31 daily days or one minute day")
+        if end<start or (end-start).days>=(31 if frequency=="daily" else 1):raise HTTPException(400,"Preview range is limited to 31 daily days or one minute day")
         from dotenv import dotenv_values
         from .provider import ResearchQmtProvider
         from .runner import plain

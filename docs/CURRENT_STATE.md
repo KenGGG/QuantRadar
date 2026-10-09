@@ -1,17 +1,18 @@
 # QuantRadar2 Current State
 
-Updated: 2026-10-09 (Asia/Shanghai). Current goal: [ACTIVE_PHASE](ACTIVE_PHASE.md). Authorized plan: [development plan](QUANTRADAR2_DEVELOPMENT_PLAN.md).
+Updated: 2026-10-09 (Asia/Shanghai). [目标状态](ACTIVE_PHASE.md) · [开发计划](QUANTRADAR2_DEVELOPMENT_PLAN.md) · [运行说明](QUANTRADAR2_RUNBOOK.md)
 
-- Repository: D:/Projects/QuantDev/QuantRadar2; origin KenGGG/QuantRadar; observed baseline c950d67, main. Local development branch codex/quantradar2-workbench is active; no push.
-- External BulletTrade: D:/Projects/BulletTrade; version 0.10.0; Python 3.12.15; imports from local source. Vendor version label: 0.9.2. Relevant file hashes and create_backtest signature differences are archived; external clean HEAD matches upstream main at audit time.
-- Node 24.21.0, Git 2.56.0.windows.2 and npm.cmd 11.19.0 respond. npm.ps1 is blocked by execution policy. Frontend dependencies installed and production build passed.
-- QMT historical daily/minute stock/ETF/index finite-sample connectivity passed. Research RPC 21 interfaces were called; limitations are archived in docs/acceptance/quantradar2-g0/qmt-research-21-20261009.json.
-- Existing Gateway is ready but trading/cancellation are enabled. No trading operation was called. Separate data-only service on 58621 is running; offline rejection test and real health/data read passed.
-- Old backend depends on InvestmentDataProvider, DataHub activation and maintenance locks; its existing results do not prove the new V2 path.
-- Independent SQLite metadata/schema, API, FIFO worker and subprocess runner are implemented and G1 accepted. Runtime metadata is var/quantradar2/metadata.sqlite3; V2 API is 127.0.0.1:7242.
-- The full V2 development plan and active goal files exist; first-release G0/G1/G2 execution is now the current objective. Historical V1 facts are preserved separately and are not current Windows acceptance evidence.
-
-- Independent .venv-v2 installed; 10 V2 tests passed, pip check passed, V2 production build passed. G0/G1 accepted with recorded data limitations; G2 is active.
-- Native daily buy-hold sample generated one simulated purchase, native reports and benchmark. API/direct CSV and metrics matched exactly. Browser save/run/restore/preview passed without page errors.
-- Historical price limits unavailable from BigQMT; V2 omits limits only for native current-data field requests, allowing existing BulletTrade estimates. Precision of historical ST/listing rules is not qualified.
-- Finite data freezing/replay, minute suite and full task failure/recovery acceptance are not yet completed.
+- 首版 G0/G1/G2 已验收，G3 未启动。实际仓库 D:/Projects/QuantDev/QuantRadar2；本地分支 codex/quantradar2-workbench；未推送或合并。
+- 外部 BulletTrade 为 D:/Projects/BulletTrade，0.10.0，提交 9c34c213753c51883852a7bf528dd216b2c8fa3f；G0 审查时与上游一致。原引擎及配置未修改，外部工作树干净。旧 vendor 0.9.2 不作为 V2 引擎。
+- Windows Python 3.12.15、Node 24.21.0、npm.cmd 11.19.0、Git 2.56.0.windows.2；独立 .venv-v2，依赖快照 requirements-v2.lock。npm.ps1 受执行策略限制，使用 npm.cmd。
+- V2 API/WebUI 在 http://127.0.0.1:7242/；独立数据服务 127.0.0.1:58621，features=[data]、big_qmt ready。API trading=false；底层既有 Gateway 9000 仍启用交易能力。没有调用真实交易接口。
+- SQLite 仅存策略、不可变修订、任务及产物索引，默认 var/quantradar2/metadata.sqlite3；schema2 可保留已有数据升级。策略可复制、归档、恢复；运行产物独立保存，未接入旧数据库或 DataHub。
+- 单任务 FIFO 子进程、增量日志、停止、超时和身份核验恢复可用。重启核验并终止本应用遗留运行器，完成标记有效则恢复结果，否则 INTERRUPTED，不重跑原任务；排队任务继续排队执行。
+- 网页提供策略工作台、记录/原生报告、数据连接及有限预览。源码和参数可恢复为新任务；没有实盘交易 UI、任意 RPC 或其他数据源。
+- 冻结记录保存实际 Provider 响应及请求键/hash、来源、策略/参考日期/引擎/配置/依赖/适配代码身份。回放不连接 QMT、不读取线上凭证、缺请求或身份不符失败；支持有限、确定性策略，不是任意 Python 的通用可复现环境。
+- 四组策略（股票买入持有、ETF 日频双均线、固定 ETF 池月度动量、分钟回调）均完成真实行情记录/API 离线回放/直接运行器离线回放；三份原生 CSV 和核心指标逐项精确一致。冻结包和证据见 G2 验收目录。
+- 最终 18 项测试通过；真实取消/超时/回调错误/非正常重启及浏览器验收通过。V2 生产构建、pip check 通过；TestClient 有依赖弃用警告，前端有大包体警告。
+- 股票/ETF/指数日线和分钟仅证明已归档有限窗口；研究 RPC 21 接口测试包含空值、无效乘数、pandas.Panel 不兼容、历史成分时点未通过等限制，未冒充完整回测能力。
+- BigQMT 历史涨跌停字段缺失，当前原生 current-data 请求由 BulletTrade 自身估算；历史 ST/新股规则、财务历史可得时点、历史成分/行业资格未通过。Tick/期货期权不纳入首版资格。
+- 原生指标不重算，原生 HTML 不覆盖。原报告把首日收盘权益标为初始资金，网页补充引擎实际初始权益说明；分钟调度/竞价/单位差异见 G2 及运行说明。
+- 可信 Python 策略的独立进程不是恶意代码沙箱。V1 文件和历史状态已保留；运行数据库、凭证、环境和生成目录不提交。

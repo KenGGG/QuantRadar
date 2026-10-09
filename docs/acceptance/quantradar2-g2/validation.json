@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-09",
+  "pytest": {
+    "passed": 18,
+    "warnings": [
+      "Starlette TestClient httpx deprecation"
+    ]
+  },
+  "frontend_build": "passed",
+  "pip_check": "passed",
+  "application_health": {
+    "status": "ok",
+    "trading": false,
+    "engine": {
+      "adapter_fingerprint": "b94e148aae93f83dcb7eba6b8e047adce01e03017229af2da9905c7781aaa4f9",
+      "native_config_fingerprint": "e8d60caef396fa2e2841d418b013d17bfef127236904d78a2cc3da48ac4b141f",
+      "source_fingerprint": "0414f86bce593aa0873dedb99baa2b5d4bad8820c352600228f58594971fbf48",
+      "dependency_versions": {
+        "pandas": "2.3.3",
+        "numpy": "2.5.3",
+        "bullet-trade": "0.10.0"
+      },
+      "python": "D:\\Projects\\QuantDev\\QuantRadar2\\.venv-v2\\Scripts\\python.exe",
+      "python_version": "3.12.15 | packaged by conda-forge | (main, Oct  6 2026, 23:39:35) [MSC v.1944 64 bit (AMD64)]",
+      "bullettrade_version": "0.10.0",
+      "bullettrade_source": "D:\\Projects\\BulletTrade\\bullet_trade",
+      "engine_sha256": "bcc59905f82b35a2f7d73bc876cdf4fb7335b3eaebb7ccd23c9a1b9755390328"
+    },
+    "worker_error": null
+  },
+  "data_service": {
+    "features": [
+      "data"
+    ],
+    "backend_type": "big_qmt",
+    "ready": true,
+    "underlying_gateway_trading_enabled": true
+  },
+  "active_tasks": [],
+  "real_trading_calls": 0,
+  "external_bullettrade_worktree": "clean at final check",
+  "diff_check": "passed",
+  "notes": [
+    "18 tests include recovery marker before database PID update",
+    "Native artifact is retained; report initial equity note is presentation only",
+    "Finite qualified strategies; no universal replay guarantee"
+  ]
+}

@@ -47,3 +47,20 @@ def test_newer_schema_is_not_overwritten(tmp_path):
     with sqlite3.connect(path) as db:db.execute("PRAGMA user_version=99")
     with pytest.raises(ValueError,match="newer"):Store(path)
     with sqlite3.connect(path) as db:assert db.execute("PRAGMA user_version").fetchone()[0]==99
+
+def test_v1_migration_retains_revisions_runs_and_archive_is_reversible(tmp_path):
+    from quantradar2.storage import Store
+    path=tmp_path/"metadata.sqlite3";store=Store(path)
+    strategy=store.save_strategy("kept","pass")
+    run=store.create_run(strategy["revision_id"],{"frequency":"day"})
+    with store.connection() as db:
+        db.execute("ALTER TABLE strategies DROP COLUMN archived")
+        db.execute("PRAGMA user_version=1")
+    migrated=Store(path)
+    assert migrated.run(run["id"])["request"]=={"frequency":"day"}
+    migrated.archive_strategy(strategy["id"])
+    assert not migrated.strategies()
+    assert len(migrated.strategies(True))==1
+    assert migrated.revision(strategy["revision_id"])["source"]=="pass"
+    migrated.archive_strategy(strategy["id"],False)
+    assert migrated.strategies()[0]["id"]==strategy["id"]

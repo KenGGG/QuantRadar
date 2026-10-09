@@ -39,3 +39,13 @@ def test_completion_checksum_mismatch_fails_closed(tmp_path):
     manager.start();manager.close()
     assert store.run(run["id"])["status"]=="FAILED"
     assert not store.artifacts(run["id"])
+
+def test_restart_uses_verified_runner_marker_before_pid_database_update(tmp_path):
+    store,manager,run=setup(tmp_path);store.claim_next()
+    directory=tmp_path/"runs"/run["id"];directory.mkdir(parents=True)
+    (directory/"runner-process.json").write_text(json.dumps({"pid":424242,"process_created":123.0}))
+    with patch.object(manager,"owned",side_effect=lambda r:object() if r.get("pid")==424242 else None),patch.object(manager,"terminate") as terminate:
+        manager.start();manager.close()
+        assert terminate.call_args.args[0]["pid"]==424242
+    recovered=store.run(run["id"])
+    assert recovered["status"]=="INTERRUPTED" and recovered["pid"]==424242

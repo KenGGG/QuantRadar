@@ -1,0 +1,16 @@
+{
+  "offline_replay": "7053ebead11b4622b9491f4383fa8537",
+  "syntax_failure": "62d017890f8f4de2bdea91b9a4edc68e",
+  "cancelled": "07713368719d4b8cb2aad085170246fe",
+  "checks": [
+    "offline replay button",
+    "native report rendered",
+    "editor code changes saved",
+    "syntax failure visible",
+    "running task stopped",
+    "archive and restore preserve revision history",
+    "authoritative initial equity annotation; native artifact retained"
+  ],
+  "page_errors": [],
+  "passed": true
+}
