@@ -26,3 +26,5 @@ SQLite 已授权，应用不开发交易。QMT 正常行情缓存写入已授权
 ## Post-release correction
 
 用户要求的原版聚宽风格恢复及全项目临时文件扫描清理已完成。验收见 [页面恢复与清理](acceptance/quantradar2-ui-cleanup/README.md)。本次修正不启动 G3。
+
+用户要求的 docs 清理已完成：旧 QuantRadar 开发资料删除，仅保留本次 QuantRadar2 主文档及验收，G3未启动。
