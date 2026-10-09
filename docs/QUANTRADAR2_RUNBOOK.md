@@ -34,7 +34,12 @@
 
 ## 开发和依赖
 
-独立 `.venv-v2` 使用 Python 3.12，安装 `requirements-v2.txt` 和 `-e D:\Projects\BulletTrade`。`requirements-v2.lock` 保存本机完整依赖快照，其中本地 editable 路径需要对应调整。网页测试可额外安装 `requirements-v2-dev.txt`，使用已有 Edge，不下载浏览器。
+独立 `.venv-v2` 使用 Python 3.12。唯一应用依赖声明为 `pyproject.toml`；安装应用及开发工具使用 `pip install -e ".[dev]"`，另以 `pip install -e D:\Projects\BulletTrade` 安装外部已验收引擎。不要安装旧 vendor 或旧 requirements 清单。`requirements.lock` 是本机完整环境快照，包含原生引擎/报告的传递依赖及外部 editable 路径；迁移机器时路径需调整。网页验收使用已有 Edge，不下载浏览器。
+
+```powershell
+& '.\.venv-v2\Scripts\python.exe' -m pip install -e 'D:\Projects\BulletTrade'
+& '.\.venv-v2\Scripts\python.exe' -m pip install -e '.[dev]'
+```
 
 ```powershell
 npm.cmd ci --prefix frontend --ignore-scripts --no-audit --no-fund
@@ -43,7 +48,7 @@ $env:PYTHONPATH='backend'
 & '.\.venv-v2\Scripts\python.exe' -B -m pytest tests/v2 -q
 ```
 
-前端开发用 `npm.cmd run dev:v2 --prefix frontend`，访问 `http://127.0.0.1:5174/v2.html`。使用 npm.cmd，不修改系统执行策略。旧版页面入口和配置保留。
+前端开发用 `npm.cmd run dev:v2 --prefix frontend`，访问 `http://127.0.0.1:5174/v2.html`。使用 npm.cmd，不修改系统执行策略。旧版入口和配置已移除；标准 dev/build 命令也指向同一 V2 入口。
 
 ## 数据限制
 

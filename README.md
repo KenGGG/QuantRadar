@@ -12,6 +12,6 @@ Windows 本机、单用户的聚宽风格研究工作台，使用 BulletTrade �
 - [G2首版验收](docs/acceptance/quantradar2-g2/README.md)
 - [页面恢复与文件清理](docs/acceptance/quantradar2-ui-cleanup/README.md)
 
-G0–G2已完成，G3未启动。旧版源码保留供参考，V2不需要启动旧Dolt/DataHub、Qlib或Kronos；旧开发文档已按用户要求删除，历史可在Git中追溯。
+G0–G2已完成，G3未启动。旧版功能代码、文档、vendor和部署配置已移除，历史仅在Git追溯。当前应用无需Dolt/DataHub、Qlib或Kronos。依赖统一由pyproject.toml声明，requirements.lock仅记录已验收完整环境。
 
 数据与回放资格限于已验收场景；历史ST、财务时点、历史成分等限制详见验收文档。策略进程仅面向可信代码，不是恶意Python沙箱。既有底层Gateway仍开放交易，V2使用独立数据专用服务。

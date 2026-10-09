@@ -20,7 +20,7 @@
 - QuantRadar2 不提供交易入口、实盘运行、交易凭证管理或任意 RPC 转发；模拟回测订单仍由引擎正常处理。
 - 不修改 BulletTrade 回测引擎，不把研究 RPC 替换为行情自动备用源。
 - 不新增 QMT 以外的数据来源；SQLite 仅存应用元数据，不建设通用行情数据库。
-- 保留 V1 源码、历史数据库和研究产物，不迁移整个旧数据库。按用户最新要求，docs 仅保留本次 QuantRadar2 文档，旧 V1 开发资料已删除。
+- 按用户最新要求，项目仅保留 V2 代码与资料；V1源码、功能目录、部署及旧依赖文件已删除。主SQLite和本次运行产物保留，不迁移旧数据库。
 - 不推送旧仓库 main，不自动合并、部署或发布；本地开发使用独立分支。
 - 普通测试失败、依赖适配和可逆修复不要求再次确认；缺权限、外部条件或越界变更时记录具体阻塞并请求所需最小授权。
 
@@ -55,10 +55,10 @@ WebUI → 精简 FastAPI → SQLite任务元数据 → 独立回测子进程 →
 
 ### 实现布局与复用原则
 
-- 新后端包使用 `backend/quantradar2`，新入口 `scripts/v2_api.py`（调用 `quantradar2.api.create_app`）；禁止导入V1 bootstrap、InvestmentDataProvider、DataHub维护锁及数据库初始化。保留V1后端供参考和回退。
-- 复用frontend现有React/TypeScript、Ant Design、Monaco、ECharts及三个核心组件的布局；建立V2入口和API模块，迁移时剪除真实依赖，不仅隐藏菜单。V1前端入口保留可单独构建。
+- 新后端包使用 `backend/quantradar2`，新入口 `scripts/v2_api.py`（调用 `quantradar2.api.create_app`）；禁止导入V1 bootstrap、InvestmentDataProvider、DataHub维护锁及数据库初始化。V1后端已按用户最新要求删除，历史仅在Git追溯。
+- 复用frontend现有React/TypeScript、Ant Design、Monaco、ECharts及三个核心组件的布局；建立V2入口和API模块，迁移时剪除真实依赖，不仅隐藏菜单。V1前端入口已删除，标准构建统一指向V2。
 - V2只展示策略工作台、回测记录/报告、数据与连接三个入口；日频/分钟标识来自实际配置。设置放附属面板，不迁入ETF专页、实验组、FactorLab、Qlib、Kronos、研报。
-- `requirements-v2.txt` 提供V2最小依赖路径，V2安装不能强制安装旧机器学习/数据采集依赖；BulletTrade来源路径与锁定版本显式记录，启动检查实际加载路径，禁止静默加载旧vendor。
+- `pyproject.toml` 提供唯一V2依赖声明，V2安装不能强制安装旧机器学习/数据采集依赖；BulletTrade来源路径与锁定版本显式记录，启动检查实际加载路径，禁止静默加载旧vendor。
 - Windows启动/停止脚本均位于仓库，服务绑定127.0.0.1；采用V2独立端口，默认Web API 7242，数据服务58621；占用时启动报错，用户可配置，不自动停止已有进程。
 - V2使用独立虚拟环境，基于已验收Python版本；不改现有BulletTrade或QMT环境。新环境安装记录依赖锁和BulletTrade实际源码身份。
 
@@ -153,3 +153,5 @@ G0/G1/G2 已依次完成，源码、报告和运行证据按阶段归档。最�
 2026-10-09 首版后修正：按用户反馈恢复 V1 聚宽风格双栏布局，并完成全项目临时文件清理；[修正验收](acceptance/quantradar2-ui-cleanup/README.md)。数据及回测范围不扩展，G3 仍未启动。
 
 用户后续明确要求 docs 仅保留本次资料：已删除193个旧文档文件（约28.8 MiB），保留四份当前主文档和 G0/G1/G2/页面清理验收。源码、SQLite及运行目录不受此次文档删除影响。
+
+用户再次要求彻底清理旧功能：已删除旧后端/前端、Kronos/模型配置、DataHub部署、旧测试脚本、旧CI及旧vendor，依赖统一为pyproject.toml和requirements.lock；原引擎加载路径、四份冻结包身份、主SQLite和本次产物未改变。详见 [代码清理](acceptance/quantradar2-ui-cleanup/code-pruning.md)。

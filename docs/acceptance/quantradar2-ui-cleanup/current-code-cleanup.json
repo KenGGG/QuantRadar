@@ -1,0 +1,29 @@
+{
+  "legacy_paths_absent": true,
+  "runtime_records_preserved": 33,
+  "engine_and_adapter_identity_unchanged": true,
+  "browser_errors": [],
+  "health_status": "ok",
+  "trading": false,
+  "tests_passed": 18,
+  "standard_frontend_build": "passed",
+  "pip_check": "passed",
+  "dependency_declaration": "pyproject.toml",
+  "environment_snapshot": "requirements.lock",
+  "remaining_root": [
+    ".gitattributes",
+    ".gitignore",
+    "AGENTS.md",
+    "backend",
+    "docs",
+    "examples",
+    "frontend",
+    "pyproject.toml",
+    "README.md",
+    "requirements.lock",
+    "scripts",
+    "tests",
+    "THIRD_PARTY_NOTICES.md",
+    "var"
+  ]
+}

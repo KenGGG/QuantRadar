@@ -1,27 +1,25 @@
 {
-  "name": "quantradar-webui",
+  "name": "quantradar2-webui",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "QuantRadar 中文研究工作台（React+TS+Vite），消费 FastAPI /api/* 真实数据",
+  "description": "QuantRadar2 local research workbench",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
+    "dev": "vite --config vite.v2.config.ts",
+    "build": "tsc --noEmit && vite build --config vite.v2.config.ts",
+    "preview": "vite preview --config vite.v2.config.ts",
     "typecheck": "tsc --noEmit",
     "dev:v2": "vite --config vite.v2.config.ts",
     "build:v2": "tsc --noEmit && vite build --config vite.v2.config.ts"
   },
   "dependencies": {
-    "antd": "^5.21.0",
     "@ant-design/icons": "^5.5.1",
     "@monaco-editor/react": "^4.6.0",
+    "antd": "^5.21.0",
     "dayjs": "^1.11.13",
-    "echarts": "^5.5.1",
-    "echarts-for-react": "^3.0.2",
+    "monaco-editor": "0.56.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "monaco-editor": "0.56.0"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

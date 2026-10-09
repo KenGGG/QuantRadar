@@ -9,6 +9,7 @@ if __name__=="__main__":
     if hasattr(socket,"SO_EXCLUSIVEADDRUSE"):sock.setsockopt(socket.SOL_SOCKET,socket.SO_EXCLUSIVEADDRUSE,1)
     try:sock.bind(("127.0.0.1",port));sock.listen(16)
     except OSError as error:raise SystemExit(f"V2 port {port} is unavailable: {error}")
+    os.environ["LOG_DIR"]=str(Path(os.environ.get("QUANTRADAR2_RUNTIME",str(ROOT/"var/quantradar2")))/"logs")
     from quantradar2.api import create_app
     from quantradar2.runtime import Runtime
     import uvicorn

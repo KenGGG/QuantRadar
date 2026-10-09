@@ -42,3 +42,7 @@ npm.cmd run build:v2 --prefix frontend（含 tsc）通过；既有大包体提�
 ## 后续 docs 专项清理
 
 用户明确要求仅保留本次文档后，删除193个旧 QuantRadar 开发文档文件，共30159799字节（约28.8 MiB），包含旧00–07规范、DataHub/Kronos计划、superpowers、legacy及旧验收目录。现仅保留 docs 根目录四份本次主文档，以及 acceptance 下 quantradar2-g0/g1/g2/ui-cleanup 四个目录。本节取代上文对旧文档的保留决定；扫描前后JSON仍作为此前清理的历史快照，不代表本次删除后的文件列表。旧版源码、主SQLite、任务及原生报告均未改动。
+
+## 最终旧功能代码清理
+
+用户进一步要求删除旧功能代码后，已执行 [代码专项清理](code-pruning.md)。此决定取代本页此前关于保留V1源码、vendor和旧依赖文件的说明；之前扫描JSON仅为历史快照，最新结构见本次清理记录。

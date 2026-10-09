@@ -1,2 +1,0 @@
--r requirements-v2.txt
-playwright==1.63.0

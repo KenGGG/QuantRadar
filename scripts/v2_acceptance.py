@@ -45,7 +45,7 @@ def main():
         direct=RUNTIME/"runs"/uuid.uuid4().hex;direct.mkdir()
         (direct/"strategy.py").write_bytes((left/"strategy.py").read_bytes())
         (direct/"request.json").write_text(json.dumps(replayed["request"]),encoding="utf-8")
-        env=dict(os.environ,PYTHONPATH=str(ROOT/"backend"),PYTHONUTF8="1",QUANTRADAR2_DATA_CONFIG=str(RUNTIME/"absent-for-replay.env"))
+        env=dict(os.environ,LOG_DIR=str(RUNTIME/"logs"),PYTHONPATH=str(ROOT/"backend"),PYTHONUTF8="1",QUANTRADAR2_DATA_CONFIG=str(RUNTIME/"absent-for-replay.env"))
         result=subprocess.run([sys.executable,"-B","-m","quantradar2.runner","--run-dir",str(direct)],cwd=ROOT,env=env,capture_output=True)
         (direct/"stdout.log").write_bytes(result.stdout+result.stderr)
         if result.returncode:raise RuntimeError("Direct replay failed: "+str(direct))

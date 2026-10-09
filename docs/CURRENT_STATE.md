@@ -4,7 +4,7 @@ Updated: 2026-10-09 (Asia/Shanghai). [目标状态](ACTIVE_PHASE.md) · [开发�
 
 - 首版 G0/G1/G2 已验收，G3 未启动。实际仓库 D:/Projects/QuantDev/QuantRadar2；本地分支 codex/quantradar2-workbench；未推送或合并。
 - 外部 BulletTrade 为 D:/Projects/BulletTrade，0.10.0，提交 9c34c213753c51883852a7bf528dd216b2c8fa3f；G0 审查时与上游一致。原引擎及配置未修改，外部工作树干净。旧 vendor 0.9.2 不作为 V2 引擎。
-- Windows Python 3.12.15、Node 24.21.0、npm.cmd 11.19.0、Git 2.56.0.windows.2；独立 .venv-v2，依赖快照 requirements-v2.lock。npm.ps1 受执行策略限制，使用 npm.cmd。
+- Windows Python 3.12.15、Node 24.21.0、npm.cmd 11.19.0、Git 2.56.0.windows.2；独立 .venv-v2，依赖声明 pyproject.toml、环境快照 requirements.lock。npm.ps1 受执行策略限制，使用 npm.cmd。
 - V2 API/WebUI 在 http://127.0.0.1:7242/；独立数据服务 127.0.0.1:58621，features=[data]、big_qmt ready。API trading=false；底层既有 Gateway 9000 仍启用交易能力。没有调用真实交易接口。
 - SQLite 仅存策略、不可变修订、任务及产物索引，默认 var/quantradar2/metadata.sqlite3；schema2 可保留已有数据升级。策略可复制、归档、恢复；运行产物独立保存，未接入旧数据库或 DataHub。
 - 单任务 FIFO 子进程、增量日志、停止、超时和身份核验恢复可用。重启核验并终止本应用遗留运行器，完成标记有效则恢复结果，否则 INTERRUPTED，不重跑原任务；排队任务继续排队执行。
@@ -15,8 +15,10 @@ Updated: 2026-10-09 (Asia/Shanghai). [目标状态](ACTIVE_PHASE.md) · [开发�
 - 股票/ETF/指数日线和分钟仅证明已归档有限窗口；研究 RPC 21 接口测试包含空值、无效乘数、pandas.Panel 不兼容、历史成分时点未通过等限制，未冒充完整回测能力。
 - BigQMT 历史涨跌停字段缺失，当前原生 current-data 请求由 BulletTrade 自身估算；历史 ST/新股规则、财务历史可得时点、历史成分/行业资格未通过。Tick/期货期权不纳入首版资格。
 - 原生指标不重算，原生 HTML 不覆盖。原报告把首日收盘权益标为初始资金，网页补充引擎实际初始权益说明；分钟调度/竞价/单位差异见 G2 及运行说明。
-- 可信 Python 策略的独立进程不是恶意代码沙箱。V1 源码保留，旧开发文档已按用户要求删除，历史版本可在 Git 追溯；运行数据库、凭证、环境和生成目录不提交。
+- 可信 Python 策略的独立进程不是恶意代码沙箱。V1源码和旧文档均已按用户要求删除，历史版本可在Git追溯；运行数据库、凭证、环境和生成目录不提交。
 
 - 后续页面修正已恢复原版深蓝导航、工作区标签、双栏深色编辑器/右侧结果；生产构建及桌面/手机浏览器检查通过。全项目扫描后清理370个开发临时文件（约22.7 MiB），主SQLite与33条任务及其产物目录完整。详见 [页面恢复与清理](acceptance/quantradar2-ui-cleanup/README.md)。
 
 - docs 已按用户要求删除193个旧 QuantRadar 开发文档文件（30159799字节）；仅保留本次四份主文档和四个验收目录。主SQLite和运行产物未改动。
+
+- 项目已彻底移除V1功能代码/目录、旧入口、vendor及旧依赖清单；frontend dev/build统一V2。当前服务依赖日志集中于var/quantradar2/logs。清理后18项测试、标准生产构建、pip check通过；详见代码清理记录。
