@@ -22,3 +22,7 @@ Updated: 2026-10-09 (Asia/Shanghai).
 SQLite 已授权，应用不开发交易。QMT 正常行情缓存写入已授权；不改 QMT 安装程序/包/策略/配置，不调用真实交易接口，不恢复双 Dolt/DataHub，不新增外部数据源，不改 BulletTrade 引擎，不推送旧仓库 main。
 
 底层既有 Gateway 仍开放交易；V2 使用独立 features=data 服务，不把 Gateway 宣称为全局只读。已知历史数据限制见验收文档；没有自动开启后续修复目标。
+
+## Post-release correction
+
+用户要求的原版聚宽风格恢复及全项目临时文件扫描清理已完成。验收见 [页面恢复与清理](acceptance/quantradar2-ui-cleanup/README.md)。本次修正不启动 G3。

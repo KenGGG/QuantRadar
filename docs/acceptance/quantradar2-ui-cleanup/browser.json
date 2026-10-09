@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "checks": [
+    "V1 navy header color",
+    "desktop split panes",
+    "Monaco editor visible",
+    "records navigation",
+    "restore code and parameters into draft",
+    "native report iframe",
+    "data navigation",
+    "mobile no document horizontal overflow"
+  ],
+  "page_errors": [],
+  "viewport_desktop": [
+    1440,
+    1000
+  ],
+  "viewport_mobile": [
+    390,
+    844
+  ]
+}

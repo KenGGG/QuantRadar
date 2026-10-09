@@ -1,4 +1,12 @@
-# QuantRadar
+# QuantRadar2
+
+当前 Windows 首版为 **BulletTrade + 大QMT + SQLite 的研究工作台**，只提供研究与模拟回测。访问 http://127.0.0.1:7242/ 。
+
+[开发计划](docs/QUANTRADAR2_DEVELOPMENT_PLAN.md) · [运行说明](docs/QUANTRADAR2_RUNBOOK.md) · [首版验收](docs/acceptance/quantradar2-g2/README.md) · [页面恢复与清理](docs/acceptance/quantradar2-ui-cleanup/README.md)
+
+以下保留原 QuantRadar V1 历史说明，不作为 V2 启动要求；V2 不需要 Dolt/DataHub、Qlib 或 Kronos。
+
+# QuantRadar V1 历史说明
 
 QuantRadar 是面向本地单用户的 A 股量化研究平台，基于 BulletTrade 回测引擎，提供策略编辑、日线回测、报告回放、数据治理，以及 Alpha101、ETF、Qlib 和 Kronos 研究入口。
 

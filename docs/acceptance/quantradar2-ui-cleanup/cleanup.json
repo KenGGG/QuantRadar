@@ -1,0 +1,133 @@
+﻿{
+    "targets":  [
+                    {
+                        "relative_path":  ".pytest_cache",
+                        "file_count":  4,
+                        "bytes":  2114,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "backend/quantradar2/__pycache__",
+                        "file_count":  8,
+                        "bytes":  78723,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "tests/v2/__pycache__",
+                        "file_count":  5,
+                        "bytes":  57934,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/runs/00000000000000000000000000000000",
+                        "file_count":  19,
+                        "bytes":  1877585,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/runs/11111111111111111111111111111111",
+                        "file_count":  20,
+                        "bytes":  1955138,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/runs/22222222222222222222222222222222",
+                        "file_count":  26,
+                        "bytes":  2384824,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/runs/2ee7ce1f548846768eeda0ed6eb7daf2",
+                        "file_count":  28,
+                        "bytes":  2393668,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/runs/328d2efbca844bc4a4212516d5c7f32c",
+                        "file_count":  27,
+                        "bytes":  2417832,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/runs/33333333333333333333333333333333",
+                        "file_count":  52,
+                        "bytes":  2421075,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/runs/44444444444444444444444444444444",
+                        "file_count":  27,
+                        "bytes":  2385701,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/runs/c608c8230b2d4b65874f7686c6e254d4",
+                        "file_count":  28,
+                        "bytes":  2393667,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/runs/ceca3ec93ba64d51bb7db581294d38c8",
+                        "file_count":  28,
+                        "bytes":  2548375,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/runs/fda78f360d6c451cb23324c798240310",
+                        "file_count":  28,
+                        "bytes":  2641792,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/recovery-626e0de245f24ec4a5f1db998b2809e0",
+                        "file_count":  32,
+                        "bytes":  76621,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/recovery-e04294616a204312a8e5eec580a455d2",
+                        "file_count":  32,
+                        "bytes":  75255,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/g1-smoke-run.json",
+                        "file_count":  1,
+                        "bytes":  592,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/g2-record-smoke.log",
+                        "file_count":  1,
+                        "bytes":  14288,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/g2-replay-smoke.log",
+                        "file_count":  1,
+                        "bytes":  7996,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/api.stdout.log",
+                        "file_count":  1,
+                        "bytes":  305,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "var/quantradar2/api.stderr.log",
+                        "file_count":  1,
+                        "bytes":  677,
+                        "status":  "removed"
+                    },
+                    {
+                        "relative_path":  "docs/acceptance/quantradar2-g2/archive-diagnostic.png",
+                        "file_count":  1,
+                        "bytes":  54403,
+                        "status":  "removed"
+                    }
+                ],
+    "verification":  "All run targets are known G1/G2 development smoke/direct runs, unregistered in main SQLite and unreferenced by acceptance documents. No running tasks; recovery runtimes have no live application process.",
+    "removed_files":  370,
+    "removed_bytes":  23788565
+}

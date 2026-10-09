@@ -1,0 +1,266 @@
+{
+  "files": 54856,
+  "bytes": 1127375389,
+  "by_directory": {
+    ".venv-v2": [
+      27820,
+      623455915
+    ],
+    "frontend/node_modules": [
+      23490,
+      290377280
+    ],
+    "var/quantradar2": [
+      2418,
+      86556989
+    ],
+    ".git": [
+      155,
+      49334430
+    ],
+    "docs/acceptance": [
+      190,
+      31940630
+    ],
+    "vendor/bullet-trade": [
+      289,
+      21716151
+    ],
+    "frontend/dist-v2": [
+      96,
+      15361459
+    ],
+    "frontend/dist": [
+      5,
+      5294673
+    ],
+    "backend/quantradar": [
+      126,
+      1151706
+    ],
+    "logs": [
+      1,
+      699996
+    ],
+    "tests": [
+      107,
+      587038
+    ],
+    "docs/superpowers": [
+      21,
+      207400
+    ],
+    "frontend/src": [
+      21,
+      155830
+    ],
+    "scripts": [
+      25,
+      103319
+    ],
+    "frontend/package-lock.json": [
+      1,
+      102693
+    ],
+    "reports": [
+      18,
+      45179
+    ],
+    "backend/quantradar2": [
+      8,
+      44563
+    ],
+    "kronos_runtime": [
+      6,
+      35040
+    ],
+    "docs/legacy": [
+      2,
+      31366
+    ],
+    "docs/QUANTRADAR2_DEVELOPMENT_PLAN.md": [
+      1,
+      16547
+    ],
+    "models": [
+      1,
+      14420
+    ],
+    "README.md": [
+      1,
+      12832
+    ],
+    "docs/DATA_GATE_CLOSURE_PLAN.md": [
+      1,
+      10675
+    ],
+    "docs/GOAL2_IMPLEMENTATION_PLAN.md": [
+      1,
+      9462
+    ],
+    "docs/03_\u6570\u636e\u4e0eProvider\u89c4\u8303.md": [
+      1,
+      9042
+    ],
+    "docs/06_Qlib\u7814\u7a76\u89c4\u8303.md": [
+      1,
+      8121
+    ],
+    "quantradar.sh": [
+      1,
+      6394
+    ],
+    "docs/02_\u7cfb\u7edf\u67b6\u6784\u4e0e\u5de5\u7a0b\u89c4\u8303.md": [
+      1,
+      6346
+    ],
+    ".gitignore": [
+      1,
+      6217
+    ],
+    "docs/04_\u56de\u6d4b\u4e0e\u53ef\u590d\u73b0\u89c4\u8303.md": [
+      1,
+      5932
+    ],
+    "docs/KRONOS_INVESTMENT_WORKBENCH_PRD_v1.md": [
+      1,
+      5680
+    ],
+    "docs/QUANTRADAR2_RUNBOOK.md": [
+      1,
+      5202
+    ],
+    "docs/00_\u5f00\u53d1\u5165\u53e3.md": [
+      1,
+      4853
+    ],
+    "docs/01_\u4ea7\u54c1\u8fb9\u754c\u4e0e\u6838\u5fc3\u539f\u5219.md": [
+      1,
+      4276
+    ],
+    "requirements.lock": [
+      1,
+      4209
+    ],
+    "Makefile": [
+      1,
+      4169
+    ],
+    "examples": [
+      4,
+      3875
+    ],
+    "deploy": [
+      10,
+      3609
+    ],
+    "docs/CURRENT_STATE.md": [
+      1,
+      3269
+    ],
+    "docs/07_\u9636\u6bb5\u8def\u7ebf\u56fe.md": [
+      1,
+      3034
+    ],
+    "docs/BASELINE.md": [
+      1,
+      3017
+    ],
+    "docs/05_Web\u4e0eAPI\u89c4\u8303.md": [
+      1,
+      2780
+    ],
+    "requirements-v2.lock": [
+      1,
+      2622
+    ],
+    "docs/datahub-contract.md": [
+      1,
+      2617
+    ],
+    ".env.example": [
+      1,
+      2087
+    ],
+    "pyproject.toml": [
+      1,
+      1902
+    ],
+    "THIRD_PARTY_NOTICES.md": [
+      1,
+      1717
+    ],
+    ".github": [
+      1,
+      1644
+    ],
+    "docs/ACTIVE_PHASE.md": [
+      1,
+      1299
+    ],
+    "requirements.txt": [
+      1,
+      1017
+    ],
+    "frontend/package.json": [
+      1,
+      972
+    ],
+    "frontend/tests": [
+      1,
+      883
+    ],
+    "AGENTS.md": [
+      1,
+      624
+    ],
+    "frontend/tsconfig.json": [
+      1,
+      528
+    ],
+    "frontend/vite.config.ts": [
+      1,
+      517
+    ],
+    "frontend/index.html": [
+      1,
+      328
+    ],
+    "frontend/vite.v2.config.ts": [
+      1,
+      323
+    ],
+    "frontend/v2.html": [
+      1,
+      278
+    ],
+    "requirements-v2.txt": [
+      1,
+      249
+    ],
+    ".gitattributes": [
+      1,
+      120
+    ],
+    "requirements-v2-dev.txt": [
+      1,
+      44
+    ],
+    "backend/.gitkeep": [
+      1,
+      0
+    ],
+    "frontend/.gitkeep": [
+      1,
+      0
+    ],
+    "strategies": [
+      1,
+      0
+    ]
+  },
+  "unreadable": [],
+  "registered_runs_preserved": 33,
+  "all_cleanup_targets_absent": true,
+  "note": "Full project traversal includes dependencies and Git; symlink directories are not followed. Snapshot precedes creation of this file and final report."
+}
