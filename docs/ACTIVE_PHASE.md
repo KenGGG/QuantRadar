@@ -3,7 +3,7 @@
 Updated: 2026-10-09 (Asia/Shanghai).
 
 **Milestone:** QUANTRADAR2_RESEARCH_WORKBENCH_V1
-**Active Goal:** G1_SQLITE_API_RUNNER_AND_WORKBENCH
+**Active Goal:** G2_MINUTE_RECOVERY_AND_FROZEN_REPLAY_ACCEPTANCE
 **Status:** IN_PROGRESS
 
 ## Authoritative plan
@@ -12,7 +12,7 @@ Updated: 2026-10-09 (Asia/Shanghai).
 
 ## Current task
 
-G0 passed with documented data limitations; see docs/acceptance/quantradar2-g0/README.md. Implement independent SQLite metadata, subprocess supervision, native BulletTrade runner, V2 API and the three-page workbench. Keep G2 frozen replay and full minute/recovery acceptance queued.
+G0 and G1 passed with documented data limitations. See docs/acceptance/quantradar2-g0/README.md and docs/acceptance/quantradar2-g1/README.md. Implement finite frozen input capture/replay and validate the daily/minute strategy suite, task cancellation/timeout/restart, final parity and Windows delivery.
 
 ## Confirmed user decisions
 
@@ -24,7 +24,7 @@ SQLite is authorized for application metadata. QuantRadar2 does not develop trad
 - Dedicated data service 127.0.0.1:58621 has features=data, broker actions unavailable; offline rejection test passed with zero Gateway calls. Existing Gateway remains trading-enabled.
 - Independent .venv-v2 imports audited external BulletTrade 0.10.0; pip check passed; requirements-v2.lock recorded.
 - Old V1 state archived; development branch codex/quantradar2-workbench, no pushes.
-- G1 implementation in progress; V2 metadata/API/runner/pages are not yet accepted.
+- G1 accepted: SQLite, FIFO subprocess runner, native reports, V2 API and three-page WebUI. 10 targeted tests and native daily/API/browser acceptance passed.
 
 ## Sequential queue
 

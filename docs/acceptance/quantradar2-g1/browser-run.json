@@ -1,0 +1,11 @@
+{
+  "run_id": "4a089fb908ac44b09e2ddb29667c5d74",
+  "checks": [
+    "save and run",
+    "successful native report",
+    "restore source and parameters",
+    "daily OHLCVM preview"
+  ],
+  "page_errors": [],
+  "passed": true
+}

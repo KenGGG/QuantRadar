@@ -1,0 +1,12 @@
+{
+  "browser": "msedge headless",
+  "page_errors": [],
+  "checks": [
+    "render",
+    "save revision",
+    "record logs",
+    "report link",
+    "data health"
+  ],
+  "passed": true
+}

@@ -1,0 +1,9 @@
+{
+  "checks": {
+    "trades.csv": "exact match",
+    "daily_positions.csv": "exact match",
+    "daily_records.csv": "exact match",
+    "metrics": "exact match"
+  },
+  "scope": "same-day ordinary QMT sample; permanent reproducibility not claimed"
+}
