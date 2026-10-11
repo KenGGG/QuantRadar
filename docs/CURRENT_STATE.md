@@ -2,6 +2,8 @@
 
 Updated: 2026-10-11 (Asia/Shanghai). [目标状态](ACTIVE_PHASE.md) · [开发计划](QUANTRADAR2_DEVELOPMENT_PLAN.md) · [运行说明](QUANTRADAR2_RUNBOOK.md)
 
+- 聚宽式回测详情已上线：回测列表进入独立详情页，顶部设置/状态与左侧栏目、原生指标、策略/基准/超额收益曲线和每日盈亏/市值图、日期缩放及对数轴、交易/持仓列选择排序和按日分组、错误日志筛选、准备/引擎阶段耗时、不可变历史代码、原生月度收益与产物导出。43项测试、CSV边界检查、类型检查、生产构建及1700px/390px真实回测浏览器检查通过。阿尔法/贝塔等未输出项和月度滚动序列明确显示缺失，不新增金融指标计算，不覆盖历史报告。见[详情验收](acceptance/quantradar2-details/README.md)。
+
 - QMT本地预准备已上线，网页默认固定证券池日频预准备模式；缓存命中无需连接QMT，执行前关闭QMT连接，任务固定独立SHA256数据快照。首次完整1681日任务183c460311b14371a09cbec982ba29aa约137.56秒，缓存复用80cb8c0f9aa94ae0afe9661b7246f2f4约38.79秒，离线回放b2cb643d329f47819e79d1f1d6838850约38.38秒，均SUCCEEDED。三份运行的8份CSV逐字节一致，金融指标一致。旧5053fab2已有1147日权益和1051日因子/选择一致。原修订ec1321ab5cfd4cbbb38aeecc4065ea8e、参数和参考日不变，2019-01-02至2025-12-05完整覆盖，96日现金warmup及原生报告有效。43项tests/v2、前端生产构建和pip check通过；API/回测日志目录独立。见[预准备验收](acceptance/quantradar2-data-preparation/README.md)。分钟/动态池等仍使用旧模式，历史数据资格限制不变，G3未启动。
 
 - 应用Provider的双日期/count=None日历查询显式使用自然日数上界，不再默认截断250。旧926664c872a14a42a532629700e17468仍为超时失败，旧5053fab22fc24ea29fe970888bd5f785在API恢复时标记INTERRUPTED；其原产物完整保留，不把这些旧任务改为成功。此前日历修正证据保留于[日历修正](acceptance/quantradar2-calendar-correction/README.md)。

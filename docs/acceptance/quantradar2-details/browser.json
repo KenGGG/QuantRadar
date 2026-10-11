@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "page_errors": [],
+  "checks": [
+    "real native metrics",
+    "strategy/benchmark/excess charts",
+    "log axis and time range",
+    "trades and positions with day grouping",
+    "error log filter",
+    "phase timing",
+    "immutable code",
+    "native monthly returns",
+    "missing metric indication",
+    "mobile navigation"
+  ]
+}
