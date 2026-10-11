@@ -4,7 +4,9 @@ Updated: 2026-10-11 (Asia/Shanghai).
 
 **Milestone:** QUANTRADAR2_RESEARCH_WORKBENCH_V1
 **Active Goal:** NONE
-**Status:** COMPLETE（指标计算与聚宽式编辑页已验收，无排队目标）
+**Status:** COMPLETE（策略列表与空白新建已验收，无排队目标）
+
+策略列表已作为默认首页，提供显著的新建空白策略、搜索、打开编辑、跨修订历史回测数量/入口及复制/归档/恢复。真正空白源码可保存，空代码不启动任务。44项测试、类型/构建及创建-编辑-保存-搜索-历史/手机浏览器验收通过，API已重新加载；见[策略列表验收](acceptance/quantradar2-strategy-list/README.md)。
 
 用户授权的应用层完整指标与1/3/6/12月滚动表、聚宽式双栏编辑/结果/日志已完成。43项测试、计算边界测试、CSV检查、类型检查、生产构建及真实回测桌面/手机浏览器验收通过，见[指标与编辑器验收](acceptance/quantradar2-metrics-editor/README.md)。原生报告及历史产物不变，G3未启动。
 

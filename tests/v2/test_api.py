@@ -3,6 +3,29 @@ from fastapi.testclient import TestClient
 from quantradar2.api import create_app
 from quantradar2.runtime import Runtime
 
+def test_blank_strategy_draft_and_history_across_revisions(tmp_path):
+    import hashlib
+    app=create_app(Runtime(tmp_path,tmp_path/'absent.env'),worker=False)
+    with TestClient(app) as client:
+        draft=client.post('/api/v2/strategies',json={'name':'blank','source':''})
+        assert draft.status_code==200
+        first=draft.json()
+        assert first['source']=='' and first['source_hash']==hashlib.sha256(b'').hexdigest()
+        body={'revision_id':first['revision_id'],'start_date':'2024-01-02','end_date':'2024-01-03','data_mode':'live'}
+        assert client.post('/api/v2/runs',json=body).status_code==400
+        assert not client.get('/api/v2/runs').json()
+        saved=client.put('/api/v2/strategies/'+first['id'],json={'name':'blank','source':'pass'}).json()
+        assert client.get('/api/v2/revisions/'+first['revision_id']).json()['source']==''
+        one=app.state.store.create_run(saved['revision_id'],{})
+        another=client.put('/api/v2/strategies/'+first['id'],json={'name':'blank','source':'x=1'}).json()
+        two=app.state.store.create_run(another['revision_id'],{})
+        other=app.state.store.save_strategy('other','pass')
+        app.state.store.create_run(other['revision_id'],{})
+        history=client.get('/api/v2/runs',params={'strategy_id':first['id']}).json()
+        assert {r['id'] for r in history}=={one['id'],two['id']}
+        assert client.get('/api/v2/strategies/'+first['id']).json()['run_count']==2
+        assert client.post('/api/v2/strategies',json={'name':' ','source':''}).status_code==400
+
 def test_revisions_run_validation_cancel_and_no_trading(tmp_path):
     app=create_app(Runtime(tmp_path,tmp_path/"absent.env"),worker=False)
     with TestClient(app) as client:

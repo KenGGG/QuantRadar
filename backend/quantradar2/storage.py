@@ -74,8 +74,8 @@ class Store:
             db.close()
 
     def save_strategy(self, name: str, source: str, strategy_id: str | None = None):
-        if not name.strip() or not source.strip():
-            raise ValueError("Strategy name and source must not be blank")
+        if not name.strip():
+            raise ValueError("Strategy name must not be blank")
         with self.connection() as db:
             db.execute("BEGIN IMMEDIATE")
             if strategy_id:
@@ -93,7 +93,8 @@ class Store:
 
     def strategy(self, strategy_id):
         with self.connection() as db:
-            row=db.execute("""SELECT s.*, r.id revision_id,r.revision,r.source,r.source_hash
+            row=db.execute("""SELECT s.*, r.id revision_id,r.revision,r.source,r.source_hash,
+                (SELECT count(*) FROM runs x JOIN revisions v ON x.revision_id=v.id WHERE v.strategy_id=s.id) run_count
                 FROM strategies s JOIN revisions r ON r.strategy_id=s.id
                 WHERE s.id=? ORDER BY r.revision DESC LIMIT 1""",(strategy_id,)).fetchone()
             if not row: raise KeyError(strategy_id)
@@ -137,8 +138,10 @@ class Store:
             if not row:raise KeyError(run_id)
             return self._run(row)
 
-    def runs(self, limit=100):
+    def runs(self, limit=100, strategy_id=None):
         with self.connection() as db:
+            if strategy_id:
+                return [self._run(row) for row in db.execute("SELECT x.* FROM runs x JOIN revisions v ON x.revision_id=v.id WHERE v.strategy_id=? ORDER BY x.created_at DESC LIMIT ?",(strategy_id,limit))]
             return [self._run(row) for row in db.execute("SELECT * FROM runs ORDER BY created_at DESC LIMIT ?",(limit,))]
 
     def active_runs(self):

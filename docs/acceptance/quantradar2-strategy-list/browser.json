@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "strategy_id": "409a871964664755af06aeb09de69e0d",
+  "test_draft_archived": true,
+  "page_errors": [],
+  "checks": [
+    "default strategy list",
+    "named genuinely blank strategy",
+    "empty-code backtest guard",
+    "Monaco edit and save new revision",
+    "search",
+    "strategy-specific history",
+    "mobile layout",
+    "immutable blank revision retained"
+  ]
+}

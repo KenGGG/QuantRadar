@@ -12,7 +12,7 @@ from .manager import Manager
 
 class StrategyInput(BaseModel):
     name:str=Field(min_length=1,max_length=200)
-    source:str=Field(min_length=1,max_length=500000)
+    source:str=Field(max_length=500000)
 
 class RunInput(BaseModel):
     revision_id:str=Field(pattern=r"^[0-9a-f]{32}$")
@@ -85,10 +85,13 @@ def create_app(runtime=None,worker=True):
     @app.get("/api/v2/revisions/{revision_id}")
     def revision(revision_id:str):return store.revision(revision_id)
     @app.get("/api/v2/runs")
-    def runs(limit:int=Query(default=100,ge=1,le=1000)):return store.runs(limit)
+    def runs(limit:int=Query(default=100,ge=1,le=1000),strategy_id:str|None=None):
+        if strategy_id:store.strategy(strategy_id)
+        return store.runs(limit,strategy_id)
     @app.post("/api/v2/runs",status_code=202)
     def run_create(body:RunInput):
         revision=store.revision(body.revision_id)
+        if not revision['source'].strip():raise ValueError('Write strategy code before running a backtest')
         if body.data_mode=="prepared":
             from .prepared import requirements
             import re
