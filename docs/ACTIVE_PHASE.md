@@ -4,7 +4,9 @@ Updated: 2026-10-11 (Asia/Shanghai).
 
 **Milestone:** QUANTRADAR2_RESEARCH_WORKBENCH_V1
 **Active Goal:** NONE
-**Status:** COMPLETE（用户授权的聚宽式回测详情升级已验收；无后续排队目标）
+**Status:** COMPLETE（指标计算与聚宽式编辑页已验收，无排队目标）
+
+用户授权的应用层完整指标与1/3/6/12月滚动表、聚宽式双栏编辑/结果/日志已完成。43项测试、计算边界测试、CSV检查、类型检查、生产构建及真实回测桌面/手机浏览器验收通过，见[指标与编辑器验收](acceptance/quantradar2-metrics-editor/README.md)。原生报告及历史产物不变，G3未启动。
 
 回测详情已按用户提供的聚宽截图升级：独立详情页、顶部设置状态、左侧栏目、原生指标网格、收益/盈亏/持仓图、交易和每日持仓表、日志、阶段性能、不可变历史源码及原生月度收益。缺失指标和滚动序列明确提示，不重算原生指标。43项测试、CSV边界检查、类型检查、生产构建及真实完整回测桌面/手机浏览器验收通过，见[详情验收](acceptance/quantradar2-details/README.md)。G3未启动。
 

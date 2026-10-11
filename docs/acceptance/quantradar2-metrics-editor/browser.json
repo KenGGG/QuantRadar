@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "page_errors": [],
+  "checks": [
+    "application daily metrics",
+    "strategy/benchmark/excess charts",
+    "log axis and time range",
+    "trades and positions with day grouping",
+    "error log filter",
+    "phase timing",
+    "immutable code",
+    "monthly rolling returns and alpha",
+    "mobile navigation",
+    "editor split layout and summary",
+    "advanced settings and word wrap",
+    "editor error log and collapse",
+    "mobile editor"
+  ]
+}

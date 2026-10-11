@@ -3,7 +3,7 @@ from pathlib import Path
 import json,re
 from playwright.sync_api import sync_playwright, expect
 
-OUT = Path(__file__).resolve().parents[1] / 'docs/acceptance/quantradar2-details'
+OUT = Path(__file__).resolve().parents[1] / 'docs/acceptance/quantradar2-metrics-editor'
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
@@ -45,13 +45,29 @@ def main():
         page.locator('.jq-sidebar').get_by_role('button', name='策略收益').click()
         assert page.locator('.jq-panel .ant-table-tbody tr').count() > 0
         page.locator('.jq-sidebar').get_by_role('button', name='阿尔法').click()
-        assert '当前引擎未输出' in page.locator('.jq-panel').inner_text()
+        assert page.locator('.jq-metric-summary strong').inner_text() != '—'
+        assert page.locator('.jq-panel .ant-table-tbody tr').count() > 12
+        page.screenshot(path=str(OUT/'rolling-alpha.png'), full_page=True)
         page.locator('.jq-sidebar').get_by_role('button', name='收益概述').click()
         page.set_viewport_size({'width':390,'height':844})
         page.screenshot(path=str(OUT/'mobile.png'), full_page=True)
         assert page.locator('.jq-sidebar').evaluate('(e)=>e.scrollWidth > e.clientWidth')
+        page.set_viewport_size({'width':1700,'height':1050})
+        page.get_by_role('button', name='恢复代码与参数', exact=True).click()
+        page.locator('.jq-workbench .monaco-editor').wait_for()
+        assert page.locator('.jq-preview-metrics strong').count() == 6
+        page.screenshot(path=str(OUT/'editor.png'), full_page=True)
+        page.get_by_role('button', name='⚙ 设置').click()
+        page.get_by_role('checkbox', name='代码自动换行').click()
+        page.get_by_role('button', name=re.compile(r'完\s*成')).click()
+        page.get_by_role('button', name='错误', exact=True).click()
+        page.get_by_role('button', name=re.compile(r'收\s*起')).click()
+        assert page.locator('.jq-editor-console').count() == 0
+        page.get_by_role('button', name=re.compile(r'展\s*开')).click()
+        page.set_viewport_size({'width':390,'height':844})
+        page.screenshot(path=str(OUT/'editor-mobile.png'), full_page=True)
         assert not errors, errors
-        (OUT/'browser.json').write_text(json.dumps({'passed':True,'page_errors':errors,'checks':['real native metrics','strategy/benchmark/excess charts','log axis and time range','trades and positions with day grouping','error log filter','phase timing','immutable code','native monthly returns','missing metric indication','mobile navigation']},ensure_ascii=False,indent=2), encoding='utf-8')
+        (OUT/'browser.json').write_text(json.dumps({'passed':True,'page_errors':errors,'checks':['application daily metrics','strategy/benchmark/excess charts','log axis and time range','trades and positions with day grouping','error log filter','phase timing','immutable code','monthly rolling returns and alpha','mobile navigation','editor split layout and summary','advanced settings and word wrap','editor error log and collapse','mobile editor']},ensure_ascii=False,indent=2), encoding='utf-8')
         browser.close()
 
 if __name__ == '__main__':
