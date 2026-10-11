@@ -22,6 +22,19 @@ def test_revisions_run_validation_cancel_and_no_trading(tmp_path):
         assert client.post("/api/v2/strategies",json={"name":"x","source":"pass"},headers={"Origin":"https://example.com"}).status_code==403
         assert client.get("/api/v2/data/health").status_code==503
 
+
+def test_prepared_run_requires_valid_data_plan_and_rejects_minute_before_queue(tmp_path):
+    app=create_app(Runtime(tmp_path,tmp_path/'absent.env'),worker=False)
+    with TestClient(app) as client:
+        strategy=client.post('/api/v2/strategies',json={'name':'prepared','source':'pass'}).json()
+        body={'revision_id':strategy['revision_id'],'start_date':'2024-01-02','end_date':'2024-01-05','data_mode':'prepared'}
+        assert client.post('/api/v2/runs',json=body).status_code==400
+        body['data_requirements']={'securities':['510300.XSHG'],'warmup_bars':84}
+        assert client.post('/api/v2/runs',json=dict(body,frequency='minute')).status_code==400
+        result=client.post('/api/v2/runs',json=body)
+        assert result.status_code==202
+        assert result.json()['request']['data_requirements']==body['data_requirements']
+
 def test_log_offsets_preserve_multibyte_and_unregistered_artifacts(tmp_path):
     app=create_app(Runtime(tmp_path,tmp_path/"absent.env"),worker=False)
     store=app.state.store

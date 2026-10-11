@@ -47,8 +47,36 @@ def execute(run_dir:Path,runtime:Runtime):
         "strategy_sha256":hashlib.sha256(source.encode()).hexdigest(),"source_fingerprint":environment["source_fingerprint"],
         "dependencies":environment["dependency_versions"],"reference_date":reference}
     if mode=="replay":
-        frozen=runtime.run_dir(request["frozen_source_run_id"])/"frozen"
-        provider=FrozenProvider(Replay(frozen,identity))
+        original=runtime.run_dir(request["frozen_source_run_id"])
+        if (original/'prepared'/'dataset-manifest.json').exists():
+            from .prepared import PreparedProvider
+            provider=PreparedProvider(original/'prepared',identity)
+        else:
+            frozen=original/"frozen"
+            provider=FrozenProvider(Replay(frozen,identity))
+    elif mode=="prepared":
+        from .prepared import prepare,requirements,PreparedProvider
+        live=[]
+        def connect():
+            from dotenv import dotenv_values
+            values=dotenv_values(runtime.data_config)
+            if not values.get('QMT_SERVER_TOKEN'):raise ValueError('V2 data service is not configured')
+            remote=ResearchQmtProvider({'host':'127.0.0.1','port':int(values.get('QMT_SERVER_PORT',58621)),
+                                       'token':values['QMT_SERVER_TOKEN']})
+            live.append(remote)
+            raw=remote._connection.request('admin.health',{},timeout=15)
+            health=raw.get('value',raw)
+            if health.get('features')!=['data'] or health.get('backend_type')!='big_qmt':
+                raise RuntimeError('Backtest requires the dedicated data-only big QMT service')
+            return remote
+        try:
+            stats=prepare(connect,request,requirements(source,request.get('data_requirements')),
+                run_dir/'prepared',runtime.root/'data-cache',
+                {k:environment[k] for k in ['adapter_fingerprint','source_fingerprint','native_config_fingerprint','dependency_versions']},identity)
+        finally:
+            for remote in live:remote._connection.close()
+        provider=PreparedProvider(run_dir/'prepared',identity)
+        write_json(run_dir/'data_preparation.json',dict(stats,network_fallback=False))
     else:
         from dotenv import dotenv_values
         values=dotenv_values(runtime.data_config);token=values.get("QMT_SERVER_TOKEN")
@@ -77,7 +105,7 @@ def execute(run_dir:Path,runtime:Runtime):
             end_date=request["end_date"],frequency=request.get("frequency","day"),
             initial_cash=request.get("initial_cash",500000),benchmark=request.get("benchmark"),
             extras=request.get("extras",{}),log_file=str(run_dir/"backtest.log")).run()
-        if mode in {"record","replay"} and provider._connection.errors:
+        if mode in {"record","replay","prepared"} and provider._connection.errors:
             raise RuntimeError("Frozen input validation failed: "+"; ".join(provider._connection.errors))
         log_text=(run_dir/"backtest.log").read_text(encoding="utf-8",errors="replace")
         callback_failures=[line for line in log_text.splitlines() if "[ERROR]" in line and
@@ -95,10 +123,11 @@ def execute(run_dir:Path,runtime:Runtime):
         generate_cli_report(input_dir=str(run_dir),output_path=str(run_dir/"standard_report.html"),fmt="html",title=request.get("strategy_name","Strategy"))
         for name in ["metrics.json","daily_records.csv","report.html","standard_report.html"]:
             if not (run_dir/name).is_file():raise RuntimeError("Native report artifact missing: "+name)
-        if mode=="record":
+        if mode in {"record","prepared"}:
             import zipfile
             with zipfile.ZipFile(run_dir/"frozen_data.zip","w",compression=zipfile.ZIP_DEFLATED) as archive:
-                for path in sorted((run_dir/"frozen").iterdir()):archive.write(path,"frozen/"+path.name)
+                folder='prepared' if mode=='prepared' else 'frozen'
+                for path in sorted((run_dir/folder).iterdir()):archive.write(path,folder+'/'+path.name)
         if mode=="replay":write_json(run_dir/"replay_validation.json",{"source_run":request["frozen_source_run_id"],"network_fallback":False,"used_requests":len(provider._connection.used)})
         artifacts=[]
         for path in sorted(run_dir.iterdir()):

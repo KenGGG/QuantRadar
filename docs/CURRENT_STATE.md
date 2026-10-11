@@ -1,6 +1,10 @@
 # QuantRadar2 Current State
 
-Updated: 2026-10-09 (Asia/Shanghai). [目标状态](ACTIVE_PHASE.md) · [开发计划](QUANTRADAR2_DEVELOPMENT_PLAN.md) · [运行说明](QUANTRADAR2_RUNBOOK.md)
+Updated: 2026-10-11 (Asia/Shanghai). [目标状态](ACTIVE_PHASE.md) · [开发计划](QUANTRADAR2_DEVELOPMENT_PLAN.md) · [运行说明](QUANTRADAR2_RUNBOOK.md)
+
+- QMT本地预准备已上线，网页默认固定证券池日频预准备模式；缓存命中无需连接QMT，执行前关闭QMT连接，任务固定独立SHA256数据快照。首次完整1681日任务183c460311b14371a09cbec982ba29aa约137.56秒，缓存复用80cb8c0f9aa94ae0afe9661b7246f2f4约38.79秒，离线回放b2cb643d329f47819e79d1f1d6838850约38.38秒，均SUCCEEDED。三份运行的8份CSV逐字节一致，金融指标一致。旧5053fab2已有1147日权益和1051日因子/选择一致。原修订ec1321ab5cfd4cbbb38aeecc4065ea8e、参数和参考日不变，2019-01-02至2025-12-05完整覆盖，96日现金warmup及原生报告有效。43项tests/v2、前端生产构建和pip check通过；API/回测日志目录独立。见[预准备验收](acceptance/quantradar2-data-preparation/README.md)。分钟/动态池等仍使用旧模式，历史数据资格限制不变，G3未启动。
+
+- 应用Provider的双日期/count=None日历查询显式使用自然日数上界，不再默认截断250。旧926664c872a14a42a532629700e17468仍为超时失败，旧5053fab22fc24ea29fe970888bd5f785在API恢复时标记INTERRUPTED；其原产物完整保留，不把这些旧任务改为成功。此前日历修正证据保留于[日历修正](acceptance/quantradar2-calendar-correction/README.md)。
 
 - 首版 G0/G1/G2 已验收，G3 未启动。实际仓库 D:/Projects/QuantDev/QuantRadar2；本地分支 codex/quantradar2-workbench；未推送或合并。
 - 外部 BulletTrade 为 D:/Projects/BulletTrade，0.10.0，提交 9c34c213753c51883852a7bf528dd216b2c8fa3f；G0 审查时与上游一致。原引擎及配置未修改，外部工作树干净。旧 vendor 0.9.2 不作为 V2 引擎。

@@ -108,6 +108,7 @@ class Manager:
         (directory/"request.json").write_text(encode(run["request"]),encoding="utf-8")
         env={k:v for k,v in os.environ.items() if not k.startswith(("QMT_","BIG_QMT_","JQDATA_"))}
         env.update(PYTHONPATH=str(ROOT/"backend"),PYTHONUTF8="1",QUANTRADAR2_RUNTIME=str(self.runtime.root),QUANTRADAR2_DATA_CONFIG=str(self.runtime.data_config))
+        env['LOG_DIR']=str(directory/'logs')
         with (directory/"stdout.log").open("wb") as output:
             self.child=subprocess.Popen([sys.executable,"-B","-m","quantradar2.runner","--run-dir",str(directory)],cwd=ROOT,env=env,stdout=output,stderr=subprocess.STDOUT,creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
         process=psutil.Process(self.child.pid)

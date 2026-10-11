@@ -31,7 +31,7 @@ def engine_identity():
     for path in sorted(package.rglob("*.py")):
         source_hash.update(str(path.relative_to(package)).encode());source_hash.update(path.read_bytes())
     adapter_hash=hashlib.sha256()
-    for name in ["runtime.py","runner.py","provider.py","frozen.py"]:
+    for name in ["runtime.py","runner.py","provider.py","frozen.py","prepared.py"]:
         path=Path(__file__).parent/name
         adapter_hash.update(name.encode());adapter_hash.update(path.read_bytes())
     configs_hash=hashlib.sha256()

@@ -1,0 +1,75 @@
+{
+  "runs": [
+    {
+      "kind": "first",
+      "id": "183c460311b14371a09cbec982ba29aa",
+      "wall_seconds": 137.559217,
+      "core_seconds": 29.985172033309937,
+      "preparation": {
+        "cache_hit": false,
+        "dataset_key": "a8d82027389e3756fbc3fd52e2261a52a9a5bd6a2aa97e72442f22237544e158",
+        "seconds": 98.42712580002262,
+        "trading_days": 1681,
+        "window_checks": 45,
+        "network_fallback": false
+      }
+    },
+    {
+      "kind": "cached",
+      "id": "80cb8c0f9aa94ae0afe9661b7246f2f4",
+      "wall_seconds": 38.788805,
+      "core_seconds": 29.61647343635559,
+      "preparation": {
+        "cache_hit": true,
+        "dataset_key": "a8d82027389e3756fbc3fd52e2261a52a9a5bd6a2aa97e72442f22237544e158",
+        "seconds": 0.22267360001569614,
+        "network_fallback": false
+      }
+    },
+    {
+      "kind": "replay",
+      "id": "b2cb643d329f47819e79d1f1d6838850",
+      "wall_seconds": 38.377986,
+      "core_seconds": 29.595190286636353,
+      "preparation": null
+    }
+  ],
+  "csvs_byte_equal": [
+    "annual_returns.csv",
+    "daily_positions.csv",
+    "daily_records.csv",
+    "instrument_pnl.csv",
+    "monthly_returns.csv",
+    "open_counts.csv",
+    "risk_metrics.csv",
+    "trades.csv"
+  ],
+  "financial_metrics_equal": true,
+  "old_partial_equity_days_equal": 1147,
+  "old_partial_score_days_equal": 1051,
+  "csv_sha256": {
+    "annual_returns.csv": "b912d0e0ffc831808cd6b9879f24ae44c8b0608813d0f908e1cd44d0fd99d0f7",
+    "daily_positions.csv": "290ca4df5a8afef75db8b6c22e12526b590479ed9eb94d17496f369aa2562c20",
+    "daily_records.csv": "10ceef47e2ccd32869e1fcc00678b2ddf93f985dd0c7358b8ab52861123bad54",
+    "instrument_pnl.csv": "a88b40e84ce746a7b0d94dfa3d63df06e33a1ccadb3d8fab30222a46a966eb5c",
+    "monthly_returns.csv": "318034dc73ab71f0113ca3e725c8e90bfd1c03cb236f041c29ed7e186c898669",
+    "open_counts.csv": "de3f562cffbbf49704117ba34fcfe483e9b63e761680f2c475cbb3df48404691",
+    "risk_metrics.csv": "892160a32b17029d5aac2cbdeaba25c6851c8f88d561a4f98955156311ddada9",
+    "trades.csv": "2e84c7b1fc2b79b7d45c24056feef530cbb7bfa1b5673cbbf5e6890bc6e2b47d"
+  },
+  "tests_passed": 43,
+  "source_run": "5053fab22fc24ea29fe970888bd5f785",
+  "revision_id": "ec1321ab5cfd4cbbb38aeecc4065ea8e",
+  "short_baseline": {
+    "days": 22,
+    "core_record_seconds": 19.966994047164917,
+    "core_prepared_seconds": 0.32485222816467285,
+    "financial_metrics_equal": true
+  },
+  "daily_rows": 1681,
+  "first_day": "2019-01-02 15:00:00",
+  "last_day": "2025-12-05 15:00:00",
+  "cash_warmup_days": 96,
+  "first_position_day": "2019-05-29 15:00:00",
+  "trade_rows": 149
+}
