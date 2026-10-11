@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "page_errors": [],
+  "checks": [
+    "2019-01-01 direct input",
+    "2019-01-01 year/month jump and calendar click",
+    "year/month header and leap day",
+    "submitted dates match UI"
+  ],
+  "submitted_dates": {
+    "start_date": "2019-01-01",
+    "end_date": "2020-02-29"
+  },
+  "requests_mocked": true
+}
