@@ -37,3 +37,6 @@ Updated: 2026-10-11 (Asia/Shanghai). [目标状态](ACTIVE_PHASE.md) · [开发�
 - docs 已按用户要求删除193个旧 QuantRadar 开发文档文件（30159799字节）；仅保留本次四份主文档和四个验收目录。主SQLite和运行产物未改动。
 
 - 项目已彻底移除V1功能代码/目录、旧入口、vendor及旧依赖清单；frontend dev/build统一V2。当前服务依赖日志集中于var/quantradar2/logs。清理后18项测试、标准生产构建、pip check通过；详见代码清理记录。
+
+
+2026-10-11部署已完成：mandatory-deployment.json loaded=true，实际API默认prepared，无数据清单的live/record/auto/prepared请求均400，未创建新任务。原e98119ae由既有超时机制结束（FAILED / Task timeout），之后才重启加载。无活动任务。

@@ -9,3 +9,6 @@
 45 项 tests/v2、TypeScript 类型检查、生产构建通过。浏览器检查设置及请求 data_mode=prepared，写请求拦截，不新建回测、不修改策略；见 browser.json 和 settings.png。既有 prepared 测试涵盖缓存复用零连接、损坏和越界拒绝。
 
 当前 e98119ae 仍运行旧 record 进程；scripts/v2_restart_when_idle.py 等队列清空后加载新版，var/quantradar2/mandatory-deployment.json 记录加载结果。加载前更新页面提交 prepared 已受旧 API 的严格校验；后端旧客户端强制转换须待进程重启生效。
+
+
+2026-10-11部署已完成：mandatory-deployment.json loaded=true，实际API默认prepared，无数据清单的live/record/auto/prepared请求均400，未创建新任务。原e98119ae由既有超时机制结束（FAILED / Task timeout），之后才重启加载。无活动任务。
