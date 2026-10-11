@@ -58,6 +58,32 @@ def test_prepared_run_requires_valid_data_plan_and_rejects_minute_before_queue(t
         assert result.status_code==202
         assert result.json()['request']['data_requirements']==body['data_requirements']
 
+def test_auto_mode_selects_prepared_or_record_and_keeps_invalid_plans_visible(tmp_path):
+    app=create_app(Runtime(tmp_path,tmp_path/'absent.env'),worker=False)
+    with TestClient(app) as client:
+        strategy=client.post('/api/v2/strategies',json={'name':'new','source':'def initialize(context): pass'}).json()
+        body={'revision_id':strategy['revision_id'],'start_date':'2019-01-01','end_date':'2019-01-03','data_mode':'auto'}
+        result=client.post('/api/v2/runs',json=body)
+        assert result.status_code==202
+        assert result.json()['request']['data_mode']=='record'
+        assert result.json()['request']['requested_data_mode']=='auto'
+        assert result.json()['request']['data_mode_reason']
+        plan={'securities':['510300.XSHG'],'warmup_bars':84}
+        result=client.post('/api/v2/runs',json=dict(body,data_requirements=plan))
+        assert result.status_code==202 and result.json()['request']['data_mode']=='prepared'
+        fixed=client.post('/api/v2/strategies',json={'name':'fixed','source':f'DATA_REQUIREMENTS = {plan!r}\ndef initialize(context): pass'}).json()
+        result=client.post('/api/v2/runs',json=dict(body,revision_id=fixed['revision_id']))
+        assert result.status_code==202 and result.json()['request']['data_mode']=='prepared'
+        result=client.post('/api/v2/runs',json=dict(body,revision_id=fixed['revision_id'],frequency='minute'))
+        assert result.status_code==202 and result.json()['request']['data_mode']=='record'
+        assert client.post('/api/v2/runs',json=dict(body,data_requirements={})).status_code==400
+        invalid=client.post('/api/v2/strategies',json={'name':'invalid','source':'DATA_REQUIREMENTS = {}'}).json()
+        assert client.post('/api/v2/runs',json=dict(body,revision_id=invalid['revision_id'])).status_code==400
+        strict=client.post('/api/v2/runs',json=dict(body,data_mode='prepared'))
+        assert strict.status_code==400 and '自动模式' in strict.json()['detail']
+        broken=client.post('/api/v2/strategies',json={'name':'syntax','source':'def initialize('}).json()
+        assert client.post('/api/v2/runs',json=dict(body,revision_id=broken['revision_id'])).status_code==400
+
 def test_log_offsets_preserve_multibyte_and_unregistered_artifacts(tmp_path):
     app=create_app(Runtime(tmp_path,tmp_path/"absent.env"),worker=False)
     store=app.state.store

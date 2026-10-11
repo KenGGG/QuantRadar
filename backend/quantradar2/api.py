@@ -22,7 +22,7 @@ class RunInput(BaseModel):
     initial_cash:float=Field(default=500000,gt=0,le=1e12,allow_inf_nan=False)
     benchmark:str|None=Field(default="000300.XSHG",max_length=50)
     extras:dict=Field(default_factory=dict)
-    data_mode:str=Field(default="live",pattern=r"^(live|record|prepared)$")
+    data_mode:str=Field(default="live",pattern=r"^(auto|live|record|prepared)$")
     data_requirements:dict|None=None
     refresh_data:bool=False
     reference_date:date=Field(default_factory=date.today)
@@ -92,14 +92,14 @@ def create_app(runtime=None,worker=True):
     def run_create(body:RunInput):
         revision=store.revision(body.revision_id)
         if not revision['source'].strip():raise ValueError('Write strategy code before running a backtest')
-        if body.data_mode=="prepared":
-            from .prepared import requirements
-            import re
-            if body.frequency!="day":raise ValueError('Prepared data currently supports daily backtests only')
-            if body.benchmark and not re.fullmatch(r'\d{6}\.(XSHG|XSHE)',body.benchmark):raise ValueError('Invalid prepared benchmark')
-            requirements(revision['source'],body.data_requirements)
+        from .run_config import data_mode
+        mode,reason=data_mode(revision['source'],body.data_mode,body.frequency,body.data_requirements,body.benchmark)
         strategy=store.strategy(revision["strategy_id"])
         request=body.model_dump(mode="json",exclude={"revision_id"})
+        request['data_mode']=mode
+        if reason:
+            request['requested_data_mode']=body.data_mode
+            request['data_mode_reason']=reason
         request["strategy_name"]=strategy["name"]
         return store.create_run(body.revision_id,request)
     @app.get("/api/v2/runs/{run_id}")

@@ -4,7 +4,9 @@ Updated: 2026-10-11 (Asia/Shanghai).
 
 **Milestone:** QUANTRADAR2_RESEARCH_WORKBENCH_V1
 **Active Goal:** NONE
-**Status:** COMPLETE（历史日期选择修正已验收，无排队目标）
+**Status:** COMPLETE（新策略自动数据模式修正已验收，无排队目标）
+
+新策略默认自动数据模式：固定证券池日频使用预准备，否则查询并记录；显式预准备严格验证并给出中文提示。45项测试、构建及网页模式/请求检查通过，API已加载新版，见[自动模式验收](acceptance/quantradar2-auto-mode/README.md)。
 
 历史日期控件已提供中文年月及显式年/月跳转。2019-01-01输入/日历选择、闰日与提交参数一致性浏览器验收及生产构建通过；见[历史日期验收](acceptance/quantradar2-dates/README.md)。没有新增回测或修改策略。
 

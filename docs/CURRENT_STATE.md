@@ -2,6 +2,8 @@
 
 Updated: 2026-10-11 (Asia/Shanghai). [目标状态](ACTIVE_PHASE.md) · [开发计划](QUANTRADAR2_DEVELOPMENT_PLAN.md) · [运行说明](QUANTRADAR2_RUNBOOK.md)
 
+- 网页/新建策略默认自动数据模式：有明确DATA_REQUIREMENTS或请求计划的日频任务先预准备；无声明或分钟任务查询QMT并记录供回放。错误声明和显式prepared仍严格报错，中文提示说明证券池及预热要求。保存实际模式/解析原因，API省略模式仍live以兼容旧调用。45项测试、构建及网页默认/请求检查通过，API已加载新版；没有新增真实回测。见[自动模式验收](acceptance/quantradar2-auto-mode/README.md)。
+
 - 策略编辑及预览的日期控件支持中文日历、直接输入和底部年份/月跳转。2019-01-01手输/点击、原年月标题及闰日选择验证通过，运行请求日期与界面一致；类型/构建通过。验收模拟保存与提交，不新增任务或修改策略。见[历史日期验收](acceptance/quantradar2-dates/README.md)。
 
 - 默认首页为聚宽式策略列表，顶部入口及“新建空白策略”按钮可见。支持搜索/分页/打开编辑、跨全部修订历史回测计数与筛选、复制、归档与恢复。命名创建后进入真正空编辑器；空源码可保存，前端/API拒绝空代码运行，新建清空旧摘要/日志。44项测试、生产构建及真实创建/编辑保存/搜索/历史/手机浏览器验收通过，API已加载新版。测试草稿已归档，旧策略与回测产物保留。见[策略列表验收](acceptance/quantradar2-strategy-list/README.md)。
@@ -9,7 +11,7 @@ Updated: 2026-10-11 (Asia/Shanghai). [目标状态](ACTIVE_PHASE.md) · [开发�
 - 用户已授权补齐应用统计：Alpha/Beta、相对超额收益、信息比率、策略/基准波动率、日均超额、超额回撤/Sharpe、收益/Sharpe/Sortino、净卖出成交胜率等及全部侧栏1/3/6/12月滚动表。统一250日、4%无风险和样本标准差，缺数据/零分母显示“—”，原生报告与产物仍保留。策略编辑页为深色代码/右侧六项摘要与图/底部日志，高级设置弹窗、查找/换行/快捷键/日志收起可用。43项测试、公式边界、CSV、类型/构建和真实回测桌面/手机浏览器检查通过。见[指标与编辑器验收](acceptance/quantradar2-metrics-editor/README.md)。
 
 
-- QMT本地预准备已上线，网页默认固定证券池日频预准备模式；缓存命中无需连接QMT，执行前关闭QMT连接，任务固定独立SHA256数据快照。首次完整1681日任务183c460311b14371a09cbec982ba29aa约137.56秒，缓存复用80cb8c0f9aa94ae0afe9661b7246f2f4约38.79秒，离线回放b2cb643d329f47819e79d1f1d6838850约38.38秒，均SUCCEEDED。三份运行的8份CSV逐字节一致，金融指标一致。旧5053fab2已有1147日权益和1051日因子/选择一致。原修订ec1321ab5cfd4cbbb38aeecc4065ea8e、参数和参考日不变，2019-01-02至2025-12-05完整覆盖，96日现金warmup及原生报告有效。43项tests/v2、前端生产构建和pip check通过；API/回测日志目录独立。见[预准备验收](acceptance/quantradar2-data-preparation/README.md)。分钟/动态池等仍使用旧模式，历史数据资格限制不变，G3未启动。
+- QMT本地预准备已上线，固定证券池日频支持预准备模式；缓存命中无需连接QMT，执行前关闭QMT连接，任务固定独立SHA256数据快照。首次完整1681日任务183c460311b14371a09cbec982ba29aa约137.56秒，缓存复用80cb8c0f9aa94ae0afe9661b7246f2f4约38.79秒，离线回放b2cb643d329f47819e79d1f1d6838850约38.38秒，均SUCCEEDED。三份运行的8份CSV逐字节一致，金融指标一致。旧5053fab2已有1147日权益和1051日因子/选择一致。原修订ec1321ab5cfd4cbbb38aeecc4065ea8e、参数和参考日不变，2019-01-02至2025-12-05完整覆盖，96日现金warmup及原生报告有效。43项tests/v2、前端生产构建和pip check通过；API/回测日志目录独立。见[预准备验收](acceptance/quantradar2-data-preparation/README.md)。分钟/动态池等仍使用旧模式，历史数据资格限制不变，G3未启动。
 
 - 应用Provider的双日期/count=None日历查询显式使用自然日数上界，不再默认截断250。旧926664c872a14a42a532629700e17468仍为超时失败，旧5053fab22fc24ea29fe970888bd5f785在API恢复时标记INTERRUPTED；其原产物完整保留，不把这些旧任务改为成功。此前日历修正证据保留于[日历修正](acceptance/quantradar2-calendar-correction/README.md)。
 
