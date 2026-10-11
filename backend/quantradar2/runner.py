@@ -34,6 +34,8 @@ def execute(run_dir:Path,runtime:Runtime):
     from .frozen import Recorder,Replay,FrozenProvider,canonical
     from bullet_trade.data.api import set_data_provider
     mode=request.get("data_mode","live")
+    if mode not in {'prepared','replay'}:
+        raise ValueError('所有回测必须先缓存数据；在线执行模式已禁用，请重新提交预准备任务')
     reference=request.get("reference_date",date.today().isoformat())
     date.fromisoformat(reference)
     frozen_request={k:v for k,v in request.items() if k not in {"data_mode","frozen_source_run_id"}}

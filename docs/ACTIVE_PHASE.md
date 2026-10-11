@@ -3,8 +3,12 @@
 Updated: 2026-10-11 (Asia/Shanghai).
 
 **Milestone:** QUANTRADAR2_RESEARCH_WORKBENCH_V1
-**Active Goal:** NONE
-**Status:** COMPLETE（新策略自动数据模式修正已验收，无排队目标）
+**Active Goal:** MANDATORY_PREPARED_BACKTESTS
+**Status:** VERIFIED_PENDING_IDLE_DEPLOYMENT
+
+所有新回测强制先缓存并校验数据；取消在线回退，缺少完整数据需求及尚无预准备支持的分钟策略拒绝启动。保留当前运行任务；测试构建后在无活动任务时加载新版。
+
+45项后端测试、类型检查、生产构建及浏览器请求验收通过。网页已只提交prepared；后端完整加载由scripts/v2_restart_when_idle.py在队列清空后执行，加载结果见var/quantradar2/mandatory-deployment.json。当前目标尚未完成部署，不开启其他目标。见[验收](acceptance/quantradar2-mandatory-cache/README.md)。
 
 新策略默认自动数据模式：固定证券池日频使用预准备，否则查询并记录；显式预准备严格验证并给出中文提示。45项测试、构建及网页模式/请求检查通过，API已加载新版，见[自动模式验收](acceptance/quantradar2-auto-mode/README.md)。
 

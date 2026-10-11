@@ -1,5 +1,7 @@
 # QuantRadar2 Current State
 
+2026-10-11 强制缓存改造：源码和构建已取消新任务在线回退，旧模式名统一转换 prepared；缺数据清单和分钟频率拒绝启动，runner仅允许prepared/replay。45项后端测试、类型检查、构建和浏览器提交检查通过。当前运行任务保留旧路径；后端完整策略待队列清空后重启加载，加载标记见var/quantradar2/mandatory-deployment.json。网页已只提交prepared。
+
 Updated: 2026-10-11 (Asia/Shanghai). [目标状态](ACTIVE_PHASE.md) · [开发计划](QUANTRADAR2_DEVELOPMENT_PLAN.md) · [运行说明](QUANTRADAR2_RUNBOOK.md)
 
 - 网页/新建策略默认自动数据模式：有明确DATA_REQUIREMENTS或请求计划的日频任务先预准备；无声明或分钟任务查询QMT并记录供回放。错误声明和显式prepared仍严格报错，中文提示说明证券池及预热要求。保存实际模式/解析原因，API省略模式仍live以兼容旧调用。45项测试、构建及网页默认/请求检查通过，API已加载新版；没有新增真实回测。见[自动模式验收](acceptance/quantradar2-auto-mode/README.md)。

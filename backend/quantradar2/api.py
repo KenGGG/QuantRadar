@@ -22,7 +22,7 @@ class RunInput(BaseModel):
     initial_cash:float=Field(default=500000,gt=0,le=1e12,allow_inf_nan=False)
     benchmark:str|None=Field(default="000300.XSHG",max_length=50)
     extras:dict=Field(default_factory=dict)
-    data_mode:str=Field(default="live",pattern=r"^(auto|live|record|prepared)$")
+    data_mode:str=Field(default="prepared",pattern=r"^(auto|live|record|prepared)$")
     data_requirements:dict|None=None
     refresh_data:bool=False
     reference_date:date=Field(default_factory=date.today)

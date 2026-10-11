@@ -34,7 +34,7 @@ def test_revisions_run_validation_cancel_and_no_trading(tmp_path):
         assert saved["revision"]==2
         old=client.get("/api/v2/strategies/"+strategy["id"]+"/revisions").json()
         assert old[1]["id"]==strategy["revision_id"]
-        request={"revision_id":strategy["revision_id"],"start_date":"2026-09-01","end_date":"2026-09-04"}
+        request={"revision_id":strategy["revision_id"],"start_date":"2026-09-01","end_date":"2026-09-04","data_requirements":{"securities":["510300.XSHG"],"warmup_bars":84}}
         assert client.post("/api/v2/runs",json=dict(request,end_date="2026-08-01")).status_code==422
         response=client.post("/api/v2/runs",json=request)
         assert response.status_code==202
@@ -58,29 +58,31 @@ def test_prepared_run_requires_valid_data_plan_and_rejects_minute_before_queue(t
         assert result.status_code==202
         assert result.json()['request']['data_requirements']==body['data_requirements']
 
-def test_auto_mode_selects_prepared_or_record_and_keeps_invalid_plans_visible(tmp_path):
+def test_all_modes_require_preparation_and_keep_invalid_plans_visible(tmp_path):
     app=create_app(Runtime(tmp_path,tmp_path/'absent.env'),worker=False)
     with TestClient(app) as client:
         strategy=client.post('/api/v2/strategies',json={'name':'new','source':'def initialize(context): pass'}).json()
         body={'revision_id':strategy['revision_id'],'start_date':'2019-01-01','end_date':'2019-01-03','data_mode':'auto'}
         result=client.post('/api/v2/runs',json=body)
-        assert result.status_code==202
-        assert result.json()['request']['data_mode']=='record'
-        assert result.json()['request']['requested_data_mode']=='auto'
-        assert result.json()['request']['data_mode_reason']
+        assert result.status_code==400
+        assert not client.get('/api/v2/runs').json()
         plan={'securities':['510300.XSHG'],'warmup_bars':84}
         result=client.post('/api/v2/runs',json=dict(body,data_requirements=plan))
         assert result.status_code==202 and result.json()['request']['data_mode']=='prepared'
+        for old_mode in ['live','record','auto','prepared']:
+            assert client.post('/api/v2/runs',json=dict(body,data_mode=old_mode)).status_code==400
+            accepted=client.post('/api/v2/runs',json=dict(body,data_mode=old_mode,data_requirements=plan))
+            assert accepted.status_code==202 and accepted.json()['request']['data_mode']=='prepared'
         fixed=client.post('/api/v2/strategies',json={'name':'fixed','source':f'DATA_REQUIREMENTS = {plan!r}\ndef initialize(context): pass'}).json()
         result=client.post('/api/v2/runs',json=dict(body,revision_id=fixed['revision_id']))
         assert result.status_code==202 and result.json()['request']['data_mode']=='prepared'
         result=client.post('/api/v2/runs',json=dict(body,revision_id=fixed['revision_id'],frequency='minute'))
-        assert result.status_code==202 and result.json()['request']['data_mode']=='record'
+        assert result.status_code==400
         assert client.post('/api/v2/runs',json=dict(body,data_requirements={})).status_code==400
         invalid=client.post('/api/v2/strategies',json={'name':'invalid','source':'DATA_REQUIREMENTS = {}'}).json()
         assert client.post('/api/v2/runs',json=dict(body,revision_id=invalid['revision_id'])).status_code==400
         strict=client.post('/api/v2/runs',json=dict(body,data_mode='prepared'))
-        assert strict.status_code==400 and '自动模式' in strict.json()['detail']
+        assert strict.status_code==400 and '必须先缓存' in strict.json()['detail']
         broken=client.post('/api/v2/strategies',json={'name':'syntax','source':'def initialize('}).json()
         assert client.post('/api/v2/runs',json=dict(body,revision_id=broken['revision_id'])).status_code==400
 
