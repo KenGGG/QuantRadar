@@ -93,10 +93,14 @@ def create_app(runtime=None,worker=True):
         revision=store.revision(body.revision_id)
         if not revision['source'].strip():raise ValueError('Write strategy code before running a backtest')
         from .run_config import data_mode
-        mode,reason=data_mode(revision['source'],body.data_mode,body.frequency,body.data_requirements,body.benchmark)
+        mode,reason=data_mode(revision['source'],body.data_mode,body.frequency,body.data_requirements,body.benchmark,body.extras)
+        from .auto_plan import resolve_requirements
+        plan,origin=resolve_requirements(revision['source'],body.data_requirements,body.extras,body.benchmark)
         strategy=store.strategy(revision["strategy_id"])
         request=body.model_dump(mode="json",exclude={"revision_id"})
         request['data_mode']=mode
+        request['data_requirements']=plan
+        request['data_requirements_origin']=origin
         if reason:
             request['requested_data_mode']=body.data_mode
             request['data_mode_reason']=reason

@@ -33,6 +33,8 @@ def requirements(source, explicit=None):
                 isinstance(t, ast.Name) and t.id == 'DATA_REQUIREMENTS' for t in node.targets
             ):
                 value = ast.literal_eval(node.value)
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == 'DATA_REQUIREMENTS':
+                value = ast.literal_eval(node.value)
     if not isinstance(value, dict) or set(value) != {'securities', 'warmup_bars'}:
         raise ValueError('Prepared daily runs require DATA_REQUIREMENTS = '
                          "{'securities': [...], 'warmup_bars': 84}, or data_requirements in the request")

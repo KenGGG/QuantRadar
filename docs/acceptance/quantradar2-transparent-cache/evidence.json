@@ -1,0 +1,57 @@
+{
+  "passed": true,
+  "revision_id": "78bbcd7c8e894e41ae76853b2db59bfb",
+  "source_hash": "f675e43de7ccf8821fe9dcd31b264520ced04f0fa9b93e2ed80ce4ec809d6c51",
+  "source_unchanged": true,
+  "no_declaration_or_request_plan": true,
+  "plan": {
+    "securities": [
+      "000300.XSHG",
+      "159949.XSHE",
+      "512890.XSHG",
+      "513100.XSHG",
+      "518880.XSHG"
+    ],
+    "warmup_bars": 84
+  },
+  "runs": [
+    {
+      "id": "6c1de3a7ebff48cc9f62f14e6aa4bbde",
+      "status": "SUCCEEDED",
+      "wall_seconds": 124.625647,
+      "preparation": {
+        "cache_hit": false,
+        "dataset_key": "3e67c1d07f84b2be5c2440d57f011d36cd81d88271b2970db2fee2b8e838c6b7",
+        "seconds": 79.81561210000655,
+        "trading_days": 1681,
+        "window_checks": 45,
+        "network_fallback": false
+      },
+      "core_seconds": 32.60038447380066
+    },
+    {
+      "id": "a0c249b02d1c4f02af297fde092a3af7",
+      "status": "SUCCEEDED",
+      "wall_seconds": 43.275004,
+      "preparation": {
+        "cache_hit": true,
+        "dataset_key": "3e67c1d07f84b2be5c2440d57f011d36cd81d88271b2970db2fee2b8e838c6b7",
+        "seconds": 0.22432879998814315,
+        "network_fallback": false
+      },
+      "core_seconds": 33.87867450714111
+    }
+  ],
+  "eight_csv_sha256": {
+    "annual_returns.csv": "b912d0e0ffc831808cd6b9879f24ae44c8b0608813d0f908e1cd44d0fd99d0f7",
+    "daily_positions.csv": "290ca4df5a8afef75db8b6c22e12526b590479ed9eb94d17496f369aa2562c20",
+    "daily_records.csv": "bbfd4a533a3c8a2921e41aeade4db8dd59281f113a648f00167d48a99edc8a05",
+    "instrument_pnl.csv": "a88b40e84ce746a7b0d94dfa3d63df06e33a1ccadb3d8fab30222a46a966eb5c",
+    "monthly_returns.csv": "318034dc73ab71f0113ca3e725c8e90bfd1c03cb236f041c29ed7e186c898669",
+    "open_counts.csv": "de3f562cffbbf49704117ba34fcfe483e9b63e761680f2c475cbb3df48404691",
+    "risk_metrics.csv": "892160a32b17029d5aac2cbdeaba25c6851c8f88d561a4f98955156311ddada9",
+    "trades.csv": "2e84c7b1fc2b79b7d45c24056feef530cbb7bfa1b5673cbbf5e6890bc6e2b47d"
+  },
+  "metrics_equal": true,
+  "trading_days": 1681
+}

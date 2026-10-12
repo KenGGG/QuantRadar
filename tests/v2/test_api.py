@@ -51,7 +51,8 @@ def test_prepared_run_requires_valid_data_plan_and_rejects_minute_before_queue(t
     with TestClient(app) as client:
         strategy=client.post('/api/v2/strategies',json={'name':'prepared','source':'pass'}).json()
         body={'revision_id':strategy['revision_id'],'start_date':'2024-01-02','end_date':'2024-01-05','data_mode':'prepared'}
-        assert client.post('/api/v2/runs',json=body).status_code==400
+        auto=client.post('/api/v2/runs',json=body)
+        assert auto.status_code==202 and auto.json()['request']['data_requirements_origin']=='automatic'
         body['data_requirements']={'securities':['510300.XSHG'],'warmup_bars':84}
         assert client.post('/api/v2/runs',json=dict(body,frequency='minute')).status_code==400
         result=client.post('/api/v2/runs',json=body)
@@ -64,13 +65,13 @@ def test_all_modes_require_preparation_and_keep_invalid_plans_visible(tmp_path):
         strategy=client.post('/api/v2/strategies',json={'name':'new','source':'def initialize(context): pass'}).json()
         body={'revision_id':strategy['revision_id'],'start_date':'2019-01-01','end_date':'2019-01-03','data_mode':'auto'}
         result=client.post('/api/v2/runs',json=body)
-        assert result.status_code==400
-        assert not client.get('/api/v2/runs').json()
+        assert result.status_code==202
+        assert result.json()['request']['data_requirements_origin']=='automatic'
         plan={'securities':['510300.XSHG'],'warmup_bars':84}
         result=client.post('/api/v2/runs',json=dict(body,data_requirements=plan))
         assert result.status_code==202 and result.json()['request']['data_mode']=='prepared'
         for old_mode in ['live','record','auto','prepared']:
-            assert client.post('/api/v2/runs',json=dict(body,data_mode=old_mode)).status_code==400
+            assert client.post('/api/v2/runs',json=dict(body,data_mode=old_mode)).json()['request']['data_mode']=='prepared'
             accepted=client.post('/api/v2/runs',json=dict(body,data_mode=old_mode,data_requirements=plan))
             assert accepted.status_code==202 and accepted.json()['request']['data_mode']=='prepared'
         fixed=client.post('/api/v2/strategies',json={'name':'fixed','source':f'DATA_REQUIREMENTS = {plan!r}\ndef initialize(context): pass'}).json()
@@ -82,7 +83,7 @@ def test_all_modes_require_preparation_and_keep_invalid_plans_visible(tmp_path):
         invalid=client.post('/api/v2/strategies',json={'name':'invalid','source':'DATA_REQUIREMENTS = {}'}).json()
         assert client.post('/api/v2/runs',json=dict(body,revision_id=invalid['revision_id'])).status_code==400
         strict=client.post('/api/v2/runs',json=dict(body,data_mode='prepared'))
-        assert strict.status_code==400 and '必须先缓存' in strict.json()['detail']
+        assert strict.status_code==202 and strict.json()['request']['data_requirements_origin']=='automatic'
         broken=client.post('/api/v2/strategies',json={'name':'syntax','source':'def initialize('}).json()
         assert client.post('/api/v2/runs',json=dict(body,revision_id=broken['revision_id'])).status_code==400
 
@@ -103,6 +104,22 @@ def test_log_offsets_preserve_multibyte_and_unregistered_artifacts(tmp_path):
             offset=chunk["offset"];joined+=chunk["text"]
         assert joined==original
         assert client.get(f"/api/v2/runs/{run['id']}/artifacts/secret.env").status_code==404
+
+def test_imported_source_gets_internal_plan_without_revision_changes(tmp_path):
+    from test_auto_plan import SOURCE
+    app=create_app(Runtime(tmp_path,tmp_path/'absent.env'),worker=False)
+    with TestClient(app) as client:
+        strategy=client.post('/api/v2/strategies',json={'name':'imported','source':SOURCE}).json()
+        body={'revision_id':strategy['revision_id'],'start_date':'2019-01-01','end_date':'2025-12-05'}
+        result=client.post('/api/v2/runs',json=body)
+        assert result.status_code==202
+        request=result.json()['request']
+        assert request['data_mode']=='prepared' and request['data_requirements_origin']=='automatic'
+        assert request['data_requirements']['warmup_bars']==84
+        adjusted=client.post('/api/v2/runs',json=dict(body,extras={'bias_n':120,'momentum_n':35})).json()
+        assert adjusted['request']['data_requirements']['warmup_bars']==154
+        assert client.get('/api/v2/revisions/'+strategy['revision_id']).json()['source']==SOURCE
+        assert len(client.get('/api/v2/strategies/'+strategy['id']+'/revisions').json())==1
 
 def test_report_initial_equity_annotation_preserves_original_artifact(tmp_path):
     import json,hashlib

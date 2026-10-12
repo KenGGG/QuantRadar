@@ -58,6 +58,10 @@ def execute(run_dir:Path,runtime:Runtime):
             provider=FrozenProvider(Replay(frozen,identity))
     elif mode=="prepared":
         from .prepared import prepare,requirements,PreparedProvider
+        from .auto_plan import resolve_requirements
+        plan,origin=resolve_requirements(source,request.get('data_requirements'),request.get('extras'),request.get('benchmark'))
+        write_json(run_dir/'data_plan.json',dict(plan,origin=request.get('data_requirements_origin',origin)))
+        print('[DATA] System data plan: '+json.dumps(plan),flush=True)
         live=[]
         def connect():
             from dotenv import dotenv_values
@@ -72,7 +76,7 @@ def execute(run_dir:Path,runtime:Runtime):
                 raise RuntimeError('Backtest requires the dedicated data-only big QMT service')
             return remote
         try:
-            stats=prepare(connect,request,requirements(source,request.get('data_requirements')),
+            stats=prepare(connect,request,plan,
                 run_dir/'prepared',runtime.root/'data-cache',
                 {k:environment[k] for k in ['adapter_fingerprint','source_fingerprint','native_config_fingerprint','dependency_versions']},identity)
         finally:

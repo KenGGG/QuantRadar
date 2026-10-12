@@ -1,12 +1,16 @@
 # QuantRadar2 Active Phase
 
-Updated: 2026-10-11 (Asia/Shanghai).
+Updated: 2026-10-12 (Asia/Shanghai).
 
 **Milestone:** QUANTRADAR2_RESEARCH_WORKBENCH_V1
 **Active Goal:** NONE
 **Status:** COMPLETE
 
-所有新回测强制先缓存并校验数据；取消在线回退，缺少完整数据需求及尚无预准备支持的分钟策略拒绝启动。保留当前运行任务；测试构建后在无活动任务时加载新版。
+2026-10-12 用户要求不改聚宽策略源码、无需手工数据声明，由系统自动识别数据需求并完成缓存准备。保留先缓存再计算及禁止在线回退。
+
+无声明ETF原修订全区间1681日首次/缓存复用均成功，约124.63/43.28秒；8份CSV和金融指标一致，源码及修订未修改。51项测试、类型/构建和浏览器无数据清单提交通过。新版API已加载。见[无感自动准备验收](acceptance/quantradar2-transparent-cache/README.md)。无排队目标，G3未启动。
+
+下列为此前完成的升级验收。数据模式以上方无感自动准备为准，不再要求用户提供数据声明。
 
 45项后端测试、类型检查、生产构建及浏览器请求验收通过。网页已只提交prepared；后端完整加载由scripts/v2_restart_when_idle.py在队列清空后执行，加载结果见var/quantradar2/mandatory-deployment.json。旧任务被既有超时机制结束后队列清空，新后端已加载；实际API验证四种旧模式名称均无法绕过数据清单校验。无排队目标。见[验收](acceptance/quantradar2-mandatory-cache/README.md)。
 
