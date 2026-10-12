@@ -6,6 +6,10 @@ Updated: 2026-10-12 (Asia/Shanghai).
 **Active Goal:** NONE
 **Status:** COMPLETE
 
+修复用户原样聚宽修正版在QuantRadar失败：自动规划支持明确导入builtins的max/min别名，保留缓存语义校验，真实全区间回测验证。
+
+56项测试通过，原失败任务同一修订新任务63e263c6完整1681日SUCCEEDED约38.48秒，自动84根窗口并命中缓存；API已加载修复。见[验收](acceptance/quantradar2-builtins-plan/README.md)。未修复跨平台收益/撮合/指标差异；无排队目标。
+
 用户明确授权修复粘贴的聚宽源码。交付独立修正版，显式绑定Python内置any/max，验证NumPy同名函数遮蔽时空仓买入及清仓保护，不改平台源码、行情、价格模式或既有策略修订。
 
 examples/v2/etf_three_factor_joinquant_fixed.py已交付；4项定向测试通过，覆盖空仓买入、未完成清仓保护、完成清仓后换仓及未来行情/平分规则。没有在聚宽实际重跑，不宣称收益与本地相同；本地撮合及指标问题仍为已发现、尚未修复的独立问题。无排队目标。

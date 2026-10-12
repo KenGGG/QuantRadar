@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "run_id": "63e263c607344788a65521450fe0a4fb",
+  "revision_id": "d770ac6f65344748a45f46a59840c792",
+  "source_revision_unchanged": true,
+  "executed_ast_matches_revision": true,
+  "source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+  "warmup_bars": 84,
+  "status": "SUCCEEDED",
+  "days": 1681,
+  "wall_seconds": 38.478152,
+  "preparation": {
+    "cache_hit": true,
+    "dataset_key": "9120a21afb7b760ec56acd8313d40372bef09ac44e5b3fac4dda6f9cfea98458",
+    "seconds": 0.24598290002904832,
+    "network_fallback": false
+  },
+  "core_seconds": 29.414053201675415,
+  "return_pct": 679.0656340000003
+}

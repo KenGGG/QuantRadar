@@ -39,6 +39,16 @@ def test_ambiguous_counts_use_maximum_supported_window():
     source="n=20\nn=100\nhistory(n, security_list=['510300.XSHG'])"
     assert resolve_requirements(source)[0]['warmup_bars']==5000
 
+def test_explicit_builtins_aliases_and_real_fixed_strategy():
+    from pathlib import Path
+    source=(Path(__file__).resolve().parents[2]/'examples/v2/etf_three_factor_joinquant_fixed.py').read_text(encoding='utf-8')
+    assert resolve_requirements(source)[0]['warmup_bars']==84
+    assert resolve_requirements(source,extras={'bias_n':120,'momentum_n':35})[0]['warmup_bars']==154
+    for prefix,call in [('import builtins as b','b.max'),('from builtins import max as largest','largest')]:
+        assert resolve_requirements(prefix+f"\nget_price('510300.XSHG',count={call}(60,84))")[0]['warmup_bars']==84
+    rebound="import builtins as b\nb=unknown\nget_price('510300.XSHG',count=b.max(60,84))"
+    assert resolve_requirements(rebound)[0]['warmup_bars']==5000
+
 def test_extras_security_pool_and_unsupported_range():
     assert resolve_requirements('pass',extras={'pool':['510300.XSHG']})[0]['securities']==['510300.XSHG']
     with pytest.raises(ValueError):resolve_requirements("get_price('510300.XSHG',count=5001)")

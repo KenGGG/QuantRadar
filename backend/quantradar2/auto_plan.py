@@ -40,6 +40,28 @@ def automatic_requirements(source, extras=None, benchmark=None):
             for target in targets:
                 definitions.setdefault(ast.unparse(target), []).append(node.value)
 
+    modules = set()
+    functions = {}
+    rebound = set(definitions)
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            rebound.add(node.name)
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == 'builtins':modules.add(alias.asname or 'builtins')
+        if isinstance(node, ast.ImportFrom) and node.module == 'builtins':
+            for alias in node.names:
+                if alias.name in {'max','min'}:functions[alias.asname or alias.name]=alias.name
+
+    def builtin_name(node):
+        if isinstance(node, ast.Name) and node.id not in rebound:
+            return functions.get(node.id, node.id)
+        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+            root=node.value.id
+            if root in modules and root not in rebound and ast.unparse(node) not in rebound:
+                return node.attr
+        return None
+
     def value(node, visiting=frozenset()):
         key = ast.unparse(node)
         if key in visiting:raise ValueError('cyclic expression')
@@ -49,13 +71,14 @@ def automatic_requirements(source, extras=None, benchmark=None):
         if isinstance(node, ast.Dict):
             result = {value(k, visiting): value(v, visiting) for k, v in zip(node.keys, node.values)}
             return dict(result, **{k:v for k,v in extras.items() if k in result})
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-            if node.func.id == 'dict' and not node.args and all(k.arg for k in node.keywords):
+        if isinstance(node, ast.Call):
+            name=builtin_name(node.func)
+            if name == 'dict' and not node.args and all(k.arg for k in node.keywords):
                 result = {k.arg:value(k.value, visiting) for k in node.keywords}
                 return dict(result, **{k:v for k,v in extras.items() if k in result})
-            if node.func.id in {'max', 'min'} and not node.keywords:
+            if name in {'max', 'min'} and not node.keywords:
                 values = [value(v, visiting) for v in node.args]
-                return (max if node.func.id == 'max' else min)(*values)
+                return (max if name == 'max' else min)(*values)
         if isinstance(node, ast.Subscript):return value(node.value, visiting)[value(node.slice, visiting)]
         if isinstance(node, ast.BinOp) and type(node.op) in OPS:
             left, right = value(node.left, visiting), value(node.right, visiting)
