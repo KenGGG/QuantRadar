@@ -1,5 +1,7 @@
 # QuantRadar2 Current State
 
+- 新增用户聚宽position.zip核对：1681日权益还原740.366924%，年化/Sharpe/Alpha/Beta/IR/回撤重算与截图一致；Sortino同序列1.846不同于1.691，尚未对齐。首个收盘价差异为2019-10-11的512890（0.562/0.575）。见[position export](acceptance/quantradar2-jq-alignment/position-export.md)。
+
 Updated: 2026-10-12 (Asia/Shanghai).
 
 - 应用兼容层已修复默认前复权撮合/估值、报价舍入、精确费用和当日成交量限制，不修改外部BulletTrade。日胜率、年化信息比率、总毛盈亏比、下行风险及现金零波动口径已更新，应用指标JSON可导出。原生历史产物不改。日均超额按相对净值日收益均值展示，文档累计增量口径另存JSON；文档与截图定义存在矛盾。

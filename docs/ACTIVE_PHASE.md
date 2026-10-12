@@ -6,6 +6,8 @@ Updated: 2026-10-12 (Asia/Shanghai).
 **Active Goal:** JOINQUANT_PRICE_AND_METRIC_ALIGNMENT
 **Status:** VERIFIED_FIXES_AWAITING_JOINQUANT_EXPORTS
 
+新增用户聚宽position.zip核对：1681日权益还原740.366924%，年化/Sharpe/Alpha/Beta/IR/回撤重算与截图一致；Sortino同序列1.846不同于1.691，尚未对齐。首个收盘价差异为2019-10-11的512890（0.562/0.575）。见[position export](acceptance/quantradar2-jq-alignment/position-export.md)。
+
 按用户提供API定义修正价格模式和风险指标；使用修正版聚宽日志逐日对齐原策略，保留严格缓存、原修订和旧产物。不修改外部BulletTrade安装。
 
 默认前复权撮合/估值、半档舍入、精确费用及成交量限制已修复；相关应用指标及导出已更新。ec853550完整1681日及f56ac7b3回放成功，8CSV一致，真实浏览器导出验证通过。194笔成交与聚宽相同，错误拒单为0，但779.15%仍不同于740.37%；4日信号差异和首次2019-10-11行情差异已定位。用户已询问数据导出方式，诊断版生成原始行情及每日权益两CSV。等待这些数据后继续同一目标，不能标记完成或启动其他目标。见[阶段验收](acceptance/quantradar2-jq-alignment/README.md)。
