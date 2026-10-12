@@ -98,7 +98,7 @@ def execute(run_dir:Path,runtime:Runtime):
             provider._connection.close();raise
     try:
         set_data_provider(provider)
-        from bullet_trade.core.engine import BacktestEngine
+        from .compat_engine import JoinQuantBacktestEngine as BacktestEngine
         from bullet_trade.core.settings import get_settings
         from bullet_trade.core.analysis import generate_report
         from bullet_trade.reporting import generate_cli_report

@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "run_id": "f56ac7b339814b90ab3db9f3ca29b050",
+  "csv_hashes": {
+    "annual_returns.csv": "88ad9b5bcd22b84732df47bac9f8fda99f50000325584bde61bb41bb5945a0be",
+    "daily_positions.csv": "e91b709ce9c18fc51e23c85550d1de5535d489a17f10090bf0631a986b5dc15e",
+    "daily_records.csv": "6aa8857160f543b5a8a14a4efa54187d95b3de50ff44d104a931f2e9df07c818",
+    "instrument_pnl.csv": "0ae75a2da5626c5892b4ba7cc3c32973a4d2b63792bd0287ac07e96e5e311828",
+    "monthly_returns.csv": "d44d3f4e9183c1aafa400801c4417056317fd1fd85c532612b86e0a74848df46",
+    "open_counts.csv": "75c2a5f771a33eb17cc6f30eeb4d64a1504690d2defffdde628f835975848add",
+    "risk_metrics.csv": "92050a21545aace347d1d4cdd40ec3dec996c5318f506e6a87bf79be6f42511a",
+    "trades.csv": "d3b5a0d5519ab4fbc049cb82a9ea01333922b50a0533dc69f4620f8d3a5ac6ac"
+  },
+  "native_metrics_equal": true
+}

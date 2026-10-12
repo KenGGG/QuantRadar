@@ -1,0 +1,34 @@
+{
+  "run_id": "ec85355092904cf88e3eea429bd0929c",
+  "status": "SUCCEEDED",
+  "revision_id": "d770ac6f65344748a45f46a59840c792",
+  "strategy_ast_unchanged": true,
+  "source_revision_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+  "days": 1681,
+  "wall_seconds": 152.605767,
+  "core_seconds": 51.84098744392395,
+  "preparation": {
+    "cache_hit": false,
+    "dataset_key": "d0515c80634217e3b162cf3bb7dd98a9d619e8427c6947f12b1783094a423490",
+    "seconds": 85.9261625999934,
+    "trading_days": 1681,
+    "window_checks": 45,
+    "network_fallback": false
+  },
+  "effective": {
+    "use_real_price": false,
+    "avoid_future_data": true,
+    "order_volume_ratio": 1.0,
+    "order_match_mode": "immediate",
+    "match_by_signal": false,
+    "fq_ref_date": "2026-10-12",
+    "equity_cash_decimals": null,
+    "backtest_frequency": "day",
+    "universe": [
+      "512890.XSHG",
+      "159949.XSHE",
+      "513100.XSHG",
+      "518880.XSHG"
+    ]
+  }
+}

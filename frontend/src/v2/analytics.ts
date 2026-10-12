@@ -20,16 +20,17 @@ export function observations(rows:Row[]):Observation[]{
  });
 }
 function drawdown(a:number[],dates:string[]){let nav=1,peak=1,peakDate=dates[0]??'',start=peakDate,end=peakDate,worst=0;for(let i=0;i<a.length;i++){nav*=1+a[i];if(nav>peak){peak=nav;peakDate=dates[i];}const dd=1-nav/peak;if(dd>worst){worst=dd;start=peakDate;end=dates[i];}}return {value:worst,range:worst?`${start} 至 ${end}`:'无回撤'};}
+function downside(p:number[]){let sum=0,squares=0;for(let i=0;i<p.length;i++){sum+=p[i];const delta=p[i]-sum/(i+1);if(delta<0)squares+=delta*delta;}return Math.sqrt(250*squares/p.length);}
 export function statistics(points:Observation[],trades:Row[]=[]):Statistics{
  const result:Statistics={};if(!points.length||points.some(p=>!Number.isFinite(p.p)||p.p<-1))return result;
  const p=points.map(x=>x.p),dates=points.map(x=>x.date),n=p.length,nav=compound(p),annual=nav**(250/n)-1;
- const vp=variance(p),vol=vp===null?null:Math.sqrt(vp*250),rf=.04,down=Math.sqrt(mean(p.map(v=>Math.min(0,v-rf/250)**2))*250),dd=drawdown(p,dates);
- Object.assign(result,{'策略收益':(nav-1)*100,'策略年化收益':annual*100,'策略波动率':vol,'波动率':vol,'夏普比率':divide(annual-rf,vol),'索提诺比率':divide(annual-rf,down),'最大回撤':dd.value*100,'最大回撤区间':dd.range,'日胜率':p.filter(v=>v>0).length/n});
- const closed=trades.filter(r=>r['方向']==='卖出'&&number(r.realized_pnl_net)!==null),profits=closed.map(r=>number(r.realized_pnl_net)!),wins=profits.filter(v=>v>0),losses=profits.filter(v=>v<0);
- Object.assign(result,{'胜率':closed.length?wins.length/closed.length:null,'盈利次数':wins.length,'亏损次数':losses.length,'盈亏比':wins.length&&losses.length?divide(mean(wins),-mean(losses)):null});
+ const vp=variance(p),vol=vp===null?null:Math.sqrt(vp*250),rf=.04,down=downside(p),dd=drawdown(p,dates);
+ Object.assign(result,{'策略收益':(nav-1)*100,'策略年化收益':annual*100,'策略波动率':vol,'波动率':vol,'夏普比率':vol===0?0:divide(annual-rf,vol),'索提诺比率':down===0?0:divide(annual-rf,down),'最大回撤':dd.value*100,'最大回撤区间':dd.range,'日胜率':null});
+ const closed=trades.filter(r=>r['方向']==='卖出'&&(number(r.realized_pnl_gross)??number(r.realized_pnl_net))!==null),profits=closed.map(r=>(number(r.realized_pnl_gross)??number(r.realized_pnl_net))!),wins=profits.filter(v=>v>0),losses=profits.filter(v=>v<0);
+ Object.assign(result,{'胜率':closed.length?wins.length/closed.length:0,'盈利次数':wins.length,'亏损次数':profits.length-wins.length,'盈亏比':closed.length?divide(wins.reduce((s,v)=>s+v,0),-losses.reduce((s,v)=>s+v,0)):0});
  if(points.every(x=>x.b!==null&&Number.isFinite(x.b)&&x.b!>-1)){
   const b=points.map(x=>x.b!),bv=variance(b),bnav=compound(b),bannual=bnav**(250/n)-1,active=p.map((v,i)=>v-b[i]),excess=p.map((v,i)=>(1+v)/(1+b[i])-1),ev=variance(excess),av=variance(active),pm=mean(p),bm=mean(b),beta=bv===null?null:divide(p.reduce((s,v,i)=>s+(v-pm)*(b[i]-bm),0)/Math.max(1,n-1),bv),eannual=compound(excess)**(250/n)-1;
-  Object.assign(result,{'基准收益':(bnav-1)*100,'超额收益':(nav/bnav-1)*100,'基准波动率':bv===null?null:Math.sqrt(bv*250),'贝塔':beta,'阿尔法':beta===null?null:annual-(rf+beta*(bannual-rf)),'日均超额收益':mean(excess)*100,'超额收益最大回撤':drawdown(excess,dates).value*100,'超额收益夏普比率':divide(eannual-rf,ev===null?null:Math.sqrt(ev*250)),'信息比率':divide(mean(active)*250,av===null?null:Math.sqrt(av*250))});
+  Object.assign(result,{'基准收益':(bnav-1)*100,'超额收益':(nav/bnav-1)*100,'基准波动率':bv===null?null:Math.sqrt(bv*250),'贝塔':beta,'阿尔法':beta===null?null:annual-(rf+beta*(bannual-rf)),'日均超额收益':mean(excess)*100,'文档日均超额收益':(nav/bnav-1)/n*100,'超额收益最大回撤':drawdown(excess,dates).value*100,'超额收益夏普比率':divide(eannual-rf,ev===null?null:Math.sqrt(ev*250)),'日胜率':active.filter(v=>v>0).length/n,'信息比率':divide(annual-bannual,av===null?null:Math.sqrt(av*250))});
  }
  return Object.fromEntries(Object.entries(result).map(([k,v])=>[k,typeof v==='number'&&!Number.isFinite(v)?null:v]));
 }
