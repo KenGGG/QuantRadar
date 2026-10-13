@@ -1,0 +1,509 @@
+{
+  "original_revision": "20629e741dc54ccdbbe14397c642bca9",
+  "original_source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+  "design": "25 predeclared real API backtests; no parameter selection after observing results",
+  "followup_is_retrospective": true,
+  "cases": [
+    {
+      "key": "original_full",
+      "kind": "original",
+      "extras": {},
+      "bars": 84,
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "strategy_id": "6e1e2fb6f833450b947ee2a05a51a2d0",
+      "revision_id": "31e3acf124c146c6a5da26491fd575a5",
+      "source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+      "submitted_extras": {},
+      "run_id": "25f269697dd8400aafd87d6d248849da",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:37:33.149649+00:00"
+    },
+    {
+      "key": "hold_512890",
+      "kind": "control",
+      "extras": {
+        "mode": "hold",
+        "security": "512890.XSHG"
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "a0f9775325904f7b96bc69957777df0c",
+      "revision_id": "cd92e1a7a11747a8a934c9dbb8a84313",
+      "source_sha256": "2be25dddcf736309e427bfbb3642d146f303f3679de670428353419dc9445f0a",
+      "submitted_extras": {
+        "mode": "hold",
+        "security": "512890.XSHG",
+        "earliest": "2019-05-29"
+      },
+      "run_id": "00ab3f6dc0b3436a85e9a165fc84d386",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:41:20.583090+00:00"
+    },
+    {
+      "key": "hold_159949",
+      "kind": "control",
+      "extras": {
+        "mode": "hold",
+        "security": "159949.XSHE"
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "c5c3596151ef4249a130d636676a96e8",
+      "revision_id": "5da9ef824ddd4b59b01e2ca810e73b3c",
+      "source_sha256": "2be25dddcf736309e427bfbb3642d146f303f3679de670428353419dc9445f0a",
+      "submitted_extras": {
+        "mode": "hold",
+        "security": "159949.XSHE",
+        "earliest": "2019-05-29"
+      },
+      "run_id": "a39609640bbd4add9c3549744f0a1413",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:42:11.935396+00:00"
+    },
+    {
+      "key": "hold_513100",
+      "kind": "control",
+      "extras": {
+        "mode": "hold",
+        "security": "513100.XSHG"
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "1d7dccfd870b48f4987e7dbcdbe3a2b0",
+      "revision_id": "6a991c091c214f0580068ed06f5971b1",
+      "source_sha256": "2be25dddcf736309e427bfbb3642d146f303f3679de670428353419dc9445f0a",
+      "submitted_extras": {
+        "mode": "hold",
+        "security": "513100.XSHG",
+        "earliest": "2019-05-29"
+      },
+      "run_id": "282e5222ef7c447c84e32adc0be64c3b",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:43:14.251552+00:00"
+    },
+    {
+      "key": "hold_518880",
+      "kind": "control",
+      "extras": {
+        "mode": "hold",
+        "security": "518880.XSHG"
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "576ebd938f2c48989ebb9ad8160c9ee8",
+      "revision_id": "45b211061acd4cdbad29afa761a20db8",
+      "source_sha256": "2be25dddcf736309e427bfbb3642d146f303f3679de670428353419dc9445f0a",
+      "submitted_extras": {
+        "mode": "hold",
+        "security": "518880.XSHG",
+        "earliest": "2019-05-29"
+      },
+      "run_id": "c2417175c29143cf8a66ad95ef54b68d",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:44:14.012100+00:00"
+    },
+    {
+      "key": "equal_monthly",
+      "kind": "control",
+      "extras": {
+        "mode": "equal"
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "442ce187ab334679b5a68e37bbc9d526",
+      "revision_id": "fd51a026af624df48ed7a1521800c1d0",
+      "source_sha256": "2be25dddcf736309e427bfbb3642d146f303f3679de670428353419dc9445f0a",
+      "submitted_extras": {
+        "mode": "equal",
+        "earliest": "2019-05-29"
+      },
+      "run_id": "6fbb1b75ddb1444bbad36025a7786a14",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:46:22.024729+00:00"
+    },
+    {
+      "key": "momentum_25",
+      "kind": "control",
+      "extras": {
+        "mode": "momentum"
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "72d1b824e56c43e69c4ee03ab91c920c",
+      "revision_id": "60d595bf8e934df7a3cf4465facf772d",
+      "source_sha256": "2be25dddcf736309e427bfbb3642d146f303f3679de670428353419dc9445f0a",
+      "submitted_extras": {
+        "mode": "momentum",
+        "earliest": "2019-05-29"
+      },
+      "run_id": "ee6bfb5ba87945a9850d9c6465063a6d",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:47:56.639469+00:00"
+    },
+    {
+      "key": "bias_48",
+      "kind": "original",
+      "extras": {
+        "bias_n": 48
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "acc6ed17dbdf4139b563534521a9a434",
+      "revision_id": "0a9ec5b35ed24551be4c8c051b9d5710",
+      "source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+      "submitted_extras": {
+        "bias_n": 48
+      },
+      "run_id": "ec3940b9ac5543469635088ac614f346",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:49:20.998322+00:00"
+    },
+    {
+      "key": "bias_72",
+      "kind": "original",
+      "extras": {
+        "bias_n": 72
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "86abcfdf085c4564b47f53ec39413d19",
+      "revision_id": "47dbc2558bd2426dbd946a7021cc8167",
+      "source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+      "submitted_extras": {
+        "bias_n": 72
+      },
+      "run_id": "f7c4da56d7364d6f9f270d84f7e7e6c7",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:50:59.269082+00:00"
+    },
+    {
+      "key": "momentum_20",
+      "kind": "original",
+      "extras": {
+        "momentum_n": 20
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "8a77449544b64eb08fa49a9dda72d71d",
+      "revision_id": "0e17ca0374ee4066be12aefd6ebc4a7d",
+      "source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+      "submitted_extras": {
+        "momentum_n": 20
+      },
+      "run_id": "0e4508ebfed24dc0946342f0f69a9778",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:52:23.395464+00:00"
+    },
+    {
+      "key": "momentum_30",
+      "kind": "original",
+      "extras": {
+        "momentum_n": 30
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "fdfc1be685bb4266aefe921910cf2cab",
+      "revision_id": "e993055321e3496881297195bdc4f6da",
+      "source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+      "submitted_extras": {
+        "momentum_n": 30
+      },
+      "run_id": "e5dd5cb6e8f243679bdbc0c591341559",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:53:53.739775+00:00"
+    },
+    {
+      "key": "switch_1.2",
+      "kind": "original",
+      "extras": {
+        "switch_ratio": 1.2
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "279abccf61f54fb99ce46ed12ca33fbf",
+      "revision_id": "8addfc736fa0445dbcfd10e9b65ec8df",
+      "source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+      "submitted_extras": {
+        "switch_ratio": 1.2
+      },
+      "run_id": "8c3fe03fd3054afc9475dd3729211885",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:55:02.326364+00:00"
+    },
+    {
+      "key": "switch_1.8",
+      "kind": "original",
+      "extras": {
+        "switch_ratio": 1.8
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "c8bca87bcf8d4500a49e9dd44ddaf06a",
+      "revision_id": "5e80bff8eaa048cda290a9523730954c",
+      "source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+      "submitted_extras": {
+        "switch_ratio": 1.8
+      },
+      "run_id": "0301101d2fdd4bb3a6438cf254be2685",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:56:33.434878+00:00"
+    },
+    {
+      "key": "weights_equal",
+      "kind": "original",
+      "extras": {
+        "weights": [
+          0.3333333333333333,
+          0.3333333333333333,
+          0.3333333333333333
+        ]
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "a97e04908d7249a182f12e8c892dc4dd",
+      "revision_id": "45e7edf9df784ba487818230bf9df2b4",
+      "source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+      "submitted_extras": {
+        "weights": [
+          0.3333333333333333,
+          0.3333333333333333,
+          0.3333333333333333
+        ]
+      },
+      "run_id": "97189447518c4fb8a9cdd03d8c47e1e1",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:57:54.739092+00:00"
+    },
+    {
+      "key": "weights_efficiency_60",
+      "kind": "original",
+      "extras": {
+        "weights": [
+          0.2,
+          0.2,
+          0.6
+        ]
+      },
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "2177ad522949475bba5815f441d88f22",
+      "revision_id": "731c293556db45e78e80d18898086d9b",
+      "source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+      "submitted_extras": {
+        "weights": [
+          0.2,
+          0.2,
+          0.6
+        ]
+      },
+      "run_id": "54cb69af863542378fab19af4a3ea691",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T08:59:45.064423+00:00"
+    },
+    {
+      "key": "cost_2x",
+      "kind": "cost",
+      "multiplier": 2,
+      "extras": {},
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "41a540e300b94ec9ae7c6ee3858e2fd7",
+      "revision_id": "786a599854e3425895c335c5ccf58278",
+      "source_sha256": "392b971c95e69774deb624b21f5a8cc253dd926a373672cd3d46b705bfbd1096",
+      "submitted_extras": {},
+      "run_id": "2f1b4266c0fc41b185c83bdce6ed0f49",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T09:01:07.679649+00:00"
+    },
+    {
+      "key": "cost_3x",
+      "kind": "cost",
+      "multiplier": 3,
+      "extras": {},
+      "start": "2019-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "81f91c09ee7b4bed97e9cfa5540c48a8",
+      "revision_id": "8f18da6b255d42b3be5e461b0e590c72",
+      "source_sha256": "ffad924ca87204e03f25b93b64c4ab5e97262442d6dd65a5814d097133831a21",
+      "submitted_extras": {},
+      "run_id": "b662af339cff4bfaad074149dc6aa94b",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T09:02:40.535622+00:00"
+    },
+    {
+      "key": "original_start_2022",
+      "kind": "original",
+      "extras": {},
+      "start": "2022-01-01",
+      "end": "2025-12-05",
+      "bars": 96,
+      "strategy_id": "9051707db4fa4cdc917bebc33a4800fb",
+      "revision_id": "6259d61389bb4c45a2e1bebb4d8f410f",
+      "source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+      "submitted_extras": {},
+      "run_id": "9e757b2588214e6aa792c06e7d9801d7",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T09:04:56.382815+00:00"
+    },
+    {
+      "key": "followup_original",
+      "kind": "original",
+      "extras": {},
+      "start": "2025-12-08",
+      "end": "2026-10-12",
+      "bars": 96,
+      "strategy_id": "600346a58fc741fba7edaa0be4840970",
+      "revision_id": "7fc6fea47b4247ef98de48cbf28aa755",
+      "source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+      "submitted_extras": {},
+      "run_id": "e6a78f0a72894927a9cd8dd28177c257",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T09:05:37.207590+00:00"
+    },
+    {
+      "key": "followup_hold_512890",
+      "kind": "control",
+      "extras": {
+        "mode": "hold",
+        "security": "512890.XSHG"
+      },
+      "start": "2025-12-08",
+      "end": "2026-10-12",
+      "bars": 96,
+      "strategy_id": "ab1a94dedf7e4c948a3948883b6a012c",
+      "revision_id": "4a6611825d814f3f87ab06ba91f975b7",
+      "source_sha256": "2be25dddcf736309e427bfbb3642d146f303f3679de670428353419dc9445f0a",
+      "submitted_extras": {
+        "mode": "hold",
+        "security": "512890.XSHG",
+        "earliest": "2025-12-08"
+      },
+      "run_id": "13fde51badc14f17a64ecf12d780701a",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T09:05:47.217581+00:00"
+    },
+    {
+      "key": "followup_hold_159949",
+      "kind": "control",
+      "extras": {
+        "mode": "hold",
+        "security": "159949.XSHE"
+      },
+      "start": "2025-12-08",
+      "end": "2026-10-12",
+      "bars": 96,
+      "strategy_id": "44e8b06834804b4982c162638763e079",
+      "revision_id": "967ff65538ed4fa1949a54a9a3020f74",
+      "source_sha256": "2be25dddcf736309e427bfbb3642d146f303f3679de670428353419dc9445f0a",
+      "submitted_extras": {
+        "mode": "hold",
+        "security": "159949.XSHE",
+        "earliest": "2025-12-08"
+      },
+      "run_id": "bbcba04296794d85933ff7e2c95c5d2d",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T09:05:57.905565+00:00"
+    },
+    {
+      "key": "followup_hold_513100",
+      "kind": "control",
+      "extras": {
+        "mode": "hold",
+        "security": "513100.XSHG"
+      },
+      "start": "2025-12-08",
+      "end": "2026-10-12",
+      "bars": 96,
+      "strategy_id": "284b2909ee854567acb6f6ec831aa93d",
+      "revision_id": "650f96710f6b4803b493ac67b7b9f8b4",
+      "source_sha256": "2be25dddcf736309e427bfbb3642d146f303f3679de670428353419dc9445f0a",
+      "submitted_extras": {
+        "mode": "hold",
+        "security": "513100.XSHG",
+        "earliest": "2025-12-08"
+      },
+      "run_id": "b6dd5e19a1f1419988d6f55506422e11",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T09:06:08.237529+00:00"
+    },
+    {
+      "key": "followup_hold_518880",
+      "kind": "control",
+      "extras": {
+        "mode": "hold",
+        "security": "518880.XSHG"
+      },
+      "start": "2025-12-08",
+      "end": "2026-10-12",
+      "bars": 96,
+      "strategy_id": "367373ea064c4645aec3175f97710597",
+      "revision_id": "0fa57e3bee3f4f4ea91650b229844ca1",
+      "source_sha256": "2be25dddcf736309e427bfbb3642d146f303f3679de670428353419dc9445f0a",
+      "submitted_extras": {
+        "mode": "hold",
+        "security": "518880.XSHG",
+        "earliest": "2025-12-08"
+      },
+      "run_id": "0396e57eb2f34f1b88bd8c9699c95e63",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T09:06:18.620629+00:00"
+    },
+    {
+      "key": "followup_equal_monthly",
+      "kind": "control",
+      "extras": {
+        "mode": "equal"
+      },
+      "start": "2025-12-08",
+      "end": "2026-10-12",
+      "bars": 96,
+      "strategy_id": "5e8d9c1b81bb4dc4a82c8abeb7b5e38c",
+      "revision_id": "3a6af92367974359a6fdbca9a8a79f7a",
+      "source_sha256": "2be25dddcf736309e427bfbb3642d146f303f3679de670428353419dc9445f0a",
+      "submitted_extras": {
+        "mode": "equal",
+        "earliest": "2025-12-08"
+      },
+      "run_id": "c8c57404f2a341cbaf6fc7ace451740a",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T09:06:33.418631+00:00"
+    },
+    {
+      "key": "followup_momentum_25",
+      "kind": "control",
+      "extras": {
+        "mode": "momentum"
+      },
+      "start": "2025-12-08",
+      "end": "2026-10-12",
+      "bars": 96,
+      "strategy_id": "bbe0672a9691475dae1a0dee46a178b9",
+      "revision_id": "a34d1b929c72445380e73ffc99880b6f",
+      "source_sha256": "2be25dddcf736309e427bfbb3642d146f303f3679de670428353419dc9445f0a",
+      "submitted_extras": {
+        "mode": "momentum",
+        "earliest": "2025-12-08"
+      },
+      "run_id": "5c8a86394dc84d958455508bca8d10e2",
+      "status": "SUCCEEDED",
+      "finished_at": "2026-10-13T09:06:46.310045+00:00"
+    }
+  ]
+}
