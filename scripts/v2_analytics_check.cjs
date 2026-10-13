@@ -22,8 +22,10 @@ const uneven=statistics(points,[{'方向':'卖出',realized_pnl_net:'20'},{'方�
 near(uneven['盈亏比'],5);near(result['日胜率'],1/3);near(result['文档日均超额收益'],(.9996/.9999-1)*100/3);near(result['日均超额收益'],((1.02/1.01-1)+(.98/.99-1))*100/3);
 const cash=statistics(points.map(p=>({...p,p:0})));
 near(cash['日胜率'],1/3);near(cash['夏普比率'],0);near(cash['索提诺比率'],0);
-near(result['索提诺比率'],(.9996**(250/3)-1-.04)/Math.sqrt(250*.0004/3));
-console.log('JoinQuant daily win, annual IR, total profit/loss, expanding-mean downside and AEI checks passed');
+near(result['索提诺比率'],0);
+const downsideFixture=[.03,-.02,-.01,.02].map((p,i)=>({date:`2024-01-0${i+1}`,p,b:0}));
+near(statistics(downsideFixture)['索提诺比率'],((1.03*.98*.99*1.02)**(250/4)-1-.04)/Math.sqrt(250*.00005));
+console.log('JoinQuant daily win, annual IR, total profit/loss, filtered sample downside and AEI checks passed');
 
 const gross=statistics(points,[{'方向':'卖出',realized_pnl_gross:'1',realized_pnl_net:'-1'},{'方向':'卖出',realized_pnl_gross:'0',realized_pnl_net:'-2'}]);
 near(gross['胜率'],.5);near(gross['盈利次数'],1);near(gross['亏损次数'],1);

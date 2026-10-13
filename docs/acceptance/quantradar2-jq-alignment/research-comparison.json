@@ -1,0 +1,254 @@
+{
+  "archive_checksums_valid": true,
+  "source_run": "ec85355092904cf88e3eea429bd0929c",
+  "comparisons": [
+    {
+      "security": "512890.XSHG",
+      "variant": "raw",
+      "fields": {
+        "open": {
+          "valid_rows": 1669,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "high": {
+          "valid_rows": 1669,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "low": {
+          "valid_rows": 1669,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "close": {
+          "valid_rows": 1669,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "volume": {
+          "valid_rows": 1669,
+          "different_rows": 311,
+          "max_abs_difference": 99.0
+        }
+      }
+    },
+    {
+      "security": "512890.XSHG",
+      "variant": "pre",
+      "fields": {
+        "open": {
+          "valid_rows": 1669,
+          "different_rows": 668,
+          "max_abs_difference": 0.02100000000000002
+        },
+        "high": {
+          "valid_rows": 1669,
+          "different_rows": 668,
+          "max_abs_difference": 0.02100000000000002
+        },
+        "low": {
+          "valid_rows": 1669,
+          "different_rows": 668,
+          "max_abs_difference": 0.02100000000000002
+        },
+        "close": {
+          "valid_rows": 1669,
+          "different_rows": 668,
+          "max_abs_difference": 0.02100000000000002
+        },
+        "volume": {
+          "valid_rows": 1669,
+          "different_rows": 916,
+          "max_abs_difference": 15383173.0
+        }
+      }
+    },
+    {
+      "security": "159949.XSHE",
+      "variant": "raw",
+      "fields": {
+        "open": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "high": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "low": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "close": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "volume": {
+          "valid_rows": 1781,
+          "different_rows": 1537,
+          "max_abs_difference": 99.0
+        }
+      }
+    },
+    {
+      "security": "159949.XSHE",
+      "variant": "pre",
+      "fields": {
+        "open": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "high": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "low": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "close": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "volume": {
+          "valid_rows": 1781,
+          "different_rows": 1537,
+          "max_abs_difference": 99.0
+        }
+      }
+    },
+    {
+      "security": "513100.XSHG",
+      "variant": "raw",
+      "fields": {
+        "open": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "high": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "low": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "close": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "volume": {
+          "valid_rows": 1781,
+          "different_rows": 877,
+          "max_abs_difference": 99.0
+        }
+      }
+    },
+    {
+      "security": "513100.XSHG",
+      "variant": "pre",
+      "fields": {
+        "open": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "high": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "low": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "close": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "volume": {
+          "valid_rows": 1781,
+          "different_rows": 1330,
+          "max_abs_difference": 502.0
+        }
+      }
+    },
+    {
+      "security": "518880.XSHG",
+      "variant": "raw",
+      "fields": {
+        "open": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "high": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "low": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "close": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "volume": {
+          "valid_rows": 1781,
+          "different_rows": 1069,
+          "max_abs_difference": 99.0
+        }
+      }
+    },
+    {
+      "security": "518880.XSHG",
+      "variant": "pre",
+      "fields": {
+        "open": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "high": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "low": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "close": {
+          "valid_rows": 1781,
+          "different_rows": 0,
+          "max_abs_difference": 0.0
+        },
+        "volume": {
+          "valid_rows": 1781,
+          "different_rows": 1069,
+          "max_abs_difference": 99.0
+        }
+      }
+    }
+  ]
+}

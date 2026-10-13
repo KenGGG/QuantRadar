@@ -47,7 +47,7 @@ def test_cash_fee_default_keeps_subcent_precision(monkeypatch):
     assert e._round_equity_cash(148.48008)==148.48008
     assert settings.options['order_volume_ratio']==1.0
 
-def test_volume_cap_keeps_partial_position_and_buy_lots(monkeypatch):
+def test_volume_cap_keeps_odd_partial_fills_and_original_requested_lots(monkeypatch):
     e=engine(monkeypatch)
     e.context=SimpleNamespace(current_dt=pd.Timestamp('2021-04-07 09:30'))
     source=SimpleNamespace(get_price=Mock(return_value=pd.DataFrame({'volume':[269036]})))
@@ -56,7 +56,16 @@ def test_volume_cap_keeps_partial_position_and_buy_lots(monkeypatch):
         assert e._calculate_order_amount(SimpleNamespace(security='512890.XSHG'),.708)==-269036
     assert source.get_price.call_args.kwargs['fq']=='pre'
     with patch.object(compat.BacktestEngine,'_calculate_order_amount',return_value=1600000):
-        assert e._calculate_order_amount(SimpleNamespace(security='512890.XSHG'),.708)==269000
+        assert e._calculate_order_amount(SimpleNamespace(security='512890.XSHG'),.708)==269036
+    source.get_price.return_value=pd.DataFrame({'volume':[60772]})
+    with patch.object(compat.BacktestEngine,'_calculate_order_amount',return_value=100000):
+        order=SimpleNamespace(security='512890.XSHG')
+        assert e._calculate_order_amount(order,.680)==60772
+        assert e._matching_trade_size(order)==1
+    with patch.object(compat.BacktestEngine,'_calculate_order_amount',return_value=60000):
+        order=SimpleNamespace(security='512890.XSHG')
+        assert e._calculate_order_amount(order,.680)==60000
+        assert e._matching_trade_size(order)==100
 
 def test_adjusted_valuation_and_strict_invalid_data(monkeypatch):
     e=engine(monkeypatch)

@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "csv_byte_equality": {
+    "annual_returns.csv": true,
+    "daily_positions.csv": true,
+    "daily_records.csv": true,
+    "instrument_pnl.csv": true,
+    "monthly_returns.csv": true,
+    "open_counts.csv": true,
+    "risk_metrics.csv": true,
+    "trades.csv": true
+  },
+  "strict_offline": {
+    "source_run": "5895a74a4635451f9b3e958d4e09143b",
+    "network_fallback": false,
+    "used_requests": 9
+  },
+  "source_run": "5895a74a4635451f9b3e958d4e09143b",
+  "replay_run": "6bd5eb34f741466e947828cfe6edcfd4"
+}

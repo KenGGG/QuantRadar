@@ -1,0 +1,33 @@
+{
+  "run_id": "5895a74a4635451f9b3e958d4e09143b",
+  "source_sha256": "3765279ae890fa578f8fa4f6d7ead795e017707e0c2cd8a3cdea41d87b8b56bf",
+  "revision_id": "20629e741dc54ccdbbe14397c642bca9",
+  "source_and_revision_unchanged": true,
+  "visible_submission_feedback": true,
+  "page_errors": [],
+  "request": {
+    "benchmark": "000300.XSHG",
+    "data_mode": "prepared",
+    "data_mode_reason": "强制数据准备：缓存校验通过后才启动纯本地回测",
+    "data_requirements": {
+      "securities": [
+        "000300.XSHG",
+        "159949.XSHE",
+        "512890.XSHG",
+        "513100.XSHG",
+        "518880.XSHG"
+      ],
+      "warmup_bars": 84
+    },
+    "data_requirements_origin": "automatic",
+    "end_date": "2025-12-05",
+    "extras": {},
+    "frequency": "day",
+    "initial_cash": 500000.0,
+    "reference_date": "2026-10-12",
+    "refresh_data": false,
+    "requested_data_mode": "prepared",
+    "start_date": "2019-01-01",
+    "strategy_name": "etf回测"
+  }
+}

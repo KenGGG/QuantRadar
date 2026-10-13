@@ -1,0 +1,17 @@
+{
+  "joinquant_trade_count": 194,
+  "local_trade_count": 194,
+  "first_trade_difference": null,
+  "compared_score_days": 1585,
+  "different_current_or_target_days": 0,
+  "first_decision_difference": [],
+  "different_score_winner_days": [],
+  "limit_rejections": 0,
+  "decision_differences": {},
+  "jq_log_gross_statistics": {
+    "wins": 60,
+    "nonwins": 40,
+    "win_rate": 0.6,
+    "profit_loss_ratio": 3.8998418262462398
+  }
+}

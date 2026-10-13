@@ -1,0 +1,155 @@
+{
+  "id": "5895a74a4635451f9b3e958d4e09143b",
+  "revision_id": "20629e741dc54ccdbbe14397c642bca9",
+  "status": "SUCCEEDED",
+  "created_at": "2026-10-12T09:38:46.180396+00:00",
+  "started_at": "2026-10-12T09:38:46.452978+00:00",
+  "finished_at": "2026-10-12T09:44:21.905008+00:00",
+  "pid": 35708,
+  "process_created": 1791797926.4792976,
+  "exit_code": 0,
+  "error": null,
+  "request": {
+    "benchmark": "000300.XSHG",
+    "data_mode": "prepared",
+    "data_mode_reason": "强制数据准备：缓存校验通过后才启动纯本地回测",
+    "data_requirements": {
+      "securities": [
+        "000300.XSHG",
+        "159949.XSHE",
+        "512890.XSHG",
+        "513100.XSHG",
+        "518880.XSHG"
+      ],
+      "warmup_bars": 84
+    },
+    "data_requirements_origin": "automatic",
+    "end_date": "2025-12-05",
+    "extras": {},
+    "frequency": "day",
+    "initial_cash": 500000.0,
+    "reference_date": "2026-10-12",
+    "refresh_data": false,
+    "requested_data_mode": "prepared",
+    "start_date": "2019-01-01",
+    "strategy_name": "etf回测"
+  },
+  "effective": {
+    "benchmark": "000300.XSHG",
+    "data_limitations": [
+      "Historical price limits unavailable: native BulletTrade estimates apply; historical ST/listing limits not qualified"
+    ],
+    "engine_policy": {
+      "market_buy_price_percent": 0.015,
+      "market_sell_price_percent": -0.015,
+      "scheduler_market_periods": null,
+      "strict_data": true
+    },
+    "request": {
+      "benchmark": "000300.XSHG",
+      "data_mode": "prepared",
+      "data_mode_reason": "强制数据准备：缓存校验通过后才启动纯本地回测",
+      "data_requirements": {
+        "securities": [
+          "000300.XSHG",
+          "159949.XSHE",
+          "512890.XSHG",
+          "513100.XSHG",
+          "518880.XSHG"
+        ],
+        "warmup_bars": 84
+      },
+      "data_requirements_origin": "automatic",
+      "end_date": "2025-12-05",
+      "extras": {},
+      "frequency": "day",
+      "initial_cash": 500000.0,
+      "reference_date": "2026-10-12",
+      "refresh_data": false,
+      "requested_data_mode": "prepared",
+      "start_date": "2019-01-01",
+      "strategy_name": "etf回测"
+    },
+    "settings": {
+      "options": {
+        "avoid_future_data": true,
+        "backtest_frequency": "day",
+        "equity_cash_decimals": null,
+        "fq_ref_date": "2026-10-12",
+        "match_by_signal": false,
+        "order_match_mode": "immediate",
+        "order_volume_ratio": 1.0,
+        "universe": [
+          "512890.XSHG",
+          "159949.XSHE",
+          "513100.XSHG",
+          "518880.XSHG"
+        ],
+        "use_real_price": false
+      },
+      "order_cost": {
+        "fund": {
+          "close_commission": 0.0003,
+          "close_tax": 0,
+          "close_today_commission": 0.0,
+          "commission_type": "by_money",
+          "min_commission": 5,
+          "open_commission": 0.0003,
+          "open_tax": 0
+        },
+        "futures": {
+          "close_commission": 0.0,
+          "close_tax": 0.0,
+          "close_today_commission": 0.0,
+          "commission_type": "by_money",
+          "min_commission": 0.0,
+          "open_commission": 0.0,
+          "open_tax": 0.0
+        },
+        "money_market_fund": {
+          "close_commission": 0.0,
+          "close_tax": 0.0,
+          "close_today_commission": 0.0,
+          "commission_type": "by_money",
+          "min_commission": 0.0,
+          "open_commission": 0.0,
+          "open_tax": 0.0
+        },
+        "stock": {
+          "close_commission": 0.0003,
+          "close_tax": 0.001,
+          "close_today_commission": 0.0,
+          "commission_type": "by_money",
+          "min_commission": 5.0,
+          "open_commission": 0.0003,
+          "open_tax": 0.0
+        }
+      },
+      "order_cost_overrides": {},
+      "slippage": {
+        "value": 0.001
+      },
+      "slippage_map": {
+        "all": {
+          "value": 0.001
+        }
+      },
+      "subportfolios": []
+    }
+  },
+  "environment": {
+    "adapter_fingerprint": "43f0bae77c0da2848da4196caf6827929556b931148f0315b7a81fa85270dd75",
+    "bullettrade_source": "D:\\Projects\\BulletTrade\\bullet_trade",
+    "bullettrade_version": "0.10.0",
+    "dependency_versions": {
+      "bullet-trade": "0.10.0",
+      "numpy": "2.5.3",
+      "pandas": "2.3.3"
+    },
+    "engine_sha256": "bcc59905f82b35a2f7d73bc876cdf4fb7335b3eaebb7ccd23c9a1b9755390328",
+    "native_config_fingerprint": "e8d60caef396fa2e2841d418b013d17bfef127236904d78a2cc3da48ac4b141f",
+    "python": "D:\\Projects\\QuantDev\\QuantRadar2\\.venv-v2\\Scripts\\python.exe",
+    "python_version": "3.12.15 | packaged by conda-forge | (main, Oct  6 2026, 23:39:35) [MSC v.1944 64 bit (AMD64)]",
+    "source_fingerprint": "0414f86bce593aa0873dedb99baa2b5d4bad8820c352600228f58594971fbf48"
+  }
+}

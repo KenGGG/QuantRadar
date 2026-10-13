@@ -20,7 +20,7 @@ export function observations(rows:Row[]):Observation[]{
  });
 }
 function drawdown(a:number[],dates:string[]){let nav=1,peak=1,peakDate=dates[0]??'',start=peakDate,end=peakDate,worst=0;for(let i=0;i<a.length;i++){nav*=1+a[i];if(nav>peak){peak=nav;peakDate=dates[i];}const dd=1-nav/peak;if(dd>worst){worst=dd;start=peakDate;end=dates[i];}}return {value:worst,range:worst?`${start} 至 ${end}`:'无回撤'};}
-function downside(p:number[]){let sum=0,squares=0;for(let i=0;i<p.length;i++){sum+=p[i];const delta=p[i]-sum/(i+1);if(delta<0)squares+=delta*delta;}return Math.sqrt(250*squares/p.length);}
+function downside(p:number[]){let sum=0;const lower:number[]=[];for(let i=0;i<p.length;i++){sum+=p[i];if(p[i]<sum/(i+1))lower.push(p[i]);}const v=variance(lower);return v===null?0:Math.sqrt(250*v);}
 export function statistics(points:Observation[],trades:Row[]=[]):Statistics{
  const result:Statistics={};if(!points.length||points.some(p=>!Number.isFinite(p.p)||p.p<-1))return result;
  const p=points.map(x=>x.p),dates=points.map(x=>x.date),n=p.length,nav=compound(p),annual=nav**(250/n)-1;

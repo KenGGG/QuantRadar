@@ -131,6 +131,7 @@ def prepare(provider, request, plan, directory, cache_root, cache_identity, task
     if not run_days:
         raise FrozenDataError('No trading days in requested interval')
     dataset = {'lower': str(lower.date()), 'upper': str(upper.date()),
+               'consistent_fund_reference': getattr(provider,'consistent_fund_reference',False),
                'run_start': str(start.date()), 'run_end': str(end.date()), 'reference_date': ref,
                'warmup_bars': plan['warmup_bars'],
                'calendar': [str(day(d).date()) for d in calendar], 'prices': {}, 'info': {}, 'events': {}}
@@ -153,7 +154,7 @@ def prepare(provider, request, plan, directory, cache_root, cache_identity, task
                                               fields=FIELDS, frequency='daily', fq=fq, skip_paused=False,
                                               pre_factor_ref_date=anchor)
                 actual = frame.loc[dates(frame) <= cutoff].tail(plan['warmup_bars'])
-                if variant == 'anchored' and day(ref) not in dates(actual):
+                if variant == 'anchored' and day(ref) not in dates(actual) and not dataset['consistent_fund_reference']:
                     unanchored = decode_frame(dataset['prices'][security]['pre'])
                     actual = unanchored.loc[dates(unanchored) <= cutoff].tail(plan['warmup_bars'])
                 try:
@@ -171,6 +172,8 @@ def prepare(provider, request, plan, directory, cache_root, cache_identity, task
             if (i + 1) % 100 == 0:
                 print(f'[DATA] Metadata {security}: {i+1}/{len(run_days)}', flush=True)
     dataset['validation'] = validation
+    dataset['fund_adjustment_facts'] = [dict(security=security,reference_date=reference,actions=actions)
+        for (security,reference),actions in getattr(provider,'_fund_adjustment_cache',{}).items() if actions is not None]
     dataset['acquired_at'] = pd.Timestamp.now(tz='UTC').isoformat()
     # Publication happens only after every download and parity check succeeds.
     save_snapshot(cache_dir, dataset, cache_spec)
@@ -245,7 +248,7 @@ class PreparedProvider(ResearchQmtProvider):
             result = result.tail(count)
         # Native QMT scales OHLC only when the reference bar is present in the
         # requested window. A broad bulk request must not change that behavior.
-        if variant == 'anchored' and day(self.dataset['reference_date']) not in dates(result):
+        if variant == 'anchored' and day(self.dataset['reference_date']) not in dates(result) and not self.dataset.get('consistent_fund_reference',False):
             result = self.prices[code]['pre'].loc[result.index]
         self._connection.used.add(('price', code, variant))
         return result.loc[:, wanted].copy()

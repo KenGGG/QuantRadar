@@ -1,6 +1,8 @@
 # QuantRadar2 Current State
 
-- 新增用户聚宽position.zip核对：1681日权益还原740.366924%，年化/Sharpe/Alpha/Beta/IR/回撤重算与截图一致；Sortino同序列1.846不同于1.691，尚未对齐。首个收盘价差异为2019-10-11的512890（0.562/0.575）。见[position export](acceptance/quantradar2-jq-alignment/position-export.md)。
+- QMT 原策略完整对齐已验证：5895a74a覆盖1681日，收益740.3669248628%、索提诺1.691178；194笔成交全部一致、1585日目标分歧0。6bd5eb34离线重放成功，8份CSV逐字节一致。策略源码及修订未修改。68项测试、类型/构建/浏览器提交和指标导出检查通过。数据服务实际在线；此前网络失败来自沙箱限制。见[QMT对齐验收](acceptance/quantradar2-qmt-parity/README.md)。
+
+
 
 Updated: 2026-10-12 (Asia/Shanghai).
 
@@ -47,3 +49,5 @@ Updated: 2026-10-12 (Asia/Shanghai).
 - docs 已按用户要求删除193个旧 QuantRadar 开发文档文件（30159799字节）；仅保留本次四份主文档和四个验收目录。主SQLite和运行产物未改动。
 
 - 项目已彻底移除V1功能代码/目录、旧入口、vendor及旧依赖清单；frontend dev/build统一V2。当前服务依赖日志集中于var/quantradar2/logs。清理后18项测试、标准生产构建、pip check通过；详见代码清理记录。
+
+- 2026-10-13：回测详情已参考用户提供的聚宽 HTML 优化标题、主要指标、导航分组和响应式样式；图表支持3/6个月区间、日期范围限制、每日盈亏/持仓/现金提示与资产共用刻度。类型检查、构建、指标和图表边界检查通过；浏览器视觉验收未执行。
